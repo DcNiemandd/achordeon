@@ -1,6 +1,13 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+
+// Angular app lives outside Docusaurus's route table — prefix internal-looking
+// paths with `pathname://` so the broken-link checker treats them as external.
+const rawAppLink = process.env.APP_LINK ?? '/achordeon/app/';
+const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
+  ? rawAppLink
+  : `pathname://${rawAppLink}`;
 
 const config: Config = {
   title: 'Achordeon',
@@ -19,7 +26,12 @@ const config: Config = {
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
@@ -32,7 +44,8 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/dcniemandd/achordeon/tree/main/apps/docs/',
+          editUrl:
+            'https://github.com/dcniemandd/achordeon/tree/main/apps/docs/',
         },
         blog: false,
         theme: {
@@ -56,7 +69,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: process.env.APP_LINK ?? '/achordeon/app/',
+          to: appLink,
           label: 'Launch App',
           position: 'right',
         },
@@ -73,14 +86,17 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            {label: 'Docs', to: '/docs/intro'},
-            {label: 'Launch App', href: process.env.APP_LINK ?? '/achordeon/app/'},
+            { label: 'Docs', to: '/docs/intro' },
+            { label: 'Launch App', href: appLink },
           ],
         },
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/dcniemandd/achordeon'},
+            {
+              label: 'GitHub',
+              href: 'https://github.com/dcniemandd/achordeon',
+            },
           ],
         },
       ],
