@@ -9,6 +9,8 @@ const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
   : `pathname://${rawAppLink}`;
 
+const repoUrl = 'https://github.com/dcniemandd/achordeon';
+
 const config: Config = {
   title: 'Achordeon',
   tagline: 'Real-time channels, in harmony.',
@@ -44,8 +46,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl:
-            'https://github.com/dcniemandd/achordeon/tree/main/apps/docs/',
+          editUrl: `${repoUrl}/tree/main/apps/docs/`,
         },
         blog: false,
         theme: {
@@ -74,7 +75,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/dcniemandd/achordeon',
+          href: repoUrl,
           label: 'GitHub',
           position: 'right',
         },
@@ -95,7 +96,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/dcniemandd/achordeon',
+              href: repoUrl,
             },
           ],
         },
