@@ -1,0 +1,54 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+tmp
+out-tsc
+apps/docs/build
+apps/docs/.docusaurus
+coverage
+
+# Nx caches
+.nx/cache
+.nx/workspace-data
+.nx/polygraph
+.nx/self-healing
+
+# Angular caches
+.angular
+
+# Claude Code session data (project-local; safe to share if you want)
+.claude
+
+# Editors / IDEs
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+testem.log
+
+# Misc
+/.sass-cache
+/connect.lock
+/libpeerconnection.log
+/typings
+.playwright-mcp
+.husky/_

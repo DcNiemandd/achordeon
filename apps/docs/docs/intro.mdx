@@ -1,0 +1,33 @@
+---
+sidebar_position: 1
+---
+
+# Welcome to Achordeon
+
+Achordeon is a real-time broadcast app — one sender, many receivers, shared
+state in the browser.
+
+This documentation will grow as the project does. For now, the quick map:
+
+- **[Launch the app](/achordeon/app/)** — open the live Angular client.
+- **Source** — [github.com/dcniemandd/achordeon](https://github.com/dcniemandd/achordeon).
+- **License** — MIT.
+
+## What's here
+
+The repo is a monorepo with two apps:
+
+| Path        | What it is                                          |
+| ----------- | --------------------------------------------------- |
+| `apps/docs` | This Docusaurus site (landing + docs)               |
+| `apps/app`  | The Achordeon Angular application                   |
+
+## Local development
+
+```bash
+pnpm install
+pnpm exec nx serve app    # Angular dev server at http://localhost:4200
+pnpm exec nx start docs   # Docusaurus dev server at http://localhost:3000
+```
+
+Both can run side-by-side.

@@ -1,0 +1,112 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Phase 1 (GitHub Pages, no custom domain).
+  # When custom apex domain is live, set DOCS_URL=https://achordeon.com,
+  # DOCS_BASE_URL=/, APP_BASE_HREF=/app/, APP_LINK=/app/.
+  DOCS_URL: https://dcniemandd.github.io
+  DOCS_BASE_URL: /achordeon/
+  APP_BASE_HREF: /achordeon/app/
+  APP_LINK: /achordeon/app/
+
+jobs:
+  verify:
+    name: Verify (lint + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set Nx affected base
+        if: github.event_name == 'pull_request'
+        run: echo "NX_BASE=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
+
+      - name: Lint
+        run: pnpm exec nx run-many -t lint
+
+      - name: Test
+        run: pnpm exec nx run-many -t test --configuration=ci
+
+      - name: Build (verification only)
+        run: pnpm exec nx run-many -t build --projects=app,docs
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Docusaurus
+        run: pnpm exec nx build docs
+        env:
+          DOCS_URL: ${{ env.DOCS_URL }}
+          DOCS_BASE_URL: ${{ env.DOCS_BASE_URL }}
+          APP_LINK: ${{ env.APP_LINK }}
+
+      - name: Build Angular app
+        run: pnpm exec nx build app --base-href=$APP_BASE_HREF
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist/site
+          cp -r apps/docs/build/. dist/site/
+          mkdir -p dist/site/app
+          cp -r dist/apps/app/browser/. dist/site/app/
+          cp dist/site/app/index.html dist/site/app/404.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
