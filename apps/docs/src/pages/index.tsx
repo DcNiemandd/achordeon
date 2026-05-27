@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -8,10 +8,10 @@ import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
 
-const appLink = '/achordeon/app/';
+const appLink = 'pathname:///achordeon/app/';
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
@@ -20,10 +20,17 @@ function HomepageHeader() {
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
-          <Link className="button button--secondary button--lg" to="/docs/intro">
+          <Link
+            className="button button--secondary button--lg"
+            to="/docs/intro"
+          >
             Read the Docs
           </Link>
-          <Link className="button button--primary button--lg" to={appLink} style={{marginLeft: '1rem'}}>
+          <Link
+            className="button button--primary button--lg"
+            to={appLink}
+            style={{ marginLeft: '1rem' }}
+          >
             Launch App →
           </Link>
         </div>
@@ -33,7 +40,7 @@ function HomepageHeader() {
 }
 
 export default function Home(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
   return (
     <Layout title={siteConfig.title} description={siteConfig.tagline}>
       <HomepageHeader />
