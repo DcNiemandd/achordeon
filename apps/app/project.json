@@ -5,15 +5,23 @@
   "prefix": "app",
   "sourceRoot": "apps/app/src",
   "tags": [],
+  "i18n": {
+    "sourceLocale": { "code": "en", "subPath": "" },
+    "locales": {
+      "cs": {
+        "translation": "apps/app/src/locale/messages.cs.xlf",
+        "subPath": "cs"
+      }
+    }
+  },
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/app",
         "browser": "apps/app/src/main.ts",
+        "polyfills": ["zone.js", "@angular/localize/init"],
         "tsConfig": "apps/app/tsconfig.app.json",
         "baseHref": "/achordeon/app/",
         "inlineStyleLanguage": "scss",
@@ -23,9 +31,7 @@
             "input": "apps/app/public"
           }
         ],
-        "styles": [
-          "apps/app/src/styles.scss"
-        ]
+        "styles": ["apps/app/src/styles.scss"]
       },
       "configurations": {
         "production": {
@@ -41,12 +47,17 @@
               "maximumError": "8kb"
             }
           ],
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "localize": true
         },
         "development": {
           "optimization": false,
           "extractLicenses": false,
-          "sourceMap": true
+          "sourceMap": true,
+          "localize": ["en"]
+        },
+        "cs": {
+          "localize": ["cs"]
         }
       },
       "defaultConfiguration": "production"
@@ -60,18 +71,27 @@
         },
         "development": {
           "buildTarget": "app:build:development"
+        },
+        "cs": {
+          "buildTarget": "app:build:development,cs"
         }
       },
       "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "app:build",
+        "outputPath": "apps/app/src/locale",
+        "format": "xlf"
+      }
     },
     "lint": {
       "executor": "@nx/eslint:lint"
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "jestConfig": "apps/app/jest.config.ts",
         "tsConfig": "apps/app/tsconfig.spec.json"
