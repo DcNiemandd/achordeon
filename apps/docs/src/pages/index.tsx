@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
+import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
@@ -24,14 +25,14 @@ function HomepageHeader() {
             className="button button--secondary button--lg"
             to="/docs/intro"
           >
-            Read the Docs
+            <Translate id="homepage.cta.readDocs">Read the Docs</Translate>
           </Link>
           <Link
             className="button button--primary button--lg"
             to={appLink}
             style={{ marginLeft: '1rem' }}
           >
-            Launch App →
+            <Translate id="homepage.cta.launchApp">Launch App →</Translate>
           </Link>
         </div>
       </div>

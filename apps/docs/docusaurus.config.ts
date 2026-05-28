@@ -1,6 +1,6 @@
-import { themes as prismThemes } from 'prism-react-renderer';
-import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type { Config } from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
 
 // Angular app lives outside Docusaurus's route table — prefix internal-looking
 // paths with `pathname://` so the broken-link checker treats them as external.
@@ -26,7 +26,6 @@ const config: Config = {
   organizationName: 'dcniemandd',
   projectName: 'achordeon',
   trailingSlash: false,
-
   onBrokenLinks: 'throw',
 
   markdown: {
@@ -37,7 +36,11 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'cs'],
+    localeConfigs: {
+      en: { label: 'English', htmlLang: 'en-US' },
+      cs: { label: 'Čeština', htmlLang: 'cs-CZ' },
+    },
   },
 
   presets: [
@@ -75,11 +78,18 @@ const config: Config = {
           position: 'right',
         },
         {
+          type: 'localeDropdown',
+          position: 'right',
+        },
+        {
           href: repoUrl,
           label: 'GitHub',
           position: 'right',
         },
       ],
+    },
+    docs: {
+      sidebar: { hideable: true },
     },
     footer: {
       style: 'dark',
