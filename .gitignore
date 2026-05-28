@@ -9,6 +9,9 @@ apps/docs/build
 apps/docs/.docusaurus
 coverage
 
+# Generated from src/index.html.template via apps/app/tools/gen-index.mjs
+apps/app/src/index.html
+
 # Nx caches
 .nx/cache
 .nx/workspace-data

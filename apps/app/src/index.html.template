@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>app</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      (function () {
+        try {
+          var FLAG = 'achordeon-app-locale-init';
+          if (localStorage.getItem(FLAG)) return;
+          localStorage.setItem(FLAG, '1');
+          var SUPPORTED = __ACHORDEON_LOCALES__;
+          var DEFAULT = __ACHORDEON_DEFAULT_LOCALE__;
+          var BASE = __ACHORDEON_BASE_HREF__;
+          var path = location.pathname;
+          if (path.indexOf(BASE) !== 0) return;
+          var seg = path.slice(BASE.length).split('/')[0];
+          var current = SUPPORTED.indexOf(seg) >= 0 ? seg : DEFAULT;
+          var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
+          var target = SUPPORTED.indexOf(nav) >= 0 ? nav : DEFAULT;
+          if (target === current) return;
+          var tail = path.slice(BASE.length + (current === DEFAULT ? 0 : current.length + 1));
+          var dest = BASE + (target === DEFAULT ? '' : target + '/') + tail + location.search + location.hash;
+          location.replace(dest);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
