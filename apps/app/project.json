@@ -21,7 +21,7 @@
       "options": {
         "outputPath": "dist/apps/app",
         "browser": "apps/app/src/main.ts",
-        "polyfills": ["zone.js", "@angular/localize/init"],
+        "polyfills": ["@angular/localize/init"],
         "tsConfig": "apps/app/tsconfig.app.json",
         "baseHref": "/achordeon/app/",
         "inlineStyleLanguage": "scss",
