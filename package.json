@@ -10,7 +10,8 @@
     "dev:docs": "nx start docs",
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "test": "nx run-many -t test"
+    "test": "nx run-many -t test",
+    "time": "node tools/time-report.mjs"
   },
   "dependencies": {
     "@angular-devkit/build-angular": "21.2.7",
