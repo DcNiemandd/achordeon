@@ -76,6 +76,15 @@ const config: Config = {
 
   i18n,
 
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [{ from: '/docs', to: '/docs/intro' }],
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
