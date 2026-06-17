@@ -13,16 +13,17 @@
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "@org/api/products": ["libs/api/products/src/index.ts"],
-      "@org/models": ["libs/shared/models/src/index.ts"],
-      "@org/shop/data": ["libs/shop/data/src/index.ts"],
-      "@org/shop/feature-product-detail": [
-        "libs/shop/feature-product-detail/src/index.ts"
+      "@achordeon/api/products": ["./libs/api/products/src/index.ts"],
+      "@achordeon/models": ["./libs/shared/models/src/index.ts"],
+      "@achordeon/shop/data": ["./libs/shop/data/src/index.ts"],
+      "@achordeon/shop/feature-product-detail": [
+        "./libs/shop/feature-product-detail/src/index.ts"
       ],
-      "@org/shop/feature-products": ["libs/shop/feature-products/src/index.ts"],
-      "@org/shop/shared-ui": ["libs/shop/shared-ui/src/index.ts"]
+      "@achordeon/shop/feature-products": [
+        "./libs/shop/feature-products/src/index.ts"
+      ],
+      "@achordeon/shop/shared-ui": ["./libs/shop/shared-ui/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

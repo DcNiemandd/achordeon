@@ -1,0 +1,71 @@
+---
+sidebar_position: 2
+---
+
+# Language syntax
+
+## Title
+
+Meant to be the name of the song. Single asterisk on the start of a line.
+
+```
+* Anesthetize
+```
+
+:::note
+Title is not the same as song name in the songs list.
+:::
+
+## Subtitle
+
+Meant to be the author of the song. Double asterisk on the start of a line.
+
+```
+** Porcupine Tree
+```
+
+:::note
+The renderer will always use the last title and subtitle in the file.
+:::
+
+## Block of lyrics
+
+The song is divided into blocks. Block can be verse, chorus, etc. You can give the block a label with a colon. You can do double colons to have one rendered.
+
+New block is created after an empty line or with a label.
+
+```
+Block without a label.
+
+1.: First verse with a label.
+
+R:: Block with a 'R:' as a label.
+2.: This is a new block because of label.
+
+This is a new block because of a new line.
+
+```
+
+## Chords
+
+Chords are defined by being in square brackets. You can have multiple chords divided by a space or a comma.
+
+Chords are placed in the lyrics and will render above the place you put them.
+
+Block with only chords will be rendered little bigger. This can be useful for bridge.
+
+```
+2.: And did they get you to [C]trade your heroes for[D] ghosts,
+   Hot ashes for [Am]trees, hot air for[G] cool breeze,
+   cold comfort for ch[D]ange,
+   And did you ex[C]change walk on part in the [Am]war
+   for lead role in [G]cage?
+
+   [Em G Em G Em A Em A G]
+
+3.: [C]How I wish, how I wish [D]you were here.
+   We're just [Am]two lost souls swimming in fish bowl,
+   [G]year after year,
+   [D]Running over the same old ground. What [C]have we found?
+   The same old [Am]fears. Wish you were [G]here!
+```

@@ -1,6 +1,6 @@
-import { themes as prismThemes } from 'prism-react-renderer';
-import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type { Config } from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
 
 // Angular app lives outside Docusaurus's route table — prefix internal-looking
 // paths with `pathname://` so the broken-link checker treats them as external.
@@ -8,6 +8,40 @@ const rawAppLink = process.env.APP_LINK ?? '/achordeon/app/';
 const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
   : `pathname://${rawAppLink}`;
+
+const repoUrl = 'https://github.com/dcniemandd/achordeon';
+
+const baseUrl = process.env.DOCS_BASE_URL ?? '/achordeon/';
+
+const i18n = {
+  defaultLocale: 'en',
+  locales: ['en', 'cs'],
+  localeConfigs: {
+    en: { label: 'English', htmlLang: 'en-US' },
+    cs: { label: 'Čeština', htmlLang: 'cs-CZ' },
+  },
+} satisfies Config['i18n'];
+
+const localeRedirectScript = `(function () {
+  try {
+    var FLAG = 'achordeon-docs-locale-init';
+    if (localStorage.getItem(FLAG)) return;
+    localStorage.setItem(FLAG, '1');
+    var SUPPORTED = ${JSON.stringify(i18n.locales)};
+    var DEFAULT = ${JSON.stringify(i18n.defaultLocale)};
+    var BASE = ${JSON.stringify(baseUrl)};
+    var path = location.pathname;
+    if (path.indexOf(BASE) !== 0) return;
+    var seg = path.slice(BASE.length).split('/')[0];
+    var current = SUPPORTED.indexOf(seg) >= 0 ? seg : DEFAULT;
+    var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
+    var target = SUPPORTED.indexOf(nav) >= 0 ? nav : DEFAULT;
+    if (target === current) return;
+    var tail = path.slice(BASE.length + (current === DEFAULT ? 0 : current.length + 1));
+    var dest = BASE + (target === DEFAULT ? '' : target + '/') + tail + location.search + location.hash;
+    location.replace(dest);
+  } catch (e) {}
+})();`;
 
 const config: Config = {
   title: 'Achordeon',
@@ -19,12 +53,19 @@ const config: Config = {
   },
 
   url: process.env.DOCS_URL ?? 'https://dcniemandd.github.io',
-  baseUrl: process.env.DOCS_BASE_URL ?? '/achordeon/',
+  baseUrl,
+
+  headTags: [
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: localeRedirectScript,
+    },
+  ],
 
   organizationName: 'dcniemandd',
   projectName: 'achordeon',
   trailingSlash: false,
-
   onBrokenLinks: 'throw',
 
   markdown: {
@@ -33,10 +74,16 @@ const config: Config = {
     },
   },
 
-  i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
-  },
+  i18n,
+
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [{ from: '/docs', to: '/docs/intro' }],
+      },
+    ],
+  ],
 
   presets: [
     [
@@ -44,8 +91,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl:
-            'https://github.com/dcniemandd/achordeon/tree/main/apps/docs/',
+          editUrl: `${repoUrl}/tree/main/apps/docs/`,
         },
         blog: false,
         theme: {
@@ -74,11 +120,18 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/dcniemandd/achordeon',
+          type: 'localeDropdown',
+          position: 'right',
+        },
+        {
+          href: repoUrl,
           label: 'GitHub',
           position: 'right',
         },
       ],
+    },
+    docs: {
+      sidebar: { hideable: true },
     },
     footer: {
       style: 'dark',
@@ -95,7 +148,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/dcniemandd/achordeon',
+              href: repoUrl,
             },
           ],
         },

@@ -10,7 +10,8 @@
     "dev:docs": "nx start docs",
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "test": "nx run-many -t test"
+    "test": "nx run-many -t test",
+    "time": "node tools/time-report.mjs"
   },
   "dependencies": {
     "@angular-devkit/build-angular": "21.2.7",
@@ -18,11 +19,11 @@
     "@angular/compiler": "21.2.9",
     "@angular/core": "21.2.9",
     "@angular/forms": "21.2.9",
+    "@angular/localize": "21.2.9",
     "@angular/platform-browser": "21.2.9",
     "@angular/platform-browser-dynamic": "~21.2.0",
     "@angular/router": "21.2.9",
-    "rxjs": "~7.8.0",
-    "zone.js": "0.16.0"
+    "rxjs": "~7.8.0"
   },
   "devDependencies": {
     "@angular-devkit/core": "21.2.7",
