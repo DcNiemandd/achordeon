@@ -4,7 +4,9 @@ sidebar_position: 3
 
 # Songbooks
 
-To filter out songs you want to play, you can make custom songbooks. The songbook is just an list of songs. There is always one default songbook named **All songs**.
+To filter out songs you want to play, you can make custom songbooks. The songbook is just an ordered list of songs. There is always one default songbook named **All songs**; its order is read-only and songs cannot be removed from it.
+
+The same song can appear multiple times in a songbook.
 
 <Image alt="Showcase songbook view" isDesign />
 
@@ -18,11 +20,17 @@ You can reorder the songs. You can use buttons on the selected songs to move the
 If you see this, drag&drop is not yet implemented.
 :::
 
+:::note[Remove vs delete]
+Removing a song from a songbook won't delete the song. The song can be deleted only in the `Songs` module.
+:::
+
+A songbook can restyle the chords of all its songs - chord color, chord size and font are songbook-scoped settings.
+
 ## Download
 
 When downloading the songbook, you can set some options, that will affect the output PDF.
 
-- **Title page**: title, subtitle, author
+- **Title page**: title, subtitle, author (the songbook's own fields, separate from any song's title and subtitle)
 - **Summary**: show songs summary, show page numbers
 - **Print**: paper size, double-sided
 

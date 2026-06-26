@@ -21,3 +21,17 @@
 - The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
 
 <!-- nx configuration end-->
+
+# Documentation (apps/docs)
+
+The `docs` project is a Docusaurus PRD site under `apps/docs`. Build/validate with
+`pnpm nx build docs` (builds `en` + `cs`, fails on broken links) after editing `.mdx`.
+
+- `/CONTEXT.md` is the domain glossary (ubiquitous language) and the source of truth
+  for terminology and resolved decisions.
+- `/docs/adr/` holds Architecture Decision Records. These live at the repo root and
+  are **not** part of the docs site - do not publish or link them from `.mdx` pages.
+- Editing existing docs: preserve the author's original wording and grammar. Only fix
+  factual bugs or add missing parts; don't rewrite or "improve" prose.
+- `<Image alt="..." />` (no `src`) renders a TODO placeholder; add `isDesign` for a
+  design-mockup admonition. Component: `apps/docs/src/theme/MDXComponents/Img`.
