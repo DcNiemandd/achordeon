@@ -8,12 +8,6 @@ When in song edit view, you see the song source on the left side and the render 
 
 In mobile view, use button on the sidebar to switch between them.
 
-:::warning[Source of truth]
-The format of input data is **UNSTABLE**.
-
-First version is from PRD app, thus its format looks like this. I still haven't decided if it's more important to have all the data about the song in the source code, or to have extra readable source and hide info in metadata.
-:::
-
 ## Renderer
 
 The song renders from the information you've given it. The information is divided into two parts:
@@ -35,6 +29,10 @@ There are other action buttons to help you with editing:
 - label - gives the current block a label
 - transpose up / down - transpose all valid chords
 - undo / redo - history only from current session
+
+:::note[Valid chord]
+A valid chord is a root + accidental + quality, with an optional `/bass`; brackets that are not a valid chord are never transposed.
+:::
 
 :::note
 Some actions have keyboard shortcut, i.e. `alt + c` for inserting chord
