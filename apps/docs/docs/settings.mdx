@@ -13,3 +13,55 @@ sidebar_position: 10
 - in future - sync google drive
 
 :::
+
+## Profile
+
+The application is fully offline. You don't need to login. But login will give you more functionality depending on you tier:
+
+- **No login**
+  - manual synchronization via file download & upload
+- **Free**
+  - manual synchronization of the profile to the google drive
+- **Premium**
+  - same as Free tier
+  - your files can be automatically synchronized to our servers
+  - you can have `Audience`
+
+:::info[Testing]
+Audience can be for free tier as well
+:::
+
+Application supports only one user in the browser. Everyone can see your data. The login is for synchronization only.
+
+You can manage your login and synchronization in this section:
+
+- Login / logout
+- Buttons for Google Drive synchronization
+- _Premium:_ switch for real-time synchronization
+- Manual sync: export & import
+
+:::danger[TODO]
+First time user will be asked to login with google.
+:::
+
+## Application
+
+- theme - system, light, dark, _FUTURE: colors_
+- language - EN, CS
+
+## Rendering
+
+The renderer allows you to customize the output. There is global setting and scoped one.
+
+[`Songs`](songs/editing.mdx#renderer) scope:
+
+- scale - custom size for the text, useful for maximizing the page space
+- columns - for really long songs
+- title position - you can have title on top of the page or on the side
+- aspect ratio
+
+`Songbooks` scope:
+
+- chords color
+- chords size
+- FUTURE: font
