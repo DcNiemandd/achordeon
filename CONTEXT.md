@@ -97,7 +97,7 @@ Performing mode for a selected Songbook. Its own nav module: pick a Songbook, th
 
 Viewers who join a performer's session via a lobby PIN / QR code and follow along.
 
-- **Lobby** — a session a performer opens that Audience members join. Lobbies live as an array on the backend; the PIN is ~5 chars, deduplicated at generation. Audience needs an internet connection (no account). The QR code encodes a URL to the Audience module carrying the PIN.
+- **Lobby** — a session a performer opens that Audience members join, identified by a ~5-character PIN. Audience needs an internet connection (no account). The QR code encodes a URL to the Audience module carrying the PIN.
 - **Join** — anyone can join an Audience (no tier required).
 - **Hide chords (Audience)** — a viewer-local toggle that hides chord glyphs but keeps their reserved space, so layout does not reflow. The performer always shares chords; this is a client-side preference, not a different render.
 - **Host / create** — opening a Lobby. Premium-only in the long run; extended to Free users during the testing phase, and will become Premium-only after testing or once the userbase grows.
@@ -126,7 +126,7 @@ Producing a JSON file — a small database of Songs/Songbooks "for computers": m
 
 Producing an output "for players" (playing, printing, sharing).
 
-- **Song download** — PDF or an image format (PNG in the current proof-of-concept; image rendering currently works only in Chromium). Multiple songs: a ZIP of images, or PDF (single or multi-page via a switch).
+- **Song download** — PDF or an image format (PNG; rendered cross-browser via the SVG renderer). Multiple songs: a ZIP of images, or PDF (single or multi-page via a switch).
 - **Songbook download** — a PDF (see Songbook download options).
 
 ## Import / re-import
