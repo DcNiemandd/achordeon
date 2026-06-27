@@ -97,8 +97,17 @@ signals.
   `withState/withMethods/withComputed`, `withEntities` for the Song/Songbook
   collections. Less boilerplate, conventional, but a dependency.
 
-**Recommendation: B** for the entity stores (Songs/Songbooks), **A** for small
-ones (Settings/Session). _Still open for grilling._
+**Decided: mixed.** **B (NgRx SignalStore + `withEntities`)** for the entity
+stores (Songs/Songbooks); **A (hand-rolled)** for the small ones
+(Settings/Session). Soft-delete = a `withComputed` filter hiding tombstoned rows
+from lists while they stay in the store for sync; sync row-deltas apply as plain
+`setEntity` upserts.
+
+The entity collection is a **growing windowed cache**: each page fetch _appends_
+its rows into the same `withEntities` map, and that map **is** what the UI renders
+(infinite scroll). The cache window grows as the user scrolls — it is not the
+whole table. (Implication, §4: the window is per-query; changing sort/search
+resets the cache and refetches from page 1.)
 
 ---
 
@@ -123,13 +132,21 @@ scroll** out of the gate, regardless of how it's backed:
   in-memory array. The component never knows — it only sees the cursor API.
 - Later the same interface is served by Dexie offset/key-range queries (and
   Supabase `range()`), no frontend change.
+- **Each fetched page appends into the entity-store cache** (§3) and that cache is
+  what the list renders. The cache is a window over the query result, not the
+  whole table; **changing sort/search resets it** and refetches from page 1.
 
 ---
 
 ## 5. Supabase (paid tier) — relational, not blobs [research-backed]
 
-Use the DB, not a JSON blob — that's what unlocks Realtime, partial sync, and
-integrity.
+Use the DB, not a JSON blob — relational rows give partial sync and integrity.
+
+**Use case = device handoff, not concurrent multi-device. [decided]** The target
+is "create on PC, perform on mobile" — sequential, one device at a time. So there
+is **no live merge** and **no need for live Realtime cross-device updates**; LWW is
+safe because edits don't overlap. (Concurrent multi-device + Realtime `subscribe`
+is a future option, not v1.)
 
 - **Auth** — Supabase Auth, Google OAuth first; email+password later; multiple
   providers linkable to one Account. Session persists in `localStorage`,
@@ -137,23 +154,38 @@ integrity.
 - **Tables** — `profiles(id, plan)`, `songs`, `songbooks`,
   `songbook_songs(songbook_id, song_id, position)`. Same uuid as local record.
   RLS per `auth.uid()`. Tombstones via `deleted_at`.
-- **Sync mechanics** — push = upsert rows where `lastModified > lastSynced`;
-  pull = `select where updated_at > lastPulled`; **Realtime** = subscribe to
-  `postgres_changes` filtered to `user_id` → live multi-device. Conflict =
-  per-row last-write-wins (+ optional `deviceId`).
+- **Sync mechanics** —
+  - **Local save = A, aggressive:** keystroke-**debounced autosave to IndexedDB**.
+    Local work is never lost.
+  - **Supabase push = B, coarse:** fires on **meaningful boundaries** (editor
+    save/close, songbook reorder commit, app blur/close) + a debounced safety net.
+    Upserts rows where `lastModified > lastSynced`; deletes via `deleted_at`.
+  - **Supabase pull = on app launch / focus** (the handoff moment), not a live
+    subscription. `select where updated_at > lastPulled`.
+  - Conflict = per-row last-write-wins (sequential use makes this a non-issue).
+- **Warn before leaving if unsynced. [decided]** `beforeunload` + in-app route
+  guard: if local changes haven't reached Supabase (for a sync-on user), warn —
+  there is no live safety net, so an un-synced PC means the phone won't have it.
 - **Tier flag** — `profiles.plan ('free' | 'pro')`. Manual flip in the dashboard
   now; later a Merchant-of-Record (Lemon Squeezy / Polar) **one-time lifetime**
   checkout → webhook → Edge Function sets the flag. No ads. [research-backed]
 - **Auto-sync is a user toggle in Settings.** Being `pro` _enables_ automatic
-  Supabase sync; the user can still switch it off. When on: debounced `push` on
-  local change + Realtime `subscribe`. When off: no background sync (manual Drive
-  buttons still work). Off ≠ logged out.
+  Supabase sync; the user can switch it off (off ≠ logged out; manual Drive
+  buttons still work).
+
+> Note: research framed live Realtime multi-device as the headline premium value;
+> with handoff-only, premium value leans on **automatic server backup + pull-on-
+> launch across your devices + Audience hosting** instead. Still worth charging for
+> (server cost). Realtime stays a clean future upgrade.
 
 ---
 
 ## 6. Google Drive (all users, manual) [research-backed]
 
-Free tier and paid alike get the same two manual buttons. Never automatic.
+Free tier and paid alike get the **same two explicit manual buttons** — "Upload
+to Drive" (push) and "Download from Drive" (pull). Never automatic, never a hidden
+one-button "sync" (whole-file LWW is unsafe to auto-direct — the human picks which
+copy wins). [decided]
 
 - **Scope `drive.file`** (NOT `appDataFolder`): non-sensitive → no Google
   verification tax, the file is **visible and IS the export/import JSON**,
@@ -198,40 +230,91 @@ Free tier and paid alike get the same two manual buttons. Never automatic.
 - **Import** — accept Export JSON + (nice-to-have) Downloaded files with embedded
   metadata. Songs → replace / ignore / create-new (+ import-all-as-new with date
   prefix); Songbooks → always new.
-- **Download** — render → output: single song PDF or image (PNG today,
-  Chromium-only); multiple = ZIP of images / ZIP of PDFs / one multi-page PDF;
-  songbook always PDF (A4/custom, songs keep aspect ratio scaled to fit).
+- **Download** — render → output: single song PDF or image (PNG, now
+  cross-browser via the SVG path below); multiple = ZIP of images / ZIP of PDFs /
+  one multi-page PDF; songbook always PDF (A4/custom, songs keep aspect ratio
+  scaled to fit).
 
-**Rendering engine: client-side. [decided]** DOM → image in-browser; PDF via the
-print pipeline or `pdf-lib`/`jsPDF`. Fully offline, no server. Image export is
-Chromium-only today — accepted as a known limitation. (Server-side headless
-Chromium is explicitly rejected: it breaks offline-first and adds infra cost.)
-Still open: _which_ client-side PDF/image libraries (see grill list).
+**Rendering engine: client-side, SVG render target, built from scratch. [decided]**
+Server-side headless Chromium is rejected (breaks offline-first, infra cost).
+
+- **Render target = SVG** (not HTML/CSS). One renderer feeds three outputs:
+  on-screen view, **cross-browser PNG**, and a future **vector PDF**.
+- **Cross-browser raster [decided]** — the old "PNG, Chromium-only" limit came
+  from DOM-to-image's SVG `<foreignObject>` technique (broken on Safari/Firefox).
+  An SVG render rasterizes via `drawImage(svg → canvas)` with **no foreignObject**,
+  so PNG works in every browser. Fonts must be **inlined as base64** (Safari fails
+  on external font URLs).
+- **PDF v1 = raster** (embed the PNG into pages via `pdf-lib`/`jsPDF`). **Future:
+  vector PDF** straight from the SVG (e.g. svg2pdf.js) — and a user-chosen
+  raster-vs-vector pipeline, both from the _same_ SVG. No second renderer.
+- **Layout metrics = native Canvas `measureText()`** against an offscreen canvas
+  (zero DOM reflow): `.width` + `actualBoundingBox{Ascent,Descent}` drive line
+  heights, exact chord-over-character x-positions, column breaks, and the
+  scale-to-fit-one-page / aspect-ratio math. No library needed (a lib would just
+  cache this).
+- Multiple = ZIP of images / ZIP of PDFs / one multi-page PDF; songbook always PDF.
 
 ---
 
-## 9. Audience (realtime) [OPEN — research does not cover this]
+## 9. Audience (realtime)
 
 One performer (host) → many viewers, synced to the currently selected Song. Note:
 this is a **separate** realtime concern from §5 multi-device DB sync.
 
-- **Lobby** — host-created; PIN ~5 chars deduped at generation; lives as an
-  array/table on the backend. QR encodes a URL to the Audience route carrying PIN.
 - Audience needs internet, no account, anyone joins. Hosting is Premium (free
   during testing). Only the selected Song syncs; viewers can't open another.
+  QR encodes a URL to the Audience route carrying the PIN.
 
-**Transport options:**
+**Transport: Supabase Realtime, no DB for per-lobby state. [decided]**
 
-- **A — Supabase Realtime Broadcast** keyed by PIN. Ephemeral, no DB writes, fits
-  "one-time lobby". Simplest. (+ **Presence** for audience count.)
-- **B — Postgres table + Realtime subscription.** Durable/queryable, but writes on
-  every navigation, heavier.
+The "array of lobbies on the backend" (CONTEXT) is **not** a server variable — an
+Edge Function is stateless (ephemeral isolates, no shared memory across calls), so
+a global array there is unreliable. The shared state instead lives in **Realtime
+Presence**, an in-memory CRDT the Realtime service syncs to every subscriber.
 
-**Recommendation: A + Presence.** Lobby open/close may need one row.
+- **Channel per lobby**, named by PIN.
+- Host `track()`s lobby state into Presence: **`{ currentSongObject, summary }`** —
+  the _full_ current Song (content + settings), not just an id.
+- **The Presence state IS the render payload.** Viewer renders `currentSongObject`
+  locally with the same renderer (settles the old "model vs content+settings"
+  question — host ships the whole Song object, viewer renders it). Summary travels
+  once, with the lobby state.
+- Late joiner subscribes → `onPresenceSync` delivers current song + summary
+  immediately (no "joined between changes, saw nothing" gap).
+- Song change = host re-tracks the new `currentSongObject` (or Broadcasts it).
+- **Lobby ends when the host disconnects** — Presence auto-evicts the host entry.
+  Gives "one-time lobby, ends when performer ends it" with no cleanup job.
+- Audience count = Presence of the viewers on the same channel.
+- Source of truth = the host's tab (online for the whole performance). Trade-off:
+  host reload drops the lobby → re-host. Accepted unless reload-resilience is wanted.
 
-**Payload [OPEN]:** parsed render model vs raw content+settings (viewer renders
-locally, since it has the same renderer). Recommend **content+settings** — smaller
-wire, reuses the renderer.
+(Postgres-table-backed lobbies rejected: writes on every prev/next tap, schema +
+RLS + stale-row cleanup, for data that is inherently ephemeral.)
+
+**PIN allocation: random, no dedup registry. [decided]** ~5 chars from an
+unambiguous alphabet (no `0/O/1/I`); collisions are negligible at this scale.
+Viewer joining a PIN with no host Presence → "lobby not found". No central
+registry table.
+
+### Lobby analytics [requested — needs a table]
+
+Append-only event log. **Not** a lobby registry (no live lookup); pure history.
+Events: `lobby_created` (song_ref, audience_count), `song_changed` (song_ref,
+audience_count).
+
+- **`song_ref` = `{ id, title, subtitle, summaryPos, summaryLength }`** — a
+  reference plus set position (`summaryPos` of `summaryLength`), **no content**.
+  Enables most-performed songs, set sizes, how far into a set audiences get, and
+  audience-count-over-time — without storing any lyrics/chords.
+- Table `lobby_events(id, host_id, lobby_pin, type, song_id, title, subtitle,
+summary_pos, summary_length, audience_count, created_at)`, insert-only, RLS so
+  only the owner/admin reads.
+- **GDPR posture:** host is identifiable (`host_id`) → personal data, lawful basis
+  **legitimate interest** (product analytics) stated in a privacy policy; erasure
+  cascades on account delete via `host_id`. **Audience logged as a _count only_** —
+  no per-viewer id, no IP → audience stays anonymous, no cookie-consent banner.
+- Set a retention window (e.g. raw events 90 days → aggregate).
 
 ---
 
@@ -260,28 +343,45 @@ Lazy-loaded feature routes, one per nav module:
 
 - **PWA / offline** — service worker (`@angular/pwa` / Workbox), precache shell;
   only Audience + sync need net.
-- **i18n [OPEN]** — EN + CS. Compile-time (Angular i18n) vs runtime dictionary.
-  Runtime switching wanted → lean lightweight runtime i18n.
+- **i18n: `@angular/localize` in runtime mode. [decided]** EN + CS, first-party,
+  no Transloco. ONE bundle (not per-locale AOT builds): `loadTranslations(map)`
+  loads a simple-JSON `en.json`/`cs.json` at boot. Keys + JSON come from the
+  official `ng extract-i18n` (with explicit `@@id` keys). Language switch =
+  persist in Settings + **reload** (runtime `$localize` translates each message
+  once on first encounter, so live in-place switching isn't supported — reload is
+  acceptable here). Avoids the per-locale GitHub Pages build that _compile-time_
+  inlining would force.
 - **Undo/redo** — editor-local, session-only, no DB versioning (per CONTEXT).
 - **IDs** — uuid for Songs/Songbooks, stable across rename.
 
 ---
 
-## 12. Candidate ADRs
+## 12. ADRs
 
-1. **State management without RxJS** — NgRx SignalStore vs hand-rolled (§3).
-2. **Audience transport** — Realtime broadcast vs Postgres-backed (§9).
-3. _(Resolved, may still warrant ADRs):_ Dexie as persistence; `drive.file`
-   scope; Supabase relational (not blob); local-first source of truth;
-   client-side rendering; soft-delete-only.
+Written (`docs/adr/`):
+
+- **0002 — SVG render target** (§8): one from-scratch SVG renderer feeds screen +
+  cross-browser PNG + future vector PDF; Canvas `measureText` for layout.
+- **0003 — Audience over Realtime Presence, no DB for lobby state** (§9): random
+  PIN, no registry; analytics in a separate append-only table.
+- **0004 — Handoff-not-concurrent sync** (§5): local autosave + coarse boundary
+  push + pull-on-launch + warn-if-unsynced; diverges from the sync research.
+
+Recorded as PRD notes only (well-justified, less surprising): mixed signal stores
+(§3); Dexie persistence + `drive.file` scope + Supabase relational + local-first +
+soft-delete-only (§1/§4/§5); `@angular/localize` runtime i18n (§11).
 
 ---
 
-## 13. Open questions to grill
+## 13. Open questions
 
-- State lib: NgRx SignalStore vs hand-rolled (§3).
-- Audience transport (broadcast vs table) + payload (model vs content+settings) (§9).
-- Client-side PDF/image libraries: which ones (§8).
-- i18n: compile-time vs runtime switching (§11).
-- Sync trigger cadence on the Supabase side: debounce window for auto-push?
-- Do free users get a "sync now" one-button round-trip, or literal up/down only?
+_All initial branches resolved._ Settled this session: state lib (§3, mixed);
+Audience transport + payload + PIN + analytics (§9); storage model + persistence +
+rendering + soft-delete (§1/§4/§8); sync cadence + handoff model +
+unsynced-warning + two Drive buttons (§5/§6); i18n (§11); SVG render target +
+cross-browser raster + Canvas-`measureText` layout (§8).
+
+Deeper layers not yet grilled (next sessions, if wanted): the Achordeon parser
+grammar/tokenizer; transpose spelling edge cases; songbook-scope settings cascade;
+PWA service-worker update strategy; auth provider-linking flow; the MoR webhook →
+Edge Function detail.
