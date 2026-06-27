@@ -51,7 +51,12 @@ sync _and_ the same manual Drive backup. Migrating between them is `pull()` then
 ## 2. Services it needs
 
 Plain Angular `@Service()` (the current decorator — autoProvided at `root`, not
-`@Injectable`), signal-based. Grouped by concern:
+`@Injectable`), signal-based. Grouped by concern.
+
+**Dependency policy: minimal deps** — every dependency is justified and discussed
+before it is added (e.g. `@tonaljs/chord` for chord validity/transpose, §12; Dexie,
+NgRx SignalStore). From-scratch is the default where it earns control (renderer,
+stores); a dependency must clear that bar.
 
 ### Data / domain
 
@@ -60,13 +65,15 @@ Plain Angular `@Service()` (the current decorator — autoProvided at `root`, no
   Exposes a **paged/cursor API** (see §4) — never a single flat array.
 - **SongbookStore** — signal state for Songbooks + entries/slots; same paged API.
 - **SettingsStore** — global + scoped render settings, theme, language.
-- **ParserService** — content text → render model (pure, no deps).
+- **ParserService** — content text → content AST (pure semantic model: single
+  effective title/subtitle, blocks, char-anchored chords; no layout/font deps —
+  see §12).
 - **TransposeService** — shift valid chords, rewrite source (undo/redo aware).
 - **SearchService** — two-tier search (metadata first, then content).
 
 ### Output
 
-- **RenderService** — render model → DOM render.
+- **RenderService** — content AST + render settings → SVG render (per ADR-0002).
 - **ExportService** — Songs/Songbooks → JSON (the Snapshot/Export format).
 - **ImportService** — JSON/downloaded files → library, conflict resolution.
 - **DownloadService** — render → PNG/PDF/ZIP.
@@ -86,7 +93,7 @@ Plain Angular `@Service()` (the current decorator — autoProvided at `root`, no
 
 ---
 
-## 3. State management (the no-RxJS decision) [OPEN]
+## 3. State management (the no-RxJS decision) [decided]
 
 Everything reactive is `signal` / `computed` / `effect`. No `Observable`, no
 `async` pipe. Async work (DB, network) lives in plain async methods that set
@@ -356,7 +363,42 @@ Lazy-loaded feature routes, one per nav module:
 
 ---
 
-## 12. ADRs
+## 12. Parser — content text → AST [decided]
+
+`ParserService` turns a Song's **content text** into a pure **semantic AST** — the
+single from-scratch grammar piece. The full machine grammar (Phase 1/2 rules, chord
+sub-grammar, escapes, warnings, reparse) is specified in
+**`docs/PARSER-GRAMMAR.md`**; this is the infra-level summary.
+
+### Seam: parse vs. layout [decided]
+
+The parser stops at _structure_; the SVG renderer (ADR-0002) owns _all_ geometry.
+
+- Output is a pure semantic model — `Song { title, subtitle, blocks, warnings }`,
+  `Block { label?, labelInline?, lines }`, each `Line` a clean `text` string with
+  chords **overlaid by character index** (never a pixel x).
+- **No font, DOM, or canvas dependency** (PRD §2: pure). The renderer turns a
+  character index into an x-coordinate via `measureText` of the preceding
+  substring (ADR-0002).
+- **Single effective title / subtitle.** The model carries one `title` and one
+  `subtitle` string (not arrays): the parser resolves "last wins" and emits a
+  `SHADOWED_TITLE`/`SHADOWED_SUBTITLE` warning for the rest.
+- **Render options are not parsed from text.** Per ADR-0001 they live in metadata
+  and are merged by the renderer; the parser never reads settings out of content.
+- **Total parser** (never throws) + **full debounced reparse**; one AST feeds
+  screen, PNG, and PDF with no re-parse.
+
+### Two-phase, line-oriented [decided]
+
+Phase 1 classifies lines (title `*` / subtitle `**` / labelled / lyric / blank) and
+groups blocks; Phase 2 ("the tokenizer") inline-scans only content text (chords,
+escapes, future markdown). Chord validity/transpose use `@tonaljs/chord`. Editor is
+**undecided** but must support highlighting + warning underlines (Monaco/CodeMirror,
+not a plain textarea). See `docs/PARSER-GRAMMAR.md` for the rest.
+
+---
+
+## 13. ADRs
 
 Written (`docs/adr/`):
 
@@ -366,6 +408,8 @@ Written (`docs/adr/`):
   PIN, no registry; analytics in a separate append-only table.
 - **0004 — Handoff-not-concurrent sync** (§5): local autosave + coarse boundary
   push + pull-on-launch + warn-if-unsynced; diverges from the sync research.
+- **0005 — Pure two-phase semantic parser** (§12): pure `string → AST`, two-phase
+  line-oriented, char-anchored chords, `@tonaljs/chord`, editor-agnostic.
 
 Recorded as PRD notes only (well-justified, less surprising): mixed signal stores
 (§3); Dexie persistence + `drive.file` scope + Supabase relational + local-first +
@@ -373,15 +417,23 @@ soft-delete-only (§1/§4/§5); `@angular/localize` runtime i18n (§11).
 
 ---
 
-## 13. Open questions
+## 14. Open questions
 
-_All initial branches resolved._ Settled this session: state lib (§3, mixed);
+_All initial branches resolved._ Earlier sessions settled: state lib (§3, mixed);
 Audience transport + payload + PIN + analytics (§9); storage model + persistence +
 rendering + soft-delete (§1/§4/§8); sync cadence + handoff model +
 unsynced-warning + two Drive buttons (§5/§6); i18n (§11); SVG render target +
 cross-browser raster + Canvas-`measureText` layout (§8).
 
-Deeper layers not yet grilled (next sessions, if wanted): the Achordeon parser
-grammar/tokenizer; transpose spelling edge cases; songbook-scope settings cascade;
-PWA service-worker update strategy; auth provider-linking flow; the MoR webhook →
-Edge Function detail.
+**Parser grammar/tokenizer — settled** (§12; full spec `docs/PARSER-GRAMMAR.md`):
+parse/layout seam, two-phase line-oriented architecture, line taxonomy + asterisk
+rules, label colon-run rule, block boundaries, chord overlay model + invalid-as-
+annotation, `@tonaljs/chord` for validity/transpose, no-nesting, escapes, warning
+model, full debounced reparse.
+
+Deeper layers not yet grilled (next sessions, if wanted): **editor choice**
+(highlighting editor — Monaco vs CodeMirror, likely an ADR); transpose spelling
+(direction-based v1, key-aware future); songbook-scope settings cascade; PWA
+service-worker update strategy; auth provider-linking flow; the MoR webhook →
+Edge Function detail. The **rendering layer** (SVG layout, columns, `labelInline`,
+chord-only sizing, scale-to-fit) is its own deferred PRD.
