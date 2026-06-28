@@ -110,7 +110,8 @@ type Scope = (typeof SCOPES)[number];
 const SETTINGS = {
   scale: { default: 'auto', scopes: ['song'] }, // uniform content-box→render-box fit; 'auto' = max fit, number = manual (may overflow). See PRD-RENDERING §4.1
   columns: { default: 1, scopes: ['song'] },
-  titlePosition: { default: 'top', scopes: ['song'] },
+  titlePosition: { default: 'top', scopes: ['song'] }, // 'top' | 'left' (CCW spine). See PRD-RENDERING §4.5
+  titleLayout: { default: 'stacked', scopes: ['song'] }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
   aspectRatio: { default: 'A4', scopes: ['song'] },
   chordColor: { default: '#000', scopes: ['songbook', 'song'] },
   chordSize: { default: 1, scopes: ['song'] },

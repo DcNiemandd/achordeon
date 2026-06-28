@@ -82,7 +82,7 @@ Settings that change how a Song is rendered to output. They cascade across three
 Which scopes a given setting may be overridden at is a configurable property of that setting, not a fixed rule — a setting may be overridable at the Song scope, the Songbook scope, or both. Illustrative assignment: scale, columns, title position, aspect ratio (Song); chord color, chord size, font (Songbook, and optionally Song too).
 
 - _columns_ — author-set count (future: smart auto-fit).
-- _title position_ — top, or left side as a separate column/row.
+- _title position_ — top, or left side as a sideways (rotated) spine. A companion _title layout_ choice stacks the subtitle under the title or sets it inline beside it. The title block always sits at the top-left corner.
 - _aspect ratio_ — validated text input accepting `N:N`, `N` (float), `N/N`, or `A4`, plus a dropdown of predefined presets.
 
 ## Aspect ratio
