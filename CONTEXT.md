@@ -73,15 +73,17 @@ A table/form for resolving an import (not the Song explorer).
 
 ## Render settings
 
-Settings that change how a Song is rendered to output. Partitioned across scopes; **Global is the base default for every setting**, and each setting is overridable at exactly one further scope (never both).
+Settings that change how a Song is rendered to output. They cascade across three scopes ordered least-to-most specific: **Global → Songbook → Song**. Every setting has a Global default; a Songbook and/or a Song may override it. When more than one scope sets the same setting, **the most specific scope wins** (Song over Songbook over Global). The effective value is always resolved at render time, never stored.
 
-- **Global scope** — default value for every render setting.
-- **Song scope** (overrides Global): scale, columns, title position, aspect ratio.
-  - _columns_ — author-set count (future: smart auto-fit).
-  - _title position_ — top, or left side as a separate column/row.
-  - _aspect ratio_ — validated text input accepting `N:N`, `N` (float), `N/N`, or `A4`, plus a dropdown of predefined presets.
-- **Songbook scope** (overrides Global, applies to all Songs in that Songbook): chord color, chord size, font.
-- Precedence: the most specific scope a setting supports wins (Song > Global, or Songbook > Global). No setting lives at all three scopes, so there is no three-way conflict.
+- **Global scope** — the base default value for every render setting.
+- **Songbook scope** — overrides applied to every Song performed within that Songbook (a per-book theme).
+- **Song scope** — overrides carried by the Song itself, wherever it appears.
+
+Which scopes a given setting may be overridden at is a configurable property of that setting, not a fixed rule — a setting may be overridable at the Song scope, the Songbook scope, or both. Illustrative assignment: scale, columns, title position, aspect ratio (Song); chord color, chord size, font (Songbook, and optionally Song too).
+
+- _columns_ — author-set count (future: smart auto-fit).
+- _title position_ — top, or left side as a separate column/row.
+- _aspect ratio_ — validated text input accepting `N:N`, `N` (float), `N/N`, or `A4`, plus a dropdown of predefined presets.
 
 ## Aspect ratio
 
