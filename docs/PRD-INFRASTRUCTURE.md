@@ -157,7 +157,8 @@ is a future option, not v1.)
 
 - **Auth** — Supabase Auth, Google OAuth first; email+password later; multiple
   providers linkable to one Account. Session persists in `localStorage`,
-  auto-refreshed; user stays logged into Achordeon across reloads.
+  auto-refreshed; user stays logged into Achordeon across reloads. Provider-linking
+  flow below.
 - **Tables** — `profiles(id, plan)`, `songs`, `songbooks`,
   `songbook_songs(songbook_id, song_id, position)`. Same uuid as local record.
   RLS per `auth.uid()`. Tombstones via `deleted_at`.
@@ -179,6 +180,42 @@ is a future option, not v1.)
 - **Auto-sync is a user toggle in Settings.** Being `pro` _enables_ automatic
   Supabase sync; the user can switch it off (off ≠ logged out; manual Drive
   buttons still work).
+
+### Provider-linking [decided — D6]
+
+How Google + email/password collapse to **one** Account. Login exists **only for data
+sync** — low stakes, which shapes every call below.
+
+- **Account = the Supabase `auth.users` row (uuid).** Provider-agnostic; that uuid owns
+  every `profiles`/`songs`/`songbook` row via RLS. Sign-in _identities_ (`google`,
+  `email`) attach to it. There is **no "primary" identity** and the uuid never changes as
+  methods are added — so linking can't break RLS ownership.
+- **Linking model = automatic same-email + manual explicit.** Supabase auto-links a new
+  sign-in to an existing user when the **verified** email matches — this **cannot be
+  disabled** and is safe because it only fires on verified emails. On top of it, **manual
+  linking is enabled** (`GOTRUE_SECURITY_MANUAL_LINKING_ENABLED`) so the user can
+  deliberately add a method (incl. a _different_ email) from Settings.
+- **Mechanics differ by direction.** Add Google → `linkIdentity({ provider: 'google' })`;
+  add password → `updateUser({ email, password })` (`linkIdentity` is OAuth-only; it does
+  not attach an email/password credential).
+- **Linking = add-a-method-to-the-current-account, never a merge.** A provider attaches to
+  the account you are logged into. The explicit Settings flow is therefore the safe path —
+  it can't spawn a second account. UI nudges "add a sign-in method" over signing up afresh.
+- **Email confirmation is REQUIRED** (non-negotiable, not a UX preference). An unconfirmed
+  email/password identity grants **no session** and never auto-links → blocks pre-account-
+  takeover: only the inbox owner can complete the link. A fresh signup is therefore not
+  logged in until the confirmation link is clicked.
+- **Two already-populated accounts cannot be merged [accepted v1 limitation].** Supabase
+  has no merge-users op; `linkIdentity`/`updateUser` against an email owned by _another_
+  user errors. Recovery = Export (JSON) from one → Import into the other → abandon the
+  duplicate. In-app merge (row re-keying + conflict resolution) is **future**.
+- **Drive rides on the Google identity [decided].** "Connect Drive" routes through Supabase
+  Google OAuth (§6 Flow A), so it is carried by the Google identity, **not** an
+  identity-free storage grant. A non-Google account must **link Google first** (the
+  Connect-Drive button can drive that link). Sharpens CONTEXT "Connect Drive … not a
+  separate identity" → not a separate _account_, but it is the Google _identity_.
+- **No unlinking in v1 [add-only].** `unlinkIdentity` is deferred; removing Google would
+  also break Drive. Fully detaching = account deletion (a separate concern).
 
 > Note: research framed live Realtime multi-device as the headline premium value;
 > with handoff-only, premium value leans on **automatic server backup + pull-on-
@@ -410,6 +447,9 @@ Written (`docs/adr/`):
   push + pull-on-launch + warn-if-unsynced; diverges from the sync research.
 - **0005 — Pure two-phase semantic parser** (§12): pure `string → AST`, two-phase
   line-oriented, char-anchored chords, `@tonaljs/chord`, editor-agnostic.
+- **0009 — Add-method auth linking & Drive-on-Google** (§5): one Account by attaching
+  methods to the current user (no merge of populated accounts), email confirmation
+  required, "Connect Drive" carried by the Google identity.
 
 Recorded as PRD notes only (well-justified, less surprising): mixed signal stores
 (§3); Dexie persistence + `drive.file` scope + Supabase relational + local-first +

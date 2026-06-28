@@ -118,7 +118,7 @@ The user's access level. Determines available sync and Audience hosting.
 
 A single Achordeon identity per user, provider-agnostic. Sign-in is via Google first; email+password registration is planned, and a user may link multiple sign-in methods to the one account. Login is never required for core use — it only adds cross-device sync and Audience hosting.
 
-- **Connect Drive** — authorizing Google Drive as a storage target for sync. A storage connection layered on the Account, not a separate identity.
+- **Connect Drive** — authorizing Google Drive as a storage target for sync. A storage authorization layered on the Account — not a separate **account**, but carried by the Google sign-in: connecting Drive on an account without Google links Google as a sign-in method.
 
 ## Export
 
