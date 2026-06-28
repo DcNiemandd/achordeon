@@ -13,9 +13,6 @@ or keep Part A around as a reusable preamble.
 
 Working preferences for this grilling session:
 
-- Ask ONE question at a time and always give your recommended answer first; wait for my
-  reply before the next question. Grill top-down — decide the highest-in-hierarchy things
-  first, then walk down each branch resolving dependencies.
 - Use context7 BEFORE asserting any library / framework / CLI behavior — never design on
   memory for a dependency.
 - Never run git commit or stage anything. I commit myself. "Save the progress" just means
