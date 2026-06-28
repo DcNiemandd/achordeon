@@ -108,7 +108,7 @@ type Scope = (typeof SCOPES)[number];
 
 // One row per setting. Adding a setting = add a row; moving scopes = edit `scopes`.
 const SETTINGS = {
-  scale: { default: 1, scopes: ['song'] },
+  scale: { default: 'auto', scopes: ['song'] }, // uniform content-box→render-box fit; 'auto' = max fit, number = manual (may overflow). See PRD-RENDERING §4.1
   columns: { default: 1, scopes: ['song'] },
   titlePosition: { default: 'top', scopes: ['song'] },
   aspectRatio: { default: 'A4', scopes: ['song'] },
