@@ -11,16 +11,16 @@ Repo-root `docs/` — **not** the published Docusaurus site (`apps/docs/docs`).
 
 ## Document map
 
-| Doc                                                | Role                                                                                                                                           |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../CONTEXT.md`](../CONTEXT.md)                   | **Glossary** — ubiquitous language, source of truth for terms. Glossary only, no implementation.                                               |
-| [`PRD-INFRASTRUCTURE.md`](./PRD-INFRASTRUCTURE.md) | Backend/infra PRD — services, state, persistence, sync, Drive, security, export/import/download, Audience, router, i18n, parser summary (§12). |
-| [`PARSER-GRAMMAR.md`](./PARSER-GRAMMAR.md)         | Parser grammar spec — Phase 1/2 rules, chord sub-grammar, escapes, warnings, reparse.                                                          |
-| [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)     | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                    |
-| `PRD-RENDERING.md` _(planned)_                     | Rendering/visual layer — SVG layout, columns, scale-to-fit, aspect ratio, `labelInline`, chord-only sizing.                                    |
-| `PRD-EDITOR.md` _(planned)_                        | Editor + authoring — chosen editor, highlight grammar, insert buttons, markers.                                                                |
-| [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0005).                                                                                                     |
-| [`../research/`](../research/)                     | Background research (sync backends; trust model & monetization).                                                                               |
+| Doc                                                | Role                                                                                                                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`../CONTEXT.md`](../CONTEXT.md)                   | **Glossary** — ubiquitous language, source of truth for terms. Glossary only, no implementation.                                                                   |
+| [`PRD-INFRASTRUCTURE.md`](./PRD-INFRASTRUCTURE.md) | Backend/infra PRD — services, state, persistence, sync, Drive, security, export/import/download, Audience, router, i18n, parser summary (§12).                     |
+| [`PARSER-GRAMMAR.md`](./PARSER-GRAMMAR.md)         | Parser grammar spec — Phase 1/2 rules, chord sub-grammar, escapes, warnings, reparse.                                                                              |
+| [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)     | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                                        |
+| [`PRD-RENDERING.md`](./PRD-RENDERING.md)           | Rendering/visual layer — render pipeline + output seam (settled); SVG layout, columns, scale-to-fit, aspect ratio, `labelInline`, chord-only sizing (in progress). |
+| `PRD-EDITOR.md` _(planned)_                        | Editor + authoring — chosen editor, highlight grammar, insert buttons, markers.                                                                                    |
+| [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0005).                                                                                                                         |
+| [`../research/`](../research/)                     | Background research (sync backends; trust model & monetization).                                                                                                   |
 
 **ADRs:** 0001 content-vs-settings · 0002 SVG render target · 0003 Audience over
 Presence · 0004 handoff-not-concurrent sync · 0005 pure two-phase parser · 0006
@@ -66,17 +66,17 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 
 ### Open — design / grilling
 
-| ID  | Task                                                                                                                                     | Status | Target doc                       | Depends on   |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ | -------------------------------- | ------------ |
-| D1  | **Editor choice** (Monaco vs CodeMirror 6) — highlighting editor; **song scope**; likely an ADR                                          | ⬜     | ADR + `PRD-EDITOR.md`            | R2           |
-| D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                           | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008 | R2, R4       |
-| D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title position, `labelInline`, chord-only sizing | ⬜     | `PRD-RENDERING.md`               | R2, ADR-0002 |
-| D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                    | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006 | R1, R4       |
-| D5  | **PWA service-worker update strategy** — precache, update prompt, offline; must deliver ADR-0007 refuse-prompt update                    | ⬜     | `PRD-INFRASTRUCTURE.md` §11      | R1, ADR-0007 |
-| D6  | **Auth provider-linking** — link Google + email/password to one Account                                                                  | ⬜     | `PRD-INFRASTRUCTURE.md` §5       | R1           |
-| D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B)                                       | ⬜     | `PRD-INFRASTRUCTURE.md` §5/§6    | R1, research |
-| D8  | **Lobby analytics** — retention window + aggregation detail                                                                              | ⬜     | `PRD-INFRASTRUCTURE.md` §9       | ADR-0003     |
-| D9  | **Audience local transpose** — viewer transposes own copy; scope qs ("all songs?" / "remember per lobby+song?")                          | 🔮     | TBD                              | ADR-0003     |
+| ID  | Task                                                                                                                                     | Status | Target doc                               | Depends on   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------- | ------------ |
+| D1  | **Editor choice** (Monaco vs CodeMirror 6) — highlighting editor; **song scope**; likely an ADR                                          | ⬜     | ADR + `PRD-EDITOR.md`                    | R2           |
+| D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                           | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
+| D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title position, `labelInline`, chord-only sizing | 🔵     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
+| D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                    | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
+| D5  | **PWA service-worker update strategy** — precache, update prompt, offline; must deliver ADR-0007 refuse-prompt update                    | ⬜     | `PRD-INFRASTRUCTURE.md` §11              | R1, ADR-0007 |
+| D6  | **Auth provider-linking** — link Google + email/password to one Account                                                                  | ⬜     | `PRD-INFRASTRUCTURE.md` §5               | R1           |
+| D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B)                                       | ⬜     | `PRD-INFRASTRUCTURE.md` §5/§6            | R1, research |
+| D8  | **Lobby analytics** — retention window + aggregation detail                                                                              | ⬜     | `PRD-INFRASTRUCTURE.md` §9               | ADR-0003     |
+| D9  | **Audience local transpose** — viewer transposes own copy; scope qs ("all songs?" / "remember per lobby+song?")                          | 🔮     | TBD                                      | ADR-0003     |
 
 ### Then — build
 
@@ -103,7 +103,7 @@ graph TD
   R2 --> D1[D1 Editor choice ⬜]
   R2 --> D2[D2 Transpose spelling ✅]
   R4 --> D2
-  R2 --> D3[D3 Rendering PRD ⬜]
+  R2 --> D3[D3 Rendering PRD 🔵]
   A2 --> D3
   R1 --> R4[R4 Domain model ✅]
   R4 --> D4[D4 Settings cascade ✅]
