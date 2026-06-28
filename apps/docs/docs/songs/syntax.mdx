@@ -30,7 +30,7 @@ The renderer will always use the last title and subtitle in the file.
 
 ## Block of lyrics
 
-The song is divided into blocks. One block can be verse, chorus, etc. You can label the block with extra colon. Use double colons to render it.
+The song is divided into blocks. One block can be verse, chorus, etc. You can give labels to blocks. Trailing colon marks the delimiter - it is consumed and everything before it becomes the rendered label. Add an extra colon to keep a literal colon in the label: `1.:` renders `1.`, `1::` renders `1:`, `1:::` renders `1::`.
 
 New block is created after an empty line or with a label.
 
@@ -69,6 +69,10 @@ Block with chords only will be rendered a little bigger, as commonly used for br
    [D]Running over the same old ground. What [C]have we found?
    The same old [Am]fears. Wish you were [G]here!
 ```
+
+## Escape
+
+A backslash renders a markup character literally. The main use is the colon, so a line like `Narrator\:` stays a lyric instead of becoming a label. It also works for `*`.
 
 ## Markdown
 
