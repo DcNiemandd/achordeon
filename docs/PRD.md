@@ -73,7 +73,7 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 | D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                                                                                         | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
 | D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts, `RenderPlan`, songbook chrome | ✅     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
 | D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                                                                                  | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
-| D5  | **PWA service-worker update strategy** — precache, update prompt, offline; must deliver ADR-0007 refuse-prompt update                                                                                  | ⬜     | `PRD-INFRASTRUCTURE.md` §11              | R1, ADR-0007 |
+| D5  | **PWA service-worker update strategy** — `@angular/service-worker`, precache shell, gentle update prompt + blocking ADR-0007 refuse-prompt                                                             | ✅     | `PRD-INFRASTRUCTURE.md` §11              | R1, ADR-0007 |
 | D6  | **Auth provider-linking** — link Google + email/password to one Account                                                                                                                                | ✅     | `PRD-INFRASTRUCTURE.md` §5               | R1           |
 | D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B)                                                                                                     | ⬜     | `PRD-INFRASTRUCTURE.md` §5/§6            | R1, research |
 | D8  | **Lobby analytics** — retention window + aggregation detail                                                                                                                                            | ⬜     | `PRD-INFRASTRUCTURE.md` §9               | ADR-0003     |
@@ -153,7 +153,7 @@ graph TD
   R1 --> R4[R4 Domain model ✅]
   R4 --> D4[D4 Settings cascade ✅]
   D4 --> D3
-  R1 --> D5[D5 PWA SW update ⬜]
+  R1 --> D5[D5 PWA SW update ✅]
   R1 --> D6[D6 Auth linking ✅]
   R1 --> D7[D7 MoR webhook ⬜]
   A3 --> D8[D8 Lobby analytics ⬜]
@@ -177,8 +177,9 @@ graph TD
   recorded in `PRD-RENDERING.md` (some §4 magnitudes flagged tunable). It built on
   the parser AST + ADR-0002 and **D4 (settings cascade)**. Remaining rendering work is
   implementation under **P1**, gated by the §3 svg2pdf spike (the one open guardrail).
-- **D5–D8** are independent of the parser/render line and can be grilled in any order
-  once needed (D7 leans on the monetization research).
+- **D5–D8** are independent of the parser/render line. **D5 (PWA SW update) is now
+  settled** (`@angular/service-worker`, §11). The rest can be grilled in any order once
+  needed (D7 leans on the monetization research).
 - **P1 (implementation plan)** waits on the core design — at minimum R1 + R2, plus D3
   before vertical slices touch the visual layer.
 
@@ -195,7 +196,9 @@ implementation slices. Grill a feature only when a **hard design question** surf
   remain on the floor.
 
 - **`shared` plumbing / infra (cross-cutting) — open:**
-  - ⬜ **D5** PWA service-worker update strategy (precache, update prompt, offline).
+  - ✅ **D5** PWA service-worker update strategy → `@angular/service-worker` (ngsw),
+    precache the shell, gentle dismissible update prompt + **blocking** ADR-0007
+    refuse-on-newer prompt. `PRD-INFRASTRUCTURE.md` §11.
   - ✅ **D6** Auth provider-linking (Google + email/password → one Account). Add-method-only
     (no account merge), email confirmation required, Drive rides on the Google identity.
     ADR-0009 + `PRD-INFRASTRUCTURE.md` §5.

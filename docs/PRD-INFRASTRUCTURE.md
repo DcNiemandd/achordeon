@@ -385,8 +385,33 @@ Lazy-loaded feature routes, one per nav module:
 
 ## 11. Cross-cutting
 
-- **PWA / offline** — service worker (`@angular/pwa` / Workbox), precache shell;
-  only Audience + sync need net.
+- **PWA / offline + update strategy (D5) [decided]** — first-party
+  **`@angular/service-worker`** (ngsw); **no hand-rolled service worker, no Workbox.**
+  Under Nx + the esbuild `application` builder the `ng add @angular/pwa` schematic
+  doesn't fit the project layout, so it's wired by hand (~4 declarative steps: add the
+  dep, `provideServiceWorker()`, author `ngsw-config.json`, set the build target's
+  `serviceWorker` option). This is the "easy plug-in" bar the PWA was gated on.
+  - **Precache** — `ngsw-config.json` asset groups **prefetch the app shell**
+    (HTML/JS/CSS/icons) so the app boots with zero network (the offline promise in
+    `CONTEXT.md`). **Audience + sync stay network paths** — their responses are not
+    SW-cached.
+  - **Routine update — gentle, never auto-reload.** `SwUpdate.versionUpdates` →
+    `VERSION_READY` → a **dismissible** "update available, reload" affordance; the user
+    reloads when they choose. Activation always means a full reload (ngsw forbids
+    mid-session asset swaps / version skew); we never reload silently, because the app
+    may be **mid-performance** (Stage / hosting an Audience lobby). `checkForUpdate()`
+    runs once the app is stable and again on **launch/focus** — the same lifecycle
+    moment as the ADR-0004 pull-on-launch handoff.
+  - **Forced update — the ADR-0007 refuse path.** When an ingest path refuses data
+    carrying a newer `schemaVersion`, the prompt is **blocking** ("update required to
+    read this data") → `checkForUpdate()` → `activateUpdate()` → reload. This is the
+    delivery mechanism ADR-0007 depends on ("updating is one reload away"); the failure
+    stays safe (refuse) not destructive (corrupt).
+  - **Recovery** — `SwUpdate.unrecoverable` → prompt a reload to rebuild a corrupted
+    SW cache.
+  - **GitHub Pages** — ngsw serves `index.html` for navigation requests, so SPA
+    routing works offline; cold deep-links _before_ the SW is installed still rely on
+    the existing GitHub Pages SPA fallback.
 - **i18n: `@angular/localize` in runtime mode. [decided]** EN + CS, first-party,
   no Transloco. ONE bundle (not per-locale AOT builds): `loadTranslations(map)`
   loads a simple-JSON `en.json`/`cs.json` at boot. Keys + JSON come from the
