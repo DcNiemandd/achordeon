@@ -19,13 +19,14 @@ Repo-root `docs/` — **not** the published Docusaurus site (`apps/docs/docs`).
 | [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)     | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                                                                                                                                                                                   |
 | [`PRD-RENDERING.md`](./PRD-RENDERING.md)           | Rendering/visual layer — render pipeline + output seam, geometry requirements (scale-to-fit, columns, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts), `RenderPlan` + `layout` signature, songbook page chrome. Requirements settled; implementation under P1. |
 | `PRD-EDITOR.md` _(planned)_                        | Editor + authoring — chosen editor, highlight grammar, insert buttons, markers.                                                                                                                                                                                                                               |
-| [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0009).                                                                                                                                                                                                                                                                    |
+| [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0010).                                                                                                                                                                                                                                                                    |
 | [`../research/`](../research/)                     | Background research (sync backends; trust model & monetization).                                                                                                                                                                                                                                              |
 
 **ADRs:** 0001 content-vs-settings · 0002 SVG render target · 0003 Audience over
 Presence · 0004 handoff-not-concurrent sync · 0005 pure two-phase parser · 0006
 data-driven settings cascade · 0007 schema versioning & migration · 0008 chord-theory
-port · 0009 add-method auth linking & Drive-on-Google.
+port · 0009 add-method auth linking & Drive-on-Google · 0010 CodeMirror 6 editor,
+loosely coupled.
 
 ---
 
@@ -68,7 +69,7 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 
 | ID  | Task                                                                                                                                                                                                   | Status | Target doc                               | Depends on   |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------------------------------------- | ------------ |
-| D1  | **Editor choice** (Monaco vs CodeMirror 6) — highlighting editor; **song scope**; likely an ADR                                                                                                        | ⬜     | ADR + `PRD-EDITOR.md`                    | R2           |
+| D1  | **Editor choice** — CodeMirror 6, behind a loose-coupling seam; **song scope**                                                                                                                         | ✅     | ADR-0010 (+ `PRD-EDITOR.md` planned)     | R2           |
 | D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                                                                                         | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
 | D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts, `RenderPlan`, songbook chrome | ✅     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
 | D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                                                                                  | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
@@ -144,7 +145,7 @@ graph TD
   R0 --> R2
   R1 --> R2
 
-  R2 --> D1[D1 Editor choice ⬜]
+  R2 --> D1[D1 Editor choice ✅]
   R2 --> D2[D2 Transpose spelling ✅]
   R4 --> D2
   R2 --> D3[D3 Rendering PRD ✅]
@@ -202,9 +203,11 @@ implementation slices. Grill a feature only when a **hard design question** surf
     token-broker). Leans on the monetization research.
 
 - **`songs` scope — open:**
-  - ⬜ **D1** Editor choice (Monaco vs CodeMirror 6) — likely an ADR. **Suggested next
-    grill** (authoring is core UX; it gates `PRD-EDITOR.md`).
-  - ⬜ **PRD-EDITOR.md** (after D1) — highlight grammar, insert buttons, editor markers.
+  - ✅ **D1** Editor choice → **CodeMirror 6**, behind a loose-coupling seam (ADR-0010).
+    Monaco lost once author-familiarity proved false; CM6 wins on offline-PWA bundle,
+    Angular-21 integration (no worker plumbing), and touch-readiness.
+  - ⬜ **PRD-EDITOR.md** (after D1) — highlight grammar (CM6 stream parser), insert
+    buttons, editor markers.
   - Song explorer UX → already specified (CONTEXT + R1) → **P1**, not a grill.
 
 - **`audience` scope — open:**
