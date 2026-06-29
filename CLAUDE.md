@@ -35,3 +35,7 @@ The `docs` project is a Docusaurus PRD site under `apps/docs`. Build/validate wi
   factual bugs or add missing parts; don't rewrite or "improve" prose.
 - `<Image alt="..." />` (no `src`) renders a TODO placeholder; add `isDesign` for a
   design-mockup admonition. Component: `apps/docs/src/theme/MDXComponents/Img`.
+
+## User usage of Claude
+
+The user wants to learn and find the solutions himself. Never give him final solution. You can give options of an abstract data flow.

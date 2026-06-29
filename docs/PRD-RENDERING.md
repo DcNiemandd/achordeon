@@ -6,10 +6,13 @@ settings become pixels — on screen, as a PNG, and as a vector PDF. The rendere
 download. Complements `PARSER-GRAMMAR.md` (the AST it consumes), `PRD-DOMAIN-MODEL.md`
 (Song/Settings shapes, `resolveSettings`), and ADR-0002 (SVG render target).
 
-> Status: **living / in progress (D3).** Settled: the render pipeline + output seam
-> (§1–§3). Open: the geometry algorithm (scale-to-fit, columns, aspect ratio,
-> title position, `labelInline`, chord x-positioning) — being grilled as
-> _requirements_; the layout algorithm itself is authored by hand.
+> Status: **living / requirements settled (D3).** Settled: the render pipeline + output
+> seam (§1–§3); the geometry requirements (§4 scale-to-fit, columns, aspect ratio, title
+> region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts); the
+> `RenderPlan` shape + `layout` signature (§5); songbook page chrome (§6). Some §4 policy
+> is flagged **experimental / tunable** (gutter, chord-only distribution, spacing
+> constants) — the _seams_ are stable; the magnitudes are the author's to tune. The
+> layout algorithm itself is authored by hand; implementation tracks under **P1**.
 
 Repo-root `docs/`, not the published Docusaurus site.
 
@@ -59,6 +62,30 @@ layout(ast, settings) ─► RenderPlan ─► emit(plan, opts) ─► SVG strin
 - **Escape hatch (not built).** A future _native_ vector-PDF path could be a second
   emitter walking the **same** `RenderPlan` (`emitPdf(plan)`), with no second layout
   engine. Kept possible by the seam; **not** implemented (see §3).
+
+> **Portability — two cheap disciplines now, the rest deferred (YAGNI).** The core is
+> kept transferable (a future VSCode plugin, embeddable web component / `<iframe>`)
+> without building any of that yet. Two near-zero rules pay for themselves immediately
+> and make later extraction a file-move rather than a rewrite:
+>
+> 1. **The geometry core imports no `@angular/*`.** `layout` and `emit` are plain
+>    functions; **`@Injectable() RenderService` is a thin adapter** that does DI wiring
+>    and delegates. The core must not reach for `inject()`, signals, or RxJS in its
+>    logic — that entanglement is the only thing expensive to undo later.
+> 2. **`measureText` is injected, not called directly.** `layout(ast, settings, measure)`
+>    takes a measurement function/interface (`TextMeasurer`: `width`,
+>    `fontBoundingBox{Ascent,Descent}`, …). This is needed **now for testing** — jsdom
+>    returns `width: 0`, so a DOM-free seam is what lets geometry be asserted against
+>    `RenderPlan` (the §1 testability win) with a fake measurer. Mirrors the
+>    `ChordTheory` port (ADR-0008).
+>
+> **Deferred (true YAGNI):** the separate Nx lib (`shared-render-core`), a `node-canvas`
+> / Node measurer, the VSCode-plugin / `<iframe>` packaging, and any multi-class port
+> hierarchy — added when a second consumer actually exists. **Caveat for that day:**
+> `node-canvas` and browser canvas use different rasterizers, so metrics differ slightly;
+> byte-identical cross-env output would require standardizing the measurement backend.
+> **No ADR yet** — written the day the core is actually extracted, when the trade-off
+> turns real and irreversible.
 
 ## 2. One renderer, three outputs — emitters vs. sinks
 
@@ -112,6 +139,15 @@ guardrail. Other docs link here; none restate it.**
   selectable text**. If the spike fails, raster-PDF (PNG-into-pages via jsPDF/pdf-lib)
   is the documented **fallback** — but vector is the plan and raster is the
   contingency, not the default.
+- **Spike result — PASSED (2026-06-29).** A throwaway spike (`svg2pdf.js` 2.7 + `jsPDF`
+  4.2, custom TTF via `addFileToVFS`+`addFont`, run headless over a hand-built
+  chord-anchored SVG) produced a PDF with **selectable text and an embedded font subset
+  (`FontFile2`), no raster image**, and **chord x-positions faithful to the SVG** (chords
+  over exact characters, incl. the end-of-line anchor and a same-index group; confirmed by
+  eye). Both guardrail conditions met ⇒ **vector is confirmed for v1; raster is the unused
+  contingency.** (b) x-positioning was generated from real glyph advances — the production
+  path uses the `measureText` port (§5) but the svg2pdf step that consumes those x's is
+  proven.
 - **One emitter in v1.** `RenderPlan → emit → SVG`. A native `emitPdf(plan)` is the
   documented escape hatch only if `svg2pdf.js` cannot meet the guardrail; it is **not**
   built speculatively.
@@ -186,3 +222,271 @@ Varies **columns + title position only** to best fill the user's fixed-ratio ren
 box (minimize the content-box ↔ render-box gap). It **never changes the aspect
 ratio** — that stays user-owned. v1 = manual columns + title position + ratio, slack
 accepted.
+
+### 4.5 Title region
+
+The Title + Subtitle form one **title block** laid out as a region that is **never a
+content column and never balanced** (§4.2). The `columns` count means content columns
+only; the title region is reserved first, the content columns fill what remains. Two
+orthogonal `song`-scope settings drive it:
+
+- **`titlePosition`** (`select`) — **`'top' | 'left'`**, where the block sits.
+- **`titleLayout`** (`select`, default `'stacked'`) — **`'stacked' | 'inline'`**, how
+  subtitle relates to title. _(Domain-model ripple: a new registry row, see
+  `PRD-DOMAIN-MODEL.md`.)_
+
+The two axes are independent — four combinations, all v1:
+
+- **`top` + `stacked`** — title row, subtitle row beneath it.
+- **`top` + `inline`** — title and subtitle on **one** row, side by side.
+- **`left` + `stacked`** — two parallel CCW spines: title outer (leftmost), subtitle
+  inner (toward content).
+- **`left` + `inline`** — title and subtitle on **one** CCW spine line.
+
+**Anchoring (both placements): the title block hugs the top-left corner** — left-aligned
+for `top`, top-aligned for the `left` spine; **never centred**.
+
+**`left` spine geometry** — the block is rotated **90° CCW** (`rotate(-90)`): the text
+reads **bottom-to-top** (first char at the bottom), glyphs tilted for a head-left read.
+The font line-height(s) become the band's **width**; the longer string sets the band's
+**height**. Top-aligned, so a title shorter than the content-column height leaves blank
+band space **below**.
+
+> Future autofit (§4.4) may relocate the title between `top` and `left`; because the
+> region is discrete and non-balancing, this needs no change to the balancing math.
+
+### 4.6 Chord x-positioning (the signature behaviour)
+
+How a `ChordAnchor` (`raw`, `at`, `valid`) becomes a pixel x over its lyric line.
+This is the highest svg2pdf guardrail risk (§3) — the PDF spike must reproduce it.
+
+- **Left-edge anchor.** A chord's **left edge** sits at `x = measureText(text.slice(0, at))`
+  — the left edge of the anchored character. Chords are **not** centred over the char.
+- **End-of-line anchor.** `at === text.length` ⇒ `x = measureText(text)` (full line
+  width); the chord floats just past the last glyph.
+- **Same-index group.** All anchors sharing one `at` render, in document order, as a
+  **single left-aligned run beginning at the anchor x**, members joined by **one space
+  in the chord font** (`raw.join(' ')`). The anchor x is the **left edge of the group**;
+  members spread rightward. Consequence: `[A][B]c` and `[A B]c` are **byte-identical**
+  output — there are no text chars between adjacent brackets, so both parse to two
+  anchors at the same `at`. `raw` is rendered verbatim, including invalid annotations
+  (`[N.C.]`, `[x2]`), which float in the run like any chord.
+- **Different-index collision = overlap allowed (v1).** When a chord is wider than the
+  lyric gap to the next anchor (`[Cmaj7]a [G7]b`), the two chord glyphs **overlap**. The
+  renderer does **not** shove chords apart and does **not** stretch the lyric to make
+  room (§4.1 never reflows). Each chord's left edge stays pinned to its own anchor x,
+  because that x marks an exact, distinct character — shoving would lie about which char
+  the chord sits over and break both the signature promise and the svg2pdf guardrail.
+  Packed overlap is the author's problem (fix with spacing), consistent with "manual
+  scale may overflow, no clamp."
+  - **The one invariant:** left-edge-at-anchor is absolute; the only rightward spread is
+    _within_ a same-index group (whose members legitimately mark the same char).
+  - **Future:** a chord-collision / spacing render setting (opt-in min-gap shove). Not v1.
+- **Chord row — per line, not uniform.** A chord row is reserved **only above lines that
+  carry ≥1 anchor**; a chord-less lyric line is plain lyric height with no empty row
+  above it. Row height = chord-font line height (`measureText` ascent+descent). Rationale:
+  tighter vertical packing → larger fit scale (serves "one song, one page"), and matches
+  standard chord-sheet rendering. **Hide-chords (Audience) stays reflow-safe:** a chorded
+  line keeps its reserved row when glyphs are blanked, so nothing reflows; a chord-less
+  line never had a row to begin with.
+
+### 4.7 Vertical rhythm
+
+Everything below is computed in **base (scale-1) units** and then scaled uniformly by
+the fit (§4.1) — so spacing never drives a reflow.
+
+- **Pitch source = `fontBoundingBox`** (string-independent), never `actualBoundingBox`
+  (glyph-tight → line pitch would jitter and baselines wouldn't align across columns).
+  A **refinement of ADR-0002** (which named `actualBoundingBox` for line heights); not a
+  reversal, so a PRD note, not a new ADR. **Graceful runtime fallback** (no spike needed):
+  if `fontBoundingBox{Ascent,Descent}` comes back missing/zero, fall back to
+  `actualBoundingBox` + a fixed leading factor.
+  - **Lyric line slot** = `lyric.fontBoundingBoxAscent + fontBoundingBoxDescent`.
+  - **Chord row** = `chord.fontBoundingBoxAscent + fontBoundingBoxDescent`.
+  - **Chorded line** = chord row + lyric slot; **chord-less line** = lyric slot only (§4.6).
+  - The chord row **abuts** its lyric slot — no gap between them; the chord's natural
+    descent is the breathing room.
+- **Spacing magnitudes are tunable internal constants, NOT render settings.** Inter-line
+  leading (default factor 1.0, i.e. rely on `fontBoundingBox`) and the inter-block gap
+  (≈ one lyric line slot) are constants the author of the renderer tunes to taste; users
+  get "bigger text / more air" through scale, columns, and aspect ratio (§4.1), never a
+  per-gap knob. Exact values are a visual-tuning detail, deliberately not grilled.
+
+### 4.8 Label layout — the left gutter (`labelInline`)
+
+> v1 default; flagged **experimental** — the author expects to A/B variants here. The
+> seam (labels are a per-line `lineOrigin` translation) is stable; the policy below is
+> the starting point.
+
+- **Per-column label gutter** = the widest **inline** label (`labelInline: true`) in
+  that column, plus a gap. Sized by inline labels **only**.
+- **Inline-label block** (`labelInline: true`) — every content line starts at
+  `x = gutter`; the label renders **in the gutter** on the first content line's row.
+  Continuation lines align under the **content**, not under the label.
+- **Two-line-label block** (`labelInline: false`) — **gutter is 0**: the label is on its
+  own row at `x = 0`, content rows at `x = 0` below it.
+- **Unlabelled block** — `x = 0` (no inline label ⇒ no indent).
+- **Net rule:** only inline-labelled blocks indent to the gutter; everything else starts
+  at `x = 0`. So an inline-labelled section's body is indented relative to an unlabelled
+  one — the indent is the cost of the inline label (the PoC look).
+- **Chord x** = `lineOrigin + measureText(text.slice(0, at))`, where `lineOrigin` is the
+  gutter for inline-label blocks and `0` otherwise — §4.6 unchanged, just translated.
+- **Variants parked (tunable/future):** song-global vs per-block gutter, label left- vs
+  right-aligned within the gutter, and a per-line offset.
+
+### 4.9 Chord-only lines & the bridge convention
+
+> Captured from `CONTEXT.md` / `PARSER-GRAMMAR.md`; recommended default, **tunable** —
+> not separately grilled. Both are **render properties read off the AST**, not parse types.
+
+- **Chord-only line** (a line whose `text` is empty/whitespace but carries anchors) —
+  its chords are **distributed across the column content width** rather than measured over
+  characters (there are none). Recommended default: **evenly spaced (justified) across the
+  width**; exact distribution is a visual-tuning detail.
+- **Bridge convention** — a Block whose lines are **all** chord-only renders **slightly
+  larger** than normal blocks. Recommended mechanism: a per-block size multiplier applied
+  in base units (so the uniform fit still scales the whole song afterward, §4.1). The
+  multiplier magnitude is a tunable constant; the **trigger** (all-lines-chord-only ⇒
+  bridge) is the fixed rule.
+
+### 4.10 Fonts, chord colour & chord size
+
+- **Font selection is post-v1.** v1 ships **one bundled font**; the `font` setting
+  (registry `scopes: ['songbook','song']`) stays as a future capability but is not
+  user-selectable in v1. (Scope note: the offline-PWA aspect is an afterthought, not a
+  v1 driver — see `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**,
+  not PWA.)
+- **The one font is still embedded both ways** — this is core v1, not PWA-dependent:
+  - **base64-inlined** into the SVG (`@font-face`) so screen + PNG render identically
+    cross-browser (ADR-0002: external font URLs fail in Safari);
+  - **registered in jsPDF** (`addFileToVFS` + `addFont`) so the vector PDF has selectable
+    text (§3). Each (font × style) is a separate TTF / registration; v1 needs **Regular**
+    (and **Bold** if chords or markdown-bold use it). Italic defers with markdown-italic.
+  - **Fallback:** SVG `font-family` lists the embedded face then a CSS generic; the PDF
+    path has no generic fallback, so a missing registration is a hard §3 guardrail fail.
+- **`chordSize`** (registry default `1`) = a **multiplier of the lyric font size**, not an
+  absolute size (consistent with §4.1 "font size is never authored" — it's a _ratio_, so
+  it's allowed). `1` = chords equal to lyric cap height. It feeds the chord-row height
+  (§4.7), so changing it changes vertical rhythm before the uniform fit.
+- **`chordColor`** (registry default `#000`) = fill applied to **chord glyphs only**;
+  lyrics render in a fixed colour (black) — there is no lyric-colour setting in v1.
+
+---
+
+## 5. `RenderPlan` — the data structure
+
+The output of `layout` and the input to `emit` — **pure data, no SVG/DOM**, so `emit`
+stays a dumb walk and the native-emitter escape hatch (§1) stays open.
+
+```ts
+// shared-render-core — pure data, framework-neutral (§1 portability note)
+type TextRole = 'title' | 'subtitle' | 'label' | 'lyric' | 'chord';
+
+interface TextItem {
+  text: string;
+  x: number; // baseline-LEFT origin, BASE (pre-fit) units
+  y: number; // baseline y, base units
+  role: TextRole; // → styles[role]; the only thing emit branches on
+  rotate?: -90; // title CCW spine only (§4.5); absent = upright
+}
+
+interface TextStyle {
+  family: string;
+  sizePx: number;
+  weight: 'normal' | 'bold';
+  fill: string;
+}
+interface EmbeddedFont {
+  family: string;
+  weight: 'normal' | 'bold';
+  base64: string;
+} // SVG @font-face + jsPDF addFont
+
+interface RenderPlan {
+  box: { width: number; height: number }; // render box = aspect-ratio crop → SVG viewBox
+  fit: number; // uniform content→box scale (§4.1)
+  origin: { x: number; y: number }; // top-left of scaled content in the box (hugs top-left, §4.5)
+  items: TextItem[]; // EVERYTHING to draw, base units
+  styles: Record<TextRole, TextStyle>; // resolved per-role style
+  fonts: EmbeddedFont[]; // the bytes, embedded both ways
+}
+```
+
+**The `layout` call — `measure` is bound once, not passed per render.** `measure` is a
+set-once **platform dependency** (a port); `opts` is per-render runtime state. Their
+lifetimes differ, so `measure` is bound via factory/DI and never sits beside `opts`:
+
+```ts
+// pure core — measure stays explicit (trivially testable with a fake)
+function layoutCore(ast: Song, settings: GlobalSettings, measure: TextMeasurer, opts?: { hideChords?: boolean }): RenderPlan;
+
+// portable surface — bind the platform measurer once
+const layout = createLayout(measure); // → (ast, settings, opts?) => RenderPlan
+
+// Angular surface — the @Injectable() IS the partial application
+@Injectable()
+class RenderService {
+  constructor(private measure: TextMeasurer) {}
+  layout(ast: Song, settings: GlobalSettings, opts?: { hideChords?: boolean }) {
+    return layoutCore(ast, settings, this.measure, opts);
+  }
+}
+```
+
+- **`measure`** — the `TextMeasurer` port (§1 portability note): `text + font → { width,
+fontBoundingBoxAscent, fontBoundingBoxDescent }`. The **only** way `layout` obtains pixel
+  metrics; no direct canvas/DOM. Bound once (DI or `createLayout`), so the per-render call
+  is `layout(ast, settings, opts?)`. The pure core keeps it explicit.
+- **`opts`** — viewer options, **not** settings. v1: `{ hideChords?: boolean }`.
+
+**Design choices baked in:**
+
+- **Coords in base (pre-fit) units; one transform applies the fit.** `emit` wraps all
+  items in `<g transform="translate(origin) scale(fit)">` and writes raw `x/y`. The plan
+  is scale-independent → tests assert "chord `C` at base-x ≈ 42.3" with no scale math (the
+  §1 testability win). The songbook **outer** fit (§4.3) is a _second_ transform applied
+  by `DownloadService` when composing pages — **not** in the per-song plan.
+- **Flat positioned `items`, not a block/column tree.** Every geometry rule (same-index
+  groups §4.6, chord-only distribution §4.9, gutter offset §4.8) is already resolved into
+  concrete `x/y` by `layout`; `emit` needs no structure.
+- **`hideChords` lives in `layout`, reflow-proof.** Chord-row reservation is driven by the
+  **AST** (does the line carry anchors? §4.6), never by the flag — so all lyric `y` are
+  identical with or without chords. `hideChords: true` reserves the rows the same but
+  **omits the chord `TextItem`s** from `items`. Toggling = re-run `layout` (cheap, pure);
+  no second hiding pathway. (Assumes the audience client **re-renders locally** from synced
+  content + settings; a pre-rendered-SVG delivery would instead need a CSS-hideable chord
+  group — an audience-sync concern, out of scope here.)
+- **`fonts` carries the bytes** so the SVG is self-contained for headless export (§2) and
+  the same asset feeds jsPDF (§3). `emit`'s own option is `{ inlineFonts }` (§2): screen
+  may skip inlining, export must inline.
+
+---
+
+## 6. Songbook page chrome & print-dialog options
+
+Page chrome is a **`DownloadService` concern, never in the per-song `RenderPlan`/SVG** —
+that boundary is what guarantees a page number can never collide with song content (§4.3).
+`DownloadService` composes the document (title page → optional summary → song pages) and
+stamps chrome into the **margins**; each song SVG stays pure.
+
+**Print-dialog options** (download-time options, **not** render settings — they don't
+cascade or persist on entities, so they stay **out of the SETTINGS registry**, alongside
+`hideChords` / `inlineFonts`):
+
+| Option                   | v1            | Notes                                                           |
+| ------------------------ | ------------- | --------------------------------------------------------------- |
+| **Page size**            | ✅ option     | A4 / Letter / … — sets the page; slot = page − margins.         |
+| **Page margins**         | ✅ **fixed**  | A v1 constant; becomes a user option later.                     |
+| **Title page visible**   | ✅ toggle     | Built from the Songbook's Title / Subtitle / Author.            |
+| **Summary visible**      | ✅ toggle     | The setlist as a contents page (CONTEXT §Summary list).         |
+| **Page number visible**  | ✅ toggle     | —                                                               |
+| **Page number position** | ✅ option     | `left \| center \| right` in the **bottom** margin.             |
+| **Multiple songs/page**  | 🔮 **not v1** | One song per page in v1 ("one song, one page"); multi-up later. |
+
+- **Composition order:** title page (if visible) → summary (if visible) → song pages, one
+  song per page (outer fit, §4.3).
+- **Numbering:** page-number position is horizontal (`left/center/right`); vertical is the
+  **bottom margin** (fixed in v1). Numbering starts at the first **song** page = `1`; the
+  title page and summary are **unnumbered** (tunable).
+- **Page size / number toggle+position / title-page / summary** are v1 dialog options;
+  **margins are fixed** in v1; **multi-song-per-page is deferred.**

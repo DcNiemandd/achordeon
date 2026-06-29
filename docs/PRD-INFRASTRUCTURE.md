@@ -157,7 +157,8 @@ is a future option, not v1.)
 
 - **Auth** — Supabase Auth, Google OAuth first; email+password later; multiple
   providers linkable to one Account. Session persists in `localStorage`,
-  auto-refreshed; user stays logged into Achordeon across reloads.
+  auto-refreshed; user stays logged into Achordeon across reloads. Provider-linking
+  flow below.
 - **Tables** — `profiles(id, plan)`, `songs`, `songbooks`,
   `songbook_songs(songbook_id, song_id, position)`. Same uuid as local record.
   RLS per `auth.uid()`. Tombstones via `deleted_at`.
@@ -179,6 +180,42 @@ is a future option, not v1.)
 - **Auto-sync is a user toggle in Settings.** Being `pro` _enables_ automatic
   Supabase sync; the user can switch it off (off ≠ logged out; manual Drive
   buttons still work).
+
+### Provider-linking [decided — D6]
+
+How Google + email/password collapse to **one** Account. Login exists **only for data
+sync** — low stakes, which shapes every call below.
+
+- **Account = the Supabase `auth.users` row (uuid).** Provider-agnostic; that uuid owns
+  every `profiles`/`songs`/`songbook` row via RLS. Sign-in _identities_ (`google`,
+  `email`) attach to it. There is **no "primary" identity** and the uuid never changes as
+  methods are added — so linking can't break RLS ownership.
+- **Linking model = automatic same-email + manual explicit.** Supabase auto-links a new
+  sign-in to an existing user when the **verified** email matches — this **cannot be
+  disabled** and is safe because it only fires on verified emails. On top of it, **manual
+  linking is enabled** (`GOTRUE_SECURITY_MANUAL_LINKING_ENABLED`) so the user can
+  deliberately add a method (incl. a _different_ email) from Settings.
+- **Mechanics differ by direction.** Add Google → `linkIdentity({ provider: 'google' })`;
+  add password → `updateUser({ email, password })` (`linkIdentity` is OAuth-only; it does
+  not attach an email/password credential).
+- **Linking = add-a-method-to-the-current-account, never a merge.** A provider attaches to
+  the account you are logged into. The explicit Settings flow is therefore the safe path —
+  it can't spawn a second account. UI nudges "add a sign-in method" over signing up afresh.
+- **Email confirmation is REQUIRED** (non-negotiable, not a UX preference). An unconfirmed
+  email/password identity grants **no session** and never auto-links → blocks pre-account-
+  takeover: only the inbox owner can complete the link. A fresh signup is therefore not
+  logged in until the confirmation link is clicked.
+- **Two already-populated accounts cannot be merged [accepted v1 limitation].** Supabase
+  has no merge-users op; `linkIdentity`/`updateUser` against an email owned by _another_
+  user errors. Recovery = Export (JSON) from one → Import into the other → abandon the
+  duplicate. In-app merge (row re-keying + conflict resolution) is **future**.
+- **Drive rides on the Google identity [decided].** "Connect Drive" routes through Supabase
+  Google OAuth (§6 Flow A), so it is carried by the Google identity, **not** an
+  identity-free storage grant. A non-Google account must **link Google first** (the
+  Connect-Drive button can drive that link). Sharpens CONTEXT "Connect Drive … not a
+  separate identity" → not a separate _account_, but it is the Google _identity_.
+- **No unlinking in v1 [add-only].** `unlinkIdentity` is deferred; removing Google would
+  also break Drive. Fully detaching = account deletion (a separate concern).
 
 > Note: research framed live Realtime multi-device as the headline premium value;
 > with handoff-only, premium value leans on **automatic server backup + pull-on-
@@ -304,24 +341,41 @@ unambiguous alphabet (no `0/O/1/I`); collisions are negligible at this scale.
 Viewer joining a PIN with no host Presence → "lobby not found". No central
 registry table.
 
-### Lobby analytics [requested — needs a table]
+### Lobby analytics [decided — D8]
 
 Append-only event log. **Not** a lobby registry (no live lookup); pure history.
 Events: `lobby_created` (song_ref, audience_count), `song_changed` (song_ref,
-audience_count).
+audience_count). Writes are **fire-and-forget, off the Presence critical path** — a
+failed or slow insert never affects the live performance, and this side-channel
+doesn't reintroduce a DB into the render path (ADR-0003 keeps that path DB-free).
 
 - **`song_ref` = `{ id, title, subtitle, summaryPos, summaryLength }`** — a
   reference plus set position (`summaryPos` of `summaryLength`), **no content**.
   Enables most-performed songs, set sizes, how far into a set audiences get, and
   audience-count-over-time — without storing any lyrics/chords.
 - Table `lobby_events(id, host_id, lobby_pin, type, song_id, title, subtitle,
-summary_pos, summary_length, audience_count, created_at)`, insert-only, RLS so
-  only the owner/admin reads.
-- **GDPR posture:** host is identifiable (`host_id`) → personal data, lawful basis
-  **legitimate interest** (product analytics) stated in a privacy policy; erasure
-  cascades on account delete via `host_id`. **Audience logged as a _count only_** —
-  no per-viewer id, no IP → audience stays anonymous, no cookie-consent banner.
-- Set a retention window (e.g. raw events 90 days → aggregate).
+summary_pos, summary_length, audience_count, created_at)`, insert-only. RLS:
+  **insert by owner** (`host_id = auth.uid()`), **read restricted to admin**. The
+  v1 **consumer is developer-only** — product metrics via dashboard SQL, no app
+  surface. A host-facing performance-history screen (RLS read-by-`host_id` + a UI
+  slice) is a future feature, not v1.
+- **Retention = keep raw events forever; no rollup, no expiry job [A1].** Volume is
+  tiny (a few rows per performance, premium hosts only) and the app's standing
+  posture is keep-data-forever (cf. tombstones, §1). A retention window +
+  aggregation rollup is a **future scaling note**, not v1 — the `90 days →
+aggregate` idea is explicitly deferred.
+- **GDPR posture:**
+  - **Audience = count only** — no per-viewer id, no IP → audience is genuinely
+    anonymous, no cookie-consent banner.
+  - **Host is identified while the account lives** (`host_id`) → personal data,
+    lawful basis **legitimate interest** (product analytics) stated in a privacy
+    policy.
+  - **Erasure = anonymize, don't delete [Z].** On account delete the cascade is
+    `UPDATE host_id = NULL`, **not** a row delete — Art. 17 erasure is satisfied by
+    irreversibly severing the link to the person, and Recital 26 puts anonymized
+    data outside GDPR, so the rows are kept forever. `title`/`subtitle` are **kept**
+    after anonymization [Z1]: song-title + timestamp with no host link is a low,
+    accepted re-identification risk, and the song name is the analytical payload.
 
 ---
 
@@ -348,8 +402,33 @@ Lazy-loaded feature routes, one per nav module:
 
 ## 11. Cross-cutting
 
-- **PWA / offline** — service worker (`@angular/pwa` / Workbox), precache shell;
-  only Audience + sync need net.
+- **PWA / offline + update strategy (D5) [decided]** — first-party
+  **`@angular/service-worker`** (ngsw); **no hand-rolled service worker, no Workbox.**
+  Under Nx + the esbuild `application` builder the `ng add @angular/pwa` schematic
+  doesn't fit the project layout, so it's wired by hand (~4 declarative steps: add the
+  dep, `provideServiceWorker()`, author `ngsw-config.json`, set the build target's
+  `serviceWorker` option). This is the "easy plug-in" bar the PWA was gated on.
+  - **Precache** — `ngsw-config.json` asset groups **prefetch the app shell**
+    (HTML/JS/CSS/icons) so the app boots with zero network (the offline promise in
+    `CONTEXT.md`). **Audience + sync stay network paths** — their responses are not
+    SW-cached.
+  - **Routine update — gentle, never auto-reload.** `SwUpdate.versionUpdates` →
+    `VERSION_READY` → a **dismissible** "update available, reload" affordance; the user
+    reloads when they choose. Activation always means a full reload (ngsw forbids
+    mid-session asset swaps / version skew); we never reload silently, because the app
+    may be **mid-performance** (Stage / hosting an Audience lobby). `checkForUpdate()`
+    runs once the app is stable and again on **launch/focus** — the same lifecycle
+    moment as the ADR-0004 pull-on-launch handoff.
+  - **Forced update — the ADR-0007 refuse path.** When an ingest path refuses data
+    carrying a newer `schemaVersion`, the prompt is **blocking** ("update required to
+    read this data") → `checkForUpdate()` → `activateUpdate()` → reload. This is the
+    delivery mechanism ADR-0007 depends on ("updating is one reload away"); the failure
+    stays safe (refuse) not destructive (corrupt).
+  - **Recovery** — `SwUpdate.unrecoverable` → prompt a reload to rebuild a corrupted
+    SW cache.
+  - **GitHub Pages** — ngsw serves `index.html` for navigation requests, so SPA
+    routing works offline; cold deep-links _before_ the SW is installed still rely on
+    the existing GitHub Pages SPA fallback.
 - **i18n: `@angular/localize` in runtime mode. [decided]** EN + CS, first-party,
   no Transloco. ONE bundle (not per-locale AOT builds): `loadTranslations(map)`
   loads a simple-JSON `en.json`/`cs.json` at boot. Keys + JSON come from the
@@ -410,6 +489,9 @@ Written (`docs/adr/`):
   push + pull-on-launch + warn-if-unsynced; diverges from the sync research.
 - **0005 — Pure two-phase semantic parser** (§12): pure `string → AST`, two-phase
   line-oriented, char-anchored chords, `@tonaljs/chord`, editor-agnostic.
+- **0009 — Add-method auth linking & Drive-on-Google** (§5): one Account by attaching
+  methods to the current user (no merge of populated accounts), email confirmation
+  required, "Connect Drive" carried by the Google identity.
 
 Recorded as PRD notes only (well-justified, less surprising): mixed signal stores
 (§3); Dexie persistence + `drive.file` scope + Supabase relational + local-first +

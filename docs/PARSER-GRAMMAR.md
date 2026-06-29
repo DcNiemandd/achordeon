@@ -1,7 +1,7 @@
 # Achordeon — Parser Grammar Spec
 
-> Status: **core grammar decided.** Open: editor choice (highlighting editor, TBD)
-> and the transpose/rendering details deferred to their own docs. The precise,
+> Status: **core grammar decided.** Editor choice decided (CodeMirror 6, ADR-0010);
+> transpose/rendering details deferred to their own docs. The precise,
 > machine-level grammar for
 > `ParserService`. This is the _parsing_ layer (content text → AST), **not** the
 > rendering layer (SVG layout/`measureText`, deferred) and **not** the shallow
@@ -259,16 +259,19 @@ noted) but are an editor concern:
 - **Label** — inserts the block's label marker and moves the cursor in front of it.
 - **Title / Subtitle** — mark the current row (`*` / `**`), no rules.
 
-### Editor integration — choice **[open / undecided]**
+### Editor integration — choice **[decided → CodeMirror 6, ADR-0010]**
 
-The specific editor is **not decided**. Constraint: the product wants **syntax
-highlighting + inline warning underlines**, so a plain `<textarea>` is insufficient —
-the editor must be a highlighting code editor (**Monaco** — which the author knows —
-or **CodeMirror 6**). The final pick is deferred to its own decision/ADR.
+The editor is **CodeMirror 6**, in the `songs` scope, behind a loose-coupling seam
+(ADR-0010). Constraint that drove it: the product wants **syntax highlighting +
+inline warning underlines**, so a plain `<textarea>` is insufficient — the editor
+must be a highlighting code editor. Monaco was the other candidate; it lost once its
+only edge (author familiarity) proved false, leaving CodeMirror 6 ahead on offline-
+PWA bundle weight, Angular-21 integration (no worker plumbing), and touch-readiness.
 
-Deferring is safe: `ParserService` is a pure `string → AST` function, **editor-
-agnostic**, and both candidates expose the same four hooks, so the choice changes
-nothing decided in this spec:
+The choice changes **nothing** decided in this spec: `ParserService` is a pure
+`string → AST` function, **editor-agnostic**, and the editor consumes it through the
+same four hooks either editor would expose — so the spec stayed editor-neutral and
+the pick is swappable by design:
 
 | Need               | Monaco                               | CodeMirror 6         |
 | ------------------ | ------------------------------------ | -------------------- |
@@ -285,9 +288,12 @@ Either way there are **two tokenizers**, both bound to this spec:
 - **`ParserService`** — the _semantic_ parser: render AST + warnings; cross-document
   diagnostics live here.
 
-Caveats feeding the later choice: Monaco is heavy (MB-scale, workers) for an offline
-PWA and weak on touch — fine for "create on PC", a concern only if phone editing ever
-matters; CodeMirror 6 is the lighter, touch-friendly alternative.
+Why CodeMirror 6 won (recorded in ADR-0010): Monaco is heavy (MB-scale, workers) for
+an offline PWA and documented-unsupported on touch; its only advantage was author
+familiarity, which proved false. CodeMirror 6 is the lighter, worker-free, touch-
+ready fit, and integrates into Angular 21 without worker plumbing. Highlighting uses
+a CodeMirror **stream parser** (not a Lezer grammar) — the lightweight path the line-
+oriented grammar maps onto directly.
 
 ---
 
