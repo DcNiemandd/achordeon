@@ -341,24 +341,41 @@ unambiguous alphabet (no `0/O/1/I`); collisions are negligible at this scale.
 Viewer joining a PIN with no host Presence → "lobby not found". No central
 registry table.
 
-### Lobby analytics [requested — needs a table]
+### Lobby analytics [decided — D8]
 
 Append-only event log. **Not** a lobby registry (no live lookup); pure history.
 Events: `lobby_created` (song_ref, audience_count), `song_changed` (song_ref,
-audience_count).
+audience_count). Writes are **fire-and-forget, off the Presence critical path** — a
+failed or slow insert never affects the live performance, and this side-channel
+doesn't reintroduce a DB into the render path (ADR-0003 keeps that path DB-free).
 
 - **`song_ref` = `{ id, title, subtitle, summaryPos, summaryLength }`** — a
   reference plus set position (`summaryPos` of `summaryLength`), **no content**.
   Enables most-performed songs, set sizes, how far into a set audiences get, and
   audience-count-over-time — without storing any lyrics/chords.
 - Table `lobby_events(id, host_id, lobby_pin, type, song_id, title, subtitle,
-summary_pos, summary_length, audience_count, created_at)`, insert-only, RLS so
-  only the owner/admin reads.
-- **GDPR posture:** host is identifiable (`host_id`) → personal data, lawful basis
-  **legitimate interest** (product analytics) stated in a privacy policy; erasure
-  cascades on account delete via `host_id`. **Audience logged as a _count only_** —
-  no per-viewer id, no IP → audience stays anonymous, no cookie-consent banner.
-- Set a retention window (e.g. raw events 90 days → aggregate).
+summary_pos, summary_length, audience_count, created_at)`, insert-only. RLS:
+  **insert by owner** (`host_id = auth.uid()`), **read restricted to admin**. The
+  v1 **consumer is developer-only** — product metrics via dashboard SQL, no app
+  surface. A host-facing performance-history screen (RLS read-by-`host_id` + a UI
+  slice) is a future feature, not v1.
+- **Retention = keep raw events forever; no rollup, no expiry job [A1].** Volume is
+  tiny (a few rows per performance, premium hosts only) and the app's standing
+  posture is keep-data-forever (cf. tombstones, §1). A retention window +
+  aggregation rollup is a **future scaling note**, not v1 — the `90 days →
+aggregate` idea is explicitly deferred.
+- **GDPR posture:**
+  - **Audience = count only** — no per-viewer id, no IP → audience is genuinely
+    anonymous, no cookie-consent banner.
+  - **Host is identified while the account lives** (`host_id`) → personal data,
+    lawful basis **legitimate interest** (product analytics) stated in a privacy
+    policy.
+  - **Erasure = anonymize, don't delete [Z].** On account delete the cascade is
+    `UPDATE host_id = NULL`, **not** a row delete — Art. 17 erasure is satisfied by
+    irreversibly severing the link to the person, and Recital 26 puts anonymized
+    data outside GDPR, so the rows are kept forever. `title`/`subtitle` are **kept**
+    after anonymization [Z1]: song-title + timestamp with no host link is a low,
+    accepted re-identification risk, and the song name is the analytical payload.
 
 ---
 

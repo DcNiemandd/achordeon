@@ -67,23 +67,23 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 
 ### Open — design / grilling
 
-| ID  | Task                                                                                                                                                                                                   | Status | Target doc                               | Depends on   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------------------------------------- | ------------ |
-| D1  | **Editor choice** — CodeMirror 6, behind a loose-coupling seam; **song scope**                                                                                                                         | ✅     | ADR-0010 (+ `PRD-EDITOR.md` planned)     | R2           |
-| D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                                                                                         | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
-| D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts, `RenderPlan`, songbook chrome | ✅     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
-| D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                                                                                  | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
-| D5  | **PWA service-worker update strategy** — `@angular/service-worker`, precache shell, gentle update prompt + blocking ADR-0007 refuse-prompt                                                             | ✅     | `PRD-INFRASTRUCTURE.md` §11              | R1, ADR-0007 |
-| D6  | **Auth provider-linking** — link Google + email/password to one Account                                                                                                                                | ✅     | `PRD-INFRASTRUCTURE.md` §5               | R1           |
-| D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B)                                                                                                     | ⬜     | `PRD-INFRASTRUCTURE.md` §5/§6            | R1, research |
-| D8  | **Lobby analytics** — retention window + aggregation detail                                                                                                                                            | ⬜     | `PRD-INFRASTRUCTURE.md` §9               | ADR-0003     |
-| D9  | **Audience local transpose** — viewer transposes own copy; scope qs ("all songs?" / "remember per lobby+song?")                                                                                        | 🔮     | TBD                                      | ADR-0003     |
+| ID  | Task                                                                                                                                                                                                                      | Status | Target doc                               | Depends on   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------- | ------------ |
+| D1  | **Editor choice** — CodeMirror 6, behind a loose-coupling seam; **song scope**                                                                                                                                            | ✅     | ADR-0010 (+ `PRD-EDITOR.md` planned)     | R2           |
+| D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                                                                                                            | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
+| D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts, `RenderPlan`, songbook chrome                    | ✅     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
+| D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                                                                                                     | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
+| D5  | **PWA service-worker update strategy** — `@angular/service-worker`, precache shell, gentle update prompt + blocking ADR-0007 refuse-prompt                                                                                | ✅     | `PRD-INFRASTRUCTURE.md` §11              | R1, ADR-0007 |
+| D6  | **Auth provider-linking** — link Google + email/password to one Account                                                                                                                                                   | ✅     | `PRD-INFRASTRUCTURE.md` §5               | R1           |
+| D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B). **Post-v1** — v1 premium = manual dashboard flip (§5); premium is free during testing, so no payment path ships in v1 | 🔮     | `PRD-INFRASTRUCTURE.md` §5/§6            | R1, research |
+| D8  | **Lobby analytics** — developer-only metrics; keep raw events forever (no rollup); erasure = anonymize `host_id` on account delete, keep song-title fields                                                                | ✅     | `PRD-INFRASTRUCTURE.md` §9               | ADR-0003     |
+| D9  | **Audience local transpose** — viewer transposes own copy; scope qs ("all songs?" / "remember per lobby+song?")                                                                                                           | 🔮     | TBD                                      | ADR-0003     |
 
 ### Then — build
 
 | ID  | Task                                                                           | Status | Target   | Depends on             |
 | --- | ------------------------------------------------------------------------------ | ------ | -------- | ---------------------- |
-| P1  | **Implementation plan** — tracer-bullet vertical slices (skill: `prd-to-plan`) | 🔮     | `plans/` | R1, R2, D3 (UI slices) |
+| P1  | **Implementation plan** — tracer-bullet vertical slices (skill: `prd-to-plan`) | ⬜     | `plans/` | R1, R2, D3 (UI slices) |
 
 ---
 
@@ -121,6 +121,9 @@ above; the rest are feature notes, not grills.)
 - [ ] **Audience over local network** (LAN PWA, no internet) — open question; Bluetooth/
       hotspot not feasible. (`CONTEXT.md`)
 - [ ] **D9 Audience local transpose** — viewer transposes own copy (tracked as backlog row). (D9)
+- [ ] **Host-facing performance history** — a logged-in performer sees their own lobby
+      analytics in-app (RLS read-by-`host_id`, a UI slice). v1 analytics are developer-only
+      product metrics (dashboard SQL); the host-facing read model + screen are future. (§9, D8)
 
 ### Security / QOL
 
@@ -155,10 +158,10 @@ graph TD
   D4 --> D3
   R1 --> D5[D5 PWA SW update ✅]
   R1 --> D6[D6 Auth linking ✅]
-  R1 --> D7[D7 MoR webhook ⬜]
-  A3 --> D8[D8 Lobby analytics ⬜]
+  R1 --> D7[D7 MoR webhook 🔮]
+  A3 --> D8[D8 Lobby analytics ✅]
 
-  R1 --> P1[P1 Implementation plan 🔮]
+  R1 --> P1[P1 Implementation plan ⬜]
   R2 --> P1
   D1 --> P1
   D2 --> P1
@@ -177,9 +180,10 @@ graph TD
   recorded in `PRD-RENDERING.md` (some §4 magnitudes flagged tunable). It built on
   the parser AST + ADR-0002 and **D4 (settings cascade)**. Remaining rendering work is
   implementation under **P1**, gated by the §3 svg2pdf spike (the one open guardrail).
-- **D5–D8** are independent of the parser/render line. **D5 (PWA SW update) is now
-  settled** (`@angular/service-worker`, §11). The rest can be grilled in any order once
-  needed (D7 leans on the monetization research).
+- **D5–D8** are independent of the parser/render line and **all settled for v1** (D5 PWA
+  SW update, D6 auth linking, D8 lobby analytics). **D7 (MoR webhook) is post-v1** — v1
+  premium activation is a manual dashboard flip (§5) and premium is free during testing.
+  **No open v1 design grills remain** → P1 is unblocked.
 - **P1 (implementation plan)** waits on the core design — at minimum R1 + R2, plus D3
   before vertical slices touch the visual layer.
 
@@ -202,8 +206,10 @@ implementation slices. Grill a feature only when a **hard design question** surf
   - ✅ **D6** Auth provider-linking (Google + email/password → one Account). Add-method-only
     (no account merge), email confirmation required, Drive rides on the Google identity.
     ADR-0009 + `PRD-INFRASTRUCTURE.md` §5.
-  - ⬜ **D7** MoR webhook → Edge Function (lifetime checkout → `profiles.plan`; Drive
-    token-broker). Leans on the monetization research.
+  - 🔮 **D7** MoR webhook → Edge Function (lifetime checkout → `profiles.plan`; Drive
+    token-broker) — **post-v1**. v1 premium activation is a **manual dashboard flip** of
+    `profiles.plan` (§5), and premium is free during testing, so no payment path ships in
+    v1. Leans on the monetization research when it lands.
 
 - **`songs` scope — open:**
   - ✅ **D1** Editor choice → **CodeMirror 6**, behind a loose-coupling seam (ADR-0010).
@@ -214,7 +220,11 @@ implementation slices. Grill a feature only when a **hard design question** surf
   - Song explorer UX → already specified (CONTEXT + R1) → **P1**, not a grill.
 
 - **`audience` scope — open:**
-  - ⬜ **D8** Lobby analytics (retention window + aggregation detail).
+  - ✅ **D8** Lobby analytics → **developer-only** product metrics (dashboard SQL, no app
+    surface). Append-only `lobby_events`, **kept forever** (no rollup, no expiry — tiny
+    volume, keep-data-forever posture). Erasure = **anonymize** (`host_id → NULL`) on
+    account delete, **not** delete; song-title fields kept (low re-identification risk).
+    `PRD-INFRASTRUCTURE.md` §9.
   - 🔮 **D9** Audience local transpose (future; scope questions unresolved).
   - Core audience (lobby/PIN/QR/sync/hide-chords) → specified (ADR-0003 + R1) → **P1**.
 
@@ -223,8 +233,8 @@ implementation slices. Grill a feature only when a **hard design question** surf
   `PRD-RENDERING.md` §6; the settings _model_ is D4/R4 — only the settings _GUI_ remains,
   and that's a **P1** UI slice). Grill only if a hard question appears while building.
 
-- **build:** 🔮 **P1** implementation plan (`prd-to-plan`, tracer-bullet slices) — once the
-  v1-relevant grills above are closed.
+- **build:** ⬜ **P1** implementation plan (`prd-to-plan`, tracer-bullet slices) — **all
+  v1-relevant grills are now closed** (D7 is post-v1), so P1 is ready to start.
 
 ## How to use this file
 
