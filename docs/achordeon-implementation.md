@@ -92,7 +92,7 @@ functions, fully unit-tested.
 
 ### Subtasks
 
-- [ ] Create Nx scopes/libs: `shared/domain`, `shared/data-access`,
+- [x] Create Nx scopes/libs: `shared/domain`, `shared/data-access`,
       `shared-render-core`, plus a feature lib per module; wire scope/import
       boundary lint rules.
 - [ ] Define `BaseRecord` (uuid `id`, `createdAt`, `updatedAt`, `deletedAt`) and
