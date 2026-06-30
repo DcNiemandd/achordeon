@@ -56,3 +56,15 @@ type SettingsFor<S extends Scope> = {
 export type GlobalSettings = { [K in keyof typeof SETTINGS]: ValueOf<K> }; // complete
 export type SongSettings = SettingsFor<'song'>;
 export type SongbookSettings = SettingsFor<'songbook'>;
+
+export function resolveSettings(
+  global: GlobalSettings,
+  songbook?: SongbookSettings,
+  song?: SongSettings,
+): GlobalSettings {
+  return {
+    ...global,
+    ...(songbook || {}),
+    ...(song || {}),
+  };
+}
