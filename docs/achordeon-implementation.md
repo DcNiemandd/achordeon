@@ -95,10 +95,10 @@ functions, fully unit-tested.
 - [x] Create Nx scopes/libs: `shared/domain`, `shared/data-access`,
       `shared-render-core`, plus a feature lib per module; wire scope/import
       boundary lint rules.
-- [ ] Define `BaseRecord` (uuid `id`, `createdAt`, `updatedAt`, `deletedAt`) and
+- [x] Define `BaseRecord` (uuid `id`, `createdAt`, `updatedAt`, `deletedAt`) and
       `Song` / `Songbook` shapes (including Song `cache` for resolved
       title/subtitle, and Songbook `entries` as an ordered uuid array).
-- [ ] Build the data-driven settings registry (per-setting `default`, `scopes`,
+- [x] Build the data-driven settings registry (per-setting `default`, `scopes`,
       editor kind) and derive the per-scope types from it.
 - [ ] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
       sparse, never persist the effective value).

@@ -5,16 +5,6 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:util"],
   "targets": {
-    "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/libs/shared/render-core",
-        "main": "libs/shared/render-core/src/index.ts",
-        "tsConfig": "libs/shared/render-core/tsconfig.lib.json",
-        "assets": ["libs/shared/render-core/*.md"]
-      }
-    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],

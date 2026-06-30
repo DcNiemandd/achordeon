@@ -5,16 +5,6 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:domain"],
   "targets": {
-    "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/libs/shared/domain",
-        "main": "libs/shared/domain/src/index.ts",
-        "tsConfig": "libs/shared/domain/tsconfig.lib.json",
-        "assets": ["libs/shared/domain/*.md"]
-      }
-    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
