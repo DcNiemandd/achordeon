@@ -1,7 +1,11 @@
 // Domain entity shapes — Epic 1 ▸ subtask 2
 // Spec: docs/PRD-DOMAIN-MODEL.md (§Base record, §Song, §Songbook)
 
-import type { SongSettings, SongbookSettings } from './settings';
+import type {
+  GlobalSettings,
+  SongSettings,
+  SongbookSettings,
+} from './settings';
 
 /** Stable, client-generated id (survives rename). */
 export type Uuid = string;
@@ -15,6 +19,17 @@ export interface BaseRecord {
   createdAt: number; // epoch ms
   updatedAt: number; // epoch ms; bumped on every meaningful change
   deletedAt: number | null; // tombstone; null = live. Lists filter out non-null.
+}
+
+/**
+ * Account row (the `user` Dexie table / Snapshot `user[]`). PRD-INFRASTRUCTURE.md §1/§4.
+ * Holds only account-global state that should travel to every device; device-local
+ * bookkeeping (deviceId, sync watermark) lives outside the Snapshot.
+ */
+export interface User extends BaseRecord {
+  username: string; // mirrored to Supabase for username-keyed requests
+  planCache: 'free' | 'pro'; // cached tier; source of truth is Supabase profiles.plan
+  settings: GlobalSettings; // Global scope render defaults — base of the cascade (ADR-0006)
 }
 
 /**

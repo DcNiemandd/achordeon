@@ -100,7 +100,7 @@ functions, fully unit-tested.
       title/subtitle, and Songbook `entries` as an ordered uuid array).
 - [x] Build the data-driven settings registry (per-setting `default`, `scopes`,
       editor kind) and derive the per-scope types from it.
-- [ ] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
+- [x] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
       sparse, never persist the effective value).
 - [ ] Define the Snapshot envelope and the `schemaVersion` concept.
 - [ ] Define the forward-only migrator chain (`v_n → v_{n+1}`) and the single
