@@ -8,6 +8,12 @@ import { SCHEMA_VERSION, type SnapshotEnvelope } from './snapshot';
  * One forward-only step: takes a whole envelope at version `to - 1` and returns
  * it reshaped to version `to`. Labelled by the (breaking) version it produces;
  * position in the chain is not load-bearing — `to` is.
+ *
+ * PRESERVE-UNKNOWN (mandatory, ADR-0007): `apply` MUST patch records in place —
+ * spread-merge (`{ ...record, ...changes }`) so unrecognised fields/keys ride along
+ * verbatim. NEVER rebuild a record or settings bag from a whitelist of known keys:
+ * that silently drops fields an older client didn't recognise and breaks the
+ * "additive = lossless, no force-update" guarantee.
  */
 interface Migration {
   to: number;
