@@ -102,10 +102,10 @@ functions, fully unit-tested.
       editor kind) and derive the per-scope types from it.
 - [x] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
       sparse, never persist the effective value).
-- [ ] Define the Snapshot envelope and the `schemaVersion` concept.
-- [ ] Define the forward-only migrator chain (`v_n → v_{n+1}`) and the single
+- [x] Define the Snapshot envelope and the `schemaVersion` concept.
+- [x] Define the forward-only migrator chain (`v_n → v_{n+1}`) and the single
       ingest gateway contract (`migrate(snapshot) → snapshot@current`).
-- [ ] Document/enforce the preserve-unknown rule (patch in place, never rebuild
+- [x] Document/enforce the preserve-unknown rule (patch in place, never rebuild
       from known keys).
 
 ---
