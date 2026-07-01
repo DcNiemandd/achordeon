@@ -62,9 +62,17 @@ export function resolveSettings(
   songbook?: SongbookSettings,
   song?: SongSettings,
 ): GlobalSettings {
-  return {
-    ...global,
-    ...(songbook || {}),
-    ...(song || {}),
-  };
+  const resolved = { ...global };
+  for (const key of Object.keys(resolved) as (keyof GlobalSettings)[]) {
+    // song/songbook are sparse subsets of GlobalSettings' keys; per key the
+    // value types line up, but TS can't track that correlation across a union
+    // of keys, so the write is asserted through one indexable type.
+    const override =
+      song?.[key as keyof SongSettings] ??
+      songbook?.[key as keyof SongbookSettings];
+    if (override !== undefined) {
+      (resolved as Record<keyof GlobalSettings, unknown>)[key] = override;
+    }
+  }
+  return resolved;
 }
