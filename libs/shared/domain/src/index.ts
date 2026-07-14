@@ -5,3 +5,4 @@ export * from './lib/migration';
 export * from './lib/theory';
 export * from './lib/ast';
 export * from './lib/parser';
+export * from './lib/transpose';
