@@ -124,19 +124,19 @@ quarantined behind one adapter.
 
 ### Subtasks
 
-- [ ] Define the `ChordTheory` port (parse chord, note chroma) in `shared/domain`.
-- [ ] Implement the `TonalChordTheory` adapter in `shared/data-access` (the only
+- [x] Define the `ChordTheory` port (parse chord, note chroma) in `shared/domain`.
+- [x] Implement the `TonalChordTheory` adapter in `shared/data-access` (the only
       `@tonaljs/*` importer) + a contract suite any implementation must pass.
-- [ ] Implement Phase 1: line classification (blank / subtitle / title / labelled
+- [x] Implement Phase 1: line classification (blank / subtitle / title / labelled
       / lyric) + block boundaries, including the asterisk rule and the colon-run
       label rule.
-- [ ] Implement Phase 2: inline scan for chords (overlay-by-index), escapes, and
+- [x] Implement Phase 2: inline scan for chords (overlay-by-index), escapes, and
       invalid-as-annotation handling.
-- [ ] Resolve single effective title/subtitle ("last wins") and emit
+- [x] Resolve single effective title/subtitle ("last wins") and emit
       `SHADOWED_*` warnings.
-- [ ] Implement `transposeContent` as pure domain policy (direction-based
+- [x] Implement `transposeContent` as pure domain policy (direction-based
       spelling tables; rewrites source; preserves quality; moves root + `/bass`).
-- [ ] Wire the total-parser + structured-warning model; expose a debounced full
+- [x] Wire the total-parser + structured-warning model; expose a debounced full
       reparse contract for the editor.
 
 ---
