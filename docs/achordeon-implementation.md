@@ -92,20 +92,20 @@ functions, fully unit-tested.
 
 ### Subtasks
 
-- [ ] Create Nx scopes/libs: `shared/domain`, `shared/data-access`,
+- [x] Create Nx scopes/libs: `shared/domain`, `shared/data-access`,
       `shared-render-core`, plus a feature lib per module; wire scope/import
       boundary lint rules.
-- [ ] Define `BaseRecord` (uuid `id`, `createdAt`, `updatedAt`, `deletedAt`) and
+- [x] Define `BaseRecord` (uuid `id`, `createdAt`, `updatedAt`, `deletedAt`) and
       `Song` / `Songbook` shapes (including Song `cache` for resolved
       title/subtitle, and Songbook `entries` as an ordered uuid array).
-- [ ] Build the data-driven settings registry (per-setting `default`, `scopes`,
+- [x] Build the data-driven settings registry (per-setting `default`, `scopes`,
       editor kind) and derive the per-scope types from it.
-- [ ] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
+- [x] Implement `resolveSettings` (Global → Songbook → Song, most-specific wins,
       sparse, never persist the effective value).
-- [ ] Define the Snapshot envelope and the `schemaVersion` concept.
-- [ ] Define the forward-only migrator chain (`v_n → v_{n+1}`) and the single
+- [x] Define the Snapshot envelope and the `schemaVersion` concept.
+- [x] Define the forward-only migrator chain (`v_n → v_{n+1}`) and the single
       ingest gateway contract (`migrate(snapshot) → snapshot@current`).
-- [ ] Document/enforce the preserve-unknown rule (patch in place, never rebuild
+- [x] Document/enforce the preserve-unknown rule (patch in place, never rebuild
       from known keys).
 
 ---

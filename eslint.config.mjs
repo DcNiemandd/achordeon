@@ -20,21 +20,47 @@ export default [
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
+            // --- scope: the app consumes shared; shared stays self-contained.
+            // Per-feature scope isolation lives in eslint-plugin-boundaries
+            // (features are folders in the app, not projects). ---
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],
             },
             {
-              sourceTag: 'scope:shop',
-              onlyDependOnLibsWithTags: ['scope:shop', 'scope:shared'],
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: ['scope:shared'],
+            },
+            // --- type: enforce the layer cake (domain is the purest floor) ---
+            {
+              sourceTag: 'type:domain',
+              onlyDependOnLibsWithTags: ['type:domain'],
             },
             {
-              sourceTag: 'scope:api',
-              onlyDependOnLibsWithTags: ['scope:api', 'scope:shared'],
+              sourceTag: 'type:util',
+              onlyDependOnLibsWithTags: ['type:util', 'type:domain'],
             },
             {
-              sourceTag: 'type:data',
-              onlyDependOnLibsWithTags: ['type:data'],
+              sourceTag: 'type:data-access',
+              onlyDependOnLibsWithTags: [
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:ui',
+              onlyDependOnLibsWithTags: ['type:ui', 'type:domain', 'type:util'],
+            },
+            {
+              sourceTag: 'type:feature',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
             },
           ],
         },

@@ -38,4 +38,6 @@ The `docs` project is a Docusaurus PRD site under `apps/docs`. Build/validate wi
 
 ## User usage of Claude
 
-The user wants to learn and find the solutions himself. Never give him final solution. You can give options of an abstract data flow.
+When the user asks for a file to fill in himself (types, interfaces, stubs, tests), create it empty or minimal — no field guesses, no TODO comments that describe what to do, no method signatures that imply the algorithm. Naming entities/fields/signatures IS the design work; leave it to him. Offer abstract data-flow options in chat only, never baked into code.
+
+Exception — the fill signal: once he says he already knows it (e.g. "I know it now, fill the rest", "implement the rest of these types"), implement it fully and mechanically from what he has decided. The blank-by-default rule applies until that signal; after it, finish the work.
