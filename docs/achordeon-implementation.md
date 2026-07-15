@@ -155,22 +155,22 @@ so it can render offscreen in a loop for batch export.
 
 ### Subtasks
 
-- [ ] Define the `measureText` / `TextMeasurer` port and the browser-canvas
+- [x] Define the `measureText` / `TextMeasurer` port and the browser-canvas
       implementation; keep the core free of `@angular/*`.
-- [ ] Define the `RenderPlan` data structure (positioned items in base units,
+- [x] Define the `RenderPlan` data structure (positioned items in base units,
       per-role styles, embedded fonts).
-- [ ] Implement scale-to-fit (single uniform fit scale; `auto` vs manual) and the
+- [x] Implement scale-to-fit (single uniform fit scale; `auto` vs manual) and the
       content-box / render-box model with user-owned aspect ratio.
-- [ ] Implement column assignment + balancing (atomic blocks, minimize tallest
+- [x] Implement column assignment + balancing (atomic blocks, minimize tallest
       column, base units).
-- [ ] Implement the title region (top vs left spine; stacked vs inline; hug
+- [x] Implement the title region (top vs left spine; stacked vs inline; hug
       top-left).
-- [ ] Implement chord x-positioning (left-edge-at-anchor, end-of-line anchor,
+- [x] Implement chord x-positioning (left-edge-at-anchor, end-of-line anchor,
       same-index group, overlap-allowed) and vertical rhythm (chord row only
       above chorded lines; `hideChords` reflow-safe).
-- [ ] Implement the label gutter (`labelInline`), chord-only line distribution,
+- [x] Implement the label gutter (`labelInline`), chord-only line distribution,
       and the bridge convention.
-- [ ] Bundle and embed the one v1 font both ways; add the `inlineFonts` emit
+- [x] Bundle and embed the one v1 font both ways; add the `inlineFonts` emit
       option (screen vs export).
 
 ---
