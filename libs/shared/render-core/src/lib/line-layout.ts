@@ -5,7 +5,8 @@
 // top of the space the line occupies, `x = lineOrigin`). The caller (block
 // layout) stacks these and translates them into column/page space, so this pass
 // owns only the intra-line geometry: the signature chord-over-character x, the
-// per-line chord row, and the base-unit vertical slot heights.
+// chord-only line distribution, the per-line chord row, and the base-unit
+// vertical slot heights.
 
 import type { Line, ChordAnchor } from '@achordeon/shared/domain';
 import type { TextItem } from './render-plan';
@@ -24,9 +25,10 @@ export interface LineLayout {
 /**
  * Group anchors sharing one `at` into a single left-aligned run (§4.6
  * same-index group), preserving document order both across and within groups.
- * `[A][B]c` and `[A B]c` collapse to the identical run.
+ * `[A][B]c` and `[A B]c` collapse to the identical run. Shared with the
+ * chord-only distribution path in block layout, which keeps only `text`.
  */
-function groupByIndex(
+export function groupByIndex(
   chords: ChordAnchor[],
   joiner: string,
 ): { at: number; text: string }[] {
@@ -98,4 +100,54 @@ export function layoutLine(
   }
 
   return { items, height, hasChordRow, width };
+}
+
+/**
+ * Lay out one CHORD-ONLY line (anchors over blank text, §4.9) — a sibling of
+ * `layoutLine` for the case where there are no characters to anchor over, so
+ * chords are distributed across the width instead of measured over glyphs.
+ * `justified` spreads left edges with equal gaps to fill `targetWidth`; `left`
+ * packs them at the natural gap. `scale` is the bridge multiplier (§4.9) applied
+ * to glyph size + widths. The whole line IS a chord row (`hasChordRow: true`).
+ */
+export function layoutChordOnly(
+  line: Line,
+  ctx: LayoutContext,
+  lineOrigin: number,
+  scale: number,
+  targetWidth?: number,
+): LineLayout {
+  const { tuning, metrics } = ctx;
+  const chordFont = toFontSpec(ctx.styles.chord);
+  const runs = groupByIndex(line.chords, tuning.sameIndexJoiner).map(
+    (g) => g.text,
+  );
+  const widths = runs.map(
+    (t) => ctx.measure.measure(t, chordFont).width * scale,
+  );
+  const gap = tuning.spacing.chordOnlyGapEm * tuning.baseSizePx * scale;
+  const sumW = widths.reduce((a, b) => a + b, 0);
+  const natural = sumW + gap * Math.max(0, runs.length - 1);
+
+  const isJustified =
+    tuning.chordOnlyDistribution === 'justified' &&
+    targetWidth !== undefined &&
+    targetWidth > natural &&
+    runs.length > 1;
+  const step = isJustified ? (targetWidth - sumW) / (runs.length - 1) : gap;
+
+  const height = metrics.chord.height * scale;
+  const baseline = metrics.chord.ascent * scale;
+  const items: TextItem[] = [];
+  let x = lineOrigin;
+  for (let i = 0; i < runs.length; i++) {
+    if (!ctx.hideChords) {
+      const item: TextItem = { text: runs[i], x, y: baseline, role: 'chord' };
+      if (scale !== 1) item.sizeScale = scale;
+      items.push(item);
+    }
+    x += widths[i] + step;
+  }
+  const width = lineOrigin + (isJustified ? targetWidth : natural);
+  return { items, width, height, hasChordRow: true };
 }

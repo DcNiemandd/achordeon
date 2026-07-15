@@ -4,15 +4,15 @@
 //
 // Stacks a Block's lines into a block-local box (origin = block top-left). Owns:
 //   • the inline-label gutter (content indents to `gutter`; label sits in it),
-//   • chord-only line distribution across the column content width,
-//   • the bridge convention (all-chord-only Block renders larger).
+//   • the bridge convention (all-chord-only Block renders larger),
+//   • driving chord-only line distribution (the layout itself lives in line-layout).
 // The column pass (subtask 4) sizes the gutter and column width, then calls this
 // with the resolved values; block layout in isolation packs at natural width.
 
 import type { Block, Line } from '@achordeon/shared/domain';
 import type { TextItem } from './render-plan';
 import { toFontSpec, type LayoutContext } from './context';
-import { layoutLine } from './line-layout';
+import { layoutChordOnly, layoutLine } from './line-layout';
 
 export interface BlockLayout {
   items: TextItem[];
@@ -30,62 +30,6 @@ export function isChordOnly(line: Line): boolean {
 export function inlineLabelWidth(block: Block, ctx: LayoutContext): number {
   if (!block.label || !block.labelInline) return 0;
   return ctx.measure.measure(block.label, toFontSpec(ctx.styles.label)).width;
-}
-
-/** Group anchors sharing an `at` into one run, doc order preserved (§4.6). */
-function groups(line: Line, joiner: string): string[] {
-  const byIndex = new Map<number, string[]>();
-  for (const c of line.chords) {
-    const run = byIndex.get(c.at);
-    if (run) run.push(c.raw);
-    else byIndex.set(c.at, [c.raw]);
-  }
-  return [...byIndex.values()].map((raws) => raws.join(joiner));
-}
-
-/**
- * Distribute a chord-only line's chords across `targetWidth` (§4.9). `justified`
- * spreads left edges with equal gaps to fill the width; `left` packs them at the
- * natural gap. `scale` is the bridge multiplier applied to glyph size + widths.
- */
-function layoutChordOnly(
-  line: Line,
-  ctx: LayoutContext,
-  lineOrigin: number,
-  scale: number,
-  targetWidth: number | undefined,
-): { items: TextItem[]; width: number; height: number } {
-  const { tuning, metrics } = ctx;
-  const chordFont = toFontSpec(ctx.styles.chord);
-  const runs = groups(line, tuning.sameIndexJoiner);
-  const widths = runs.map(
-    (t) => ctx.measure.measure(t, chordFont).width * scale,
-  );
-  const gap = tuning.spacing.chordOnlyGapEm * tuning.baseSizePx * scale;
-  const sumW = widths.reduce((a, b) => a + b, 0);
-  const natural = sumW + gap * Math.max(0, runs.length - 1);
-
-  const justified =
-    tuning.chordOnlyDistribution === 'justified' &&
-    targetWidth !== undefined &&
-    targetWidth > natural &&
-    runs.length > 1;
-  const step = justified ? (targetWidth - sumW) / (runs.length - 1) : gap;
-
-  const height = metrics.chord.height * scale;
-  const baseline = metrics.chord.ascent * scale;
-  const items: TextItem[] = [];
-  let x = lineOrigin;
-  for (let i = 0; i < runs.length; i++) {
-    if (!ctx.hideChords) {
-      const item: TextItem = { text: runs[i], x, y: baseline, role: 'chord' };
-      if (scale !== 1) item.sizeScale = scale;
-      items.push(item);
-    }
-    x += widths[i] + step;
-  }
-  const width = lineOrigin + (justified ? targetWidth : natural);
-  return { items, width, height };
 }
 
 /**
@@ -129,12 +73,10 @@ export function layoutBlock(
   }
 
   block.lines.forEach((line, i) => {
+    // Both are line-layout passes returning LineLayout; block layout just stacks.
     const local = isChordOnly(line)
       ? layoutChordOnly(line, ctx, lineOrigin, scale, contentWidth)
-      : (() => {
-          const l = layoutLine(line, ctx, lineOrigin);
-          return { items: l.items, width: l.width, height: l.height };
-        })();
+      : layoutLine(line, ctx, lineOrigin);
 
     // Inline label rides the first content line's row, rendered in the gutter.
     if (hasInlineLabel && i === 0) {

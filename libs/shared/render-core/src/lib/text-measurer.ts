@@ -31,6 +31,14 @@ export interface TextMeasurer {
 }
 
 /**
+ * Raw metrics as a 2D canvas returns them: `width` is always present, but the
+ * `fontBoundingBox*` fields are missing on older engines / jsdom — the exact
+ * reason `normalizeMetrics` exists. Distinct from `TextMetrics`, which is the
+ * normalized (fields-guaranteed) result.
+ */
+export type RawTextMetrics = Partial<TextMetrics> & Pick<TextMetrics, 'width'>;
+
+/**
  * Normalise raw canvas metrics into a usable box (§4.7 graceful fallback). If
  * `fontBoundingBox{Ascent,Descent}` come back missing or zero (older engines,
  * jsdom), synthesise a box from `sizePx` split by a fixed leading factor so
@@ -38,17 +46,17 @@ export interface TextMeasurer {
  * worth unit-testing.
  */
 export function normalizeMetrics(
-  raw: Partial<TextMetrics> & { width: number },
+  raw: RawTextMetrics,
   sizePx: number,
   fallbackLeading: number,
 ): TextMetrics {
   const ascent = raw.fontBoundingBoxAscent;
   const descent = raw.fontBoundingBoxDescent;
-  const usable =
+  const isUsable =
     typeof ascent === 'number' &&
     typeof descent === 'number' &&
     ascent + descent > 0;
-  if (usable) {
+  if (isUsable) {
     return {
       width: raw.width,
       fontBoundingBoxAscent: ascent as number,
