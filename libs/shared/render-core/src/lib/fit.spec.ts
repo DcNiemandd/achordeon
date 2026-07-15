@@ -1,0 +1,40 @@
+import { fitContent } from './fit';
+
+describe('fitContent — scale-to-fit (§4.1)', () => {
+  it('wraps a content box in the tight render box of the ratio (wider than ratio)', () => {
+    // content 200x100 (ratio 2), target ratio 1 → grow height to 200
+    const r = fitContent(200, 100, 1, 'auto');
+    expect(r.box).toEqual({ width: 200, height: 200 });
+    expect(r.fit).toBe(1);
+    expect(r.origin).toEqual({ x: 0, y: 0 });
+  });
+
+  it('grows width when content is taller than the ratio', () => {
+    // content 100x200 (ratio 0.5), target ratio 1 → grow width to 200
+    expect(fitContent(100, 200, 1, 'auto').box).toEqual({
+      width: 200,
+      height: 200,
+    });
+  });
+
+  it('leaves the box tight when content already matches the ratio', () => {
+    expect(fitContent(300, 150, 2, 'auto').box).toEqual({
+      width: 300,
+      height: 150,
+    });
+  });
+
+  it('applies a manual scale as the fit (box stays base-tight, may overflow)', () => {
+    const r = fitContent(200, 100, 1, 1.5);
+    expect(r.fit).toBe(1.5);
+    expect(r.box).toEqual({ width: 200, height: 200 }); // box independent of scale
+  });
+
+  it('falls back to fit 1 on a non-positive manual scale', () => {
+    expect(fitContent(100, 100, 1, 0).fit).toBe(1);
+  });
+
+  it('returns a zero box for empty content', () => {
+    expect(fitContent(0, 0, 1, 'auto').box).toEqual({ width: 0, height: 0 });
+  });
+});
