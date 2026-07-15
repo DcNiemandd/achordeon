@@ -85,6 +85,18 @@ describe('SongStore', () => {
     ).toEqual(['a', 'z']);
   });
 
+  it('soft-deletes: hidden from live, kept in the entity map for sync', async () => {
+    const store = storeWith([song('a'), song('b')]);
+    await store.load();
+    await store.remove('a');
+
+    // `live` hides the tombstone...
+    expect(store.live().map((s) => s.id)).toEqual(['b']);
+    // ...but the row stays in the map (sync must still carry the delete).
+    const tombstoned = store.entities().find((s) => s.id === 'a');
+    expect(tombstoned?.deletedAt).not.toBeNull();
+  });
+
   it('appends the next page into the growing window', async () => {
     const seed = Array.from({ length: PAGE_LIMIT + 5 }, (_, i) =>
       song(`s${String(i).padStart(3, '0')}`),

@@ -1,15 +1,22 @@
 // Songbook entity store — Epic 4 ▸ subtask 3
 // Spec: PRD-INFRASTRUCTURE.md §3 (same paged windowed-cache pattern as SongStore)
 
-import { inject } from '@angular/core';
-import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { computed, inject } from '@angular/core';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withState,
+} from '@ngrx/signals';
 import {
   setAllEntities,
   setEntities,
   setEntity,
+  updateEntity,
   withEntities,
 } from '@ngrx/signals/entities';
-import type { Songbook } from '@achordeon/shared/domain';
+import type { Songbook, Uuid } from '@achordeon/shared/domain';
 import type { Cursor, SortDir, SortKey } from '../persistence/paging';
 import { PAGE_LIMIT, SONGBOOK_REPOSITORY } from './repositories';
 
@@ -35,6 +42,11 @@ export const SongbookStore = signalStore(
   { providedIn: 'root' },
   withEntities<Songbook>(),
   withState<SongbookQueryState>(initialState),
+  // Soft-delete filter (§3): tombstoned rows stay in the map for sync; lists bind
+  // to `live`.
+  withComputed((store) => ({
+    live: computed(() => store.entities().filter((b) => b.deletedAt === null)),
+  })),
   withMethods((store) => {
     const repo = inject(SONGBOOK_REPOSITORY);
 
@@ -89,6 +101,16 @@ export const SongbookStore = signalStore(
       async upsert(songbook: Songbook): Promise<void> {
         await repo.put(songbook);
         patchState(store, setEntity(songbook));
+      },
+
+      /** Soft-delete: tombstone the row (kept in the map for sync; hidden from `live`). */
+      async remove(id: Uuid): Promise<void> {
+        const at = Date.now();
+        await repo.softDelete(id, at);
+        patchState(
+          store,
+          updateEntity({ id, changes: { deletedAt: at, updatedAt: at } }),
+        );
       },
     };
   }),

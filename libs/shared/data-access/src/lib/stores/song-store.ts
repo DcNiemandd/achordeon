@@ -1,15 +1,22 @@
 // Song entity store — Epic 4 ▸ subtask 3
 // Spec: PRD-INFRASTRUCTURE.md §3 (NgRx SignalStore + withEntities; growing windowed cache)
 
-import { inject } from '@angular/core';
-import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { computed, inject } from '@angular/core';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withState,
+} from '@ngrx/signals';
 import {
   setAllEntities,
   setEntities,
   setEntity,
+  updateEntity,
   withEntities,
 } from '@ngrx/signals/entities';
-import type { Song } from '@achordeon/shared/domain';
+import type { Song, Uuid } from '@achordeon/shared/domain';
 import type { Cursor, SortDir, SortKey } from '../persistence/paging';
 import { PAGE_LIMIT, SONG_REPOSITORY } from './repositories';
 
@@ -40,6 +47,12 @@ export const SongStore = signalStore(
   { providedIn: 'root' },
   withEntities<Song>(),
   withState<SongQueryState>(initialState),
+  // Soft-delete filter (§3): tombstoned rows stay in the entity map so sync still
+  // carries the delete, but lists bind to `live` and never show them. A row
+  // soft-deleted mid-session drops out here without a refetch.
+  withComputed((store) => ({
+    live: computed(() => store.entities().filter((s) => s.deletedAt === null)),
+  })),
   withMethods((store) => {
     const repo = inject(SONG_REPOSITORY);
 
@@ -101,6 +114,16 @@ export const SongStore = signalStore(
       async upsert(song: Song): Promise<void> {
         await repo.put(song);
         patchState(store, setEntity(song));
+      },
+
+      /** Soft-delete: tombstone the row (kept in the map for sync; hidden from `live`). */
+      async remove(id: Uuid): Promise<void> {
+        const at = Date.now();
+        await repo.softDelete(id, at);
+        patchState(
+          store,
+          updateEntity({ id, changes: { deletedAt: at, updatedAt: at } }),
+        );
       },
     };
   }),
