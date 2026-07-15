@@ -51,7 +51,13 @@ export class DexieEntitySource<
     // Patch in place (not a rewrite) so unrecognised fields ride along — the
     // tombstone is just two columns changing. `updatedAt` bumps so LWW carries
     // the delete to the cloud like any other edit (ADR-0004).
-    const changes = { deletedAt: at, updatedAt: at } as UpdateSpec<T>;
+    // `UpdateSpec<T>` can't be proven to accept a partial of an unresolved generic
+    // T, so the tombstone patch is asserted through `unknown` — the two keys are
+    // both on `BaseRecord`, so it is sound.
+    const changes = {
+      deletedAt: at,
+      updatedAt: at,
+    } as unknown as UpdateSpec<T>;
     await this.table.update(id, changes);
   }
 }
