@@ -189,19 +189,19 @@ migration gateway.
 
 ### Subtasks
 
-- [ ] Set up Dexie tables (`user`, `songs`, `songbooks`) with the tombstone field;
+- [x] Set up Dexie tables (`user`, `songs`, `songbooks`) with the tombstone field;
       make all deletes soft.
-- [ ] Implement the paged/cursor API (`page({cursor, limit, sort, query})`),
+- [x] Implement the paged/cursor API (`page({cursor, limit, sort, query})`),
       mockable in v1 (load-all-then-slice) behind the same interface.
-- [ ] Build the entity stores (Songs, Songbooks) on NgRx SignalStore with
+- [x] Build the entity stores (Songs, Songbooks) on NgRx SignalStore with
       `withEntities`; window cache appends pages; changing sort/search resets and
       refetches.
-- [ ] Build the small hand-rolled stores (Settings, Session).
-- [ ] Add the soft-delete `withComputed` filter (hide tombstoned from lists, keep
+- [x] Build the small hand-rolled stores (Settings, Session).
+- [x] Add the soft-delete `withComputed` filter (hide tombstoned from lists, keep
       for sync).
-- [ ] Wire the `migrate()` ingest gateway in front of the local boot load
+- [x] Wire the `migrate()` ingest gateway in front of the local boot load
       (migrate-in-place, persist-at-current, bump).
-- [ ] Produce/consume the Snapshot blob via `dexie-export-import`.
+- [x] Produce/consume the Snapshot blob via `dexie-export-import`.
 
 ---
 
