@@ -9,3 +9,4 @@ export * from './lib/context';
 export * from './lib/line-layout';
 export * from './lib/block-layout';
 export * from './lib/column-layout';
+export * from './lib/title-layout';
