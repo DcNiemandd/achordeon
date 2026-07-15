@@ -7,3 +7,4 @@ export * from './lib/fonts';
 export * from './lib/aspect';
 export * from './lib/context';
 export * from './lib/line-layout';
+export * from './lib/block-layout';

@@ -14,6 +14,7 @@ export interface TextItem {
   y: number; // baseline y, base units
   role: TextRole; // → styles[role]
   rotate?: -90; // title CCW spine only (§4.5); absent = upright
+  sizeScale?: number; // per-item multiple of styles[role].sizePx (bridge, §4.9); absent = 1
 }
 
 export interface TextStyle {

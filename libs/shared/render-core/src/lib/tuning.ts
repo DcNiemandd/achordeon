@@ -56,6 +56,8 @@ export interface RenderTuning {
     titleStackGapFactor: number;
     /** Gap between title and subtitle when inline, × `baseSizePx` (§4.5). */
     titleInlineGapEm: number;
+    /** Natural gap between chords on a chord-only line (`left` / packing), × `baseSizePx` (§4.9). */
+    chordOnlyGapEm: number;
   };
 
   /** All-chord-only Block renders larger (§4.9 bridge). Applied in base units before the fit. */
@@ -100,6 +102,7 @@ export const DEFAULT_TUNING: RenderTuning = {
     titleGapFactor: 1.0,
     titleStackGapFactor: 0.15,
     titleInlineGapEm: 0.75,
+    chordOnlyGapEm: 1.5,
   },
   bridgeSizeMultiplier: 1.2,
   chordOnlyDistribution: 'justified',
