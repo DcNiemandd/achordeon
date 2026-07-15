@@ -11,3 +11,14 @@ setupZonelessTestEnv({
 if (typeof globalThis.structuredClone === 'undefined') {
   globalThis.structuredClone = (value) => JSON.parse(JSON.stringify(value));
 }
+
+// jsdom's crypto lacks randomUUID (used for the device id). A counter-backed shim
+// keeps ids unique within a test run; production uses the real browser crypto.
+if (typeof globalThis.crypto?.randomUUID !== 'function') {
+  let seq = 0;
+  const cryptoObj = (globalThis.crypto ??= {} as Crypto) as {
+    randomUUID: () => `${string}-${string}-${string}-${string}-${string}`;
+  };
+  cryptoObj.randomUUID = () =>
+    `test-uuid-${seq++}-0-0-0` as `${string}-${string}-${string}-${string}-${string}`;
+}
