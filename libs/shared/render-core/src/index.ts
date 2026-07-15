@@ -12,3 +12,4 @@ export * from './lib/column-layout';
 export * from './lib/title-layout';
 export * from './lib/fit';
 export * from './lib/layout';
+export * from './lib/emit';
