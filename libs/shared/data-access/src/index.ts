@@ -5,3 +5,6 @@ export * from './lib/persistence/entity-source';
 export * from './lib/persistence/memory-entity-source';
 export * from './lib/persistence/paging';
 export * from './lib/persistence/paged-repository';
+export * from './lib/stores/repositories';
+export * from './lib/stores/song-store';
+export * from './lib/stores/songbook-store';
