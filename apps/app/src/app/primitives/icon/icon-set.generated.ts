@@ -19,6 +19,8 @@ export const ICON_SET = {
   help: '<circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />',
   search: '<path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" />',
   add: '<path d="M5 12h14" /><path d="M12 5v14" />',
+  plus: '<path d="M5 12h14" /><path d="M12 5v14" />',
+  minus: '<path d="M5 12h14" />',
   download:
     '<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />',
   undo: '<path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />',

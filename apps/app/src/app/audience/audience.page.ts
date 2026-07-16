@@ -1,62 +1,61 @@
 // Audience page — Epic 13 (frame only)
-// Spec: PRD-UI-SHELL.md §4 (chrome-less routes)
+// Spec: PRD-UI-SHELL.md §4
 //
-// This route declares `chrome: 'none'` (app.routes.ts): the shell frame is gone,
-// because a viewer following along sees the song and nothing else. That means
-// this page owns its own way back — with no rail and no bottom bar, nothing else
-// provides one.
+// Keeps the normal shell layout. Performing without chrome is the Fullscreen
+// MODE, which this offers as an action — the bars come back on the next tap.
 //
 // Epic 13 lands the FRAME. Lobby, PIN and QR are Epic 9.
 
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { Button, EmptyState, Icon } from '../primitives';
-import { BlankPage } from '../shared/layout';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Button, EmptyState, Icon, Tooltip } from '../primitives';
+import { ActionBar, BlankPage, Fullscreen } from '../shared/layout';
 
 @Component({
   selector: 'app-audience-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, BlankPage, Button, Icon, EmptyState],
+  imports: [ActionBar, BlankPage, Button, Icon, Tooltip, EmptyState],
   template: `
-    <div class="bare" data-testid="audience-bare">
-      <a
+    <app-action-bar [title]="title">
+      <button
         appButton
-        variant="ghost"
-        routerLink="/songs"
-        class="exit"
-        [attr.aria-label]="exitLabel"
-        data-testid="audience-exit"
+        type="button"
+        [isIconOnly]="true"
+        [attr.aria-label]="fullscreenLabel()"
+        [attr.aria-pressed]="fullscreen.isActive()"
+        [appTooltip]="fullscreenLabel()"
+        data-testid="audience-fullscreen"
+        (click)="fullscreen.toggle()"
       >
-        <app-icon name="close" />
-      </a>
+        <app-icon [name]="fullscreen.isActive() ? 'close' : 'stage'" />
+      </button>
+    </app-action-bar>
 
-      <app-blank-page>
-        <app-empty-state [text]="placeholder" />
-      </app-blank-page>
-    </div>
+    <app-blank-page>
+      <app-empty-state [text]="placeholder" />
+    </app-blank-page>
   `,
   styles: `
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       block-size: 100%;
     }
 
-    .bare {
-      position: relative;
-      block-size: 100%;
-    }
-
-    .exit {
-      position: absolute;
-      inset-block-start: var(--space-2);
-      inset-inline-end: var(--space-2);
-      z-index: 1;
-      aspect-ratio: 1;
-      padding-inline: 0;
+    app-blank-page {
+      flex: 1;
+      min-block-size: 0;
     }
   `,
 })
 export class AudiencePage {
-  protected readonly exitLabel = $localize`:@@audience.exit:Leave audience`;
+  protected readonly fullscreen = inject(Fullscreen);
+
+  protected readonly title = $localize`:@@audience.title:Audience`;
   protected readonly placeholder = $localize`:@@audience.placeholder:The performer's song appears here.`;
+
+  protected fullscreenLabel(): string {
+    return this.fullscreen.isActive()
+      ? $localize`:@@fullscreen.exit:Exit fullscreen`
+      : $localize`:@@fullscreen.enter:Fullscreen`;
+  }
 }

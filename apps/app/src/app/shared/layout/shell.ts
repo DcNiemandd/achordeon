@@ -1,17 +1,12 @@
 // App shell — Epic 13
 // Spec: PRD-UI-SHELL.md §4
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-} from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { Fullscreen } from './fullscreen';
 import { ModuleSwitcher } from './module-switcher';
 import { Rail } from './rail';
 import { Viewport } from './viewport';
-import { chromeOf } from './shell-chrome';
 
 /**
  * The application frame: rail on the left above the breakpoint, a bottom bar
@@ -20,14 +15,25 @@ import { chromeOf } from './shell-chrome';
  * The bottom bar is the **shell's** (nav + pane switching); the action bar above
  * pane A is the **feature's**. That split is why the shell never enumerates a
  * module's actions.
+ *
+ * **Every route gets the frame.** Performing without chrome is a *mode*
+ * (`Fullscreen`), not a property of a route — the frame comes back the moment you
+ * move the pointer, wherever you are. An earlier draft made it a route flag; that
+ * could not express "hidden right now, back on the next tap".
  */
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, Rail, ModuleSwitcher],
+  // While performing, any pointer movement or tap brings the bars back.
+  host: {
+    '(document:pointermove)': 'onActivity()',
+    '(document:pointerdown)': 'onActivity()',
+    '(document:keydown)': 'onActivity()',
+  },
   template: `
-    <div class="shell" [class.is-bare]="isBare()" data-testid="shell">
-      @if (!isBare() && !viewport.isCompact()) {
+    <div class="shell" data-testid="shell">
+      @if (isChrome() && !viewport.isCompact()) {
         <app-rail class="rail-slot" />
       }
 
@@ -35,7 +41,7 @@ import { chromeOf } from './shell-chrome';
         <router-outlet />
       </main>
 
-      @if (!isBare() && viewport.isCompact()) {
+      @if (isChrome() && viewport.isCompact()) {
         <div class="bottom-bar" data-testid="bottom-bar">
           <app-module-switcher />
           <div class="bar-slot">
@@ -59,13 +65,14 @@ import { chromeOf } from './shell-chrome';
     }
 
     /* Compact: no rail column, and a bar row underneath. */
-    .shell:has(.bottom-bar),
-    .shell.is-bare {
+    .shell:has(.bottom-bar) {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
     }
 
-    .shell:has(.bottom-bar) {
-      grid-template-rows: 1fr auto;
+    /* Fullscreen with the chrome hidden: the module is the whole window. */
+    .shell:not(:has(.rail-slot)):not(:has(.bottom-bar)) {
+      grid-template-columns: 1fr;
     }
 
     .rail-slot {
@@ -99,23 +106,14 @@ import { chromeOf } from './shell-chrome';
   `,
 })
 export class Shell {
-  private readonly router = inject(Router);
   protected readonly viewport = inject(Viewport);
+  private readonly fullscreen = inject(Fullscreen);
 
-  /**
-   * Chrome comes off the deepest matched route's data, so a child route (Stage
-   * fullscreen, an Audience session) can strip the frame without its parent
-   * knowing.
-   */
-  protected readonly isBare = computed(() => {
-    // Touch the navigation signal so this recomputes on every route change
-    // without an events subscription (see ModuleSwitcher for the same trick).
-    this.router.lastSuccessfulNavigation();
+  protected readonly isChrome = this.fullscreen.isChromeVisible;
 
-    let route = this.router.routerState.snapshot.root;
-    while (route.firstChild) {
-      route = route.firstChild;
+  protected onActivity(): void {
+    if (this.fullscreen.isActive()) {
+      this.fullscreen.reveal();
     }
-    return chromeOf(route.data) === 'none';
-  });
+  }
 }

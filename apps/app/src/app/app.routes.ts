@@ -1,13 +1,13 @@
 import { Route } from '@angular/router';
-import type { ShellRouteData } from './shared/layout';
 
 /**
  * Lazy feature routes, one per nav module (PRD-INFRASTRUCTURE.md §10).
  *
- * `data.chrome: 'none'` strips the shell frame — a performer mid-song sees the
- * song and nothing else, and the Audience deep-link is the same
- * (PRD-UI-SHELL.md §4). Declaring it here means the shell never needs to know
- * which routes those are.
+ * **Every route gets the shell frame.** Performing without chrome is a runtime
+ * mode (`Fullscreen`), not a property of a route — the bars come back on the next
+ * pointer move, wherever you are. An earlier draft carried a `data.chrome: 'none'`
+ * flag here; it could not express "hidden right now, back on the next tap", which
+ * is the actual requirement.
  *
  * The full route table (`/songs/:id/edit`, `/songbooks/:id`,
  * `/stage/:songbookId`, `/audience/:pin`) lands with the features that own it;
@@ -32,7 +32,6 @@ export const appRoutes: Route[] = [
     path: 'audience',
     loadComponent: () =>
       import('./audience/audience.page').then((m) => m.AudiencePage),
-    data: { chrome: 'none' } satisfies ShellRouteData,
   },
   {
     path: 'settings',

@@ -15,13 +15,15 @@ import { Icon } from '../../primitives';
 import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
 
 /**
- * The mobile nav trigger: the active module's icon stacked on a hamburger rule,
- * **no text**, opening the destinations upward.
+ * The mobile nav trigger: a **full-size hamburger with the active module's icon
+ * badged into its bottom-right corner**, no text, opening the destinations upward.
  *
- * The composite glyph does two jobs neither mark does alone — the `☰` keeps the
- * "this opens the nav" affordance a bare module icon would lose, and the module
- * icon carries the "you are here" state a bare `☰` never had (the rail's active
- * marker, which does not exist down here). It sits bottom-left because that is
+ * The composite does two jobs neither mark does alone — the `☰` keeps the "this
+ * opens the nav" affordance a bare module icon would lose, and the module icon
+ * carries the "you are here" state a bare `☰` never had (the rail's active marker,
+ * which does not exist down here). Badged rather than stacked: at a 48px target
+ * two equal marks compete, while a hamburger with a corner badge reads as one
+ * thing that is primarily a menu. It sits bottom-left because that is
  * thumb-reachable; a top-left hamburger is the worst target on a large phone.
  *
  * A `<nav>` of links, **not** an Aria menu: the WAI-ARIA APG is explicit that
@@ -55,8 +57,8 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
       aria-haspopup="true"
       (click)="isOpen.set(!isOpen())"
     >
-      <app-icon class="module-glyph" [name]="activeItem().icon" />
       <app-icon class="hamburger-glyph" name="menu" />
+      <app-icon class="module-badge" [name]="activeItem().icon" />
     </button>
 
     <ng-template
@@ -93,26 +95,53 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
   `,
   styles: `
     .trigger {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
+      position: relative;
+      display: grid;
+      place-items: center;
       inline-size: var(--tap-target);
       block-size: var(--tap-target);
       border: 0;
+      border-radius: var(--radius-md);
       background: none;
-      color: var(--brand);
+      color: var(--text);
       cursor: pointer;
+      transition:
+        background var(--duration-fast) var(--ease),
+        color var(--duration-fast) var(--ease);
     }
 
-    .module-glyph {
-      --icon-size: 20px;
+    /* Touch has no hover, but the compact layout is also what a narrow desktop
+       window gets — and a pressed state matters on every input. */
+    .trigger:hover {
+      background: var(--surface-sunken);
+    }
+
+    .trigger:active,
+    .trigger[aria-expanded='true'] {
+      background: var(--brand-subtle);
+      color: var(--brand);
     }
 
     .hamburger-glyph {
-      --icon-size: 14px;
-      color: var(--text-muted);
+      --icon-size: 24px;
+    }
+
+    /* Badged into the corner, not stacked: the hamburger stays the primary mark
+       and the module reads as its state. */
+    .module-badge {
+      --icon-size: 13px;
+      position: absolute;
+      inset-block-end: 4px;
+      inset-inline-end: 4px;
+      color: var(--brand);
+      background: var(--surface-raised);
+      border-radius: 50%;
+      padding: 1px;
+      box-sizing: content-box;
+    }
+
+    .trigger:hover .module-badge {
+      background: var(--surface-sunken);
     }
 
     .popup {

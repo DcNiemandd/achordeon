@@ -41,6 +41,8 @@ const ICONS = {
   search: 'search',
   // module + editor actions
   add: 'plus',
+  plus: 'plus',
+  minus: 'minus',
   download: 'download',
   undo: 'undo-2',
   redo: 'redo-2',

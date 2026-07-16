@@ -110,20 +110,31 @@ test.describe('navigation', () => {
   });
 });
 
-test.describe('chrome-less routes', () => {
-  test('audience strips the frame and still offers a way back', async ({
+test.describe('fullscreen mode', () => {
+  test('audience keeps the normal frame — chrome is a mode, not a route', async ({
     page,
   }) => {
     await page.setViewportSize(ROOMY);
     await page.goto('audience');
 
-    // chrome: 'none' — a viewer sees the song and nothing else.
-    await expect(page.getByTestId('rail')).toHaveCount(0);
-    await expect(page.getByTestId('bottom-bar')).toHaveCount(0);
+    await expect(page.getByTestId('rail')).toBeVisible();
+    await expect(page.getByTestId('audience-fullscreen')).toBeVisible();
+  });
 
-    // With no frame, the page owns its own exit; nothing else provides one.
-    await page.getByTestId('audience-exit').click();
-    await expect(page).toHaveURL(/\/songs$/);
+  test('entering hides the chrome; moving the pointer brings it back', async ({
+    page,
+  }) => {
+    await page.setViewportSize(ROOMY);
+    await page.goto('audience');
+
+    await page.getByTestId('audience-fullscreen').click();
+
+    // The bars fade after the idle delay — that is the whole point of the mode.
+    await expect(page.getByTestId('rail')).toHaveCount(0, { timeout: 6000 });
+
+    // ...and any movement brings them straight back, wherever you are.
+    await page.mouse.move(700, 400);
+    await expect(page.getByTestId('rail')).toBeVisible();
   });
 });
 
