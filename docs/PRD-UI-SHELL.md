@@ -314,8 +314,8 @@ So: **module navigation goes into the hamburger**, and the bottom bar carries
 ```
 
 - **The nav trigger lives in the bottom bar, and it wears the active module's icon**
-  [decided] — a **composite glyph: the active module's icon stacked above a hamburger
-  rule**, no text. Tapping opens the nav popup **upward** — a `<nav>` of links in a
+  [decided] — a **composite glyph: a full-size hamburger with the active module's
+  icon badged into its bottom-right corner**, no text. Tapping opens the nav popup **upward** — a `<nav>` of links in a
   `cdkConnectedOverlay` (bottom-anchored position strategy) with `cdkTrapFocus`.
   **Not** an Aria `ngMenu`: `role="menu"` is for application commands, not site
   navigation (see the rail note in §4 desktop). Same five destinations as the rail.
@@ -335,9 +335,10 @@ So: **module navigation goes into the hamburger**, and the bottom bar carries
   - `basics.mdx` still holds — _"these options are hidden in the popup menu and the bar
     is reserved for module actions"_. The nav destinations stay in the popup; only the
     popup's **trigger** moved into the bar.
-  - Alternative if the stack reads badly at 48px: the module icon as a small **badge
-    overlaid** on the `☰` corner, rather than stacked above it. Same semantics, tighter
-    footprint — a look-at-it call, not a design question.
+  - **Badged, not stacked** [settled by looking at it]. At a 48px target two equal
+    marks compete; a hamburger wearing a corner badge reads as one thing that is
+    primarily a menu. It also carries hover/pressed states — the compact layout is
+    what a narrow desktop window gets too.
 - **Bottom bar** → module switcher + the pane switcher (segmented, only in split
   modules) + module actions, overflow into a `⋯` menu. This bar is the **shell's**;
   the action bar above the pane is the **feature's**.
@@ -354,12 +355,29 @@ So: **module navigation goes into the hamburger**, and the bottom bar carries
   in the pane switcher: that would hide the render entirely, which is the one thing
   the dialog exists to avoid.
 
-### Chrome-less routes
+### Fullscreen: a mode, not a route [decided — corrected during implementation]
 
-Stage fullscreen and `/audience/:pin` must be able to hide the entire frame — a
-performer mid-song sees the song, nothing else (`stage-audience/index.mdx`). The
-shell reads a `chrome: 'full' | 'none'` flag off the route's `data`, so a feature
-opts out declaratively without the shell knowing why.
+Stage and Audience must be able to hide the entire frame — a performer mid-song sees
+the song, nothing else (`stage-audience/index.mdx`). This doc first specified a
+`chrome: 'full' | 'none'` flag on route `data`. **That was wrong**: it cannot express
+_"hidden right now, back on the next tap"_, which is the actual requirement. **Every
+route gets the frame**; hiding it is a runtime mode.
+
+`Fullscreen` (shared, in `shared/layout`) bundles three things that fail together:
+
+- **Browser fullscreen** — `requestFullscreen()` needs a user gesture. The user can
+  also leave via Esc without telling us, so the shell trusts `fullscreenchange`, not
+  its own flag. iOS Safari has no element fullscreen on phones; the mode still works
+  there (chrome hides, screen stays awake), so it degrades rather than fails.
+- **Screen wake lock** — a performer reading a song touches nothing for minutes and
+  the device would sleep mid-verse. **The browser drops the lock whenever the tab is
+  hidden**, so it must be re-acquired on `visibilitychange` — otherwise it silently
+  stops working after the first tab switch.
+- **Auto-hiding chrome** — the bars fade after **3s idle** (tunable) and return on any
+  pointer move, tap or key.
+
+Stage and Audience both just call `toggle()`. `UiStore.isFullscreen` is session-only
+(§7), which was already the right call for exactly this reason.
 
 ### Which modules are split
 
@@ -370,8 +388,8 @@ opts out declaratively without the shell knowing why.
 | `/songbooks`         | songbook list    | _(single pane)_  |
 | `/songbooks/:id`     | song explorer    | songbook entries |
 | `/stage`             | songbook picker  | _(single pane)_  |
-| `/stage/:songbookId` | performing       | _(chrome: none)_ |
-| `/audience[/:pin]`   | join / session   | _(chrome: none)_ |
+| `/stage/:songbookId` | performing       | _(single pane)_  |
+| `/audience[/:pin]`   | join / session   | _(single pane)_  |
 | `/settings`          | section nav      | section panel    |
 
 `/songs` **is** split on desktop — `songs/index.mdx` promises _"rendered output
@@ -903,10 +921,6 @@ What "the designed UI lands" should cost, if this doc did its job:
 - **Rail on tablet landscape.** At ~1200px the rail plus a split may leave panes
   narrow. That's exactly the breakpoint value in §6; the first real device check should
   confirm 1200 or move it.
-- **Does the stacked glyph read at 48px?** Module icon over a hamburger rule is two
-  marks in one small target; it may just look like noise on a phone. The badge-overlay
-  variant is the fallback. One look decides it — and it's cheap either way, since the
-  `aria-label` carries the meaning regardless.
 - **Songbooks needs two explorers side by side** (`songbooks/index.mdx`) inside a
   split, on top of the drag&drop between them. The narrowest real layout in the app —
   worth prototyping before committing the split defaults in §5.

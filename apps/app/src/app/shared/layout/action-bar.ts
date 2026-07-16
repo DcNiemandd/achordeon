@@ -2,7 +2,6 @@
 // Spec: PRD-UI-SHELL.md §4
 
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { Toolbar } from '@angular/aria/toolbar';
 
 /**
  * The module's title + actions, sitting **above pane A only — never spanning
@@ -13,10 +12,18 @@ import { Toolbar } from '@angular/aria/toolbar';
  * one click away, and vertical space is what pane A has most of. Overflow into
  * a `⋯` is a mobile concession, not the desktop default.
  *
- * `ngToolbar` is the right Aria pattern here — unlike the rail, this really is a
- * group of application commands, so roving tabindex is what a screen-reader user
- * expects. (Aria's `wrap` is keyboard focus wrap-around; the *visual* wrapping is
- * the flex-wrap below.)
+ * **Not `ngToolbar`, despite this being a genuine command group** [corrected: it
+ * shipped broken]. Aria's `Toolbar` owns its children through `ngToolbarWidget`,
+ * and with none registered it marks itself `aria-disabled="true"` — which every
+ * projected button then inherits. A screen reader announced all of them as
+ * disabled, and Playwright refused to click them ("element is not enabled"). The
+ * bar projects arbitrary feature content, so it cannot register widgets it has
+ * never seen.
+ *
+ * Making it work would mean every feature remembering `ngToolbarWidget value="…"`
+ * on every button, and forgetting it silently disables the bar. That is a bad
+ * trade for roving tabindex on a handful of buttons that Tab already reaches. A
+ * plain `role="toolbar"` keeps the grouping semantics honest without the trap.
  *
  * The feature projects its own actions: what a module can do is the module's
  * business, not the shell's.
@@ -24,7 +31,6 @@ import { Toolbar } from '@angular/aria/toolbar';
 @Component({
   selector: 'app-action-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Toolbar],
   template: `
     <div class="bar" data-testid="action-bar">
       @if (title()) {
@@ -35,9 +41,8 @@ import { Toolbar } from '@angular/aria/toolbar';
       }
 
       <div
-        ngToolbar
-        orientation="horizontal"
-        [wrap]="true"
+        role="toolbar"
+        aria-orientation="horizontal"
         class="actions"
         [attr.aria-label]="actionsLabel()"
       >

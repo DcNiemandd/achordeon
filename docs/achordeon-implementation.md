@@ -426,12 +426,14 @@ not on how it looks.
       downward only.
 - [x] `app/layout` shell: full-height icon rail (Songs, Songbooks, Stage, Audience;
       Settings pinned bottom) on `ngToolbar`/`ngToolbarWidget`, with active indicator;
-      `chrome: 'none'` route flag for Stage fullscreen / Audience.
+      shared Fullscreen mode (browser fullscreen + wake lock + chrome auto-hide,
+      revealed on any pointer move) that Stage and Audience both toggle. NOT a route
+      flag — a flag cannot express "hidden now, back on the next tap".
 - [x] `<app-action-bar>`: sits **above pane A only, never spanning pane B**; wraps to
       N rows grouped **by meaning** (row 1 insert, row 2 transform), no tabs; `⋯`
       overflow is a mobile-only concession. Feature projects its own actions.
 - [x] Mobile frame: **nav trigger in the bottom bar** — composite glyph, active
-      module's icon stacked on a hamburger, **no text**, fixed 48px, opening the nav
+      module's icon badged into a full-size hamburger's corner, **no text**, fixed 48px, opening the nav
       popup upward. `☰` keeps the "opens nav" affordance, the module icon adds the
       "you are here" state (the rail's job on desktop); bottom-left is thumb-reachable.
       **Needs an i18n'd `aria-label` naming module + action** — with no text and no
