@@ -57,11 +57,33 @@ We provide the markup and the CSS.
 - **First-party, on the Angular release train.** Same argument that decided ADR-0010
   and that this workspace has already been bitten by elsewhere (§10). No third party
   must chase Angular majors for our UI to survive one.
-- **The hard patterns are the free ones.** Aria covers Accordion, Alert Dialog,
-  Breadcrumb, Checkbox, Dialog, Disclosure, Listbox, Menu, Menubar, Radio Group,
-  Switch, Tabs, Tree, Toolbar, Select, Multiselect, Combobox, Autocomplete. What it
-  omits — button, text field, the visual chrome — is the part that's a `<button>` and
-  some CSS. The expensive half is what we get.
+- **The hard patterns are the free ones.** Aria covers the list-navigation and
+  popup patterns — see the v21 reality check below. What it omits — button, text
+  field, the visual chrome — is the part that's a `<button>` and some CSS.
+
+### What v21 actually ships [corrected during implementation]
+
+The pattern list in Angular's docs (Dialog, Alert Dialog, Checkbox, Switch, Radio
+Group, Breadcrumb, Disclosure, Select, Multiselect, Autocomplete…) is the **v22
+stable set**. `@angular/aria@21.2.14` exports exactly **eight** entry points:
+
+```
+accordion · combobox · grid · listbox · menu · tabs · toolbar · tree
+```
+
+**There is no Dialog on v21**, and no Disclosure, Checkbox, Switch or Radio Group.
+Consequences we live with until the §10 upgrade:
+
+- The settings dialog is hand-rolled on `cdkConnectedOverlay` + `cdkTrapFocus`
+  rather than `ngDialog` — which we wanted anyway, because §4 needs it
+  backdrop-less and positioned on pane A.
+- The `(?)` toggle tip is hand-rolled; `Disclosure` isn't there to lean on.
+- Settings controls use native `<input>`s, which is the right answer regardless.
+
+Confirmed present and used: `Toolbar`/`ToolbarWidget` (`[ngToolbar]`,
+`[ngToolbarWidget]`) for the action bar. Note Aria's `wrap` input is **keyboard
+focus wrap-around, not visual wrapping** — the rows come from CSS `flex-wrap`.
+
 - **The CDK is wanted regardless.** Drag & drop (`cdkDropList`) for songbook
   reordering — flagged `FUTURE: drag&drop is not yet implemented` in the docs.
   Overlay (`cdkConnectedOverlay`, which Aria's own popup patterns build on), virtual
@@ -77,6 +99,18 @@ Angular Aria is **developer preview on v21** and **stable on v22**. The API may 
 under us before we upgrade. Accepted: the shift is `ng update`-migrated, the surface
 we consume is small, and it sits behind the presenter seam (§3) anyway. See §10 for
 the Angular 22 upgrade, which is costed and deliberately deferred.
+
+### Measured cost [after implementation]
+
+The initial bundle is **543.60 kB raw / 147.06 kB gzipped**. The CDK's Overlay +
+a11y land in the **initial** chunk — the rail's tooltips need them on first paint —
+which is ~190 kB raw of it. Aria's toolbar is negligible by comparison.
+
+The build's `initial` budget was therefore raised **500 kB → 600 kB** in
+`project.json`. Note budgets gate **raw** size, while the number that matters for an
+offline PWA is the ~147 kB it downloads once. The new ceiling is deliberate, not a
+rubber stamp: if a feature pushes past it, ask what landed in the initial chunk
+before raising it again. (The error threshold stays at 1 MB.)
 
 ### Cost accepted
 
@@ -225,8 +259,15 @@ VSCode-style: a fixed icon rail on the left, everything else is the module.
 - **Rail** — the five nav modules from `basics.mdx`: Songs, Songbooks, Stage,
   Audience, with **Settings pinned to the bottom** (its own visual group — it is a
   destination, not a peer). Icon + tooltip; active module marked with a left
-  indicator bar. Rail width **48px** (default, tunable). Full window height. Built on
-  `ngToolbar` / `ngToolbarWidget` for the roving-tabindex keyboard behaviour.
+  indicator bar. Rail width **48px** (default, tunable). Full window height.
+  - **A `<nav>` of `<a routerLink>`, _not_ an Aria toolbar** [corrected during
+    implementation]. Two reasons this doc's first guess was wrong: the router is
+    already the source of truth for "which module", so a toolbar's own selection
+    model (`values`) would fight it; and the **WAI-ARIA APG is explicit that
+    menu/toolbar semantics are for application commands, not site navigation**.
+    Links in a nav landmark are what a screen reader wants here. The same reasoning
+    applies to the mobile popup (§4 mobile). The **action bar** is a genuine command
+    group, so it keeps `ngToolbar`.
 - **Rail is not the VSCode side bar.** VSCode has rail _and_ a collapsible explorer
   panel. We don't: the "explorer panel" content _is_ pane A in the modules that need
   it (songbooks' left song list, per `songbooks/index.mdx`). One less concept.
@@ -274,9 +315,10 @@ So: **module navigation goes into the hamburger**, and the bottom bar carries
 
 - **The nav trigger lives in the bottom bar, and it wears the active module's icon**
   [decided] — a **composite glyph: the active module's icon stacked above a hamburger
-  rule**, no text. Tapping opens the nav popup **upward** (Aria `ngMenu` in a
-  `cdkConnectedOverlay` with a bottom-anchored position strategy). Same five
-  destinations as the rail.
+  rule**, no text. Tapping opens the nav popup **upward** — a `<nav>` of links in a
+  `cdkConnectedOverlay` (bottom-anchored position strategy) with `cdkTrapFocus`.
+  **Not** an Aria `ngMenu`: `role="menu"` is for application commands, not site
+  navigation (see the rail note in §4 desktop). Same five destinations as the rail.
   - **It is a hamburger that tells you where you are.** The `☰` keeps the "this opens
     the nav" affordance that a bare module icon would lose; the module icon adds the
     "you are here" state that a bare `☰` never had — the job the rail's active marker
@@ -515,8 +557,8 @@ interaction needs, not just different content:
 **Why the `(?)` cannot be hover-only.** Touch has no hover, and the settings panel is
 edited on mobile (the §4 bottom sheet). A hover-only help affordance is simply absent
 on a phone. So the `(?)` is a **toggle tip**: tap to open, stays open, dismiss with Esc
-/ outside-click / re-tap. (Aria's `Disclosure` may fit here — worth a look before
-hand-rolling the toggle behaviour.)
+/ outside-click / re-tap. (Aria's `Disclosure` doesn't exist on v21 — §2 — so the
+toggle is ours.)
 
 **Hover tooltips must satisfy WCAG 1.4.13** (Content on Hover or Focus) — easy to miss
 when hand-rolling:
@@ -629,10 +671,17 @@ redesign's palette change.
 `lucide-angular` would have; §9). A monospace UI is an honest signal that this chrome
 is scaffolding, and it costs nothing to drop later.
 
-> **Import the `latin-ext` subset, not just `latin`.** Roboto Mono's default `latin`
-> subset has no `ě ř ů ď ť ň` — the app ships **EN + CS** (PRD-INFRA §11), so Czech
-> would silently fall back to another face mid-word. This is the kind of bug nobody
-> sees until they switch language.
+> **`latin-ext` is required for Czech** — plain `latin` has no `ě č ř ž ů ď ť ň`, and
+> the app ships **EN + CS** (PRD-INFRA §11), so without it Czech falls back to another
+> face mid-word. Nobody sees this until they switch language.
+>
+> **How, corrected during implementation:** the _variable_ package ships one
+> `index.css` covering every subset — there are no per-subset files to pick, unlike
+> the static packages. That is fine and in fact better: each `@font-face` carries a
+> `unicode-range`, so the browser fetches only what a glyph needs and the
+> cyrillic/greek/vietnamese faces are declared but never downloaded. Wire it through
+> the build's `styles` array so the woff2 are resolved and fingerprinted, never via a
+> runtime `@import`. **Epic 11:** precache only the latin + latin-ext woff2.
 
 Self-hosted only, precached with the shell — **never** `fonts.googleapis.com` (§9).
 **This is the UI chrome font and has nothing to do with the render.** Fonts for the SVG
