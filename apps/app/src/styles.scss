@@ -16,6 +16,7 @@
 // latin + latin-ext woff2. Precaching the rest would ship bytes no user reads.
 
 @use 'styles/tokens';
+@use 'styles/controls';
 
 *,
 *::before,
