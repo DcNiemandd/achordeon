@@ -46,7 +46,10 @@
             "input": "apps/app/public"
           }
         ],
-        "styles": ["apps/app/src/styles.scss"]
+        "styles": [
+          "@fontsource-variable/roboto-mono/index.css",
+          "apps/app/src/styles.scss"
+        ]
       },
       "configurations": {
         "production": {
