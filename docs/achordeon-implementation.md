@@ -382,6 +382,91 @@ propagation, tier flag, and the load-bearing unsynced-leave warning.
 
 # Cross-cutting & shell
 
+## Epic 13: UI shell core (temporary UI)
+
+**User stories**: navigate between modules; work in two resizable panes on desktop
+and switch between them on mobile; use the app in dark or light.
+**Depends on**: Epic 4 (stores exist to bind against).
+**Blocks**: the UI half of Epics 5, 6, 8, 9, 12 — land this before the first feature
+screen, so no feature invents its own frame.
+**Spec**: `docs/PRD-UI-SHELL.md`.
+
+### What to build
+
+The application frame and the seam under it: an icon rail (desktop) / hamburger +
+action bar (mobile), a resizable two-pane primitive that collapses to tabs, theming,
+and the presenter discipline that lets all of it be deleted later without touching
+the business layer. Deliberately temporary — scored on how cheap the replacement is,
+not on how it looks.
+
+### Subtasks
+
+- [ ] Add `@angular/aria` + `@angular/cdk` on the **21.x** line (headless, signal-based,
+      first-party; **no Material**). Self-hosted tree-shaken SVG icons (`lucide-angular`)
+      — **no Google Fonts CDN** (breaks offline + CSP; Angular's own Aria examples
+      contain that `@import` — don't copy it).
+- [ ] Token layer: brand `hsl(11 80% 42%)` stored as h/s/l channels + derived
+      hover/active/subtle; grey ramp; **`--brand-l: 55%` in dark** (3.8:1 → 5.7:1).
+      Components read tokens, never literal colors.
+- [ ] `app/layout` shell: full-height icon rail (Songs, Songbooks, Stage, Audience;
+      Settings pinned bottom) on `ngToolbar`/`ngToolbarWidget`, with active indicator;
+      `chrome: 'none'` route flag for Stage fullscreen / Audience.
+- [ ] `<app-action-bar>`: sits **above pane A only, never spanning pane B**; wraps to
+      N rows grouped **by meaning** (row 1 insert, row 2 transform), no tabs; `⋯`
+      overflow is a mobile-only concession. Feature projects its own actions.
+- [ ] Mobile frame: **nav trigger in the bottom bar** — composite glyph, active
+      module's icon stacked on a hamburger, **no text**, fixed 48px, opening the nav
+      popup upward. `☰` keeps the "opens nav" affordance, the module icon adds the
+      "you are here" state (the rail's job on desktop); bottom-left is thumb-reachable.
+      **Needs an i18n'd `aria-label` naming module + action** — with no text and no
+      hover tooltip, it's the only thing a screen reader gets. Bottom bar also carries
+      the pane switcher + module actions. Single `Viewport` service (`matchMedia` +
+      signal, no `BreakpointObserver`, no RxJS) reading `--bp-compact` off `:root`.
+- [ ] Base components (~12, ours): button, icon button, text field, search field, list
+      row, segmented control, tooltip, dialog chrome, empty state, spinner, badge, rail
+      item. Aria directives supply the behaviour; the CSS is ours from line one.
+- [ ] `<app-tooltip>` on `cdkConnectedOverlay` (**Aria has no tooltip pattern**), two
+      triggers: `hover` = icon-button labels (**every** icon-only button — rail, action
+      bar), `click` = the settings `(?)` toggle tip (touch has no hover, and settings
+      are edited on mobile). Hover must satisfy **WCAG 1.4.13**: dismissible (Esc),
+      hoverable, persistent. Label tooltips are `aria-hidden` (the button's `aria-label`
+      is the name — don't announce twice); `(?)` uses `aria-describedby` since its
+      content differs from the name.
+- [ ] Settings help copy as `Record<keyof typeof SETTINGS, string>` **in the panel, not
+      the registry** — `shared/domain` is pure and must not take an `@angular/localize`
+      dep for UI copy. The `Record` makes a new setting fail to compile until its help
+      exists.
+- [ ] `<app-split-pane>`: hand-rolled CSS-grid + pointer-capture resizer, keyboard
+      accessible, ratio out / stateless about persistence, one pane below the
+      breakpoint. Must not thrash the render preview during drag. Mins are asymmetric:
+      **pane A 320px** (sized to hold the settings dialog), **pane B 240px**.
+- [ ] `<app-settings-panel [scope]>`: **one** vertical registry-driven panel, three
+      homes (Settings page = Global, Songbook detail = Songbook, editor = Song), with
+      per-control inherited/overridden badge + reset (ADR-0006). In the editor it opens
+      as a dialog **centered on pane A, with no viewport backdrop** — the render must
+      stay visible while you tune it. Focus-trapped; Esc / close / click-outside
+      dismiss; session-only open state. Mobile: ~45% bottom sheet over the render.
+      **Epic 12 mounts this same component — build it once.**
+- [ ] Theme applier: `effect` mirroring `SettingsStore.theme()` onto
+      `<html data-theme>` + `color-scheme`; inline pre-paint script in
+      `index.html.template` to kill the flash. Render preview stays light (it's a
+      document, not chrome) — no UI tokens into `render-core`.
+- [ ] Breakpoint **1200px** single-sourced: `$bp-compact` in `_breakpoints.scss` drives
+      both the media queries and a `--bp-compact` custom property that TS reads. One
+      edit to change; CSS and TS cannot drift.
+- [ ] `UiStore` (hand-rolled, in `app/layout`, `localStorage`-backed): split ratio,
+      rail collapsed, session-only fullscreen. **Not** in `shared/data-access` — it is
+      shell state and must not sync.
+- [ ] Router: `withComponentInputBinding()`; search-param contract for `?q=`,
+      `?sort=`, `?pane=` so params arrive as signal inputs.
+- [ ] Seam enforcement: presenter-per-feature (signals in, commands out); update
+      `apps/app/eslint.config.mjs` — add a `layout` boundaries element, and forbid
+      components from importing `@achordeon/shared/data-access`.
+- [ ] `data-testid` on every shell element + an `apps/app-e2e` smoke spec that selects
+      only on those — the mechanical proof the seam holds across the UI swap.
+
+---
+
 ## Epic 11: App shell, PWA, i18n & security
 
 **User stories**: install the app and use it offline; switch language; update
@@ -396,8 +481,8 @@ the security posture.
 
 ### Subtasks
 
-- [ ] Router config: lazy feature routes per module + default redirect; nav shell
-      (desktop bar + mobile popup menu).
+- [ ] Router config: lazy feature routes per module + default redirect. (The nav
+      shell itself — rail, mobile bar, split, theme — is **Epic 13**.)
 - [ ] `tierGuard` as highlight+tooltip (not a hard block) during testing; premium
       highlight markers + tooltips throughout.
 - [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
@@ -432,7 +517,8 @@ cascade), plus the manual export/import entry points.
       manual export/import entry points.
 - [ ] Application: theme (system/light/dark), language (EN/CS).
 - [ ] Rendering: GUI for the **global** render defaults (the registry's Global
-      scope), driving the same controls reused at Song/Songbook scope.
+      scope) — mount `<app-settings-panel [scope]="'global'">` from **Epic 13**; the
+      panel is built once and reused at Song/Songbook scope. Don't rebuild it here.
 - [ ] Premium highlight markers on tier-gated controls.
 
 ---
@@ -440,8 +526,10 @@ cascade), plus the manual export/import entry points.
 ## Suggested ordering
 
 1. Epics 1 → 2 → 3 → 4 in order (foundation; 3 and 4 can overlap once 1–2 land).
-2. Epic 5 (core loop) next — it exercises 2, 3, 4 together and de-risks them.
-3. Epic 11 shell can start in parallel with 5 (router/nav/i18n needed early).
-4. Epics 6 → 7 → 8 build on 5.
-5. Epic 10 (auth/sync) before Epic 9 (hosting is tier-gated).
-6. Epic 12 last — it surfaces state the others own.
+2. Epic 13 (UI shell core) next — it gives every feature screen a frame to land in,
+   so no feature invents its own.
+3. Epic 5 (core loop) next — it exercises 2, 3, 4, 13 together and de-risks them.
+4. Epic 11 can start in parallel with 5 (routing/PWA/i18n needed early).
+5. Epics 6 → 7 → 8 build on 5.
+6. Epic 10 (auth/sync) before Epic 9 (hosting is tier-gated).
+7. Epic 12 last — it surfaces state the others own.
