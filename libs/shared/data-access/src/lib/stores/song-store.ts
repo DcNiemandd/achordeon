@@ -110,6 +110,25 @@ export const SongStore = signalStore(
         await reload();
       },
 
+      /**
+       * The single most recently updated live Song, or `undefined` on an empty
+       * library — what `/songs` auto-selects on entry (PRD-UI-SHELL.md §4).
+       *
+       * **Not `live()[0]`.** The entity map is a growing windowed cache sorted by
+       * whatever the explorer is showing (`name` by default), so the most recently
+       * updated song may not be in it at all. This is a real query, run past the
+       * window and without disturbing it — asking the repository directly would put
+       * the same knowledge in a presenter, one layer too high.
+       */
+      async lastChanged(): Promise<Song | undefined> {
+        const page = await repo.page({
+          limit: 1,
+          sort: 'changed',
+          dir: 'desc',
+        });
+        return page.rows[0];
+      },
+
       /** Persist an add/edit and reflect it in the window immediately. */
       async upsert(song: Song): Promise<void> {
         await repo.put(song);

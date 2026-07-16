@@ -97,6 +97,38 @@ describe('SongStore', () => {
     expect(tombstoned?.deletedAt).not.toBeNull();
   });
 
+  it('answers which song changed last, past the window and past the sort', async () => {
+    // The window is name-sorted and only 2 rows wide here; the newest song sorts
+    // last by name, so `live()[0]` would answer 'Alpha'. It is not the answer.
+    const store = storeWith([
+      song('a', { name: 'Alpha', updatedAt: 10 }),
+      song('z', { name: 'Zeta', updatedAt: 99 }),
+    ]);
+    await store.load();
+
+    expect((await store.lastChanged())?.id).toBe('z');
+    // ...and asking did not disturb the explorer's window.
+    expect(store.entities().map((s) => s.id)).toEqual(['a', 'z']);
+  });
+
+  it('has no last-changed song in an empty library', async () => {
+    const store = storeWith([]);
+    await store.load();
+
+    expect(await store.lastChanged()).toBeUndefined();
+  });
+
+  it('never answers a tombstoned song as the last changed', async () => {
+    const store = storeWith([
+      song('a', { name: 'Alpha', updatedAt: 10 }),
+      song('z', { name: 'Zeta', updatedAt: 99 }),
+    ]);
+    await store.load();
+    await store.remove('z');
+
+    expect((await store.lastChanged())?.id).toBe('a');
+  });
+
   it('appends the next page into the growing window', async () => {
     const seed = Array.from({ length: PAGE_LIMIT + 5 }, (_, i) =>
       song(`s${String(i).padStart(3, '0')}`),
