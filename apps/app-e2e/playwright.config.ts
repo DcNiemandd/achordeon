@@ -3,7 +3,13 @@ import { nxE2EPreset } from '@nx/playwright/preset';
 import { workspaceRoot } from '@nx/devkit';
 
 // For CI, you may want to set BASE_URL to the deployed application.
-const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
+// The trailing path is the app's baseHref (project.json) — the app is served
+// under /achordeon/app/ for GitHub Pages, so a bare origin would make every
+// navigation miss. The trailing slash matters: without it, URL resolution drops
+// the last segment. Specs must use RELATIVE paths (`goto('songs')`) — a leading
+// slash resolves from the origin and throws the base path away.
+const baseURL =
+  process.env['BASE_URL'] || 'http://localhost:4200/achordeon/app/';
 
 /**
  * Read environment variables from file.
@@ -27,24 +33,24 @@ export default defineConfig({
     command: 'pnpm exec nx run app:serve',
     url: 'http://localhost:4200',
     reuseExistingServer: true,
-    cwd: workspaceRoot
+    cwd: workspaceRoot,
   },
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
     },
 
     {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
     },
 
     {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
     },
-    
+
     // Uncomment for mobile browsers support
     /* {
       name: 'Mobile Chrome',

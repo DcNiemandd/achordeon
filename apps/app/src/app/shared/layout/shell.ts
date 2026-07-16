@@ -1,0 +1,119 @@
+// App shell — Epic 13
+// Spec: PRD-UI-SHELL.md §4
+
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { Fullscreen } from './fullscreen';
+import { ModuleSwitcher } from './module-switcher';
+import { Rail } from './rail';
+import { Viewport } from './viewport';
+
+/**
+ * The application frame: rail on the left above the breakpoint, a bottom bar
+ * below it, and the module in between.
+ *
+ * The bottom bar is the **shell's** (nav + pane switching); the action bar above
+ * pane A is the **feature's**. That split is why the shell never enumerates a
+ * module's actions.
+ *
+ * **Every route gets the frame.** Performing without chrome is a *mode*
+ * (`Fullscreen`), not a property of a route — the frame comes back the moment you
+ * move the pointer, wherever you are. An earlier draft made it a route flag; that
+ * could not express "hidden right now, back on the next tap".
+ */
+@Component({
+  selector: 'app-shell',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet, Rail, ModuleSwitcher],
+  // While performing, any pointer movement or tap brings the bars back.
+  host: {
+    '(document:pointermove)': 'onActivity()',
+    '(document:pointerdown)': 'onActivity()',
+    '(document:keydown)': 'onActivity()',
+  },
+  template: `
+    <div class="shell" data-testid="shell">
+      @if (isChrome() && !viewport.isCompact()) {
+        <app-rail class="rail-slot" />
+      }
+
+      <main class="module" data-testid="module-outlet">
+        <router-outlet />
+      </main>
+
+      @if (isChrome() && viewport.isCompact()) {
+        <div class="bottom-bar" data-testid="bottom-bar">
+          <app-module-switcher />
+          <div class="bar-slot">
+            <!-- The pane switcher and module actions mount here (§4). -->
+          </div>
+        </div>
+      }
+    </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+      block-size: 100%;
+    }
+
+    .shell {
+      display: grid;
+      block-size: 100%;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    /* Compact: no rail column, and a bar row underneath. */
+    .shell:has(.bottom-bar) {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
+    }
+
+    /* Fullscreen with the chrome hidden: the module is the whole window. */
+    .shell:not(:has(.rail-slot)):not(:has(.bottom-bar)) {
+      grid-template-columns: 1fr;
+    }
+
+    .rail-slot {
+      grid-row: 1;
+    }
+
+    .module {
+      min-inline-size: 0;
+      min-block-size: 0;
+      overflow: hidden;
+    }
+
+    .bottom-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding-inline: var(--space-1);
+      min-block-size: var(--bar-height);
+      background: var(--surface-raised);
+      border-block-start: 1px solid var(--border);
+      /* Home-indicator / gesture bar on iOS. */
+      padding-block-end: env(safe-area-inset-bottom, 0);
+    }
+
+    .bar-slot {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      margin-inline-start: auto;
+    }
+  `,
+})
+export class Shell {
+  protected readonly viewport = inject(Viewport);
+  private readonly fullscreen = inject(Fullscreen);
+
+  protected readonly isChrome = this.fullscreen.isChromeVisible;
+
+  protected onActivity(): void {
+    if (this.fullscreen.isActive()) {
+      this.fullscreen.reveal();
+    }
+  }
+}

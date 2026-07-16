@@ -18,6 +18,7 @@ Repo-root `docs/` — **not** the published Docusaurus site (`apps/docs/docs`).
 | [`PARSER-GRAMMAR.md`](./PARSER-GRAMMAR.md)         | Parser grammar spec — Phase 1/2 rules, chord sub-grammar, escapes, warnings, reparse.                                                                                                                                                                                                                         |
 | [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)     | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                                                                                                                                                                                   |
 | [`PRD-RENDERING.md`](./PRD-RENDERING.md)           | Rendering/visual layer — render pipeline + output seam, geometry requirements (scale-to-fit, columns, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts), `RenderPlan` + `layout` signature, songbook page chrome. Requirements settled; implementation under P1. |
+| [`PRD-UI-SHELL.md`](./PRD-UI-SHELL.md)             | **Temporary UI** — component library (`@angular/aria` + CDK, headless), the presenter seam, rail/split desktop + hamburger/tabs mobile layout, brand token layer + theming, UI-state placement (route / search param / store / localStorage), the costed Angular 22 upgrade, swap checklist.                  |
 | `PRD-EDITOR.md` _(planned)_                        | Editor + authoring — chosen editor, highlight grammar, insert buttons, markers.                                                                                                                                                                                                                               |
 | [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0010).                                                                                                                                                                                                                                                                    |
 | [`../research/`](../research/)                     | Background research (sync backends; trust model & monetization).                                                                                                                                                                                                                                              |
@@ -78,6 +79,8 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 | D7  | **MoR webhook → Edge Function** — lifetime checkout → `profiles.plan`; Drive token-broker (Flow B). **Post-v1** — v1 premium = manual dashboard flip (§5); premium is free during testing, so no payment path ships in v1 | 🔮     | `PRD-INFRASTRUCTURE.md` §5/§6            | R1, research |
 | D8  | **Lobby analytics** — developer-only metrics; keep raw events forever (no rollup); erasure = anonymize `host_id` on account delete, keep song-title fields                                                                | ✅     | `PRD-INFRASTRUCTURE.md` §9               | ADR-0003     |
 | D9  | **Audience local transpose** — viewer transposes own copy; scope qs ("all songs?" / "remember per lobby+song?")                                                                                                           | 🔮     | TBD                                      | ADR-0003     |
+| D10 | **Temporary UI / shell** — `@angular/aria` + CDK (headless, signal-based); presenter-per-feature seam; rail + resizable split (desktop) / hamburger + tabs (mobile); brand tokens + theme; UI-state placement             | ✅     | [`PRD-UI-SHELL.md`](./PRD-UI-SHELL.md)   | R1, D3       |
+| D11 | **Angular 22 upgrade** — Nx 23 → ng 22 → TS 6 → Jest 30; **gated on `@ngrx/signals@22`** (no release; peers `^21.0.0`) → wait / peer-override / drop NgRx (2 files)                                                       | 🔮     | `PRD-UI-SHELL.md` §10                    | D10          |
 
 ### Then — build
 
@@ -160,6 +163,10 @@ graph TD
   R1 --> D6[D6 Auth linking ✅]
   R1 --> D7[D7 MoR webhook 🔮]
   A3 --> D8[D8 Lobby analytics ✅]
+  R1 --> D10[D10 Temporary UI shell ✅]
+  D3 --> D10
+  D10 --> P1
+  D10 -.-> D11[D11 Angular 22 upgrade 🔮]
 
   R1 --> P1[P1 Implementation plan ⬜]
   R2 --> P1
@@ -206,6 +213,21 @@ implementation slices. Grill a feature only when a **hard design question** surf
   - ✅ **D6** Auth provider-linking (Google + email/password → one Account). Add-method-only
     (no account merge), email confirmation required, Drive rides on the Google identity.
     ADR-0009 + `PRD-INFRASTRUCTURE.md` §5.
+  - ✅ **D10** Temporary UI / shell → **`@angular/aria` + `@angular/cdk`** (first-party,
+    **headless**, signal-based). Headless means no library look to strip on the swap and
+    the brand color applies from line one; signal-based means it obeys the §3 no-RxJS
+    rule natively, where Material's `afterClosed()` fights it. Aria covers the expensive
+    patterns (dialog/menu/listbox/tabs/tree/combobox); button/field/chrome are ours.
+    Business/UI coupling held by a **presenter per feature** (signals in, commands out;
+    components never inject a store). Splitter hand-rolled (`angular-split` is stale).
+    `PRD-UI-SHELL.md`.
+  - 🔮 **D11** Angular 22 upgrade — **deferred, not blocking**: `@angular/aria@21`
+    peers `^21 || ^22`, so the UI work runs on 21 today. When scheduled: Nx 23 first
+    (`@nx/angular@22.7.2` caps at Angular `<22`), then ng 22, TS 6, Jest 30.
+    **Gated on `@ngrx/signals`** — no v22 release, peers `^21.0.0` strictly. It is the
+    one dependency gating an Angular major (the ADR-0010 risk, taken somewhere less
+    visible), it lives in 2 files, and PRD-INFRA §3 already named hand-rolling as
+    option A. `PRD-UI-SHELL.md` §10.
   - 🔮 **D7** MoR webhook → Edge Function (lifetime checkout → `profiles.plan`; Drive
     token-broker) — **post-v1**. v1 premium activation is a **manual dashboard flip** of
     `profiles.plan` (§5), and premium is free during testing, so no payment path ships in

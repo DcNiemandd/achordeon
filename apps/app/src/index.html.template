@@ -7,6 +7,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <script>
+      // Pre-paint theme stamp (PRD-UI-SHELL.md §6). Angular boots after first
+      // paint, so without this a dark-mode user gets a white flash. Mirrors
+      // ThemeApplier: 'system' means NO attribute, so the token sheet's bare
+      // :root can follow prefers-color-scheme.
+      (function () {
+        try {
+          var theme = localStorage.getItem('achordeon.theme');
+          if (theme === 'dark' || theme === 'light') {
+            document.documentElement.setAttribute('data-theme', theme);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script>
       (function () {
         try {
           var FLAG = 'achordeon-app-locale-init';

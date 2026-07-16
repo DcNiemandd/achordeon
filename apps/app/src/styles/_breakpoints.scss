@@ -1,0 +1,23 @@
+// The compact breakpoint — Epic 13
+// Spec: PRD-UI-SHELL.md §6 (single-sourced breakpoint)
+//
+// This file is the ONE declaration. It drives the media-query mixins below AND
+// the `--bp-compact` custom property emitted in `_tokens.scss`, which the
+// Viewport service reads back off `:root`. Change $bp-compact here and CSS + TS
+// move together — there is no second place to forget.
+
+$bp-compact: 1200px;
+
+/// Below the breakpoint: hamburger + tabs, one pane at a time.
+@mixin compact {
+  @media (max-width: #{$bp-compact - 0.02px}) {
+    @content;
+  }
+}
+
+/// At or above the breakpoint: rail + split.
+@mixin roomy {
+  @media (min-width: $bp-compact) {
+    @content;
+  }
+}
