@@ -1,1 +1,62 @@
-/* You can add global styles to this file, and also import other style files */
+// Global styles — Epic 13
+// Spec: PRD-UI-SHELL.md §6
+//
+// Roboto Mono is pulled in via the build's `styles` array (project.json), not
+// from here, so the bundler resolves and fingerprints the woff2 instead of
+// emitting a runtime `@import`.
+//
+// The variable package ships ONE `index.css` covering every subset (there is no
+// per-subset file to pick, unlike the static packages). That is fine and in fact
+// what we want: each `@font-face` carries a `unicode-range`, so the browser only
+// downloads the subset a glyph actually needs. `latin-ext` matters here — the app
+// ships EN + CS and plain `latin` has no `ě č ř ž ů ď ť ň`; the cyrillic/greek/
+// vietnamese faces are declared but never fetched.
+//
+// Epic 11 note: when `ngsw-config.json` precaches fonts, precache **only** the
+// latin + latin-ext woff2. Precaching the rest would ship bytes no user reads.
+
+@use 'styles/tokens';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+// A visible, branded focus ring everywhere, once. Never remove an outline
+// without putting one back.
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
