@@ -10,3 +10,4 @@ export { EmptyState } from './empty-state/empty-state';
 export { Icon } from './icon/icon';
 export { Tooltip, TooltipPanel } from './tooltip/tooltip';
 export type { IconName } from './icon/icon-set.generated';
+export { Premium } from './premium/premium';
