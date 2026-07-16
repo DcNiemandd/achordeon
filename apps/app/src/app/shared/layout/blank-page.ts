@@ -1,7 +1,13 @@
 // Blank page — Epic 13
 // Spec: PRD-UI-SHELL.md §4, §6
 
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+} from '@angular/core';
+import { Fullscreen } from './fullscreen';
 
 /**
  * The page-on-a-desk frame the render sits in.
@@ -18,6 +24,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'app-blank-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.is-performing]': 'fullscreen.isActive()' },
   template: `
     <div class="desk">
       <div class="page" [style.aspect-ratio]="aspectRatio()">
@@ -49,9 +56,24 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       max-inline-size: 100%;
       block-size: 100%;
     }
+
+    /* Performing: the song is the only thing on screen, so give it every pixel.
+       The desk framing exists to say "this is a document you are editing" — mid-
+       song that framing is just a smaller song. The aspect ratio still rules, so
+       the page grows until one axis runs out; the leftover is bare desk. */
+    :host(.is-performing) .desk {
+      padding: 0;
+      background: var(--surface);
+    }
+
+    :host(.is-performing) .page {
+      box-shadow: none;
+    }
   `,
 })
 export class BlankPage {
+  protected readonly fullscreen = inject(Fullscreen);
+
   /** A4 is the registry default for the Song-scope `aspectRatio` setting. */
   readonly aspectRatio = input('210 / 297');
 }

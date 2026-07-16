@@ -7,7 +7,6 @@ import {
   computed,
   input,
   output,
-  signal,
 } from '@angular/core';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { Button, Icon, Tooltip } from '../../primitives';
@@ -22,16 +21,12 @@ import {
   type SettingKey,
 } from './setting-ui';
 
-const CUSTOM = '__custom__';
-
 interface Row {
   readonly key: SettingKey;
   readonly ui: (typeof SETTING_UI)[SettingKey];
   readonly value: unknown;
   /** True when this scope sets it; false when it is showing what it inherited. */
   readonly isOverridden: boolean;
-  /** The value isn't in the preset list, so the free-text field is showing. */
-  readonly isCustom: boolean;
 }
 
 interface Section {
@@ -129,29 +124,34 @@ interface Section {
                   }
 
                   @case ('select') {
-                    <select
-                      class="control"
-                      [id]="row.key"
-                      [value]="row.isCustom ? CUSTOM : row.value"
-                      [attr.data-testid]="'select-' + row.key"
-                      (change)="onSelect(row, $event)"
-                    >
-                      @for (opt of options(row); track opt.value) {
-                        <option [value]="opt.value">{{ opt.label }}</option>
-                      }
-                      <option [value]="CUSTOM">{{ customLabel }}</option>
-                    </select>
-
-                    @if (row.isCustom) {
+                    <!-- One control, not two: the field always shows the value
+                         and always takes a typed one; the chevron is a shortcut
+                         to the named answers. There is no "custom mode" to be
+                         in, so there is no way to be stuck in it. -->
+                    <div class="input-group">
                       <input
-                        class="control"
+                        class="group-field"
                         type="text"
+                        [id]="row.key"
                         [value]="row.value"
-                        [attr.aria-label]="row.ui.label"
-                        [attr.data-testid]="'custom-' + row.key"
+                        [attr.data-testid]="'input-' + row.key"
                         (change)="setFromInput(row.key, $event)"
                       />
-                    }
+                      <select
+                        class="group-picker"
+                        [value]="pickerValue(row)"
+                        [attr.aria-label]="pickLabel(row)"
+                        [attr.data-testid]="'select-' + row.key"
+                        (change)="onPick(row.key, $event)"
+                      >
+                        <!-- A typed value matches nothing here, so the picker
+                             shows blank rather than lying about the value. -->
+                        <option value=""></option>
+                        @for (opt of options(row); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                      </select>
+                    </div>
                   }
 
                   @case ('color') {
@@ -293,6 +293,55 @@ interface Section {
       cursor: pointer;
     }
 
+    /* Type-or-pick as ONE control: the border belongs to the group, and the two
+       children sit inside it with no seam. Stacking a select above a text input
+       read as two unrelated fields. */
+    .input-group {
+      display: flex;
+      align-items: stretch;
+      block-size: 28px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .input-group:focus-within {
+      border-color: var(--brand);
+      outline: 2px solid var(--brand);
+      outline-offset: -2px;
+    }
+
+    .group-field {
+      flex: 1;
+      min-inline-size: 0;
+      border: 0;
+      background: none;
+      color: var(--text);
+      font: inherit;
+      font-size: var(--text-sm);
+      padding-inline: var(--space-1);
+    }
+
+    /* The field owns the focus ring for the whole group. */
+    .group-field:focus-visible {
+      outline: none;
+    }
+
+    /* Collapsed to its chevron: the native select is the popup, the input is the
+       value. Widening it would re-introduce the second field we just removed. */
+    .group-picker {
+      inline-size: 22px;
+      border: 0;
+      border-inline-start: 1px solid var(--border);
+      background: var(--surface-sunken);
+      color: var(--text-muted);
+      font: inherit;
+      cursor: pointer;
+      /* Hides the select's own text, leaving only its arrow. */
+      text-indent: -100px;
+    }
+
     .choices {
       display: flex;
       gap: var(--space-1);
@@ -332,22 +381,8 @@ export class SettingsPanel {
   /** One sparse patch out. `undefined` for a key means "reset to inherited". */
   readonly changed = output<Record<string, unknown>>();
 
-  protected readonly CUSTOM = CUSTOM;
   protected readonly inheritedLabel = $localize`:@@settings.inherited:Inherited`;
   protected readonly resetLabel = $localize`:@@settings.reset:Reset to inherited`;
-  protected readonly customLabel = $localize`:@@settings.custom:Custom…`;
-
-  /**
-   * Rows where the user explicitly picked "Custom…".
-   *
-   * This cannot be derived from the value: picking Custom… seeds the field with
-   * the value you already had, and that is usually a preset (`A4`), so a purely
-   * derived `isCustom` would flip straight back to false and the field would
-   * never appear. The *intent* to go custom is state; a value outside the preset
-   * list is merely evidence of it. Ephemeral by design — it is which control is
-   * showing, not what is saved.
-   */
-  private readonly customKeys = signal<ReadonlySet<SettingKey>>(new Set());
 
   private readonly rows = computed<Row[]>(() =>
     keysForScope(this.scope()).map((key) => {
@@ -356,12 +391,7 @@ export class SettingsPanel {
       const value = isOverridden
         ? own
         : (this.inherited()[key] ?? SETTINGS[key].default);
-      const ui = SETTING_UI[key];
-      const isCustom =
-        ui.control.kind === 'select' &&
-        (this.customKeys().has(key) ||
-          !ui.control.options.some((o) => o.value === String(value)));
-      return { key, ui, value, isOverridden, isCustom };
+      return { key, ui: SETTING_UI[key], value, isOverridden };
     }),
   );
 
@@ -412,21 +442,23 @@ export class SettingsPanel {
     this.set(row.key, Math.min(max, Math.max(min, rounded)));
   }
 
-  protected onSelect(row: Row, event: Event): void {
+  /** Blank unless the value happens to be one of the named answers. */
+  protected pickerValue(row: Row): string {
+    const match = this.options(row).some((o) => o.value === String(row.value));
+    return match ? String(row.value) : '';
+  }
+
+  protected pickLabel(row: Row): string {
+    return $localize`:@@settings.choose:Choose ${row.ui.label}:setting:`;
+  }
+
+  protected onPick(key: SettingKey, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
-    if (value === CUSTOM) {
-      // Remember the intent, and leave the value alone: the field seeds itself
-      // with what you already had, so Custom… is somewhere to start editing
-      // rather than a blank to puzzle over.
-      this.customKeys.update((keys) => new Set(keys).add(row.key));
-      return;
+    // The blank row is a display state, not a choice — picking it would wipe a
+    // typed value for no reason.
+    if (value !== '') {
+      this.set(key, value);
     }
-    this.customKeys.update((keys) => {
-      const next = new Set(keys);
-      next.delete(row.key);
-      return next;
-    });
-    this.set(row.key, value);
   }
 
   protected set(key: SettingKey, value: unknown): void {
