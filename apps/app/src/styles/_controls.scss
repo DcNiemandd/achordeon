@@ -20,6 +20,8 @@
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  // <a appButton> is still a link; it just should not look underlined.
+  text-decoration: none;
   transition:
     background var(--duration-fast) var(--ease),
     border-color var(--duration-fast) var(--ease),

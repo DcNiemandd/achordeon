@@ -4,11 +4,17 @@
 import { Directive, input } from '@angular/core';
 
 /**
- * `<button appButton>` — the plain control Aria deliberately does not ship.
+ * `<button appButton>` / `<a appButton>` — the plain control Aria deliberately
+ * does not ship.
  *
- * A **directive on a real `<button>`**, not a wrapper component: the host keeps
+ * A **directive on a real element**, not a wrapper component: the host keeps
  * native semantics, `type`, `disabled`, form participation and focus for free.
  * All this adds is typed inputs mapped onto host classes.
+ *
+ * Anchors are supported because a control that *navigates* must be a link — it
+ * has to middle-click, open in a new tab, and announce as a link. Something that
+ * looks like a button but is one only visually is the point of the `a` selector,
+ * not an oversight.
  *
  * The skin lives in `styles/_controls.scss` rather than in component styles,
  * because a directive has no view to encapsulate. That is a fair trade here —
@@ -16,7 +22,7 @@ import { Directive, input } from '@angular/core';
  * replaces wholesale (§6).
  */
 @Directive({
-  selector: 'button[appButton]',
+  selector: 'button[appButton], a[appButton]',
   host: {
     class: 'app-button',
     '[class]': '"variant-" + variant() + " size-" + size()',

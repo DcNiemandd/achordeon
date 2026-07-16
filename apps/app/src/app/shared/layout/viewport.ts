@@ -27,12 +27,17 @@ export class Viewport {
   readonly isCompact = this._isCompact.asReadonly();
 
   constructor() {
-    const query = this.document.defaultView?.matchMedia(
-      `(max-width: ${this.breakpointPx() - 0.02}px)`,
-    );
-    if (!query) {
+    const view = this.document.defaultView;
+    // `matchMedia` is missing in jsdom and in non-browser hosts, and the method
+    // can be absent even when `defaultView` is not — so feature-detect the call,
+    // not just the view. Without it, we simply stay non-compact.
+    if (typeof view?.matchMedia !== 'function') {
       return;
     }
+
+    const query = view.matchMedia(
+      `(max-width: ${this.breakpointPx() - 0.02}px)`,
+    );
     this._isCompact.set(query.matches);
     query.addEventListener('change', (e) => this._isCompact.set(e.matches));
   }

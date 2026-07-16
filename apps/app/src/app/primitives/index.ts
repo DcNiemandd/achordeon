@@ -6,6 +6,7 @@
 // enforced in apps/app/eslint.config.mjs, not just asserted here.
 
 export { Button } from './button/button';
+export { EmptyState } from './empty-state/empty-state';
 export { Icon } from './icon/icon';
 export { Tooltip, TooltipPanel } from './tooltip/tooltip';
 export type { IconName } from './icon/icon-set.generated';
