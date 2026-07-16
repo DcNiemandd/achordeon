@@ -138,6 +138,40 @@ libs/shared/data-access        apps/app/src/app/songs
 **What this buys:** the swap is `rm -rf` on the components. Presenters keep working
 against new templates because they never knew what the old ones looked like.
 
+### The import ladder [decided]
+
+Three rungs inside `apps/app/src/app`, each importing only downward. This is what
+makes the UI peelable rather than merely tidy.
+
+```
+apps/app/src/app/
+  primitives/     button · icon · tooltip · field · segmented · color · number ·
+                  dialog-chrome · empty-state · spinner · badge
+                  imports: node_modules ONLY. nothing in-repo. not even domain.
+  shared/
+    layout/       rail · bottom bar · action bar · split-pane · module switcher
+    settings-panel/
+    …             other cross-feature components
+                  imports: primitives + node_modules + @achordeon/shared/domain
+                  NEVER: data-access, never a feature
+  songs/  songbooks/  stage/  audience/  settings/
+                  imports: shared + primitives + libs/shared/* + own presenter
+```
+
+- **`primitives/` is the floor** — the only in-repo thing `shared/` may import. A
+  primitive knows about Angular, Aria, the CDK, and nothing else. It could be lifted
+  into an unrelated app unchanged.
+- **`shared/` holds the frame** — rail, bars, split-pane all live under
+  `shared/layout/`, plus cross-feature components like the settings panel.
+- **`shared/` may import `@achordeon/shared/domain` — types only** [decided]. The ban
+  is aimed at what actually couples: **features and stores**. `shared/domain` is pure
+  types with zero framework deps and zero state, so importing it cannot tie the UI to
+  anything that outlives it — while letting shared components speak the domain's
+  vocabulary instead of re-describing it. **`shared/` never imports
+  `@achordeon/shared/data-access`**; that is the line that matters, and it is the same
+  line as the presenter rule.
+- **Features import downward only** and never sideways — already enforced.
+
 Because Aria is headless, the usual second seam — wrapping the library so it can be
 swapped — is unnecessary. There is no library styling to quarantine; our CSS **is**
 the styling, and Aria's directives are the accessibility behaviour a redesign wants
@@ -149,14 +183,19 @@ to keep anyway.
 `default: 'disallow'`). Two changes are needed:
 
 1. The current `shell` element is `mode: 'file'`, `pattern: 'apps/app/src/app/*.ts'`
-   — root files only. The shell **layout components** (rail, bottom bar, split) have
-   nowhere legal to live. Add a `layout` element for `apps/app/src/app/layout`,
-   importable by `shell` and by features (for the split primitive), importing no
-   feature.
+   — root files only, so the frame has nowhere legal to live. Add a **`primitives`**
+   element (`apps/app/src/app/primitives`) that may import **nothing** in-repo, and
+   keep `app-shared` (`apps/app/src/app/shared`) allowed to import only `primitives`.
+   Element order matters (first match wins): `shell`, `primitives`, `app-shared`, then
+   the generic `feature` pattern.
 2. Add a rule that no file matching `*.page.ts` / `*.component.ts` inside a feature
    may import `@achordeon/shared/data-access`. That is the presenter rule, mechanized.
    (If `boundaries` can't express it, a `no-restricted-imports` override on the
    component glob does.)
+3. Add `no-restricted-imports` so **`apps/app/src/app/shared/**`cannot import`@achordeon/shared/data-access`** (domain is allowed; data-access is not), and
+**`apps/app/src/app/primitives/**`cannot import`@achordeon/\*` at all**. The Nx
+   project rule can't see these — it governs app↔lib edges, and both folders are
+   inside the one app project.
 
 ---
 
@@ -298,6 +337,22 @@ always visible on the right side"_, and that promise is **desktop-only** [decide
 Below `--bp-compact` it is the explorer, full width, with no pane switcher (there is
 no second pane to switch to until a song is open).
 
+**What pane B shows on `/songs`** [decided]: the render of the focused song
+(`SessionStore.currentSongId` — it already exists for exactly this). **On entering
+`/songs`, the most recently updated song is auto-selected**, so the pane is useful
+immediately rather than greeting you with nothing. With no song selected — an empty
+library — pane B shows an **empty song: a blank page**, the same page chrome with no
+content. Not an illustration, not a call to action; the shape of what goes there.
+
+> **Trap.** "Last updated" is **not** `live()[0]`. The entity map is a _growing
+> windowed cache_ (PRD-INFRA §3) whose default sort is `name` — the most recently
+> updated song may simply not be in the loaded page. It needs a real query
+> (`sort: 'changed', dir: 'desc', limit: 1`), which `PagedRepository` already
+> supports, run **independently of** whatever sort the explorer is showing and without
+> resetting its window. That is a small addition to `SongStore` (Epic 4's file) — the
+> store should answer "which song changed last", not the presenter reaching past it to
+> the repository. **Epic 13 depends on that method existing.**
+
 **The feature owns its split; the shell does not.** The shell provides the rail, the
 bars, and a reusable `<app-split-pane>` primitive. A split module drops that
 primitive into its own template and fills both sides. Rejected the alternative —
@@ -326,10 +381,36 @@ reasons:
   controls reused at Song/Songbook scope."_ A toolbar tab cannot be mounted on a
   settings _page_.
 
-So: **`<app-settings-panel [scope]="…">`** — one vertical, scrollable, registry-driven
-component, built once and mounted three times: the Settings page (Global scope),
-Songbook detail (Songbook scope), and the song editor (Song scope). The _container_
-differs per home; the panel does not.
+So: **`<app-settings-panel>`** — one vertical, scrollable, registry-driven component in
+`app/shared`, built once and mounted **three** times:
+
+| Feature     | Where                | Scope      |
+| ----------- | -------------------- | ---------- |
+| `settings`  | Settings page        | `global`   |
+| `songbooks` | Songbook detail      | `songbook` |
+| `songs`     | Song editor (dialog) | `song`     |
+
+The _container_ differs per home; the panel does not.
+
+**The panel is a controlled form — nothing more** [decided]. Values in, changes out; it
+holds no state and injects no store, like every other component (§3):
+
+```
+[scope]      which cascade level we're editing -> which SETTINGS rows to draw
+[values]     the sparse overrides set at THIS scope
+[inherited]  the resolved values from below, for the "inherited" badge + reset
+(changed)    one sparse patch out
+```
+
+It reads `SETTINGS` from `@achordeon/shared/domain` (types + registry, no state — the
+import ladder above allows exactly this) to know which rows a scope may override and
+which control each takes. That mapping and the help copy (§5.2) are written **once**,
+here.
+
+**Each feature wraps it, for DRY** — a thin wrapper whose only job is to bind its
+presenter to those four ports. The wrapper is the feature's; the panel is shared. The
+cascade logic stays in `resolveSettings` where it already lives — the panel just
+displays the result.
 
 **In the editor it opens as a dialog centered over pane A** — not over the viewport
 [decided].
@@ -458,6 +539,27 @@ announce it twice.
 long-press. This is why the mobile module switcher's `aria-label` matters so much (§4):
 it's the only thing left.
 
+### 5.3 Premium highlight [decided]
+
+`CONTEXT.md` requires a marker "shown throughout the app on features that are (or will
+become) Premium-only, with a tooltip such as 'Premium feature available for testing'".
+It is a **consumer of the tooltip**, which is why it lives here and not only in Epic 11.
+
+- **A gold shadow** on the control — `--premium-glow`, a token like any other (§6).
+- **The tooltip composes**: the premium note is **appended to the control's own label**,
+  not replacing it — `"Transpose — Premium feature available for testing"`. So
+  `<app-tooltip>` text is **composed, not static**, and `<app-premium>` wraps a control
+  rather than sitting beside it.
+- **a11y**: keep the button's `aria-label` as the plain name (`"Transpose"`) and attach
+  the premium note via **`aria-describedby`**. A screen reader then says "Transpose,
+  Premium feature available for testing" — the §5.2 double-naming trap avoided, and the
+  premium status is not gold-shadow-only (which would reach nobody who can't see it).
+- **Not a block.** `tierGuard` is highlight+tooltip during testing (PRD-INFRA §10) — the
+  marker is decoration over a working control, never a disabled one.
+
+> **Open (§13):** gold next to the brand's burnt vermilion (`hsl(11 80% 42%)`) — two
+> warm tones close together may muddy rather than distinguish. One look decides it.
+
 ### Where the help text lives [decided]
 
 The settings panel is generated from the `SETTINGS` registry, so the obvious move is a
@@ -516,8 +618,31 @@ color, and derive:
 ```
 
 Everything else (`--surface`, `--surface-raised`, `--text`, `--text-muted`,
-`--border`) is a grey ramp, flipped by theme. **Components read tokens, never literal
-colors** — that's the whole cost of a redesign's palette change.
+`--border`, plus `--premium-glow` for §5.3) is a grey ramp, flipped by theme.
+**Components read tokens, never literal colors** — that's the whole cost of a
+redesign's palette change.
+
+### The UI font
+
+**Roboto Mono, self-hosted, temporary** [decided] — `@fontsource-variable/roboto-mono`
+(`5.2.9`, **no peer dependencies**, so it can never gate an Angular major the way
+`lucide-angular` would have; §9). A monospace UI is an honest signal that this chrome
+is scaffolding, and it costs nothing to drop later.
+
+> **Import the `latin-ext` subset, not just `latin`.** Roboto Mono's default `latin`
+> subset has no `ě ř ů ď ť ň` — the app ships **EN + CS** (PRD-INFRA §11), so Czech
+> would silently fall back to another face mid-word. This is the kind of bug nobody
+> sees until they switch language.
+
+Self-hosted only, precached with the shell — **never** `fonts.googleapis.com` (§9).
+**This is the UI chrome font and has nothing to do with the render.** Fonts for the SVG
+output are `PRD-RENDERING`'s problem, embedded into the document itself; the two must
+not be conflated.
+
+### Spacing & type scale
+
+Tokens, same discipline as color: `--space-*` on a 4px base, `--text-*` for sizes.
+Deliberately thin — a temporary UI needs a consistent rhythm, not a design system.
 
 ### Light / dark / system
 
@@ -623,18 +748,27 @@ empty boxes. Note that **Angular's own Aria docs examples contain
 `@import url('https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined')`**
 — do not copy that line when cribbing from them.
 
-**Decision: self-hosted, tree-shaken SVG icons — `lucide-angular`.** Per-icon ES
-module imports, so only the ~20 icons we use ship; no font file, no CDN, no
-`ngsw-config.json` asset group to maintain, and nothing to precache beyond the JS
-bundle that already gets precached. Neutral line-icon style that suits a rail and
-won't fight a future design.
+**Decision: self-hosted inline SVG — Lucide icons via `lucide-static`, behind our own
+`<app-icon>`.** Neutral line-icon style that suits a rail and won't fight a future
+design.
 
-Acceptable alternatives if that dependency is unwanted: a hand-built inline SVG
-sprite in `public/`, precached via `ngsw-config.json`; or self-hosted Material Symbols
-`woff2` (subsetted) — heavier and needs the asset-group wiring. **Not** acceptable:
-anything referencing `fonts.googleapis.com`.
+**Take the icons, not the Angular wrapper** [decided]. `lucide-angular@1.0.0` peers
+`@angular/core: 13.x - 21.x` — it **caps at 21 and would become a second gate on the
+Angular 22 upgrade**, next to `@ngrx/signals` (§10). That is precisely the version-lag
+trap this doc argues against everywhere else; taking it for _icon glyphs_ would be
+absurd. `lucide-static@1.24.0` has **no peer dependencies at all** — it is a bag of SVG
+files — so it can never gate an Angular major.
 
-The UI font follows the same rule: system font stack, or self-hosted.
+- `<app-icon name="songs">` renders an inlined SVG from a small generated sprite/map;
+  only the ~20 icons we use ship. No font file, no CDN, nothing extra to precache
+  beyond the JS bundle ngsw already precaches.
+- The icon _set_ is then a build-time detail: swapping Lucide for another source later
+  touches one map, not every template.
+
+**Not** acceptable: anything referencing `fonts.googleapis.com`, or any icon package
+that peers `@angular/core`.
+
+The UI font follows the same rule (§6): self-hosted or system stack — never a CDN.
 
 ---
 
@@ -699,7 +833,8 @@ second translation channel to wire.
 
 What "the designed UI lands" should cost, if this doc did its job:
 
-- [ ] Delete `apps/app/src/app/layout` and every `*.page.ts` / `*.component.ts` in the feature folders.
+- [ ] Delete `apps/app/src/app/shared/layout` and every `*.page.ts` / `*.component.ts` in the feature folders.
+- [ ] `primitives/` and the rest of `shared/` are the redesign's call — they're generic and unstyled-by-contract, so they may survive a reskin (retoken §6) or go with the rest. Either way nothing below them notices.
 - [ ] Keep every `*.presenter.ts`, every route path, every search-param contract.
 - [ ] Keep `libs/shared/*` — untouched, tests still green.
 - [ ] Keep `@angular/aria` **and** `@angular/cdk` — headless a11y behaviour, drag&drop, overlay and virtual scroll are wanted under any design. **Nothing is uninstalled.**
@@ -713,6 +848,9 @@ What "the designed UI lands" should cost, if this doc did its job:
 - **Grey ramp temperature.** The brand is warm (`h=11`). Pure-neutral greys next to it
   can read slightly cold. A ~2–4° hue tint in the greys may sit better — needs one look,
   not a debate.
+- **Gold vs. the brand.** `--premium-glow` (gold) sits next to `hsl(11 80% 42%)` (burnt
+  vermilion). Two warm tones in close company may muddy instead of distinguish — and
+  the premium marker's whole job is to stand out. One look decides it (§5.3).
 - **Rail on tablet landscape.** At ~1200px the rail plus a split may leave panes
   narrow. That's exactly the breakpoint value in §6; the first real device check should
   confirm 1200 or move it.

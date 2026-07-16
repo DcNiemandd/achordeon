@@ -386,7 +386,10 @@ propagation, tier flag, and the load-bearing unsynced-leave warning.
 
 **User stories**: navigate between modules; work in two resizable panes on desktop
 and switch between them on mobile; use the app in dark or light.
-**Depends on**: Epic 4 (stores exist to bind against).
+**Depends on**: Epic 4 (stores exist to bind against) — **plus one addition to
+`SongStore`**: a "which song changed last" query (`sort: 'changed', dir: 'desc',
+limit: 1`) for the `/songs` auto-select. `live()[0]` is wrong — the window is sorted by
+`name` and may not contain it.
 **Blocks**: the UI half of Epics 5, 6, 8, 9, 12 — land this before the first feature
 screen, so no feature invents its own frame.
 **Spec**: `docs/PRD-UI-SHELL.md`.
@@ -402,12 +405,23 @@ not on how it looks.
 ### Subtasks
 
 - [ ] Add `@angular/aria` + `@angular/cdk` on the **21.x** line (headless, signal-based,
-      first-party; **no Material**). Self-hosted tree-shaken SVG icons (`lucide-angular`)
-      — **no Google Fonts CDN** (breaks offline + CSP; Angular's own Aria examples
-      contain that `@import` — don't copy it).
+      first-party; **no Material**).
+- [ ] `<app-icon>` over inlined Lucide SVGs from **`lucide-static`** (no peer deps).
+      **Not `lucide-angular`** — it peers `@angular/core: 13.x - 21.x` and would be a
+      second Angular-22 gate beside `@ngrx/signals`. **No Google Fonts CDN** (breaks
+      offline + CSP; Angular's own Aria examples contain that `@import` — don't copy it).
 - [ ] Token layer: brand `hsl(11 80% 42%)` stored as h/s/l channels + derived
-      hover/active/subtle; grey ramp; **`--brand-l: 55%` in dark** (3.8:1 → 5.7:1).
-      Components read tokens, never literal colors.
+      hover/active/subtle; grey ramp; `--premium-glow`; `--space-*` (4px base) and
+      `--text-*`. **`--brand-l: 55%` in dark** (3.8:1 → 5.7:1). Components read tokens,
+      never literal colors.
+- [ ] UI font: **Roboto Mono**, self-hosted via `@fontsource-variable/roboto-mono` (no
+      peer deps). **Import the `latin-ext` subset** — plain `latin` has no `ě ř ů ď ť ň`
+      and CS would silently fall back mid-word. Chrome font only; the render's fonts are
+      PRD-RENDERING's problem.
+- [ ] **Import ladder** (`primitives/` ← `shared/` ← features): `primitives/` imports
+      node_modules only; `shared/` (incl. `shared/layout/`) imports primitives +
+      `@achordeon/shared/domain` **types only, never data-access**; features import
+      downward only.
 - [ ] `app/layout` shell: full-height icon rail (Songs, Songbooks, Stage, Audience;
       Settings pinned bottom) on `ngToolbar`/`ngToolbarWidget`, with active indicator;
       `chrome: 'none'` route flag for Stage fullscreen / Audience.
@@ -440,13 +454,23 @@ not on how it looks.
       accessible, ratio out / stateless about persistence, one pane below the
       breakpoint. Must not thrash the render preview during drag. Mins are asymmetric:
       **pane A 320px** (sized to hold the settings dialog), **pane B 240px**.
-- [ ] `<app-settings-panel [scope]>`: **one** vertical registry-driven panel, three
-      homes (Settings page = Global, Songbook detail = Songbook, editor = Song), with
-      per-control inherited/overridden badge + reset (ADR-0006). In the editor it opens
-      as a dialog **centered on pane A, with no viewport backdrop** — the render must
-      stay visible while you tune it. Focus-trapped; Esc / close / click-outside
-      dismiss; session-only open state. Mobile: ~45% bottom sheet over the render.
-      **Epic 12 mounts this same component — build it once.**
+- [ ] `<app-settings-panel>` in `app/shared`: a **controlled form** —
+      `[scope] [values] [inherited]` in, `(changed)` sparse patch out. Holds no state,
+      injects no store. Reads `SETTINGS` (domain types) to know which rows a scope may
+      override and which control each takes; per-control inherited/overridden badge +
+      reset (ADR-0006). **Three feature wrappers** bind it to their presenters:
+      `settings`=global, `songbooks`=songbook, `songs`=song. **Epic 12 mounts this same
+      component — build it once.**
+- [ ] Editor mount: the panel opens as a dialog **centered on pane A, with no viewport
+      backdrop** — the render must stay visible while you tune it. Focus-trapped
+      (`cdkTrapFocus`); Esc / close / click-outside dismiss; session-only open state.
+      Mobile: ~45% bottom sheet over the render.
+- [ ] `<app-premium>`: gold-shadow wrapper + tooltip text **appended** to the control's
+      own label ("Transpose — Premium feature available for testing"). `aria-label`
+      stays the plain name; the note rides `aria-describedby`. Decoration over a working
+      control — never disabled (`tierGuard` is highlight-not-block, PRD-INFRA §10).
+- [ ] `/songs` pane B: renders `SessionStore.currentSongId`; **auto-select the most
+      recently updated song** on entry; blank page when none (empty library).
 - [ ] Theme applier: `effect` mirroring `SettingsStore.theme()` onto
       `<html data-theme>` + `color-scheme`; inline pre-paint script in
       `index.html.template` to kill the flash. Render preview stays light (it's a
@@ -483,8 +507,9 @@ the security posture.
 
 - [ ] Router config: lazy feature routes per module + default redirect. (The nav
       shell itself — rail, mobile bar, split, theme — is **Epic 13**.)
-- [ ] `tierGuard` as highlight+tooltip (not a hard block) during testing; premium
-      highlight markers + tooltips throughout.
+- [ ] `tierGuard` as highlight+tooltip (not a hard block) during testing. (The
+      `<app-premium>` marker itself is **Epic 13** — it's a tooltip consumer; this
+      subtask is only the guard + deciding which controls wear it.)
 - [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
       the app shell; Audience + sync stay network paths.
 - [ ] Update strategy: gentle dismissible "update available" affordance (never
