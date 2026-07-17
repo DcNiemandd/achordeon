@@ -30,6 +30,13 @@ export const appRoutes: Route[] = [
       import('./songbooks/songbooks.page').then((m) => m.SongbooksPage),
   },
   {
+    path: 'songbooks/:id',
+    loadComponent: () =>
+      import('./songbooks/songbook-detail.page').then(
+        (m) => m.SongbookDetailPage,
+      ),
+  },
+  {
     path: 'stage',
     loadComponent: () => import('./stage/stage.page').then((m) => m.StagePage),
   },

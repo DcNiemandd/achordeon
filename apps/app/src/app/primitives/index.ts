@@ -7,6 +7,7 @@
 
 export { Autofocus } from './autofocus/autofocus';
 export { Button } from './button/button';
+export { Dialog } from './dialog/dialog';
 export { EmptyState } from './empty-state/empty-state';
 export { Field } from './field/field';
 export { Icon } from './icon/icon';

@@ -9,7 +9,7 @@ import {
   inject,
   input,
 } from '@angular/core';
-import { Button, Icon, Tooltip } from '../primitives';
+import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
@@ -23,7 +23,11 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
-import { SongsPresenter } from './songs.presenter';
+import {
+  SongsPresenter,
+  type PendingDelete,
+  type SongUse,
+} from './songs.presenter';
 
 /**
  * The song explorer and the render of whatever it has focused.
@@ -47,6 +51,7 @@ import { SongsPresenter } from './songs.presenter';
     SplitPane,
     SongExplorer,
     Button,
+    Dialog,
     Icon,
     Tooltip,
   ],
@@ -91,6 +96,7 @@ import { SongsPresenter } from './songs.presenter';
           (favoritedMany)="presenter.favoriteMany($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
+          (deleted)="presenter.requestDelete($event)"
         />
       </div>
 
@@ -98,6 +104,62 @@ import { SongsPresenter } from './songs.presenter';
            subtask 6; until then the page chrome is what the shape looks like. -->
       <app-blank-page pane-b />
     </app-split-pane>
+
+    @if (presenter.pendingDelete(); as pending) {
+      <app-dialog
+        [title]="deleteTitle(pending)"
+        data-testid="delete-dialog"
+        (closed)="presenter.cancelDelete()"
+      >
+        <p class="warn">{{ deleteQuestion(pending) }}</p>
+
+        <!-- The in-use warning: not a count, but the songbooks themselves, each
+             a way to go and look before you answer (CONTEXT.md §Delete vs
+             Remove). -->
+        @if (pending.uses.length > 0) {
+          <p class="warn in-use" data-testid="delete-in-use">
+            <app-icon name="warning" class="warn-icon" />
+            {{ inUseText }}
+          </p>
+          <ul class="uses">
+            @for (use of pending.uses; track use.bookId + use.songId) {
+              <li>
+                <button
+                  appButton
+                  type="button"
+                  variant="ghost"
+                  [attr.data-testid]="'in-use-' + use.bookId"
+                  (click)="presenter.openSongbook(use)"
+                >
+                  {{ useLabel(use, pending) }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="secondary"
+          data-testid="delete-cancel"
+          (click)="presenter.cancelDelete()"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="delete-confirm"
+          (click)="presenter.confirmDelete()"
+        >
+          {{ deleteLabel }}
+        </button>
+      </app-dialog>
+    }
   `,
   styles: `
     :host {
@@ -114,6 +176,33 @@ import { SongsPresenter } from './songs.presenter';
     .explorer {
       flex: 1;
       min-block-size: 0;
+    }
+
+    .warn {
+      margin: 0 0 var(--space-2);
+    }
+
+    .in-use {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--text-muted);
+    }
+
+    .warn-icon {
+      --icon-size: 16px;
+      flex: none;
+      color: var(--brand);
+    }
+
+    .uses {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
     }
   `,
 })
@@ -148,6 +237,31 @@ export class SongsPage {
 
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;
+  protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
+  protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
+  protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
+
+  /** A song deleted is a song gone from the library and out of every songbook —
+   * so the question says both, and never a bare "are you sure?". */
+  protected deleteTitle(pending: PendingDelete): string {
+    return pending.ids.length === 1
+      ? $localize`:@@songs.delete.title:Delete this song?`
+      : $localize`:@@songs.delete.titleMany:Delete ${pending.ids.length}:count: songs?`;
+  }
+
+  protected deleteQuestion(pending: PendingDelete): string {
+    return pending.ids.length === 1
+      ? $localize`:@@songs.delete.one:“${pending.names[0]}:name:” will be removed from your library.`
+      : $localize`:@@songs.delete.many:${pending.names.join(', ')}:names: will be removed from your library.`;
+  }
+
+  /** A bulk delete's warning spans songs, so a bare songbook name would not say
+   * which song put it on the list. */
+  protected useLabel(use: SongUse, pending: PendingDelete): string {
+    return pending.ids.length === 1
+      ? use.bookName
+      : $localize`:@@songs.delete.useMany:${use.bookName}:book: (${use.songName}:song:)`;
+  }
 
   /** "Nothing here" and "nothing matched" are different facts, and only one of
    * them is the user's fault. */

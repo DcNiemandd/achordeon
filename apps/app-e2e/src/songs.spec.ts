@@ -55,6 +55,58 @@ async function createSong(page: Page, name: string): Promise<void> {
   ).toHaveCount(1);
 }
 
+/**
+ * Put a songbook holding `songName` into IndexedDB directly.
+ *
+ * The Songbooks module is Epic 6, so there is no UI to build one with yet — but
+ * the delete cascade and its warning are Epic 5's, and they are only real if a
+ * songbook actually references the song. Writing the row is the smallest way to
+ * tell the truth here; when Epic 6 lands, this becomes a UI flow.
+ */
+async function seedSongbook(
+  page: Page,
+  bookName: string,
+  songName: string,
+): Promise<void> {
+  const songId = await page
+    .getByTestId('song-row')
+    .filter({ hasText: songName })
+    .first()
+    .getAttribute('data-song-id');
+
+  await page.evaluate(
+    ({ book, song }) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('achordeon');
+        open.onsuccess = () => {
+          const db = open.result;
+          const now = Date.now();
+          const tx = db.transaction('songbooks', 'readwrite');
+          tx.objectStore('songbooks').put({
+            id: crypto.randomUUID(),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+            name: book,
+            title: '',
+            subtitle: '',
+            author: '',
+            settings: {},
+            entries: [song],
+          });
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+        open.onerror = () => reject(open.error);
+      }),
+    { book: bookName, song: songId },
+  );
+  await page.reload();
+}
+
 test.describe('song explorer', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(ROOMY);
@@ -203,6 +255,107 @@ test.describe('song explorer', () => {
     await page.reload();
 
     await expect(page.getByTestId('song-row').nth(1)).toHaveClass(/is-current/);
+  });
+
+  test('delete asks first, and cancelling keeps the song', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    const id = await page.getByTestId('song-row').getAttribute('data-song-id');
+
+    await page.getByTestId('song-row').hover();
+    await page.getByTestId(`delete-${id}`).click();
+    await expect(page.getByTestId('delete-dialog')).toBeVisible();
+    // Nothing is in use, so no warning is shown.
+    await expect(page.getByTestId('delete-in-use')).toHaveCount(0);
+
+    await page.getByTestId('delete-cancel').click();
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+  });
+
+  test('confirming deletes the song for good', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    const id = await page.getByTestId('song-row').getAttribute('data-song-id');
+
+    await page.getByTestId('song-row').hover();
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('delete-confirm').click();
+
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+    // A tombstone is a delete, not a hide: it must survive a reload as gone.
+    await page.reload();
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+  });
+
+  test('warns when the song is in use, and links to the songbook', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await seedSongbook(page, 'Campfire', 'Wonderwall');
+    const id = await page.getByTestId('song-row').getAttribute('data-song-id');
+
+    await page.getByTestId('song-row').hover();
+    await page.getByTestId(`delete-${id}`).click();
+
+    await expect(page.getByTestId('delete-in-use')).toBeVisible();
+    const link = page.getByTestId(/^in-use-/);
+    await expect(link).toContainText('Campfire');
+
+    // The link opens the songbook instead of deleting anything.
+    await link.click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    await page.goBack();
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+  });
+
+  test('deleting cascades the song out of every songbook', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await seedSongbook(page, 'Campfire', 'Wonderwall');
+    const id = await page.getByTestId('song-row').getAttribute('data-song-id');
+
+    await page.getByTestId('song-row').hover();
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('delete-confirm').click();
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+
+    // The songbook must not be left holding a slot pointing at a tombstone.
+    const entries = await page.evaluate(
+      () =>
+        new Promise<string[][]>((resolve, reject) => {
+          const open = indexedDB.open('achordeon');
+          open.onsuccess = () => {
+            const db = open.result;
+            const request = db
+              .transaction('songbooks')
+              .objectStore('songbooks')
+              .getAll();
+            request.onsuccess = () => {
+              db.close();
+              resolve(request.result.map((book) => book.entries));
+            };
+            request.onerror = () => reject(request.error);
+          };
+          open.onerror = () => reject(open.error);
+        }),
+    );
+    expect(entries).toEqual([[]]);
+  });
+
+  test('bulk delete warns once for the whole selection', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await createSong(page, 'Yesterday');
+    const ids = await page
+      .getByTestId('song-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getAttribute('data-song-id')),
+      );
+
+    await page.getByTestId(`select-${ids[0]}`).check();
+    await page.getByTestId(`select-${ids[1]}`).check();
+    await page.getByTestId('explorer-bulk-delete').click();
+    await page.getByTestId('delete-confirm').click();
+
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+    // The selection went with the songs — the bulk bar has nothing left to act on.
+    await expect(page.getByTestId('explorer-bulk')).toHaveCount(0);
   });
 
   test('below the breakpoint: the explorer is full width, with no render pane', async ({

@@ -39,6 +39,16 @@ export class SessionStore {
     this._selectedIds.update((set) => new Set(set).add(id));
   }
 
+  /** Drop one id from the selection — a row that no longer exists cannot stay
+   * selected, or the next bulk action operates on a tombstone. */
+  deselect(id: Uuid): void {
+    this._selectedIds.update((set) => {
+      const next = new Set(set);
+      next.delete(id);
+      return next;
+    });
+  }
+
   clearSelection(): void {
     this._selectedIds.set(new Set());
   }

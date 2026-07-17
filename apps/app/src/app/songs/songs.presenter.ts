@@ -1,12 +1,13 @@
 // Songs presenter — Epic 5 ▸ subtasks 1–2
 // Spec: PRD-UI-SHELL.md §3 (the seam), §7 (state placement); CONTEXT.md §Song explorer
 
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
   SessionStore,
   SongStore,
+  SongbookStore,
 } from '@achordeon/shared/data-access';
 import type { Song } from '@achordeon/shared/domain';
 import type {
@@ -18,6 +19,22 @@ import type {
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
+
+/** One place a song about to be deleted is still being used (CONTEXT.md §Delete
+ * vs Remove). `songName` is carried because a bulk delete's warning spans songs. */
+export interface SongUse {
+  readonly bookId: string;
+  readonly bookName: string;
+  readonly songId: string;
+  readonly songName: string;
+}
+
+/** A delete the user has asked for and not yet confirmed. */
+export interface PendingDelete {
+  readonly ids: string[];
+  readonly names: string[];
+  readonly uses: SongUse[];
+}
 
 /**
  * The only thing in `songs/` that knows the business layer exists.
@@ -32,9 +49,16 @@ const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
 @Injectable()
 export class SongsPresenter {
   private readonly store = inject(SongStore);
+  private readonly songbooks = inject(SongbookStore);
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  private readonly _pendingDelete = signal<PendingDelete | null>(null);
+
+  /** The delete awaiting confirmation, or null. Session-only and the feature's,
+   * like any transient dialog state (PRD-UI-SHELL.md §7). */
+  readonly pendingDelete = this._pendingDelete.asReadonly();
 
   readonly rows = computed<SongRow[]>(() =>
     this.store.live().map((song) => ({
@@ -189,6 +213,88 @@ export class SongsPresenter {
       deletedAt: null,
     });
     await this.store.refresh();
+  }
+
+  /**
+   * Ask to delete: gather what it would destroy, then let the user look at it.
+   *
+   * The songbooks are read **before** anything is written, and read per song, so
+   * the warning names the actual slots at risk rather than a count
+   * (CONTEXT.md §Delete vs Remove).
+   */
+  async requestDelete(ids: string[]): Promise<void> {
+    const songs = ids
+      .map((id) => this.find(id))
+      .filter((song): song is Song => song !== undefined);
+    if (songs.length === 0) {
+      return;
+    }
+
+    const uses: SongUse[] = [];
+    for (const song of songs) {
+      const books = await this.songbooks.songbooksWith(song.id);
+      for (const book of books) {
+        uses.push({
+          bookId: book.id,
+          bookName: book.name,
+          songId: song.id,
+          songName: song.name,
+        });
+      }
+    }
+
+    this._pendingDelete.set({
+      ids: songs.map((song) => song.id),
+      names: songs.map((song) => song.name),
+      uses,
+    });
+  }
+
+  cancelDelete(): void {
+    this._pendingDelete.set(null);
+  }
+
+  /**
+   * Delete for real: tombstone each song and cascade it out of every songbook.
+   *
+   * **The cascade runs first.** Both halves are soft writes, so ordering cannot
+   * corrupt anything — but if the second half fails, a song that still exists in
+   * a songbook it was removed from is a recoverable mess, while a tombstoned song
+   * that songbooks still reference is a dangling slot the songbook UI must then
+   * defend against forever.
+   */
+  async confirmDelete(): Promise<void> {
+    const pending = this._pendingDelete();
+    if (!pending) {
+      return;
+    }
+    this._pendingDelete.set(null);
+
+    for (const id of pending.ids) {
+      await this.songbooks.removeSongEverywhere(id);
+      await this.store.remove(id);
+      this.session.deselect(id);
+    }
+    await this.store.refresh();
+
+    // The current song may be the one that just went. Pane B must not keep
+    // rendering a tombstone, so fall back to whatever is now most recent.
+    const current = this.session.currentSongId();
+    if (current !== null && pending.ids.includes(current)) {
+      this.session.setCurrentSong(null);
+      await this.autoSelect();
+    }
+  }
+
+  /**
+   * Open the songbook that uses this song, with the song selected — the link the
+   * in-use warning offers (CONTEXT.md §Delete vs Remove). Selecting first means
+   * the songbook opens already pointing at the song you were asking about.
+   */
+  openSongbook(use: SongUse): void {
+    this.cancelDelete();
+    this.session.setCurrentSong(use.songId);
+    void this.router.navigate(['/songbooks', use.bookId]);
   }
 
   private find(id: string): Song | undefined {

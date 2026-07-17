@@ -133,6 +133,18 @@ const SEARCH_DEBOUNCE_MS = 200;
           </button>
         }
 
+        @if (capabilities().canDelete) {
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            data-testid="explorer-bulk-delete"
+            (click)="deleted.emit([...selectedIds()])"
+          >
+            {{ deleteLabel }}
+          </button>
+        }
+
         <button
           appButton
           type="button"
@@ -260,6 +272,19 @@ const SEARCH_DEBOUNCE_MS = 200;
                 (click)="duplicated.emit(row.id)"
               >
                 <app-icon name="duplicate" />
+              </button>
+            }
+            @if (capabilities().canDelete) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="deleteRowLabel(row)"
+                [appTooltip]="deleteRowLabel(row)"
+                [attr.data-testid]="'delete-' + row.id"
+                (click)="deleted.emit([row.id])"
+              >
+                <app-icon name="delete" />
               </button>
             }
           </div>
@@ -455,6 +480,12 @@ export class SongExplorer {
   readonly selectionCleared = output<void>();
   readonly favorited = output<string>();
   readonly favoritedMany = output<string[]>();
+  /**
+   * A request to delete, never the deed — one id from a row, many from the bulk
+   * bar. Deleting a song can destroy songbook entries, so what happens next
+   * (warn, confirm, cascade) is the presenter's call, not a list's.
+   */
+  readonly deleted = output<string[]>();
   readonly renamed = output<RenameChange>();
   readonly duplicated = output<string>();
 
@@ -469,6 +500,7 @@ export class SongExplorer {
   protected readonly sortLabel = $localize`:@@explorer.sort:Sort by`;
   protected readonly clearLabel = $localize`:@@explorer.clearSelection:Clear`;
   protected readonly favoriteLabel = $localize`:@@explorer.favorite:Favorite`;
+  protected readonly deleteLabel = $localize`:@@explorer.delete:Delete`;
 
   protected readonly sortOptions: readonly {
     value: ExplorerSort;
@@ -518,6 +550,10 @@ export class SongExplorer {
 
   protected duplicateRowLabel(row: SongRow): string {
     return $localize`:@@explorer.duplicateRow:Duplicate ${row.name}:name:`;
+  }
+
+  protected deleteRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
   }
 
   protected onSearchInput(event: Event): void {
