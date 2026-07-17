@@ -29,5 +29,13 @@ export function parseAspectRatio(value: GlobalSettings['aspectRatio']): number {
       return w / h;
     }
   }
+  // A bare number, as TEXT. CONTEXT.md §Render settings says the input accepts
+  // "N:N, N (float), N/N, or A4" — and every value that reaches here from a GUI
+  // is a string, because that is what an <input> and an <option> hold. Parsing
+  // "3:4" but not "0.75" made a typed ratio silently render as A4.
+  const bare = Number(value);
+  if (Number.isFinite(bare) && bare > 0) {
+    return bare;
+  }
   return A4_RATIO;
 }

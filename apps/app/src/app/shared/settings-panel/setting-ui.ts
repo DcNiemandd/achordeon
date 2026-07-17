@@ -52,7 +52,11 @@ export interface SettingUi {
  */
 const ASPECT_PRESETS: readonly Option[] = [
   { value: 'A4', label: $localize`:@@aspect.a4:A4 (210:297)` },
-  { value: '1', label: $localize`:@@aspect.square:Square (1:1)` },
+  // `1:1`, not `1`: a preset's value is stored verbatim, so it should be a value
+  // the `aspectRatio` type actually allows. (The renderer parses a bare number
+  // too — CONTEXT.md promises that for the text input — but a preset has no
+  // excuse to lean on it.)
+  { value: '1:1', label: $localize`:@@aspect.square:Square (1:1)` },
   { value: '16:9', label: '16:9' },
   { value: '16:10', label: '16:10' },
   { value: '4:3', label: '4:3' },

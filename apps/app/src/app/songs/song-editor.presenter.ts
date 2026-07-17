@@ -46,6 +46,9 @@ export class SongEditorPresenter {
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
   private readonly _ast = signal<SongAst | undefined>(undefined);
+  /** Session-only, and the feature's: a transient dialog is not a place, so it
+   * is neither persisted nor in the URL (PRD-UI-SHELL.md §7). */
+  private readonly _isSettingsOpen = signal(false);
 
   readonly song = this._song.asReadonly();
   readonly content = this._content.asReadonly();
@@ -123,6 +126,55 @@ export class SongEditorPresenter {
     // Parse now rather than on the first keystroke: the preview and the warnings
     // must describe the song you opened, not stay blank until you touch it.
     this._ast.set(this.parser.parse(song.content));
+  }
+
+  /**
+   * The Song-scope overrides, as the panel wants them: only what this song
+   * actually sets (ADR-0006 — sparse; an unset key is not "the default", it is
+   * inherited).
+   */
+  readonly songSettings = computed(
+    () => (this._song()?.settings ?? {}) as Record<string, unknown>,
+  );
+
+  /** What the panel shows behind an unset row, and what "reset" reveals. */
+  readonly inheritedSettings = computed(
+    () => this.settings.global() as Record<string, unknown>,
+  );
+
+  readonly isSettingsOpen = this._isSettingsOpen.asReadonly();
+
+  toggleSettings(): void {
+    this._isSettingsOpen.update((open) => !open);
+  }
+
+  closeSettings(): void {
+    this._isSettingsOpen.set(false);
+  }
+
+  /**
+   * A sparse patch from the panel. `undefined` means "reset" — **delete the key**
+   * rather than storing the inherited value, or the song would pin today's global
+   * default forever and the cascade would stop reaching it (ADR-0006).
+   */
+  patchSettings(patch: Record<string, unknown>): void {
+    const song = this._song();
+    if (!song) {
+      return;
+    }
+    const settings: Record<string, unknown> = { ...song.settings };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        delete settings[key];
+      } else {
+        settings[key] = value;
+      }
+    }
+    this._song.set({
+      ...song,
+      settings: settings as Song['settings'],
+      updatedAt: Date.now(),
+    });
   }
 
   /** An edit from the editor. Debounced into one reparse per settled edit. */

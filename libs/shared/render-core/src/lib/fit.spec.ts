@@ -37,4 +37,19 @@ describe('fitContent — scale-to-fit (§4.1)', () => {
   it('returns a zero box for empty content', () => {
     expect(fitContent(0, 0, 1, 'auto').box).toEqual({ width: 0, height: 0 });
   });
+
+  it('honours a manual scale given as text', () => {
+    // Same trap as parseAspectRatio: the GUI hands over strings, and a
+    // `typeof scale === 'number'` test alone turned every typed scale into
+    // 'auto' — the setting looked saved and did nothing.
+    expect(fitContent(200, 100, 1, '2' as never).fit).toBe(2);
+    expect(fitContent(200, 100, 1, '0.5' as never).fit).toBe(0.5);
+  });
+
+  it('treats auto and unusable scales as 1', () => {
+    expect(fitContent(200, 100, 1, 'auto').fit).toBe(1);
+    expect(fitContent(200, 100, 1, '' as never).fit).toBe(1);
+    expect(fitContent(200, 100, 1, 'huge' as never).fit).toBe(1);
+    expect(fitContent(200, 100, 1, -2).fit).toBe(1);
+  });
 });

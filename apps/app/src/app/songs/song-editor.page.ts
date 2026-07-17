@@ -10,9 +10,10 @@ import {
   input,
   viewChild,
 } from '@angular/core';
-import { Button, Icon, Tooltip } from '../primitives';
+import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import { RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
+import { SettingsPanel } from '../shared/settings-panel';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
@@ -35,7 +36,9 @@ import { SongEditorPresenter } from './song-editor.presenter';
     SplitPane,
     SongEditor,
     SongRender,
+    SettingsPanel,
     Button,
+    Dialog,
     Icon,
     Tooltip,
   ],
@@ -135,6 +138,23 @@ import { SongEditorPresenter } from './song-editor.presenter';
             >
               <app-icon name="redo" />
             </button>
+
+            <span class="spacer"></span>
+
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [class.is-active]="presenter.isSettingsOpen()"
+              [attr.aria-pressed]="presenter.isSettingsOpen()"
+              [attr.aria-label]="settingsLabel"
+              [appTooltip]="settingsLabel"
+              data-testid="editor-settings"
+              (click)="presenter.toggleSettings()"
+            >
+              <app-icon name="settings" />
+            </button>
           </div>
         </app-action-bar>
 
@@ -144,6 +164,26 @@ import { SongEditorPresenter } from './song-editor.presenter';
           [markers]="presenter.markers()"
           (contentChange)="presenter.setContent($event)"
         />
+
+        <!-- Centred on pane A with NO backdrop: you tune the render while
+             watching it, so pane B stays fully visible and fully alive
+             (PRD-UI-SHELL.md §4). The same panel the Settings page mounts at
+             global scope — built once, bound here to this song. -->
+        @if (presenter.isSettingsOpen()) {
+          <app-dialog
+            mode="container"
+            [title]="settingsLabel"
+            data-testid="song-settings-dialog"
+            (closed)="presenter.closeSettings()"
+          >
+            <app-settings-panel
+              scope="song"
+              [values]="presenter.songSettings()"
+              [inherited]="presenter.inheritedSettings()"
+              (changed)="presenter.patchSettings($event)"
+            />
+          </app-dialog>
+        }
       </div>
 
       <!-- Pane B: the render, live. Nothing sits above it — the action bar is
@@ -159,7 +199,10 @@ import { SongEditorPresenter } from './song-editor.presenter';
       block-size: 100%;
     }
 
+    /* "Centred on pane A" means this: the dialog is absolutely positioned, so
+       pane A has to be the box it positions against. */
     .pane {
+      position: relative;
       display: flex;
       flex-direction: column;
       block-size: 100%;
@@ -227,6 +270,7 @@ export class SongEditorPage {
   protected readonly transformGroupLabel = $localize`:@@editor.transformGroup:Transform`;
   protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
   protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
+  protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 

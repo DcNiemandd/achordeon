@@ -245,6 +245,57 @@ test.describe('song editor', () => {
     );
   });
 
+  test('the settings dialog tunes the render while you watch it', async ({
+    page,
+  }) => {
+    await type(page, '* Wonderwall\n\n1.: sing [C]this');
+    await expect(page.getByTestId('song-settings-dialog')).toHaveCount(0);
+
+    await page.getByTestId('editor-settings').click();
+    await expect(page.getByTestId('song-settings-dialog')).toBeVisible();
+    // No backdrop: the render is what you are tuning, so it stays visible AND
+    // interactive behind the dialog (PRD-UI-SHELL.md §4).
+    await expect(page.getByTestId('song-render')).toBeVisible();
+    await expect(page.getByTestId('dialog-scrim')).toHaveCount(0);
+
+    // Aspect ratio is a Song-scope setting, and the render box IS its shape —
+    // so this proves the panel reached the geometry, not just the state.
+    const svg = page.locator('[data-testid="song-render"] svg');
+    const a4 = await svg.getAttribute('viewBox');
+    await page.getByTestId('select-aspectRatio').selectOption('1:1');
+
+    await expect(svg).not.toHaveAttribute('viewBox', a4 as string);
+    const square = (await svg.getAttribute('viewBox'))!.split(' ').map(Number);
+    expect(square[2] / square[3]).toBeCloseTo(1); // 1:1, as asked
+  });
+
+  test('an unset song setting shows as inherited, and reset gives it back', async ({
+    page,
+  }) => {
+    await type(page, '* Wonderwall');
+    await page.getByTestId('editor-settings').click();
+
+    // Nothing overridden yet: the row wears the inherited badge, not a reset.
+    await expect(page.getByTestId('reset-columns')).toHaveCount(0);
+
+    await page.getByTestId('inc-columns').click();
+    await expect(page.getByTestId('reset-columns')).toBeVisible();
+
+    // Reset REMOVES the override rather than writing the default down, so the
+    // cascade reaches the song again (ADR-0006).
+    await page.getByTestId('reset-columns').click();
+    await expect(page.getByTestId('reset-columns')).toHaveCount(0);
+  });
+
+  test('Escape closes the settings dialog', async ({ page }) => {
+    await page.getByTestId('editor-settings').click();
+    await expect(page.getByTestId('song-settings-dialog')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('song-settings-dialog')).toHaveCount(0);
+  });
+
   test('opens a song by deep link, without the list ever loading it', async ({
     page,
   }) => {

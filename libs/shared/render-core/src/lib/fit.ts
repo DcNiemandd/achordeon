@@ -19,13 +19,26 @@ export interface FitResult {
  * Fit a content box (`contentW × contentH`, base units) into a render box of the
  * given `ratio` (width ÷ height) under `scale` ('auto' | number).
  */
+/**
+ * The manual scale, or 1 for 'auto'.
+ *
+ * Accepts a numeric **string** as well as a number, for the same reason
+ * `parseAspectRatio` does: the settings GUI is inputs and options, and those hold
+ * text. `typeof scale === 'number'` alone quietly turned every manually typed
+ * scale into 'auto' — the setting looked saved and did nothing.
+ */
+function parseScale(scale: GlobalSettings['scale']): number {
+  const value = typeof scale === 'number' ? scale : Number(scale);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
 export function fitContent(
   contentW: number,
   contentH: number,
   ratio: number,
   scale: GlobalSettings['scale'],
 ): FitResult {
-  const fit = typeof scale === 'number' && scale > 0 ? scale : 1;
+  const fit = parseScale(scale);
   const origin = { x: 0, y: 0 }; // hug top-left (§4.5)
 
   if (contentW <= 0 || contentH <= 0) {

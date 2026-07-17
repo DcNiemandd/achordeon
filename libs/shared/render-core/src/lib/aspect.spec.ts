@@ -16,10 +16,21 @@ describe('parseAspectRatio', () => {
     expect(parseAspectRatio('2.5:1')).toBeCloseTo(2.5);
   });
 
+  it('parses a bare number given as text', () => {
+    // Every value from the settings GUI is a string — an <input> and an <option>
+    // hold nothing else. Parsing "3:4" but not "0.75" made a typed ratio
+    // silently render as A4 (CONTEXT.md: the input accepts "N (float)").
+    expect(parseAspectRatio('1' as never)).toBeCloseTo(1);
+    expect(parseAspectRatio('0.75' as never)).toBeCloseTo(0.75);
+  });
+
   it('falls back to A4 on non-positive or malformed input', () => {
     expect(parseAspectRatio(0)).toBe(A4_RATIO);
     expect(parseAspectRatio(-3)).toBe(A4_RATIO);
     expect(parseAspectRatio('0:5')).toBe(A4_RATIO);
     expect(parseAspectRatio('nonsense' as never)).toBe(A4_RATIO);
+    expect(parseAspectRatio('0' as never)).toBe(A4_RATIO);
+    expect(parseAspectRatio('-2' as never)).toBe(A4_RATIO);
+    expect(parseAspectRatio('' as never)).toBe(A4_RATIO);
   });
 });
