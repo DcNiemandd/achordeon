@@ -222,21 +222,68 @@ right, settings panel). This is the app's core loop.
 
 ### Subtasks
 
-- [ ] Song explorer: list with infinite scroll, two-tier search, sort (name /
+- [x] Song explorer: list with infinite scroll, two-tier search, sort (name /
       created / changed / favorite), multi-select, bulk + row actions.
-- [ ] Create / rename / duplicate / favorite a song.
-- [ ] Delete with the "in use" warning + link that opens the songbook and selects
+- [x] Create / rename / duplicate / favorite a song.
+- [x] Delete with the "in use" warning + link that opens the songbook and selects
       the song; cascade tombstone out of songbooks.
-- [ ] Editor adapter: CodeMirror 6 behind the loose-coupling seam; stream-parser
+- [x] Editor adapter: CodeMirror 6 behind the loose-coupling seam; stream-parser
       highlight grammar; warning underlines from `ParserService`; reparse trigger;
       insert-at-cursor.
-- [ ] Insert-syntax buttons (chord, title, subtitle, label) + transpose up/down +
+- [x] Insert-syntax buttons (chord, title, subtitle, label) + transpose up/down +
       session-only undo/redo.
-- [ ] Live preview: debounced reparse → renderer → mounted SVG; resizable split;
+- [x] Live preview: debounced reparse → renderer → mounted SVG; resizable split;
       mobile content/preview toggle.
-- [ ] Per-song settings panel (GUI controls derived from the registry: scale,
+- [x] Per-song settings panel (GUI controls derived from the registry: scale,
       columns, title position/layout, aspect ratio).
-- [ ] Keystroke-debounced autosave to IndexedDB.
+- [x] Keystroke-debounced autosave to IndexedDB.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The explorer lives in `app/shared`, not `songs/`.** CONTEXT.md gives it two
+  homes and a feature folder may not import a sibling. Capabilities are a
+  per-mount input, so Epic 6 turns actions off rather than forking it.
+- **`withComponentInputBinding` overwrites an `input()` default with `undefined`**
+  when a query param is absent. Route params are now typed as the strings a URL
+  actually holds and narrowed at the boundary — which also disarms `?sort=bogus`.
+  Epic 13 ticked this box but never wired the provider; it is wired now.
+- **Epic 5 was the first thing to actually run the foundation, and it found six
+  bugs in it** — each now has a test:
+  - `songPagingConfig` never searched a song's **Name** (Epic 4).
+  - `SongStore` let a stale fetch land last and overwrite the window; and an
+    `upsert` could not place a row, so a renamed song ignored the sort until a
+    refetch (`refresh()`, Epic 4).
+  - The label gutter had no gap, so labels touched their lyrics — `gutterGapEm`
+    was in the tuning and read by nothing (Epic 3, §4.8).
+  - `measure` named only the bundled family while `emit` named the fallback
+    stack, so widths were measured against a font that was never drawn and
+    lyrics ran off the page (Epic 3).
+  - `parseAspectRatio` and `fitContent` rejected numeric **strings**, which is
+    all a settings GUI can produce: a typed ratio silently rendered as A4 and
+    manual scale never worked at all (Epic 3).
+- **ADR-0010's seam is a lint rule**, not a promise: a CodeMirror import outside
+  `songs/editor/` fails the build.
+- **Diagnostics are pushed (`setDiagnostics`), not sourced (`linter()`)** — a
+  linter runs on doc changes, and our warnings arrive a debounce later.
+- **CodeMirror and the mounted SVG are styled outside component `styles`.** Both
+  are built by code rather than by the template, so they carry no encapsulation
+  attribute and scoped rules never match them.
+- **Hover tooltips are pointer-transparent**; only the `(?)` toggle-tip is
+  hoverable. A label panel placed beside its button covered the next button, and
+  WCAG 1.4.13 "hoverable" then held it there — Undo was unclickable.
+- **An outside edit isolates the undo history**, or a transpose merges into the
+  typing before it and one Ctrl+Z discards both.
+- **No bold/italic insert buttons** (PRD-UI-SHELL.md §4 sketches them): Phase 2
+  markdown is unimplemented, so they would write syntax the renderer ignores.
+- **Landed early, as frames, because Epic 5 needed somewhere to point:** the
+  `/songbooks/:id` route (the in-use warning links to it) and the shell's pane
+  switcher (§4 gave it a slot but no control).
+
+**Still open:** the render has no bundled font — `fontFamily: 'Achordeon'` falls
+back to the CSS stack everywhere. Screen is honest now (both sides agree), but
+**Epic 7 must embed real bytes** or the PDF has nothing to register (§3, §4.10).
 
 ---
 
@@ -513,9 +560,9 @@ Corrections the build forced, recorded so they aren't re-litigated:
 - **`UiStore` persists from setters, not an `effect`** — an effect flushes on a
   later tick, so drag-then-close-tab lost the ratio.
 
-**Still open (needs Epic 4):** `/songs` auto-select of the most recently updated
-song. `SongStore` has no "which changed last" query and `live()[0]` is wrong — the
-window is name-sorted. The page currently renders the blank page unconditionally.
+**Closed by Epic 5:** `/songs` auto-select of the most recently updated song.
+`SongStore.lastChanged()` is that query — run past the window, since `live()[0]`
+answers the name sort, not "which changed last".
 
 ---
 
