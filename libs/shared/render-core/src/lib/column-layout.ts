@@ -109,10 +109,20 @@ export function layoutColumns(
   for (const seg of segments) {
     if (seg.length === 0) continue;
     const colBlocks = seg.map((i) => live[i]);
-    const gutter = Math.max(
+    // §4.8: the widest inline label in the column, PLUS A GAP. Without the gap
+    // the gutter is exactly the widest label, so that label ends where its own
+    // lyric begins and the two touch — which is what shipped, unnoticed until a
+    // song was rendered with a label as wide as "Chorus". A column with no inline
+    // label keeps a gutter of 0: the gap is the label's cost, and there is no
+    // label to charge for.
+    const widestLabel = Math.max(
       0,
       ...colBlocks.map((b) => inlineLabelWidth(b, ctx)),
     );
+    const gutter =
+      widestLabel > 0
+        ? widestLabel + tuning.spacing.gutterGapEm * tuning.baseSizePx
+        : 0;
     // Column width from natural block widths, then justify chord-only lines to it.
     const colWidth = Math.max(
       0,

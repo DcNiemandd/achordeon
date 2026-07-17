@@ -2,9 +2,11 @@
 // Spec: PRD-UI-SHELL.md §4
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { Button } from '../../primitives';
 import { Fullscreen } from './fullscreen';
 import { ModuleSwitcher } from './module-switcher';
+import { Panes } from './panes';
 import { Rail } from './rail';
 import { Viewport } from './viewport';
 
@@ -24,7 +26,7 @@ import { Viewport } from './viewport';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, Rail, ModuleSwitcher],
+  imports: [RouterOutlet, Rail, ModuleSwitcher, Button],
   // While performing, any pointer movement or tap brings the bars back.
   host: {
     '(document:pointermove)': 'onActivity()',
@@ -45,7 +47,31 @@ import { Viewport } from './viewport';
         <div class="bottom-bar" data-testid="bottom-bar">
           <app-module-switcher />
           <div class="bar-slot">
-            <!-- The pane switcher and module actions mount here (§4). -->
+            <!-- The pane switcher: segmented, and only in split modules (§4).
+                 It is the shell's, because the bar is; which panes exist is the
+                 feature's, and reaches us through the Panes service. -->
+            @if (panes.isSplit()) {
+              <div
+                class="switcher"
+                role="group"
+                [attr.aria-label]="paneGroupLabel"
+                data-testid="pane-switcher"
+              >
+                @for (option of paneOptions; track option.pane) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="ghost"
+                    [class.is-active]="panes.active() === option.pane"
+                    [attr.aria-pressed]="panes.active() === option.pane"
+                    [attr.data-testid]="'pane-' + option.value"
+                    (click)="showPane(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
       }
@@ -103,13 +129,53 @@ import { Viewport } from './viewport';
       gap: var(--space-1);
       margin-inline-start: auto;
     }
+
+    .switcher {
+      display: flex;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
   `,
 })
 export class Shell {
   protected readonly viewport = inject(Viewport);
+  protected readonly panes = inject(Panes);
   private readonly fullscreen = inject(Fullscreen);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly isChrome = this.fullscreen.isChromeVisible;
+
+  protected readonly paneGroupLabel = $localize`:@@shell.panes:Show`;
+
+  /** `?pane=source|render` (§7). The URL's words are the user's words; `a`/`b`
+   * is the split's internal vocabulary and stays out of the address bar. */
+  protected readonly paneOptions = [
+    {
+      pane: 'a' as const,
+      value: 'source',
+      label: $localize`:@@shell.paneSource:Source`,
+    },
+    {
+      pane: 'b' as const,
+      value: 'render',
+      label: $localize`:@@shell.paneRender:Render`,
+    },
+  ];
+
+  /** Into the URL, so it survives a reload and a rotation, and so a link can
+   * land straight on the render (§7). */
+  protected showPane(value: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { pane: value },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   protected onActivity(): void {
     if (this.fullscreen.isActive()) {

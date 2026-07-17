@@ -35,6 +35,8 @@ export function toFontSpec(style: TextStyle): FontSpec {
     sizePx: style.sizePx,
     weight: style.weight,
     style: style.style,
+    // Carried, not dropped: measuring must name the same stack `emit` draws with.
+    fallback: style.fallback,
   };
 }
 

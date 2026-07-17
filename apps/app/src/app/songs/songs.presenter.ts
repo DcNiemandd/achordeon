@@ -5,11 +5,14 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
+  ParserService,
+  RenderService,
   SessionStore,
+  SettingsStore,
   SongStore,
   SongbookStore,
 } from '@achordeon/shared/data-access';
-import type { Song } from '@achordeon/shared/domain';
+import { resolveSettings, type Song } from '@achordeon/shared/domain';
 import type {
   ExplorerSort,
   ExplorerSortDir,
@@ -51,6 +54,9 @@ export class SongsPresenter {
   private readonly store = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly session = inject(SessionStore);
+  private readonly parser = inject(ParserService);
+  private readonly renderer = inject(RenderService);
+  private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -82,6 +88,36 @@ export class SongsPresenter {
     return id === null
       ? undefined
       : this.store.entities().find((song) => song.id === id);
+  });
+
+  /**
+   * The focused song, rendered (PRD-UI-SHELL.md §4).
+   *
+   * Parsed here rather than read from a cache: `Song.cache` holds the resolved
+   * title and subtitle, not an AST — the AST is derived-and-discarded, and a song
+   * is one page, so parsing it is sub-millisecond. This recomputes only when the
+   * focused row or a setting actually changes.
+   */
+  private readonly plan = computed(() => {
+    const song = this.currentSong();
+    if (!song) {
+      return undefined;
+    }
+    return this.renderer.layout(
+      this.parser.parse(song.content),
+      resolveSettings(this.settings.global(), undefined, song.settings),
+    );
+  });
+
+  readonly svg = computed(() => {
+    const plan = this.plan();
+    return plan ? this.renderer.emit(plan) : '';
+  });
+
+  /** The paper's shape — the song's own, so the frame is the page it prints on. */
+  readonly aspectRatio = computed(() => {
+    const box = this.plan()?.box;
+    return box ? `${box.width} / ${box.height}` : '210 / 297';
   });
 
   /** The direction actually in force — a `dir`-less query resolves to a default,

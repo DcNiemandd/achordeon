@@ -167,6 +167,84 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('verse');
   });
 
+  test('renders the song live, in the pane next to the text', async ({
+    page,
+  }) => {
+    await type(
+      page,
+      '* Wonderwall\n** Oasis\n\n1.: Today is [Em7]gonna be the day',
+    );
+
+    const render = page.getByTestId('song-render');
+    await expect(render.locator('svg')).toBeVisible();
+    // The AST reached the page: title, subtitle, label and a chord, each drawn
+    // as its own text run.
+    await expect(render).toContainText('Wonderwall');
+    await expect(render).toContainText('Oasis');
+    await expect(render).toContainText('Em7');
+    // Brackets are markup: they are gone from the render, and the chord floats
+    // above the lyric instead.
+    await expect(render).toContainText('Today is gonna be the day');
+    await expect(render).not.toContainText('[Em7]');
+  });
+
+  test('the preview follows an edit', async ({ page }) => {
+    await type(page, '* Wonderwall');
+    await expect(page.getByTestId('song-render')).toContainText('Wonderwall');
+
+    // Keep typing on the same title — a SECOND `*` line would not show up here,
+    // and rightly so: last wins, so it would shadow this one (PARSER-GRAMMAR).
+    await page.keyboard.insertText(' Live');
+
+    await expect(page.getByTestId('song-render')).toContainText(
+      'Wonderwall Live',
+    );
+  });
+
+  test('lays the render out with the font it actually draws with', async ({
+    page,
+  }) => {
+    // Regression: `measure` named only the (absent) bundled family, so the canvas
+    // fell back to its default while the SVG fell back to the CSS stack. Every
+    // width was measured against a font that was never drawn, and lyrics ran off
+    // the page. The measured box must contain the ink.
+    await type(
+      page,
+      "1.: That they're [Dsus4]gonna throw it [A7sus4]back to you",
+    );
+    await page.waitForTimeout(300);
+
+    const overflow = await page.evaluate(() => {
+      const svg = document.querySelector(
+        '[data-testid="song-render"] svg',
+      ) as SVGSVGElement;
+      const box = svg.viewBox.baseVal;
+      return Array.from(svg.querySelectorAll('text')).map((t) => {
+        const ink = (t as SVGTextElement).getBBox();
+        return ink.x + ink.width - box.width;
+      });
+    });
+
+    for (const past of overflow) {
+      expect(past).toBeLessThanOrEqual(1); // a hair for rounding, not a word
+    }
+  });
+
+  test('a title that looks like markup is text, not markup', async ({
+    page,
+  }) => {
+    // Song content is user input (PRD-INFRASTRUCTURE.md §7). It reaches the DOM
+    // through emit + DOMParser, and must arrive as characters.
+    await type(page, '* <img src=x onerror="window.__pwned = 1">');
+    await page.waitForTimeout(300);
+
+    await expect(page.getByTestId('song-render')).toContainText('<img');
+    expect(await page.evaluate(() => '__pwned' in window)).toBe(false);
+    expect(await page.locator('[data-testid="song-render"] img').count()).toBe(
+      0,
+    );
+  });
+
   test('opens a song by deep link, without the list ever loading it', async ({
     page,
   }) => {

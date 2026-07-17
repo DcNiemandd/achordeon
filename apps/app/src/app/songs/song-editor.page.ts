@@ -4,6 +4,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
@@ -12,6 +13,7 @@ import {
 import { Button, Icon, Tooltip } from '../primitives';
 import { RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
+import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
 import { SongEditorPresenter } from './song-editor.presenter';
@@ -32,6 +34,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
     BlankPage,
     SplitPane,
     SongEditor,
+    SongRender,
     Button,
     Icon,
     Tooltip,
@@ -39,6 +42,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
   template: `
     <app-split-pane
       [ratio]="ui.splitRatio()"
+      [activePane]="activePane()"
       (ratioChange)="ui.setSplitRatio($event)"
     >
       <div pane-a class="pane">
@@ -142,8 +146,11 @@ import { SongEditorPresenter } from './song-editor.presenter';
         />
       </div>
 
-      <!-- The render lands here in subtask 6. -->
-      <app-blank-page pane-b />
+      <!-- Pane B: the render, live. Nothing sits above it — the action bar is
+           pane A's (PRD-UI-SHELL.md §4). -->
+      <app-blank-page pane-b [aspectRatio]="aspectRatio()">
+        <app-song-render [svg]="presenter.svg()" />
+      </app-blank-page>
     </app-split-pane>
   `,
   styles: `
@@ -189,9 +196,31 @@ export class SongEditorPage {
   /** `/songs/:id/edit`, delivered by `withComponentInputBinding()`. */
   readonly id = input.required<string>();
 
+  /**
+   * `?pane=source|render` — which pane to show below the breakpoint (§7). The
+   * shell's bottom bar writes it; this reads it. Raw string in, narrowed here:
+   * a URL holds text, not a union (see the songs page for the trap this avoids).
+   */
+  readonly pane = input<string | undefined>();
+
+  protected readonly activePane = computed<'a' | 'b'>(() =>
+    this.pane() === 'render' ? 'b' : 'a',
+  );
+
   /** The adapter, for the commands that act on a cursor rather than on state:
    * inserting and undoing are things you do *to an editor* (ADR-0010). */
   protected readonly editor = viewChild.required(SongEditor);
+
+  /**
+   * The page frame follows the song's own aspect ratio, so the paper you are
+   * looking at is the paper it prints on. `BlankPage` takes a CSS ratio; the
+   * setting speaks the render's dialect (`A4`, `3:4`, a number), and the plan's
+   * box is that ratio already resolved — so the render is asked, not re-parsed.
+   */
+  protected readonly aspectRatio = computed(() => {
+    const box = this.presenter.plan()?.box;
+    return box ? `${box.width} / ${box.height}` : '210 / 297';
+  });
 
   protected readonly backLabel = $localize`:@@editor.back:Back to songs`;
   protected readonly insertGroupLabel = $localize`:@@editor.insertGroup:Insert`;

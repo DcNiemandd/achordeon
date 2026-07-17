@@ -10,11 +10,14 @@ import {
 } from '@angular/core';
 import {
   ParserService,
+  RenderService,
   SessionStore,
+  SettingsStore,
   SongStore,
 } from '@achordeon/shared/data-access';
 import {
   ChordTheory,
+  resolveSettings,
   transposeContent,
   type Song,
   type SongAst,
@@ -36,6 +39,8 @@ export class SongEditorPresenter {
   private readonly songs = inject(SongStore);
   private readonly session = inject(SessionStore);
   private readonly parser = inject(ParserService);
+  private readonly renderer = inject(RenderService);
+  private readonly settings = inject(SettingsStore);
   private readonly theory = inject(ChordTheory);
 
   private readonly _song = signal<Song | undefined>(undefined);
@@ -49,6 +54,45 @@ export class SongEditorPresenter {
   readonly name = computed(() => this._song()?.name ?? '');
   /** The parser's warnings, in the editor's vocabulary and the user's language. */
   readonly markers = computed(() => toMarkers(this._ast()?.warnings ?? []));
+
+  /**
+   * The effective render settings for this song: Global ← Song, resolved at
+   * render time and never persisted (ADR-0006).
+   *
+   * No Songbook scope here — the editor edits a song, not a performance of one.
+   * The same song rendered inside a songbook resolves differently (Epic 6), which
+   * is the cascade working, not a disagreement.
+   */
+  readonly settingsForSong = computed(() =>
+    resolveSettings(this.settings.global(), undefined, this._song()?.settings),
+  );
+
+  /**
+   * The geometry: **one plan per settled edit**, from the same AST the markers
+   * read.
+   *
+   * A `computed` rather than an effect, because that is what it is — a function
+   * of (AST, settings). It recomputes when the debounced reparse lands or a
+   * setting changes, and not once per keystroke: the debounce is upstream, in
+   * `setContent`, where PARSER-GRAMMAR §Reparse put it.
+   */
+  readonly plan = computed(() => {
+    const ast = this._ast();
+    return ast ? this.renderer.layout(ast, this.settingsForSong()) : undefined;
+  });
+
+  /**
+   * The live preview.
+   *
+   * Screen, so no inlined font bytes (PRD-RENDERING §2): the face is already
+   * loaded by the page's CSS, and base64-ing a few hundred KB of TTF into a
+   * string that is re-emitted on every settled edit would be pure waste. Export
+   * (Epic 7) asks for the other variant.
+   */
+  readonly svg = computed(() => {
+    const plan = this.plan();
+    return plan ? this.renderer.emit(plan) : '';
+  });
 
   private readonly reparser = this.parser.createReparser((ast) =>
     this._ast.set(ast),

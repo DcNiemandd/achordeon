@@ -4,12 +4,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
+  effect,
   inject,
   input,
   output,
 } from '@angular/core';
+import { Panes } from './panes';
 import { Viewport } from './viewport';
 
 /** Sized to hold the render-settings dialog (~300px) with margin, so the dialog
@@ -122,6 +125,20 @@ const KEY_STEP = 0.02;
 export class SplitPane {
   protected readonly viewport = inject(Viewport);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly panes = inject(Panes);
+
+  constructor() {
+    // Tell the shell whether it has a switcher to draw, and what it is showing.
+    // The bar is the shell's and the split is the feature's; this is the one
+    // fact that has to cross (see Panes).
+    effect(() =>
+      this.panes.report(
+        this.hasTwoPanes() && this.viewport.isCompact(),
+        this.activePane(),
+      ),
+    );
+    inject(DestroyRef).onDestroy(() => this.panes.clear());
+  }
 
   /** 0..1 — pane A's share of the width. */
   readonly ratio = input(RESET_RATIO);

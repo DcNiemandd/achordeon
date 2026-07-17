@@ -17,6 +17,7 @@ import {
   UiStore,
   Viewport,
 } from '../shared/layout';
+import { SongRender } from '../shared/song-render';
 import {
   SongExplorer,
   toExplorerSort,
@@ -50,6 +51,7 @@ import {
     BlankPage,
     SplitPane,
     SongExplorer,
+    SongRender,
     Button,
     Dialog,
     Icon,
@@ -100,9 +102,14 @@ import {
         />
       </div>
 
-      <!-- Pane B: the render of the focused song. The SVG mounts here in
-           subtask 6; until then the page chrome is what the shape looks like. -->
-      <app-blank-page pane-b />
+      <!-- Pane B: the render of the focused song. With no song — an empty
+           library — the page stays blank: the shape of what goes there, not an
+           illustration and not a call to action (PRD-UI-SHELL.md §4). -->
+      <app-blank-page pane-b [aspectRatio]="presenter.aspectRatio()">
+        @if (presenter.currentSong()) {
+          <app-song-render [svg]="presenter.svg()" />
+        }
+      </app-blank-page>
     </app-split-pane>
 
     @if (presenter.pendingDelete(); as pending) {
