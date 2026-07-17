@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import type { Song } from '@achordeon/shared/domain';
 import { MemoryEntitySource } from '../persistence/memory-entity-source';
 import { PagedRepository } from '../persistence/paged-repository';
+import type { Page } from '../persistence/paging';
 import { PAGE_LIMIT, SONG_REPOSITORY, songPagingConfig } from './repositories';
 import { SongStore } from './song-store';
 
@@ -33,6 +34,21 @@ function storeWith(seed: Song[]): InstanceType<typeof SongStore> {
     ],
   });
   return TestBed.inject(SongStore);
+}
+
+/**
+ * A repository whose `page()` calls resolve in a controlled order, so an
+ * out-of-order fetch can be reproduced rather than waited for.
+ */
+function racingRepo(answers: Song[][], delaysMs: number[]) {
+  let call = 0;
+  return {
+    page: async (): Promise<Page<Song>> => {
+      const mine = call++;
+      await new Promise((resolve) => setTimeout(resolve, delaysMs[mine]));
+      return { rows: answers[mine], nextCursor: null };
+    },
+  } as unknown as PagedRepository<Song>;
 }
 
 describe('SongStore', () => {
@@ -95,6 +111,85 @@ describe('SongStore', () => {
     // ...but the row stays in the map (sync must still carry the delete).
     const tombstoned = store.entities().find((s) => s.id === 'a');
     expect(tombstoned?.deletedAt).not.toBeNull();
+  });
+
+  it('ignores a fetch that resolves after a newer one started', async () => {
+    // The first query is slow and answers 'a'; the second is fast and answers
+    // 'b'. Last-to-resolve must NOT win: the user asked for 'b' second, so 'b'
+    // is the answer, whatever order IndexedDB happens to reply in.
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SONG_REPOSITORY,
+          useValue: racingRepo([[song('a')], [song('b')]], [30, 0]),
+        },
+      ],
+    });
+    const store = TestBed.inject(SongStore);
+
+    const slow = store.load();
+    const fast = store.setSearch('b');
+    await Promise.all([slow, fast]);
+
+    expect(store.live().map((s) => s.id)).toEqual(['b']);
+    // The stale fetch must not leave the list stuck in a loading state either.
+    expect(store.loading()).toBe(false);
+  });
+
+  it('refresh puts a locally renamed song back in sorted order', async () => {
+    const store = storeWith([
+      song('a', { name: 'Alpha' }),
+      song('b', { name: 'Bravo' }),
+    ]);
+    await store.load();
+
+    // An upsert reflects the write but keeps the map's insertion order, so on
+    // its own the renamed song holds Alpha's old slot under a name sort.
+    await store.upsert(song('a', { name: 'Zeta' }));
+    expect(store.live().map((s) => s.name)).toEqual(['Zeta', 'Bravo']);
+
+    await store.refresh();
+    expect(store.live().map((s) => s.name)).toEqual(['Bravo', 'Zeta']);
+  });
+
+  it('refresh keeps the scrolled extent rather than snapping back to page 1', async () => {
+    const seed = Array.from({ length: PAGE_LIMIT + 5 }, (_, i) =>
+      song(`s${String(i).padStart(3, '0')}`),
+    );
+    const store = storeWith(seed);
+    await store.load();
+    await store.loadMore();
+
+    await store.refresh();
+
+    expect(store.live()).toHaveLength(PAGE_LIMIT + 5);
+    expect(store.nextCursor()).toBeNull();
+  });
+
+  it('refresh keeps tombstones in the map for sync', async () => {
+    const store = storeWith([song('a'), song('b')]);
+    await store.load();
+    await store.remove('a');
+
+    await store.refresh();
+
+    expect(store.live().map((s) => s.id)).toEqual(['b']);
+    expect(
+      store.entities().find((s) => s.id === 'a')?.deletedAt,
+    ).not.toBeNull();
+  });
+
+  it('searches a song by its name, not only by its parsed title', async () => {
+    // A fresh song has no Title yet; if search skipped Name it would be
+    // unfindable in its own library.
+    const store = storeWith([
+      song('a', { name: 'Wonderwall' }),
+      song('b', { name: 'Yesterday' }),
+    ]);
+    await store.load();
+    await store.setSearch('wonder');
+
+    expect(store.live().map((s) => s.id)).toEqual(['a']);
   });
 
   it('answers which song changed last, past the window and past the sort', async () => {

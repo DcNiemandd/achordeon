@@ -1,0 +1,246 @@
+// Songs presenter — Epic 5 ▸ subtasks 1–2
+// Spec: PRD-UI-SHELL.md §3 (the seam), §7 (state placement); CONTEXT.md §Song explorer
+
+import { Injectable, computed, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import {
+  DEFAULT_SORT_DIR,
+  SessionStore,
+  SongStore,
+} from '@achordeon/shared/data-access';
+import type { Song } from '@achordeon/shared/domain';
+import type {
+  ExplorerSort,
+  ExplorerSortDir,
+  SongRow,
+  SortChange,
+} from '../shared/song-explorer';
+
+/** The name a song is born with, before the user has said what it is. */
+const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
+
+/**
+ * The only thing in `songs/` that knows the business layer exists.
+ *
+ * Signals in, commands out (PRD-UI-SHELL.md §3). When the designed UI lands, the
+ * components around this file are deleted and it keeps working — it never knew
+ * what they looked like.
+ *
+ * It owns the **view model**, not the store's model: `rows` is what a list draws,
+ * and nothing downstream of here has ever seen a `Song`.
+ */
+@Injectable()
+export class SongsPresenter {
+  private readonly store = inject(SongStore);
+  private readonly session = inject(SessionStore);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly rows = computed<SongRow[]>(() =>
+    this.store.live().map((song) => ({
+      id: song.id,
+      name: song.name,
+      // The parser cache, not a re-parse: it is stored derived state precisely so
+      // that listing 500 songs costs no parsing (PRD-DOMAIN-MODEL §Song).
+      title: song.cache.title,
+      subtitle: song.cache.subtitle,
+      isFavorite: song.favorite,
+    })),
+  );
+
+  readonly selectedIds = this.session.selectedIds;
+  readonly currentId = this.session.currentSongId;
+  readonly isLoaded = this.store.loaded;
+
+  /** The song pane B renders. Undefined on an empty library. */
+  readonly currentSong = computed<Song | undefined>(() => {
+    const id = this.session.currentSongId();
+    return id === null
+      ? undefined
+      : this.store.entities().find((song) => song.id === id);
+  });
+
+  /** The direction actually in force — a `dir`-less query resolves to a default,
+   * and the explorer's arrow has to point the way the list is really sorted. */
+  effectiveDir(sort: ExplorerSort, dir?: ExplorerSortDir): ExplorerSortDir {
+    return dir ?? DEFAULT_SORT_DIR[sort];
+  }
+
+  /**
+   * Bring the store's query in line with the URL — the URL is the source of truth
+   * for search and sort (§7), so this runs on every param change and never the
+   * other way round.
+   *
+   * Each setter resets the window and refetches, so only what actually changed is
+   * called: pushing a `?q=` must not also re-fetch for a sort that did not move.
+   */
+  async syncQuery(params: {
+    query: string;
+    sort: ExplorerSort;
+    dir?: ExplorerSortDir;
+  }): Promise<void> {
+    const isSortStale =
+      params.sort !== this.store.sort() || params.dir !== this.store.dir();
+    const isQueryStale = params.query !== this.store.query();
+
+    if (isSortStale) {
+      await this.store.setSort(params.sort, params.dir);
+    }
+    if (isQueryStale) {
+      await this.store.setSearch(params.query);
+    }
+    if (!isSortStale && !isQueryStale && !this.store.loaded()) {
+      await this.store.load();
+    }
+  }
+
+  /**
+   * Select the most recently updated song on entering `/songs`, so the render
+   * pane is useful immediately instead of greeting you with a blank page
+   * (PRD-UI-SHELL.md §4). Never overrides a song the user already picked.
+   */
+  async autoSelect(): Promise<void> {
+    if (this.session.currentSongId() !== null) {
+      return;
+    }
+    const song = await this.store.lastChanged();
+    if (song && this.session.currentSongId() === null) {
+      this.session.setCurrentSong(song.id);
+    }
+  }
+
+  loadMore(): void {
+    void this.store.loadMore();
+  }
+
+  /** Push search/sort into the URL; `syncQuery` picks the change back up. */
+  setQuery(query: string): void {
+    this.navigate({ q: query || null });
+  }
+
+  /** `dir` rides in the URL only once the user has overridden the axis's natural
+   * direction — `null` drops the param, so the default speaks again. */
+  setSort(change: SortChange): void {
+    this.navigate({ sort: change.key, dir: change.dir ?? null });
+  }
+
+  activate(id: string): void {
+    this.session.setCurrentSong(id);
+  }
+
+  open(id: string): void {
+    void this.router.navigate(['/songs', id, 'edit']);
+  }
+
+  toggleSelect(id: string): void {
+    this.session.toggle(id);
+  }
+
+  clearSelection(): void {
+    this.session.clearSelection();
+  }
+
+  async create(): Promise<void> {
+    const song = this.newSong();
+    await this.store.upsert(song);
+    await this.store.refresh();
+    this.session.setCurrentSong(song.id);
+    this.open(song.id);
+  }
+
+  async rename(id: string, name: string): Promise<void> {
+    await this.patch(id, { name });
+  }
+
+  async toggleFavorite(id: string): Promise<void> {
+    const song = this.find(id);
+    if (song) {
+      await this.patch(id, { favorite: !song.favorite });
+    }
+  }
+
+  /** Bulk favorite: **set**, never toggle. Toggling a mixed selection leaves the
+   * user worse off than before — half of it flips the wrong way. */
+  async favoriteMany(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      await this.write(id, { favorite: true });
+    }
+    // One refresh for the batch, not one per row: each is a full re-query.
+    await this.store.refresh();
+  }
+
+  /**
+   * A copy is a new Song with a new id: same content and settings, its own
+   * identity. Nothing points at it, and nothing that pointed at the original
+   * follows (CONTEXT.md §Song).
+   */
+  async duplicate(id: string): Promise<void> {
+    const song = this.find(id);
+    if (!song) {
+      return;
+    }
+    const now = Date.now();
+    await this.store.upsert({
+      ...song,
+      id: crypto.randomUUID(),
+      name: $localize`:@@songs.copyName:${song.name}:name: (copy)`,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+    await this.store.refresh();
+  }
+
+  private find(id: string): Song | undefined {
+    return this.store.entities().find((song) => song.id === id);
+  }
+
+  /**
+   * Write a change and put the row back where the current query says it belongs.
+   * Every field here is one the list sorts or searches on, so every write can
+   * move a row — `refresh` is not an optimisation, it is what keeps the window
+   * telling the truth.
+   */
+  private async patch(id: string, changes: Partial<Song>): Promise<void> {
+    await this.write(id, changes);
+    await this.store.refresh();
+  }
+
+  private async write(id: string, changes: Partial<Song>): Promise<void> {
+    const song = this.find(id);
+    if (song) {
+      await this.store.upsert({ ...song, ...changes, updatedAt: Date.now() });
+    }
+  }
+
+  private newSong(): Song {
+    const now = Date.now();
+    return {
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      // CONTEXT.md calls Name "unique within the library, like a filename", but
+      // nothing is keyed by it — songbooks and imports match on uuid precisely so
+      // a rename can never break a link. Enforcing uniqueness here would mean
+      // asking the repository for every name on every create, to protect an
+      // invariant no code relies on. Left unenforced deliberately.
+      name: NEW_SONG_NAME,
+      content: '',
+      favorite: false,
+      settings: {},
+      cache: { title: '', subtitle: '' },
+    };
+  }
+
+  private navigate(queryParams: Record<string, string | null>): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge',
+      // Search and sort are a refinement of where you are, not somewhere you
+      // went: Back should leave /songs, not replay every keystroke.
+      replaceUrl: true,
+    });
+  }
+}

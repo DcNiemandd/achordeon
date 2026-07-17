@@ -14,9 +14,20 @@ export const ACHORDEON_DB = new InjectionToken<AchordeonDb>('ACHORDEON_DB', {
   factory: () => new AchordeonDb(),
 });
 
-/** Song search: fast tier = Title/Subtitle cache, slow tier = raw content. */
+/**
+ * Song search: fast tier = Name + the Title/Subtitle cache, slow tier = raw
+ * content.
+ *
+ * **Name is in the fast tier**, per `PagingConfig.searchTiers`. It is the string
+ * the explorer actually shows and the one CONTEXT.md calls "used for finding" —
+ * a library where searching the name you are looking at finds nothing is broken,
+ * and a song with no Title yet (a fresh one) would be unfindable entirely.
+ */
 export const songPagingConfig: PagingConfig<Song> = {
-  searchTiers: (s) => [`${s.cache.title}\n${s.cache.subtitle}`, s.content],
+  searchTiers: (s) => [
+    `${s.name}\n${s.cache.title}\n${s.cache.subtitle}`,
+    s.content,
+  ],
   sortValue: (s, key: SortKey) =>
     key === 'name'
       ? s.name

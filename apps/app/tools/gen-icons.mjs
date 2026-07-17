@@ -51,6 +51,16 @@ const ICONS = {
   favorite: 'star',
   title: 'type',
   reset: 'rotate-ccw',
+  // song explorer (Epic 5)
+  // `edit` opens the editor, `rename` retitles the library label — two different
+  // jobs on the same row, so they must not look alike.
+  edit: 'file-pen',
+  rename: 'text-cursor-input',
+  duplicate: 'copy',
+  delete: 'trash-2',
+  sortAsc: 'arrow-up-narrow-wide',
+  sortDesc: 'arrow-down-narrow-wide',
+  warning: 'triangle-alert',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

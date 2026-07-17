@@ -44,8 +44,13 @@ export interface PagingConfig<T> {
   sortValue: (record: T, key: SortKey) => string | number | boolean;
 }
 
-// Sensible default direction per axis: A→Z names, newest-first dates, favorites first.
-const DEFAULT_DIR: Record<SortKey, SortDir> = {
+/**
+ * Sensible default direction per axis: A→Z names, newest-first dates, favorites
+ * first. Exported because a `dir`-less query is answered with one of these, so
+ * anything that *shows* the current direction (the explorer's arrow) must be able
+ * to ask what "no direction given" actually resolved to.
+ */
+export const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
   name: 'asc',
   created: 'desc',
   changed: 'desc',
@@ -91,7 +96,7 @@ export function pageRecords<T extends BaseRecord>(
 ): Page<T> {
   const limit = Math.max(0, query.limit);
   const needle = (query.query ?? '').trim().toLowerCase();
-  const sign = (query.dir ?? DEFAULT_DIR[query.sort]) === 'asc' ? 1 : -1;
+  const sign = (query.dir ?? DEFAULT_SORT_DIR[query.sort]) === 'asc' ? 1 : -1;
 
   // Lists show live rows only; tombstones stay in the store for sync (subtask 5).
   const live = all.filter((r) => r.deletedAt === null);
