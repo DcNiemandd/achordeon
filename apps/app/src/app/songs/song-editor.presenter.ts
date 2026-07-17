@@ -25,6 +25,14 @@ import {
 import { toMarkers } from './editor/warning-copy';
 
 /**
+ * Keystroke → IndexedDB. Short on purpose: the only thing the delay buys is not
+ * writing once per keystroke. It is not a grace period — there is no Save button
+ * and never will be (PRD-INFRASTRUCTURE.md §5: "local save = A, aggressive.
+ * Local work is never lost").
+ */
+const SAVE_DEBOUNCE_MS = 400;
+
+/**
  * The editor's half of the seam: it owns the song being edited, the content the
  * editor is showing, and the single AST that the markers and (subtask 6) the
  * preview both read.
@@ -101,8 +109,19 @@ export class SongEditorPresenter {
     this._ast.set(ast),
   );
 
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Set by every edit, cleared by a write. Cheaper and more honest than
+   * diffing the song against itself on a timer. */
+  private isDirty = false;
+
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.reparser.cancel());
+    inject(DestroyRef).onDestroy(() => {
+      this.reparser.cancel();
+      // Leaving the editor is a boundary: flush rather than drop. The pending
+      // save is the last few hundred milliseconds of typing, and this is exactly
+      // the moment a user believes their work is safe (ADR-0004).
+      void this.flushSave();
+    });
   }
 
   /**
@@ -175,12 +194,68 @@ export class SongEditorPresenter {
       settings: settings as Song['settings'],
       updatedAt: Date.now(),
     });
+    // Settings are part of the song, and the same promise covers them: nothing
+    // the user changes here needs a Save button (ADR-0001 — content and settings
+    // are separate fields of one record, not separate documents).
+    this.isDirty = true;
+    this.scheduleSave();
   }
 
   /** An edit from the editor. Debounced into one reparse per settled edit. */
   setContent(content: string): void {
     this._content.set(content);
     this.reparser.schedule(content);
+    this.isDirty = true;
+    this.scheduleSave();
+  }
+
+  /**
+   * Keystroke-debounced autosave to IndexedDB (PRD-INFRASTRUCTURE.md §5:
+   * "local save = A, aggressive. Local work is never lost").
+   *
+   * There is no Save button and never will be — this is the whole persistence
+   * story for a song's text. The delay is short because the only thing it buys is
+   * not writing once per keystroke; it is not a grace period for the user to
+   * change their mind, and undo is the editor's job (session-only, per CONTEXT).
+   */
+  private scheduleSave(): void {
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer);
+    }
+    this.saveTimer = setTimeout(() => void this.flushSave(), SAVE_DEBOUNCE_MS);
+  }
+
+  /** Write now, if anything has changed since the last write. */
+  async flushSave(): Promise<void> {
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    const song = this._song();
+    if (!song || !this.isDirty) {
+      return;
+    }
+    this.isDirty = false;
+
+    const content = this._content();
+    // The parser cache is DERIVED, never authored (PRD-DOMAIN-MODEL §Song):
+    // rewritten from the content on every save, so the library list and the
+    // render can never disagree about a song's title. Parsed fresh rather than
+    // read off `_ast`, which a boundary flush can outrun by one debounce — and a
+    // stale title in the library is worse than a parse we know is sub-millisecond.
+    const ast = this.parser.parse(content);
+    const saved: Song = {
+      ...song,
+      content,
+      cache: { title: ast.title ?? '', subtitle: ast.subtitle ?? '' },
+      updatedAt: Date.now(),
+    };
+
+    this._song.set(saved);
+    await this.songs.upsert(saved);
+    // The explorer's window is sorted and filtered by things that just moved —
+    // the name's neighbours, `changed`, the searched title.
+    await this.songs.refresh();
   }
 
   /**

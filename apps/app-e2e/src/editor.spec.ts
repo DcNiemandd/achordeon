@@ -296,16 +296,77 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('song-settings-dialog')).toHaveCount(0);
   });
 
+  test('autosaves typed content — no Save button, nothing lost', async ({
+    page,
+  }) => {
+    await type(page, '* Wonderwall\n\n1.: sing [C]this');
+    // No save gesture of any kind: just stop typing, and reload.
+    await page.waitForTimeout(700);
+    await page.reload();
+
+    await expect(page.getByTestId('editor')).toContainText('sing [C]this');
+    await expect(page.getByTestId('song-render')).toContainText('Wonderwall');
+  });
+
+  test('leaving the editor flushes the pending save', async ({ page }) => {
+    await type(page, '* Wonderwall');
+    // Leave IMMEDIATELY — inside the debounce window, before any timer fires.
+    await page.getByTestId('editor-back').click();
+    await expect(page).toHaveURL(/\/songs$/);
+
+    // The song's row shows the parsed title: the cache was rewritten on save.
+    await expect(page.getByTestId('song-row')).toContainText('Wonderwall');
+  });
+
+  test('a saved song shows its parsed title in the library', async ({
+    page,
+  }) => {
+    // The cache is derived, never authored: the list and the render must not
+    // disagree about a song's title (PRD-DOMAIN-MODEL §Song).
+    await type(page, '* First\n* Wins the last one');
+    await page.waitForTimeout(700);
+    await page.getByTestId('editor-back').click();
+
+    const row = page.getByTestId('song-row');
+    await expect(row).toContainText('Wins the last one');
+    await expect(row).not.toContainText('First');
+  });
+
+  test('a saved song is findable by the title you typed', async ({ page }) => {
+    await type(page, '* Wonderwall');
+    await page.waitForTimeout(700);
+    await page.getByTestId('editor-back').click();
+
+    // The two-tier search reads the cache — which only exists because saving
+    // rewrote it.
+    await page.getByTestId('explorer-search').fill('wonder');
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+  });
+
+  test('autosaves a settings change too', async ({ page }) => {
+    await type(page, '* Wonderwall');
+    await page.getByTestId('editor-settings').click();
+    await page.getByTestId('select-aspectRatio').selectOption('1:1');
+    await page.waitForTimeout(700);
+    await page.reload();
+
+    await page.getByTestId('editor-settings').click();
+    // Overridden, not inherited — the reset button is the proof it was stored.
+    await expect(page.getByTestId('reset-aspectRatio')).toBeVisible();
+  });
+
   test('opens a song by deep link, without the list ever loading it', async ({
     page,
   }) => {
+    await type(page, 'Typed content');
+    await page.waitForTimeout(700);
     const url = page.url();
 
     // A cold navigation straight to the editor: the store's window has never
     // held this row, so the song has to come from the repository.
     await page.goto(url);
 
-    await expect(page.getByTestId('editor')).toBeVisible();
+    await expect(page.getByTestId('editor')).toContainText('Typed content');
     await expect(page.getByTestId('module-title')).toHaveText('New song');
   });
 });
