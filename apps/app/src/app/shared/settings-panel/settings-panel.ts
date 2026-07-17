@@ -84,7 +84,27 @@ interface Section {
                     <app-icon name="help" />
                   </button>
 
-                  @if (scope() !== 'global') {
+                  @if (scope() === 'global') {
+                    <!-- Global is the base of the cascade, so it inherits from
+                         nothing — "reset" here means back to the REGISTRY
+                         default, not to an inherited value. Shown only once the
+                         value has moved off its default, like the override reset
+                         below: there is nothing to reset a default to. -->
+                    @if (!isAtDefault(row)) {
+                      <button
+                        appButton
+                        type="button"
+                        class="reset"
+                        [isIconOnly]="true"
+                        [appTooltip]="resetDefaultLabel"
+                        [attr.aria-label]="resetDefaultLabel"
+                        [attr.data-testid]="'reset-' + row.key"
+                        (click)="resetToDefault(row.key)"
+                      >
+                        <app-icon name="reset" />
+                      </button>
+                    }
+                  } @else {
                     @if (row.isOverridden) {
                       <button
                         appButton
@@ -383,6 +403,7 @@ export class SettingsPanel {
 
   protected readonly inheritedLabel = $localize`:@@settings.inherited:Inherited`;
   protected readonly resetLabel = $localize`:@@settings.reset:Reset to inherited`;
+  protected readonly resetDefaultLabel = $localize`:@@settings.resetDefault:Reset to default`;
 
   private readonly rows = computed<Row[]>(() =>
     keysForScope(this.scope()).map((key) => {
@@ -473,5 +494,20 @@ export class SettingsPanel {
     // Sparse storage (ADR-0006): resetting means REMOVING this scope's override
     // so the cascade resolves again, not writing the inherited value down.
     this.changed.emit({ [key]: undefined });
+  }
+
+  /** True when a Global value is still its registry default. Compared as text so
+   * a `2` typed into a field reads equal to a `2` stepped into it. */
+  protected isAtDefault(row: Row): boolean {
+    return String(row.value) === String(SETTINGS[row.key].default);
+  }
+
+  /**
+   * Reset a Global value to the registry default. Unlike `reset`, this emits the
+   * default VALUE, not `undefined` — Global defines every setting, so there is no
+   * override to remove and nothing below to fall back to (ADR-0006).
+   */
+  protected resetToDefault(key: SettingKey): void {
+    this.changed.emit({ [key]: SETTINGS[key].default });
   }
 }
