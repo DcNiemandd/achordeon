@@ -63,6 +63,27 @@ describe('phase2 — inline scan', () => {
     it('does not treat an escaped bracket as a chord anchor', () => {
       expect(scan('a\\[C]b')).toEqual({ text: 'a[C]b', chords: [] });
     });
+
+    it('resolves \\] to a literal ], symmetric with \\[', () => {
+      // Escaping both brackets for a literal bracketed word must not leave the
+      // trailing backslash stranded in the output.
+      expect(scan('a\\[word\\]b').text).toBe('a[word]b');
+    });
+
+    it('resolves escapes INSIDE a bracket token', () => {
+      // A repeat sign must escape its colon to avoid becoming a label, and the
+      // backslash must not survive into the rendered annotation.
+      const line = scan('[||\\: Em G :||]');
+      expect(line.text).toBe('');
+      expect(line.chords.map((c) => c.raw)).toEqual(['||:', 'Em', 'G', ':||']);
+      // The escaped bars are annotations, the real chords stay valid.
+      expect(line.chords.map((c) => c.valid)).toEqual([
+        false,
+        true,
+        true,
+        false,
+      ]);
+    });
   });
 
   it('treats an unterminated bracket as a literal [', () => {

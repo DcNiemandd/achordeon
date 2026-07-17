@@ -5,7 +5,12 @@
 // verbatim annotations, not literal text.
 
 import type { Line } from './ast';
-import { ESCAPABLE, findClosingBracket, splitChordTokens } from './chords';
+import {
+  ESCAPABLE,
+  findClosingBracket,
+  splitChordTokens,
+  unescape,
+} from './chords';
 import type { ChordTheory } from './theory';
 
 /**
@@ -35,7 +40,11 @@ export function scanContent(content: string, theory: ChordTheory): Line {
         continue;
       }
       const at = text.length; // the char appended next is the anchored one
-      for (const raw of splitChordTokens(content.slice(i + 1, close))) {
+      for (const token of splitChordTokens(content.slice(i + 1, close))) {
+        // Resolve escapes in the token too: `[||\: …]` must render `||:`, not
+        // keep the backslash the label-escape needed (see `unescape`). Validate
+        // the resolved text — an escaped token is never a chord anyway.
+        const raw = unescape(token);
         chords.push({ raw, at, valid: theory.parseChord(raw) !== null });
       }
       i = close + 1;

@@ -218,6 +218,52 @@ test.describe('song editor', () => {
     );
   });
 
+  test('an escaped colon inside a bracket renders without its backslash', async ({
+    page,
+  }) => {
+    // A repeat sign `[||: … :||]` must escape the colon or `[||` reads as a
+    // label; the escape is load-bearing, but its backslash must not survive into
+    // the rendered annotation. Seeded, because the keyboard cannot reliably type
+    // a backslash under automation.
+    const id = await page.evaluate(
+      () =>
+        new Promise<string>((res) => {
+          const bs = String.fromCharCode(92);
+          const content = 'Intro\n[||' + bs + ': Em G Em A :||]';
+          const open = indexedDB.open('achordeon');
+          open.onsuccess = () => {
+            const db = open.result;
+            const now = Date.now();
+            const sid = crypto.randomUUID();
+            const tx = db.transaction('songs', 'readwrite');
+            tx.objectStore('songs').put({
+              id: sid,
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+              name: 'Repeat',
+              favorite: false,
+              settings: {},
+              cache: { title: '', subtitle: '' },
+              content,
+            });
+            tx.oncomplete = () => {
+              db.close();
+              res(sid);
+            };
+          };
+        }),
+    );
+    await page.goto('songs/' + id + '/edit');
+    await expect(page.getByTestId('editor')).toBeVisible();
+
+    const render = page.getByTestId('song-render');
+    await expect(render).toContainText('||: Em G Em A :||');
+    // The whole point: the escape character is gone from the output.
+    const text = await render.innerText();
+    expect(text).not.toContain(String.fromCharCode(92));
+  });
+
   test('the preview follows an edit', async ({ page }) => {
     await type(page, '* Wonderwall');
     await expect(page.getByTestId('song-render')).toContainText('Wonderwall');

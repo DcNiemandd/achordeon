@@ -195,10 +195,17 @@ upgrade (see Authoring notes).
 
 ### Escapes [decided]
 
-- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `\` → the
-  backslash is **consumed** and the char is literal. `\\` → one literal `\`.
+- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `]` `\` → the
+  backslash is **consumed** and the char is literal. `\\` → one literal `\`. `]` is
+  escapable for symmetry with `[`, so a literal bracketed word reads `\[word\]`
+  without stranding the trailing backslash.
 - **`\` before anything else is a literal backslash** (kept): `C:\path` keeps `\p`,
   `\n` is backslash-then-n, a trailing `\` at EOL is literal. No backslash-eating.
+- **Resolved inside bracket tokens too, not only lyric text.** A repeat sign
+  `[||\: … :||]` must escape its colon — an unescaped `[||:` is a colon-run
+  followed by a space, so Phase 1 reads `[||` as a **label**. The escape is
+  load-bearing, and its backslash is consumed when the token is rendered
+  (`||\:` → `||:`), never left in the output.
 - **Phase split:**
   - **Phase 1 is escape-_aware_ but does not consume.** An escaped `:` is not a
     label delimiter (`Narrator\:` → lyric); an escaped leading `*` is not a title.

@@ -2,8 +2,16 @@
 // Spec: docs/PARSER-GRAMMAR.md §Phase 2, §Escapes, §No nesting. One bracket
 // recogniser feeds both the Phase-2 inline scan and `transposeContent`.
 
-/** Chars a backslash makes literal (PARSER-GRAMMAR §Escapes). `\\` → one `\`. */
-export const ESCAPABLE = new Set([':', '*', '[', '\\']);
+/**
+ * Chars a backslash makes literal (PARSER-GRAMMAR §Escapes). `\\` → one `\`.
+ *
+ * `]` is escapable too, for symmetry with `[`: writing a literal bracketed word
+ * in a lyric reads as `\[word\]`, and if only `[` were escapable the trailing
+ * `\]` would keep its backslash — the escape character left stranded in the
+ * output. `\[word]` alone also works (no open bracket, so the `]` is already
+ * literal), but nobody escapes one bracket and not the other.
+ */
+export const ESCAPABLE = new Set([':', '*', '[', ']', '\\']);
 
 /**
  * Index of the closing `]` for a bracket opened at `open`, or -1 if unterminated.
@@ -29,6 +37,36 @@ export function findClosingBracket(s: string, open: number): number {
  */
 export function splitChordTokens(inner: string): string[] {
   return inner.split(/[\s,]+/).filter((token) => token.length > 0);
+}
+
+/**
+ * Consume escape backslashes, turning `\X` into a literal `X` for every escapable
+ * `X`. A lone `\` before a non-escapable char is kept.
+ *
+ * Applies **inside brackets too**, not only in lyric text. A repeat sign written
+ * as `[||\: … :||]` has to escape the colon — an unescaped `[||:` reads as a
+ * label (a colon-run followed by a space, PARSER-GRAMMAR §Labelled content), so
+ * the whole `[||` becomes a label and the chords its content. The escape is
+ * therefore load-bearing, and its backslash must not survive into the rendered
+ * annotation. Resolving it here is what removes the stray `\`.
+ */
+export function unescape(token: string): string {
+  let out = '';
+  let i = 0;
+  while (i < token.length) {
+    if (
+      token[i] === '\\' &&
+      i + 1 < token.length &&
+      ESCAPABLE.has(token[i + 1])
+    ) {
+      out += token[i + 1];
+      i += 2;
+    } else {
+      out += token[i];
+      i += 1;
+    }
+  }
+  return out;
 }
 
 /**
