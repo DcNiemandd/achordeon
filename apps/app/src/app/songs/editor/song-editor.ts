@@ -19,6 +19,7 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
+  isolateHistory,
   redo,
   undo,
 } from '@codemirror/commands';
@@ -103,14 +104,29 @@ export class SongEditor {
       return;
     }
     const { from, to } = view.state.selection.main;
+
+    if (request.atLineStart) {
+      // Line-scoped: prefix the line and leave the caret where the user left it,
+      // shifted by what we just put in front of it. Taking focus back to the
+      // marker would punish you for clicking a button mid-word.
+      const line = view.state.doc.lineAt(from);
+      view.dispatch({
+        changes: { from: line.from, insert: request.before },
+        selection: { anchor: from + request.before.length },
+        scrollIntoView: true,
+      });
+      view.focus();
+      return;
+    }
+
     const selected = view.state.sliceDoc(from, to);
-    const after = request.after ?? '';
-    const text = request.before + selected + after;
-    // Caret lands where the next keystroke belongs: inside `[]`, or after the
-    // text we just wrapped.
+    const text = request.before + selected + (request.after ?? '');
+    // With text selected, the wrapping is the point and the caret belongs after
+    // it. With none, `caretOffset` puts the caret where the next keystroke goes —
+    // between the brackets of an empty `[]`, not after them.
     const caret =
       from +
-      (request.caretOffset !== undefined
+      (selected === '' && request.caretOffset !== undefined
         ? request.before.length + request.caretOffset
         : text.length);
 
@@ -269,6 +285,12 @@ export class SongEditor {
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: content },
       selection: { anchor: caret },
+      // Its own undo step. CodeMirror merges changes that land close together in
+      // time, so without this a transpose clicked moments after typing became
+      // part of that typing — one Ctrl+Z threw away both. An outside edit is a
+      // discrete act (CONTEXT.md §Transpose: "mutating, covered by undo/redo"),
+      // and undoing it must mean undoing exactly it.
+      annotations: isolateHistory.of('full'),
     });
   }
 

@@ -13,7 +13,12 @@ import {
   SessionStore,
   SongStore,
 } from '@achordeon/shared/data-access';
-import type { Song, SongAst } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  transposeContent,
+  type Song,
+  type SongAst,
+} from '@achordeon/shared/domain';
 import { toMarkers } from './editor/warning-copy';
 
 /**
@@ -31,6 +36,7 @@ export class SongEditorPresenter {
   private readonly songs = inject(SongStore);
   private readonly session = inject(SessionStore);
   private readonly parser = inject(ParserService);
+  private readonly theory = inject(ChordTheory);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -79,5 +85,22 @@ export class SongEditorPresenter {
   setContent(content: string): void {
     this._content.set(content);
     this.reparser.schedule(content);
+  }
+
+  /**
+   * Shift every valid chord by `semitones`, **rewriting the source**
+   * (CONTEXT.md §Transpose) — not decorating the render. The rewrite goes back
+   * through `content`, so it lands in the editor as an outside edit and joins the
+   * undo history like any other change: transpose is mutating and undoable, which
+   * is only true because it is a real edit to real text.
+   *
+   * Invalid brackets (`[Solo]`, `[x2]`) are left exactly as written, and so is
+   * every other character — `transposeContent` is a token rewrite, not a reformat.
+   */
+  transpose(semitones: number): void {
+    const next = transposeContent(this._content(), semitones, this.theory);
+    if (next !== this._content()) {
+      this.setContent(next);
+    }
   }
 }

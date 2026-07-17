@@ -103,6 +103,70 @@ test.describe('song editor', () => {
     ).toHaveCount(0);
   });
 
+  test('the chord button brackets the selection, keeping the text', async ({
+    page,
+  }) => {
+    await type(page, 'Am');
+    await page.keyboard.press('Shift+Home'); // select "Am"
+    await page.getByTestId('insert-chord').click();
+
+    await expect(page.getByTestId('editor')).toContainText('[Am]');
+  });
+
+  test('the chord button leaves the caret inside an empty bracket', async ({
+    page,
+  }) => {
+    await type(page, 'sing');
+    await page.getByTestId('insert-chord').click();
+    // The caret must be BETWEEN the brackets — that is where the chord goes.
+    await page.keyboard.type('C');
+
+    await expect(page.getByTestId('editor')).toContainText('sing[C]');
+  });
+
+  test('the title button marks the line, not the cursor', async ({ page }) => {
+    await type(page, 'Wonderwall');
+    // Caret is at end-of-line; the marker still has to land at column 0, or the
+    // grammar does not see a title at all.
+    await page.getByTestId('insert-title').click();
+
+    await expect(page.getByTestId('editor')).toContainText('* Wonderwall');
+  });
+
+  test('transpose rewrites the source, and undo takes it back', async ({
+    page,
+  }) => {
+    await type(page, 'sing [Am]this and [G]that, but not [Solo]');
+
+    await page.getByTestId('transpose-up').click();
+    const editor = page.getByTestId('editor');
+    await expect(editor).toContainText('[A#m]');
+    await expect(editor).toContainText('[G#]');
+    // An invalid bracket is an annotation: never transposed (PARSER-GRAMMAR).
+    await expect(editor).toContainText('[Solo]');
+
+    // CONTEXT.md §Transpose: it is a mutating source edit, so undo covers it.
+    await page.getByTestId('editor-undo').click();
+    await expect(editor).toContainText('[Am]');
+  });
+
+  test('transposing down prefers flats', async ({ page }) => {
+    await type(page, '[A]');
+    await page.getByTestId('transpose-down').click();
+
+    // Direction-based spelling (CONTEXT.md §Transpose): down → flats.
+    await expect(page.getByTestId('editor')).toContainText('[Ab]');
+  });
+
+  test('redo puts back what undo took', async ({ page }) => {
+    await type(page, 'verse');
+    await page.getByTestId('editor-undo').click();
+    await expect(page.getByTestId('editor')).not.toContainText('verse');
+
+    await page.getByTestId('editor-redo').click();
+    await expect(page.getByTestId('editor')).toContainText('verse');
+  });
+
   test('opens a song by deep link, without the list ever loading it', async ({
     page,
   }) => {

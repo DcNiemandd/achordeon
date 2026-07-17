@@ -7,11 +7,13 @@ import {
   effect,
   inject,
   input,
+  viewChild,
 } from '@angular/core';
 import { Button, Icon, Tooltip } from '../primitives';
 import { RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
 import { SongEditor } from './editor/song-editor';
+import { SNIPPETS } from './editor/snippets';
 import { SongEditorPresenter } from './song-editor.presenter';
 
 /**
@@ -53,6 +55,83 @@ import { SongEditorPresenter } from './song-editor.presenter';
           >
             <app-icon name="close" />
           </a>
+
+          <!-- Row 1: insert. Grouped by meaning, not by what happened to
+               overflow (PRD-UI-SHELL.md §4). -->
+          <div class="group" role="group" [attr.aria-label]="insertGroupLabel">
+            @for (item of insertButtons; track item.testid) {
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [attr.aria-label]="item.label"
+                [appTooltip]="item.label"
+                [attr.data-testid]="item.testid"
+                (click)="editor().insert(item.snippet)"
+              >
+                {{ item.glyph }}
+              </button>
+            }
+          </div>
+
+          <!-- Row 2: transform. -->
+          <div
+            class="group"
+            role="group"
+            [attr.aria-label]="transformGroupLabel"
+          >
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [attr.aria-label]="transposeUpLabel"
+              [appTooltip]="transposeUpLabel"
+              data-testid="transpose-up"
+              (click)="presenter.transpose(1)"
+            >
+              <app-icon name="transposeUp" />
+            </button>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [attr.aria-label]="transposeDownLabel"
+              [appTooltip]="transposeDownLabel"
+              data-testid="transpose-down"
+              (click)="presenter.transpose(-1)"
+            >
+              <app-icon name="transposeDown" />
+            </button>
+
+            <span class="spacer"></span>
+
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [attr.aria-label]="undoLabel"
+              [appTooltip]="undoLabel"
+              data-testid="editor-undo"
+              (click)="editor().undo()"
+            >
+              <app-icon name="undo" />
+            </button>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [attr.aria-label]="redoLabel"
+              [appTooltip]="redoLabel"
+              data-testid="editor-redo"
+              (click)="editor().redo()"
+            >
+              <app-icon name="redo" />
+            </button>
+          </div>
         </app-action-bar>
 
         <app-song-editor
@@ -85,6 +164,22 @@ import { SongEditorPresenter } from './song-editor.presenter';
       min-block-size: 0;
       overflow: hidden;
     }
+
+    /* Each group takes a full row of the action bar's wrapping flex line, so the
+       rows break by MEANING (insert / transform) rather than wherever the width
+       happens to run out (PRD-UI-SHELL.md §4). */
+    .group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-1);
+      flex-basis: 100%;
+    }
+
+    /* Undo/redo are transforms too, but they are not transpose. */
+    .spacer {
+      inline-size: var(--space-3);
+    }
   `,
 })
 export class SongEditorPage {
@@ -94,7 +189,56 @@ export class SongEditorPage {
   /** `/songs/:id/edit`, delivered by `withComponentInputBinding()`. */
   readonly id = input.required<string>();
 
+  /** The adapter, for the commands that act on a cursor rather than on state:
+   * inserting and undoing are things you do *to an editor* (ADR-0010). */
+  protected readonly editor = viewChild.required(SongEditor);
+
   protected readonly backLabel = $localize`:@@editor.back:Back to songs`;
+  protected readonly insertGroupLabel = $localize`:@@editor.insertGroup:Insert`;
+  protected readonly transformGroupLabel = $localize`:@@editor.transformGroup:Transform`;
+  protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
+  protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
+  protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
+  protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
+
+  /**
+   * The insert bar. Glyphs are the **syntax itself** rather than icons: `[ ]` is
+   * what a chord looks like in the text, so the button teaches the markup while
+   * you use it — which is the point of having the buttons at all. The label is
+   * the accessible name and the tooltip; the glyph is decoration.
+   */
+  protected readonly insertButtons = [
+    {
+      testid: 'insert-chord',
+      glyph: '[ ]',
+      label: $localize`:@@editor.insertChord:Chord`,
+      snippet: SNIPPETS.chord,
+    },
+    {
+      testid: 'insert-title',
+      glyph: '*',
+      label: $localize`:@@editor.insertTitle:Title`,
+      snippet: SNIPPETS.title,
+    },
+    {
+      testid: 'insert-subtitle',
+      glyph: '**',
+      label: $localize`:@@editor.insertSubtitle:Subtitle`,
+      snippet: SNIPPETS.subtitle,
+    },
+    {
+      testid: 'insert-label',
+      glyph: ':',
+      label: $localize`:@@editor.insertLabel:Label`,
+      snippet: SNIPPETS.label,
+    },
+    {
+      testid: 'insert-block',
+      glyph: '¶',
+      label: $localize`:@@editor.insertBlock:New block`,
+      snippet: SNIPPETS.block,
+    },
+  ];
 
   constructor() {
     effect(() => {

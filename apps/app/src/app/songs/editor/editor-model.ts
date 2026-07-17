@@ -29,4 +29,13 @@ export interface InsertRequest {
   readonly before: string;
   readonly after?: string;
   readonly caretOffset?: number;
+  /**
+   * Put `before` at the start of the current line instead of at the cursor.
+   *
+   * Title and Subtitle are line-scoped in the grammar — the marker only counts at
+   * column 0 (PARSER-GRAMMAR §asterisk rule) — so "make this a title" is an
+   * operation on the line, not on the cursor. Inserting `* ` where the caret
+   * happens to sit would produce a lyric with a literal asterisk in it.
+   */
+  readonly atLineStart?: boolean;
 }

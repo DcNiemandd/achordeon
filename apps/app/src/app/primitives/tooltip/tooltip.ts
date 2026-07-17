@@ -72,6 +72,21 @@ export class TooltipPanel {
  * Accessible naming (PRD-UI-SHELL.md §5.2): a `hover` tooltip repeats the host's
  * own `aria-label`, so its panel is `aria-hidden` and it announces once. A
  * `click` tooltip carries *different* content, so it wires `aria-describedby`.
+ *
+ * **WCAG 1.4.13, split by trigger** [corrected: hoverable shipped broken]. Epic 13
+ * made both triggers dismissible, hoverable and persistent. Hoverable turned out
+ * to be actively harmful for label tooltips: the panel is placed beside its button
+ * when there is no room below, which puts it *on top of the next button in the
+ * row* — and because hovering the panel keeps it open, moving the pointer toward
+ * that button holds the panel over it. The neighbour became permanently
+ * unclickable (the editor's Undo, found by a test that could not click it).
+ *
+ * So a `hover` panel is now pointer-transparent, and only a `click` panel is
+ * hoverable. The criterion is about content you need *time* with — prose to read,
+ * text to select, a link to follow. That is exactly the `(?)` toggle-tip, which
+ * keeps all three properties. A label tooltip is three words that are already the
+ * button's `aria-label`: there is nothing to hover onto, and a name you cannot
+ * reach is a worse failure than one you cannot dwell on.
  */
 @Directive({
   selector: '[appTooltip]',
@@ -194,10 +209,15 @@ export class Tooltip {
       // The host's own aria-label already says this. Announcing it again from
       // the panel would double-name the control.
       element.setAttribute('aria-hidden', 'true');
-      element.addEventListener('pointerenter', this.onPanelEnter);
-      element.addEventListener('pointerleave', this.onPanelLeave);
+      // Pointer-transparent: a label panel must never stand between the pointer
+      // and a control (see the 1.4.13 note above). Nothing to hover onto, so
+      // nothing needs the hoverable grace period either.
+      element.style.pointerEvents = 'none';
     } else {
       element.setAttribute('role', 'tooltip');
+      // Prose: hoverable, so it can be read and its text selected.
+      element.addEventListener('pointerenter', this.onPanelEnter);
+      element.addEventListener('pointerleave', this.onPanelLeave);
     }
 
     this.document.addEventListener('keydown', this.onKeydown, true);
