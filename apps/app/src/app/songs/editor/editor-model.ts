@@ -1,0 +1,32 @@
+// Editor seam types — Epic 5 ▸ subtask 4
+// Spec: ADR-0010 (no CodeMirror type crosses this boundary)
+
+/**
+ * A problem to underline, in the editor's own vocabulary.
+ *
+ * Deliberately **not** the domain's `Warning`, and deliberately not CodeMirror's
+ * `Diagnostic`: the first carries a `code` that only the UI knows how to say out
+ * loud, and the second is the thing ADR-0010 forbids from escaping the adapter.
+ * This is the narrow shape both sides can agree on — a place and a sentence.
+ */
+export interface EditorMarker {
+  /** 0-based source line. */
+  readonly line: number;
+  /** `[start, end)` within the line. Omitted = the whole line. */
+  readonly range?: readonly [number, number];
+  readonly message: string;
+}
+
+/**
+ * What an insert-syntax button asks for (subtask 5).
+ *
+ * `before`/`after` wrap the selection — insert a chord over selected text and the
+ * text survives, bracketed. `caretOffset` counts from the end of `before`, so an
+ * empty `[]` can leave the caret between the brackets rather than after them,
+ * which is where you are about to type.
+ */
+export interface InsertRequest {
+  readonly before: string;
+  readonly after?: string;
+  readonly caretOffset?: number;
+}

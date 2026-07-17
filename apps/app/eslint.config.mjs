@@ -109,6 +109,28 @@ export default [
       ],
     },
   },
+  // --- ADR-0010, mechanized: CodeMirror lives behind the editor adapter.
+  // "Treat a CodeMirror import outside the editor adapter as a defect" is the
+  // ADR's words; this is that sentence as a rule. The seam is what keeps the
+  // editor swappable, and a seam nothing checks is a seam that leaks. ---
+  {
+    files: ['apps/app/src/app/**/*.ts'],
+    ignores: ['apps/app/src/app/songs/editor/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@codemirror/*', '@lezer/*'],
+              message:
+                'CodeMirror stays behind the editor adapter (songs/editor/, ADR-0010). No CodeMirror type may cross that boundary — pass a string, an EditorMarker or an InsertRequest instead. This rule is what keeps the editor a replaceable detail.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // --- The presenter rule, mechanized: components bind to a presenter, and
   // only the presenter knows the business layer exists. ---
   {

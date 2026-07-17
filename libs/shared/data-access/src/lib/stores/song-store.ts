@@ -191,6 +191,16 @@ export const SongStore = signalStore(
         return page.rows[0];
       },
 
+      /**
+       * One song by id, from the repository — for `/songs/:id/edit`, which is a
+       * deep link and cannot assume the window has ever held the row. Not put
+       * into the window: opening a song is not a claim that it belongs in the
+       * list the user is looking at.
+       */
+      byId(id: Uuid): Promise<Song | undefined> {
+        return repo.get(id);
+      },
+
       /** Persist an add/edit and reflect it in the window immediately. */
       async upsert(song: Song): Promise<void> {
         await repo.put(song);
