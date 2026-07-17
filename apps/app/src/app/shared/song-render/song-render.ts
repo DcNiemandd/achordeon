@@ -7,7 +7,6 @@ import {
   Component,
   ElementRef,
   effect,
-  inject,
   input,
   viewChild,
 } from '@angular/core';

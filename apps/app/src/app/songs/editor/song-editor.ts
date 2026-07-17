@@ -215,7 +215,14 @@ export class SongEditor {
         fontFamily: 'var(--font-ui)',
         lineHeight: 'var(--leading-normal)',
       },
-      '.cm-content': { padding: 'var(--space-2) 0' },
+      '.cm-content': {
+        padding: 'var(--space-2) 0',
+        // The caret. We do not use `drawSelection`, so CodeMirror shows the
+        // NATIVE caret, and `caret-color: auto` was resolving to black — which
+        // vanished on the dark surface. This is the fix; the `.cm-cursor` rule
+        // below only bites if a drawn-selection layer is ever added.
+        caretColor: 'var(--text)',
+      },
       '.cm-gutters': {
         backgroundColor: 'var(--surface-raised)',
         borderInlineEnd: '1px solid var(--border)',
@@ -229,7 +236,12 @@ export class SongEditor {
       '.cm-activeLine': {
         backgroundColor: 'color-mix(in srgb, var(--brand) 4%, transparent)',
       },
-      '.cm-cursor, .cm-dropCursor': { borderInlineStartColor: 'var(--text)' },
+      // Only used with a drawn-selection layer (we render the native caret via
+      // caret-color above). Kept correct for that day: CodeMirror draws this
+      // caret as `border-left` — a physical property — so the override has to be
+      // `border-left-color`, not the logical `border-inline-start-color`, or it
+      // sets a different property and loses the cascade.
+      '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--text)' },
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
         { backgroundColor: 'var(--brand-subtle)' },
       // A warning is an underline, not a red wall: the text stays readable.

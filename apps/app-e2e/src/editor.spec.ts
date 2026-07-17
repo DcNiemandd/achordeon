@@ -188,6 +188,36 @@ test.describe('song editor', () => {
     await expect(render).not.toContainText('[Em7]');
   });
 
+  test('a long song is scaled to fit the pane, never overflowing it', async ({
+    page,
+  }) => {
+    // Regression: a tall song filled the render pane's width and ran off the
+    // bottom — the page sized to its content instead of being contained. One
+    // song, one page (CONTEXT.md): the paper fits inside the pane, both axes.
+    const verses = Array.from(
+      { length: 10 },
+      (_, i) =>
+        `${i + 1}.: Line one [C]of verse ${i + 1}\nAnd a [G]second line here`,
+    ).join('\n\n');
+    await type(page, '* A Very Long Song\n\n' + verses);
+    await page.waitForTimeout(300);
+
+    const paneBox = await page.getByTestId('pane-b').boundingBox();
+    const renderBox = await page.getByTestId('song-render').boundingBox();
+    expect(paneBox).not.toBeNull();
+    expect(renderBox).not.toBeNull();
+    // The render sits within the pane on every edge (a hair of tolerance for
+    // sub-pixel rounding).
+    expect(renderBox!.y).toBeGreaterThanOrEqual(paneBox!.y - 1);
+    expect(renderBox!.x).toBeGreaterThanOrEqual(paneBox!.x - 1);
+    expect(renderBox!.y + renderBox!.height).toBeLessThanOrEqual(
+      paneBox!.y + paneBox!.height + 1,
+    );
+    expect(renderBox!.x + renderBox!.width).toBeLessThanOrEqual(
+      paneBox!.x + paneBox!.width + 1,
+    );
+  });
+
   test('the preview follows an edit', async ({ page }) => {
     await type(page, '* Wonderwall');
     await expect(page.getByTestId('song-render')).toContainText('Wonderwall');

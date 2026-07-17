@@ -114,10 +114,11 @@ export class SongsPresenter {
     return plan ? this.renderer.emit(plan) : '';
   });
 
-  /** The paper's shape — the song's own, so the frame is the page it prints on. */
+  /** The paper's shape as width ÷ height — the song's own, so the frame is the
+   * page it prints on. */
   readonly aspectRatio = computed(() => {
     const box = this.plan()?.box;
-    return box ? `${box.width} / ${box.height}` : '210 / 297';
+    return box && box.height > 0 ? box.width / box.height : 210 / 297;
   });
 
   /** The direction actually in force — a `dir`-less query resolves to a default,

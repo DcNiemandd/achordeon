@@ -105,7 +105,7 @@ import {
       <!-- Pane B: the render of the focused song. With no song — an empty
            library — the page stays blank: the shape of what goes there, not an
            illustration and not a call to action (PRD-UI-SHELL.md §4). -->
-      <app-blank-page pane-b [aspectRatio]="presenter.aspectRatio()">
+      <app-blank-page pane-b [ratio]="presenter.aspectRatio()">
         @if (presenter.currentSong()) {
           <app-song-render [svg]="presenter.svg()" />
         }

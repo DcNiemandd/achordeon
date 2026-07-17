@@ -188,7 +188,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
 
       <!-- Pane B: the render, live. Nothing sits above it — the action bar is
            pane A's (PRD-UI-SHELL.md §4). -->
-      <app-blank-page pane-b [aspectRatio]="aspectRatio()">
+      <app-blank-page pane-b [ratio]="aspectRatio()">
         <app-song-render [svg]="presenter.svg()" />
       </app-blank-page>
     </app-split-pane>
@@ -256,13 +256,13 @@ export class SongEditorPage {
 
   /**
    * The page frame follows the song's own aspect ratio, so the paper you are
-   * looking at is the paper it prints on. `BlankPage` takes a CSS ratio; the
-   * setting speaks the render's dialect (`A4`, `3:4`, a number), and the plan's
-   * box is that ratio already resolved — so the render is asked, not re-parsed.
+   * looking at is the paper it prints on. The plan's box has already resolved the
+   * setting's dialect (`A4`, `3:4`, a number) into pixels — so the render is
+   * asked for its shape, not re-parsed.
    */
   protected readonly aspectRatio = computed(() => {
     const box = this.presenter.plan()?.box;
-    return box ? `${box.width} / ${box.height}` : '210 / 297';
+    return box && box.height > 0 ? box.width / box.height : 210 / 297;
   });
 
   protected readonly backLabel = $localize`:@@editor.back:Back to songs`;
