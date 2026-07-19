@@ -270,9 +270,9 @@ test.describe('song editor', () => {
     await page.keyboard.press('Home');
     await page.keyboard.press('Tab');
 
-    expect(
-      await page.getByTestId('editor').locator('.cm-line').first().innerText(),
-    ).toBe('    la');
+    const line = () =>
+      page.getByTestId('editor').locator('.cm-line').first().innerText();
+    expect(await line()).toBe('    la');
   });
 
   // The mirror of Tab: delete back to the previous stop, at the cursor. The old
