@@ -175,15 +175,25 @@ export class SongEditorPresenter {
    * A sparse patch from the panel. `undefined` means "reset" — **delete the key**
    * rather than storing the inherited value, or the song would pin today's global
    * default forever and the cascade would stop reaching it (ADR-0006).
+   *
+   * **Setting a value that equals the inherited one deletes the key too.** Storing
+   * it would be the same pin by a different route: the song would look overridden,
+   * offer a reset button that changes nothing visible, and quietly stop following
+   * the global if it ever moved. "Same as inherited" and "not set" are the same
+   * state, so dialling a value back to the global is a reset — and it should not
+   * take a second click on a Reset button to make it one.
    */
   patchSettings(patch: Record<string, unknown>): void {
     const song = this._song();
     if (!song) {
       return;
     }
+    const inherited = this.settings.global() as Record<string, unknown>;
     const settings: Record<string, unknown> = { ...song.settings };
     for (const [key, value] of Object.entries(patch)) {
-      if (value === undefined) {
+      // Compared as text: a `2` typed into a field must read equal to the `2`
+      // stepped into it, and the panel's controls hand back strings.
+      if (value === undefined || String(value) === String(inherited[key])) {
         delete settings[key];
       } else {
         settings[key] = value;

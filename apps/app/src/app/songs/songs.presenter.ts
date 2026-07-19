@@ -83,6 +83,14 @@ export class SongsPresenter {
   readonly currentId = this.session.currentSongId;
   readonly isLoaded = this.store.loaded;
 
+  /** What the bulk star would do — so the button can say so before it is pressed. */
+  readonly isSelectionAllFavorite = computed(() => {
+    const songs = [...this.session.selectedIds()]
+      .map((id) => this.find(id))
+      .filter((song): song is Song => song !== undefined);
+    return songs.length > 0 && songs.every((song) => song.favorite);
+  });
+
   /** The song pane B renders. Undefined on an empty library. */
   readonly currentSong = computed<Song | undefined>(() => {
     const id = this.session.currentSongId();
@@ -221,11 +229,31 @@ export class SongsPresenter {
     }
   }
 
-  /** Bulk favorite: **set**, never toggle. Toggling a mixed selection leaves the
-   * user worse off than before — half of it flips the wrong way. */
+  /**
+   * Bulk favorite: **one decision for the whole selection**, never a per-row flip.
+   *
+   * The rule is "favourite them all, unless they already all are — then clear
+   * them all". A mixed selection therefore fills in the gaps rather than
+   * inverting each row, which is the only reading where clicking the button twice
+   * is not destructive: the first click makes them all favourites, the second
+   * takes them all back off. A per-row toggle over a mixed selection leaves the
+   * user worse off than before, because half of it flips the way they did not
+   * mean.
+   */
   async favoriteMany(ids: string[]): Promise<void> {
-    for (const id of ids) {
-      await this.write(id, { favorite: true });
+    const songs = ids
+      .map((id) => this.find(id))
+      .filter((song): song is Song => song !== undefined);
+    if (songs.length === 0) {
+      return;
+    }
+    const favorite = !songs.every((song) => song.favorite);
+    for (const song of songs) {
+      // Only the rows that actually change: an unchanged row would still take an
+      // `updatedAt` bump and jump to the top of a "recently changed" sort.
+      if (song.favorite !== favorite) {
+        await this.write(song.id, { favorite });
+      }
     }
     // One refresh for the batch, not one per row: each is a full re-query.
     await this.store.refresh();

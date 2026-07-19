@@ -413,6 +413,39 @@ test.describe('song explorer', () => {
     expect(entries).toEqual([[]]);
   });
 
+  // One decision for the selection, not a per-row flip: pressing it twice must
+  // put you back where you started rather than inverting a mixed selection.
+  test('bulk favorite fills the gaps, then clears them all', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await createSong(page, 'Yesterday');
+    const ids = await page
+      .getByTestId('song-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getAttribute('data-song-id')),
+      );
+    // A retrying expect, not a bare read: the write goes to IndexedDB and comes
+    // back through a refetch, so the attribute lands a tick after the click.
+    const expectFavorite = async (id: string | null, value: string) =>
+      expect(page.getByTestId(`favorite-${id}`)).toHaveAttribute(
+        'aria-pressed',
+        value,
+      );
+
+    // A mixed selection: one on, one off.
+    await page.getByTestId(`favorite-${ids[0]}`).click();
+    await page.getByTestId(`select-${ids[0]}`).check();
+    await page.getByTestId(`select-${ids[1]}`).check();
+
+    await page.getByTestId('explorer-bulk-favorite').click();
+    for (const id of ids) await expectFavorite(id, 'true');
+
+    // All on now, so the same button clears them.
+    await page.getByTestId('explorer-bulk-favorite').click();
+    for (const id of ids) await expectFavorite(id, 'false');
+  });
+
   test('bulk delete warns once for the whole selection', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSong(page, 'Yesterday');

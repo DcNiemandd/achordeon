@@ -96,12 +96,15 @@ import {
               type="button"
               [isIconOnly]="true"
               [disabled]="!hasSelection()"
-              [attr.aria-label]="bulkFavoriteLabel"
-              [appTooltip]="bulkFavoriteLabel"
+              [attr.aria-label]="bulkFavoriteLabel()"
+              [appTooltip]="bulkFavoriteLabel()"
               data-testid="explorer-bulk-favorite"
               (click)="presenter.favoriteMany([...presenter.selectedIds()])"
             >
-              <app-icon name="favorite" />
+              <app-icon
+                name="favorite"
+                [isFilled]="presenter.isSelectionAllFavorite()"
+              />
             </button>
 
             <button
@@ -321,7 +324,12 @@ export class SongsPage {
 
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;
-  protected readonly bulkFavoriteLabel = $localize`:@@songs.bulkFavorite:Favorite the selected songs`;
+  /** Names the act, not the object — the button does one of two things. */
+  protected readonly bulkFavoriteLabel = computed(() =>
+    this.presenter.isSelectionAllFavorite()
+      ? $localize`:@@songs.bulkUnfavorite:Remove the selected songs from favorites`
+      : $localize`:@@songs.bulkFavorite:Favorite the selected songs`,
+  );
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
   protected readonly bulkClearLabel = $localize`:@@songs.bulkClear:Clear the selection`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
