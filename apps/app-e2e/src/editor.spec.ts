@@ -95,30 +95,84 @@ test.describe('song editor', () => {
     expect(chord?.cls).not.toEqual(annotation?.cls);
   });
 
-  // A repeat sign wraps real chords in tokens that are not chords. The parser
-  // emits an anchor per token, so this bracket genuinely carries Em, G and A —
-  // and it used to be the one line in a song full of chords that did not look
-  // like it had any.
-  test('a bracket holding any real chord colours as a chord', async ({
+  // A repeat sign wraps real chords in tokens that are not chords. Colouring the
+  // whole bracket one way forced a choice between two lies — grey out the chords,
+  // or paint the repeat signs as if they were chords — so it is read token by
+  // token, and says exactly what the parser will act on.
+  test('inside a bracket, only the real chords are coloured', async ({
     page,
   }) => {
-    await type(page, '[||\\:Em,G,Em,A:||]\n[C]plain\n[Solo]none');
+    // Spaces around the repeat signs, so they are tokens of their own. Written
+    // `[||\:Em,G:||]` the outer tokens are `||\:Em` and `G:||` — neither of which
+    // is a chord, exactly as the parser reads them.
+    await type(page, '[||\\: Em, G :||] [Solo] [C]');
 
     const styled = await page
       .getByTestId('editor')
-      .locator('.cm-line span[class]')
-      .evaluateAll((spans) =>
-        spans.map((s) => ({ text: s.textContent, cls: s.className })),
+      .locator('.cm-line')
+      .first()
+      .evaluate((line) =>
+        [...line.childNodes].map((node) => ({
+          text: node.textContent,
+          cls: node instanceof HTMLElement ? node.className : null,
+        })),
       );
-    const repeat = styled.find((s) => s.text?.includes('Em,G'));
-    const chord = styled.find((s) => s.text === '[C]');
-    const annotation = styled.find((s) => s.text === '[Solo]');
+    const at = (text: string) => styled.find((s) => s.text === text);
+    const chordClass = at('[C]')?.cls;
 
-    expect(repeat).toBeDefined();
-    // It reads as what it is: a bracket full of chords.
-    expect(repeat?.cls).toEqual(chord?.cls);
-    // And a bracket with no chord in it at all still does not.
-    expect(repeat?.cls).not.toEqual(annotation?.cls);
+    expect(chordClass).toBeTruthy();
+    // The brackets belong to the chords they hold.
+    expect(at('[')?.cls).toEqual(chordClass);
+    expect(at(']')?.cls).toEqual(chordClass);
+    expect(at('G')?.cls).toEqual(chordClass);
+    expect(at('Em')?.cls).toEqual(chordClass);
+    // The repeat signs are text: unstyled, and never transposed.
+    expect(styled.find((s) => s.text?.includes('||\\:'))?.cls).toBeNull();
+    expect(styled.find((s) => s.text?.includes(':||'))?.cls).toBeNull();
+    // A bracket with no chord at all is still one verbatim annotation.
+    expect(at('[Solo]')?.cls).toBeTruthy();
+    expect(at('[Solo]')?.cls).not.toEqual(chordClass);
+  });
+
+  test('title and subtitle buttons replace each other, never stack', async ({
+    page,
+  }) => {
+    await type(page, 'Hello there');
+
+    await page.getByTestId('insert-title').click();
+    await page.getByTestId('insert-title').click();
+    await page.getByTestId('insert-title').click();
+    await expect(page.getByTestId('editor')).toContainText('* Hello there');
+    await expect(page.getByTestId('editor')).not.toContainText('* * ');
+
+    await page.getByTestId('insert-subtitle').click();
+    await expect(page.getByTestId('editor')).toContainText('** Hello there');
+  });
+
+  test('the label button opens an empty label and puts the caret in it', async ({
+    page,
+  }) => {
+    await type(page, 'sing this line');
+
+    // Not `: ` at the cursor — that would make the finished line its own label.
+    await page.getByTestId('insert-label').click();
+    await page.keyboard.insertText('Chorus');
+
+    await expect(page.getByTestId('editor')).toContainText(
+      'Chorus: sing this line',
+    );
+  });
+
+  test('the block button stops adding blank lines to a blank block', async ({
+    page,
+  }) => {
+    await type(page, 'a');
+    for (let i = 0; i < 3; i++) {
+      await page.getByTestId('insert-block').click();
+    }
+
+    // One boundary, however many times it was pressed: 'a', '', ''.
+    await expect(page.getByTestId('editor').locator('.cm-line')).toHaveCount(3);
   });
 
   test('underlines a shadowed title, and says why', async ({ page }) => {

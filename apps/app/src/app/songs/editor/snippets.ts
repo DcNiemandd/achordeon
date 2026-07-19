@@ -16,21 +16,63 @@ import type { InsertRequest } from './editor-model';
  * as literal asterisks today. A button that writes syntax the renderer ignores
  * teaches the user a lie. They land with markdown.
  */
+/**
+ * Any title/subtitle marker already on the line.
+ *
+ * One expression for both, so Title and Subtitle replace each other rather than
+ * stacking. `\*{1,2} ` and not `\*+ `: three asterisks are not a marker in the
+ * grammar, so they are content and must survive.
+ */
+const TITLE_MARKER = /^\*{1,2} /;
+
 export const SNIPPETS = {
   /** `[]` around the selection, caret between the brackets. */
   chord: { before: '[', after: ']', caretOffset: 0 } satisfies InsertRequest,
 
-  /** Line-scoped: the marker only counts at column 0. */
-  title: { before: '* ', atLineStart: true } satisfies InsertRequest,
-  subtitle: { before: '** ', atLineStart: true } satisfies InsertRequest,
+  /**
+   * Line-scoped: the marker only counts at column 0, and it replaces whatever
+   * marker the line already had — so the buttons are idempotent and interchange
+   * rather than accumulating asterisks.
+   */
+  title: {
+    before: '* ',
+    atLineStart: true,
+    replacesLineStart: TITLE_MARKER,
+  } satisfies InsertRequest,
+  subtitle: {
+    before: '** ',
+    atLineStart: true,
+    replacesLineStart: TITLE_MARKER,
+  } satisfies InsertRequest,
 
   /**
-   * Inline, unlike title/subtitle: a label is `text: content`, so the delimiter
-   * goes *after* the words you already typed. Type "Chorus", click, get
-   * "Chorus: " — which is the order the thought arrives in.
+   * An EMPTY label, with the caret in front of it, ready for the name.
+   *
+   * It writes `: ` at the start of the line and puts the caret at column 0, so
+   * you type the label into the space it just opened. It used to insert `: ` at
+   * the cursor, which made everything already to the left of the cursor the
+   * label — click it with the caret at the end of a finished lyric line and the
+   * whole line became a label with nothing in it. The label is a short name in
+   * front of content, so the button opens a place to put one.
    */
-  label: { before: ': ' } satisfies InsertRequest,
+  label: {
+    before: ': ',
+    atLineStart: true,
+    caretOffset: 0,
+  } satisfies InsertRequest,
 
   /** A blank line — the block boundary (PARSER-GRAMMAR §Block boundaries). */
-  block: { before: '\n\n' } satisfies InsertRequest,
+  block: {
+    before: '\n\n',
+    hasBlankBlockGuard: true,
+  } satisfies InsertRequest,
+
+  /**
+   * A backslash, to make the next character literal (PARSER-GRAMMAR §Escapes).
+   *
+   * The one piece of the syntax you reach for precisely when the editor has just
+   * surprised you — a `Narrator:` that became a label, a `[` you meant to keep.
+   * Escapable set: `: * [ ] \`.
+   */
+  escape: { before: '\\' } satisfies InsertRequest,
 };

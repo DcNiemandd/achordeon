@@ -105,14 +105,40 @@ export class SongEditor {
     }
     const { from, to } = view.state.selection.main;
 
+    // A blank line inside an already-blank block adds nothing the parser can see,
+    // so pressing the button again is a no-op rather than a growing gap.
+    if (request.hasBlankBlockGuard && this.isInBlankBlock(from)) {
+      view.focus();
+      return;
+    }
+
     if (request.atLineStart) {
-      // Line-scoped: prefix the line and leave the caret where the user left it,
-      // shifted by what we just put in front of it. Taking focus back to the
-      // marker would punish you for clicking a button mid-word.
+      // Line-scoped: prefix the line, REPLACING any marker it already carries, so
+      // the button is idempotent and Title/Subtitle interchange.
       const line = view.state.doc.lineAt(from);
+      const existing = request.replacesLineStart?.exec(line.text)?.[0] ?? '';
+      // Already exactly this marker: nothing to write, and rewriting it would
+      // cost an undo step and move the caret for no visible change.
+      if (existing === request.before) {
+        view.focus();
+        return;
+      }
+      const shift = request.before.length - existing.length;
+      // Leave the caret where the user left it, shifted by what changed in front
+      // of it — clicking a button mid-word must not drag focus to the marker.
+      // `caretOffset` overrides that and counts from the line start instead,
+      // which is how Label lands the caret in the empty name it just opened.
+      const anchor =
+        request.caretOffset !== undefined
+          ? line.from + request.caretOffset
+          : Math.max(line.from, from + shift);
       view.dispatch({
-        changes: { from: line.from, insert: request.before },
-        selection: { anchor: from + request.before.length },
+        changes: {
+          from: line.from,
+          to: line.from + existing.length,
+          insert: request.before,
+        },
+        selection: { anchor },
         scrollIntoView: true,
       });
       view.focus();
@@ -136,6 +162,29 @@ export class SongEditor {
       scrollIntoView: true,
     });
     view.focus();
+  }
+
+  /**
+   * True when the caret sits in a block that is already empty — at the very start
+   * of the document, or with a blank line immediately behind it.
+   *
+   * "Block" is the parser's (PARSER-GRAMMAR §Block boundaries): text separated by
+   * blank lines. Reading backwards from the caret is enough, because what is
+   * ahead belongs to the next block and cannot make this one non-empty.
+   */
+  private isInBlankBlock(at: number): boolean {
+    const view = this.view;
+    if (!view) {
+      return false;
+    }
+    const line = view.state.doc.lineAt(at);
+    if (line.text.slice(0, at - line.from).trim() !== '') {
+      return false; // there is content behind the caret on this line
+    }
+    if (line.number === 1) {
+      return true; // top of the document — no block to separate from
+    }
+    return view.state.doc.line(line.number - 1).text.trim() === '';
   }
 
   /** Session-only undo/redo (PRD-INFRASTRUCTURE.md §11) — the editor's history,
@@ -250,6 +299,39 @@ export class SongEditor {
         textDecoration: 'underline wavy var(--brand)',
         textUnderlineOffset: '3px',
       },
+
+      // The warning's own panel. CodeMirror ships a hard-coded light skin for
+      // these (#f5f5f5 on #fff with a #ddd border), which our theme never
+      // touched — so in dark mode it was pale text on a pale box and the message
+      // explaining the warning was the one thing you could not read. Every
+      // surface here is a token, like the rest of the editor.
+      '.cm-tooltip': {
+        backgroundColor: 'var(--surface-overlay)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-sm)',
+        color: 'var(--text)',
+        boxShadow: 'var(--shadow-2)',
+      },
+      '.cm-tooltip .cm-tooltip-arrow:before': {
+        borderTopColor: 'var(--border)',
+        borderBottomColor: 'var(--border)',
+      },
+      '.cm-tooltip .cm-tooltip-arrow:after': {
+        borderTopColor: 'var(--surface-overlay)',
+        borderBottomColor: 'var(--surface-overlay)',
+      },
+      '.cm-diagnostic': {
+        padding: 'var(--space-1) var(--space-2)',
+        borderInlineStart: '3px solid var(--brand)',
+        fontFamily: 'var(--font-ui)',
+        fontSize: 'var(--text-sm)',
+        lineHeight: 'var(--leading-tight)',
+      },
+      '.cm-diagnostic-warning': { borderInlineStartColor: 'var(--brand)' },
+      // The gutter dot, same story: its default is a bright yellow lozenge that
+      // belongs to no palette we own.
+      '.cm-lint-marker': { color: 'var(--brand)' },
+      '.cm-lint-marker-warning': { color: 'var(--brand)' },
     });
   }
 

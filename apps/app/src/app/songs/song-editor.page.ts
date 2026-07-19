@@ -101,29 +101,36 @@ import { SongEditorPresenter } from './song-editor.presenter';
                 role="group"
                 [attr.aria-label]="transposeGroupLabel"
               >
+                <!-- A note badged with a direction. Transposing is a musical
+                     act on the chords, and a bare arrow said only "move
+                     something" — which something was left to the tooltip. -->
                 <button
                   appButton
                   type="button"
                   variant="secondary"
+                  class="transpose"
                   [isIconOnly]="true"
                   [attr.aria-label]="transposeUpLabel"
                   [appTooltip]="transposeUpLabel"
                   data-testid="transpose-up"
                   (click)="presenter.transpose(1)"
                 >
-                  <app-icon name="transposeUp" />
+                  <app-icon name="note" />
+                  <app-icon class="transpose-badge" name="transposeUp" />
                 </button>
                 <button
                   appButton
                   type="button"
                   variant="secondary"
+                  class="transpose"
                   [isIconOnly]="true"
                   [attr.aria-label]="transposeDownLabel"
                   [appTooltip]="transposeDownLabel"
                   data-testid="transpose-down"
                   (click)="presenter.transpose(-1)"
                 >
-                  <app-icon name="transposeDown" />
+                  <app-icon name="note" />
+                  <app-icon class="transpose-badge" name="transposeDown" />
                 </button>
               </div>
 
@@ -270,6 +277,26 @@ import { SongEditorPresenter } from './song-editor.presenter';
       flex: none;
       margin-inline-start: auto;
     }
+
+    /* The note is the subject, the arrow is the direction it moves — so the
+       arrow is a corner badge rather than a second equal mark (the same
+       composition the mobile module switcher uses for its hamburger). */
+    .transpose {
+      position: relative;
+    }
+
+    .transpose app-icon {
+      --icon-size: 18px;
+    }
+
+    .transpose .transpose-badge {
+      --icon-size: 11px;
+      position: absolute;
+      inset-block-start: 3px;
+      inset-inline-end: 2px;
+      color: var(--brand);
+      stroke-width: 3;
+    }
   `,
 })
 export class SongEditorPage {
@@ -353,6 +380,12 @@ export class SongEditorPage {
       glyph: '¶',
       label: $localize`:@@editor.insertBlock:New block`,
       snippet: SNIPPETS.block,
+    },
+    {
+      testid: 'insert-escape',
+      glyph: '\\',
+      label: $localize`:@@editor.insertEscape:Escape the next character`,
+      snippet: SNIPPETS.escape,
     },
   ];
 

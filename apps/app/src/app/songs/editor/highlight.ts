@@ -42,13 +42,69 @@ export const achordeonTags = {
  * one the real parser uses, so `[Solo]` cannot look like a chord here and read as
  * an annotation there.
  */
+/**
+ * Where the chord-bearing bracket we are inside ends, or null.
+ *
+ * The parser is line-oriented but a bracket is read in several tokens, so the
+ * position of its `]` has to survive between `token()` calls. A bracket never
+ * spans lines (`findClosingBracket` searches the current line only), so this is
+ * always cleared by the time the next line starts.
+ */
+interface HighlightState {
+  bracketEnd: number | null;
+}
+
 export function achordeonHighlight(
   theory: ChordTheory,
-): StreamLanguage<unknown> {
-  const parser: StreamParser<unknown> = {
+): StreamLanguage<HighlightState> {
+  /** Escapes are resolved before validating, exactly as the parser does before
+   * it sets `valid` — otherwise the two would be judging different strings. */
+  const isChordToken = (token: string): boolean =>
+    theory.parseChord(unescape(token)) !== null;
+
+  const parser: StreamParser<HighlightState> = {
     name: 'achordeon',
 
-    token(stream) {
+    startState: () => ({ bracketEnd: null }),
+    copyState: (state) => ({ bracketEnd: state.bracketEnd }),
+
+    token(stream, state) {
+      // A bracket never spans lines, so a live `bracketEnd` at the start of one
+      // is stale — an offset into the previous line's text. Dropping it here
+      // stops that ever being read against the wrong string.
+      if (stream.sol()) {
+        state.bracketEnd = null;
+      }
+
+      // --- inside a chord-bearing bracket: one token at a time (§Chord validity) ---
+      //
+      // The whole bracket used to take a single colour, which forced a choice
+      // between two lies: `every` greyed out `[||\:Em,G,Em,A:||]` even though it
+      // really does carry Em, G and A, and `some` painted the repeat signs as if
+      // they were chords. Neither is what is on the line. Reading it token by
+      // token says exactly what the parser will do — the chords are chords, the
+      // brackets belong to them, and the `||:` between them is just text.
+      if (state.bracketEnd !== null) {
+        if (stream.pos >= state.bracketEnd) {
+          state.bracketEnd = null;
+          stream.next(); // the closing `]`
+          return 'chord';
+        }
+        // Separators carry no meaning of their own and stay unstyled.
+        if (stream.eatWhile(/[\s,]/)) {
+          return null;
+        }
+        const start = stream.pos;
+        while (
+          stream.pos < state.bracketEnd &&
+          !/[\s,]/.test(stream.peek() ?? '')
+        ) {
+          stream.next();
+        }
+        const token = stream.string.slice(start, stream.pos);
+        return isChordToken(token) ? 'chord' : null;
+      }
+
       // --- column 0: the line-type markers (Phase 1) ---
       if (stream.sol()) {
         // Longest match first: `** x` is a subtitle, never a title with a `*` body.
@@ -88,29 +144,18 @@ export function achordeonHighlight(
           return null; // unterminated — a literal bracket, not a chord
         }
         const inner = stream.string.slice(stream.pos + 1, close);
-        stream.pos = close + 1;
-        // One bracket may hold several tokens, and the whole bracket gets ONE
-        // colour — that is the granularity a stream token can carry. It is a
-        // chord bracket if ANY token in it is a chord.
-        //
-        // `some`, not `every`, because `every` disagreed with the parser. The
-        // parser emits one anchor per token, each with its own `valid`, so a
-        // repeat sign written `[||\:Em,G,Em,A:||]` really does produce chord
-        // anchors for Em, G and A — but a single unchordy token (`||:Em`) turned
-        // the entire bracket grey, and the line that carries the most chords in a
-        // song was the one line that did not look like it carried any.
-        //
-        // `[Solo]` and `[x2]` still colour as annotations: no token in them is a
-        // chord, so the promise that an annotation cannot look like a chord here
-        // and read as one there is intact.
-        //
-        // Escapes are resolved first, exactly as the parser does before it
-        // validates — otherwise the two would be judging different strings.
-        const tokens = splitChordTokens(inner);
-        const isChord = tokens.some(
-          (token) => theory.parseChord(unescape(token)) !== null,
-        );
-        return isChord ? 'chord' : 'annotation';
+        // A bracket with no chord at all is a verbatim annotation — `[Solo]`,
+        // `[x2]` — and colours as one whole thing, because there is nothing
+        // inside it to tell apart.
+        if (!splitChordTokens(inner).some(isChordToken)) {
+          stream.pos = close + 1;
+          return 'annotation';
+        }
+        // Otherwise the bracket is chord-bearing and gets read token by token
+        // (see `bracketEnd`). The opening bracket is punctuation of the chord.
+        state.bracketEnd = close;
+        stream.next();
+        return 'chord';
       }
 
       // Ordinary text: consume to the next thing that could matter.

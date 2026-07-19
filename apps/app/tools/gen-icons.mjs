@@ -46,6 +46,12 @@ const ICONS = {
   download: 'download',
   undo: 'undo-2',
   redo: 'redo-2',
+  // Transpose is a musical act, so it gets a musical mark: a note, badged with
+  // the direction it moves. Bare arrows said "move something" and left which
+  // something to the tooltip. The two halves are composed in the template (see
+  // the editor page), not merged into one glyph, so the badge can be positioned
+  // and coloured independently.
+  note: 'music-4',
   transposeUp: 'arrow-up',
   transposeDown: 'arrow-down',
   favorite: 'star',
