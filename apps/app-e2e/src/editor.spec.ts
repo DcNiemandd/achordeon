@@ -95,6 +95,32 @@ test.describe('song editor', () => {
     expect(chord?.cls).not.toEqual(annotation?.cls);
   });
 
+  // A repeat sign wraps real chords in tokens that are not chords. The parser
+  // emits an anchor per token, so this bracket genuinely carries Em, G and A —
+  // and it used to be the one line in a song full of chords that did not look
+  // like it had any.
+  test('a bracket holding any real chord colours as a chord', async ({
+    page,
+  }) => {
+    await type(page, '[||\\:Em,G,Em,A:||]\n[C]plain\n[Solo]none');
+
+    const styled = await page
+      .getByTestId('editor')
+      .locator('.cm-line span[class]')
+      .evaluateAll((spans) =>
+        spans.map((s) => ({ text: s.textContent, cls: s.className })),
+      );
+    const repeat = styled.find((s) => s.text?.includes('Em,G'));
+    const chord = styled.find((s) => s.text === '[C]');
+    const annotation = styled.find((s) => s.text === '[Solo]');
+
+    expect(repeat).toBeDefined();
+    // It reads as what it is: a bracket full of chords.
+    expect(repeat?.cls).toEqual(chord?.cls);
+    // And a bracket with no chord in it at all still does not.
+    expect(repeat?.cls).not.toEqual(annotation?.cls);
+  });
+
   test('underlines a shadowed title, and says why', async ({ page }) => {
     await type(page, '* First\n* Second\n');
 

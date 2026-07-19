@@ -9,6 +9,7 @@ import {
   findClosingBracket,
   findLabelDelimiter,
   splitChordTokens,
+  unescape,
   type ChordTheory,
 } from '@achordeon/shared/domain';
 
@@ -88,12 +89,27 @@ export function achordeonHighlight(
         }
         const inner = stream.string.slice(stream.pos + 1, close);
         stream.pos = close + 1;
-        // One bracket may hold several chords; it colours as a chord only if every
-        // token in it is one, because that is the granularity a token can carry.
+        // One bracket may hold several tokens, and the whole bracket gets ONE
+        // colour — that is the granularity a stream token can carry. It is a
+        // chord bracket if ANY token in it is a chord.
+        //
+        // `some`, not `every`, because `every` disagreed with the parser. The
+        // parser emits one anchor per token, each with its own `valid`, so a
+        // repeat sign written `[||\:Em,G,Em,A:||]` really does produce chord
+        // anchors for Em, G and A — but a single unchordy token (`||:Em`) turned
+        // the entire bracket grey, and the line that carries the most chords in a
+        // song was the one line that did not look like it carried any.
+        //
+        // `[Solo]` and `[x2]` still colour as annotations: no token in them is a
+        // chord, so the promise that an annotation cannot look like a chord here
+        // and read as one there is intact.
+        //
+        // Escapes are resolved first, exactly as the parser does before it
+        // validates — otherwise the two would be judging different strings.
         const tokens = splitChordTokens(inner);
-        const isChord =
-          tokens.length > 0 &&
-          tokens.every((token) => theory.parseChord(token) !== null);
+        const isChord = tokens.some(
+          (token) => theory.parseChord(unescape(token)) !== null,
+        );
         return isChord ? 'chord' : 'annotation';
       }
 
