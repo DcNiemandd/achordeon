@@ -10,13 +10,14 @@ import {
   input,
   viewChild,
 } from '@angular/core';
-import { Button, Dialog, Icon, Tooltip } from '../primitives';
+import { Button, Dialog, Icon, Tooltip, type IconName } from '../primitives';
 import { Router, RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
+import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
 
 /**
@@ -86,12 +87,21 @@ import { SongEditorPresenter } from './song-editor.presenter';
                     appButton
                     type="button"
                     variant="secondary"
+                    class="insert"
                     [attr.aria-label]="item.label"
                     [appTooltip]="item.label"
                     [attr.data-testid]="item.testid"
                     (click)="editor().insert(item.snippet)"
                   >
-                    {{ item.glyph }}
+                    <app-icon
+                      [name]="item.icon"
+                      [class.is-flipped]="item.isFlipped"
+                    />
+                    <!-- aria-hidden: the button is already named by its
+                         aria-label, and "Title, star" helps nobody. -->
+                    <span class="insert-syntax" aria-hidden="true">{{
+                      item.glyph
+                    }}</span>
                   </button>
                 }
               </div>
@@ -272,6 +282,41 @@ import { SongEditorPresenter } from './song-editor.presenter';
       gap: var(--space-1);
     }
 
+    /* Two rows in one button: the mark, then the syntax it writes. Sized square
+       so the bar still reads as a row of equal targets. */
+    .insert {
+      flex-direction: column;
+      justify-content: center;
+      gap: 0;
+      inline-size: 40px;
+      block-size: 40px;
+      padding-inline: 0;
+    }
+
+    .insert app-icon {
+      --icon-size: 17px;
+    }
+
+    .insert app-icon.is-flipped {
+      transform: scaleX(-1);
+    }
+
+    /* Faint on purpose: it is the footnote, not the label. Monospace because it
+       is a quotation of the source text. */
+    .insert-syntax {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      line-height: 1;
+      color: var(--text-faint);
+      /* The chord glyph is three characters wide and was wrapping inside a 40px
+         button, turning the footnote into two lines and shoving the icon up. */
+      white-space: nowrap;
+    }
+
+    .insert:hover .insert-syntax {
+      color: var(--text-muted);
+    }
+
     /* Never squeezed by the commands, and pinned to the far end. */
     .settings {
       flex: none;
@@ -345,44 +390,71 @@ export class SongEditorPage {
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 
   /**
-   * The insert bar. Glyphs are the **syntax itself** rather than icons: `[ ]` is
-   * what a chord looks like in the text, so the button teaches the markup while
-   * you use it — which is the point of having the buttons at all. The label is
-   * the accessible name and the tooltip; the glyph is decoration.
+   * The insert bar: **a mark and the syntax it writes, stacked**.
+   *
+   * The glyphs used to be the whole button, on the reasoning that `[ ]` is what a
+   * chord looks like in the text, so the button teaches the markup while you use
+   * it. Half of them taught nothing: `*` and `**` are indistinguishable at a
+   * glance and say "asterisk", not "title"; `:` and `¶` were guesses. So the
+   * recognisable mark now carries the meaning and the glyph underneath keeps the
+   * markup visible — you still learn the language from the bar, you just no
+   * longer have to already know it to use the bar.
+   *
+   * `label` remains the accessible name and the tooltip; both the icon and the
+   * glyph are decoration to a screen reader.
    */
-  protected readonly insertButtons = [
+  protected readonly insertButtons: readonly {
+    testid: string;
+    icon: IconName;
+    /** Mirror the glyph horizontally — Lucide has a slash but no backslash. */
+    isFlipped?: boolean;
+    glyph: string;
+    label: string;
+    snippet: InsertRequest;
+  }[] = [
     {
       testid: 'insert-chord',
+      icon: 'brackets',
       glyph: '[ ]',
       label: $localize`:@@editor.insertChord:Chord`,
       snippet: SNIPPETS.chord,
     },
     {
       testid: 'insert-title',
+      icon: 'heading1',
       glyph: '*',
       label: $localize`:@@editor.insertTitle:Title`,
       snippet: SNIPPETS.title,
     },
     {
       testid: 'insert-subtitle',
+      icon: 'heading2',
       glyph: '**',
       label: $localize`:@@editor.insertSubtitle:Subtitle`,
       snippet: SNIPPETS.subtitle,
     },
     {
       testid: 'insert-label',
+      icon: 'tag',
       glyph: ':',
       label: $localize`:@@editor.insertLabel:Label`,
       snippet: SNIPPETS.label,
     },
     {
+      // A block boundary is a blank line, which has no character to show — `↵`
+      // stands in for it, being the key you would press to make one.
       testid: 'insert-block',
-      glyph: '¶',
+      icon: 'pilcrow',
+      glyph: '↵',
       label: $localize`:@@editor.insertBlock:New block`,
       snippet: SNIPPETS.block,
     },
     {
       testid: 'insert-escape',
+      icon: 'backslash',
+      // Lucide ships `slash` and no backslash, and an icon leaning the opposite
+      // way to the character it writes is a small lie the eye catches.
+      isFlipped: true,
       glyph: '\\',
       label: $localize`:@@editor.insertEscape:Escape the next character`,
       snippet: SNIPPETS.escape,

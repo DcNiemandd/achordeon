@@ -57,6 +57,15 @@ const ICONS = {
   favorite: 'star',
   title: 'type',
   reset: 'rotate-ccw',
+  // editor insert bar (Epic 5). Each button pairs one of these with the syntax
+  // it writes, so the mark carries the meaning and the glyph underneath keeps
+  // the markup learnable.
+  brackets: 'brackets',
+  heading1: 'heading-1',
+  heading2: 'heading-2',
+  tag: 'tag',
+  pilcrow: 'pilcrow',
+  backslash: 'slash',
   // song explorer (Epic 5)
   // `edit` opens the editor, `rename` retitles the library label — two different
   // jobs on the same row, so they must not look alike.
