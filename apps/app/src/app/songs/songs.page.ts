@@ -76,6 +76,60 @@ import {
             <app-icon name="add" />
             {{ addLabel }}
           </button>
+
+          <!-- Bulk actions ride the same row as "New song" and are ALWAYS
+               mounted, disabled until a selection exists. They used to be a bar
+               that appeared between the toolbar and the list, which meant ticking
+               the first checkbox shoved every row down by 34px — the list moved
+               under the pointer that was still aiming at it. A fixed row of
+               disabled icons costs a little clarity and buys back a stable list,
+               which is the better trade while you are picking rows. -->
+          <div class="bulk" data-testid="explorer-bulk">
+            @if (presenter.selectedIds().size > 0) {
+              <span class="bulk-count" data-testid="explorer-bulk-count">
+                {{ selectionLabel() }}
+              </span>
+            }
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSelection()"
+              [attr.aria-label]="bulkFavoriteLabel"
+              [appTooltip]="bulkFavoriteLabel"
+              data-testid="explorer-bulk-favorite"
+              (click)="presenter.favoriteMany([...presenter.selectedIds()])"
+            >
+              <app-icon name="favorite" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSelection()"
+              [attr.aria-label]="bulkDeleteLabel"
+              [appTooltip]="bulkDeleteLabel"
+              data-testid="explorer-bulk-delete"
+              (click)="presenter.requestDelete([...presenter.selectedIds()])"
+            >
+              <app-icon name="delete" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSelection()"
+              [attr.aria-label]="bulkClearLabel"
+              [appTooltip]="bulkClearLabel"
+              data-testid="explorer-bulk-clear"
+              (click)="presenter.clearSelection()"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
         </app-action-bar>
 
         <app-song-explorer
@@ -93,9 +147,7 @@ import {
           (activated)="presenter.activate($event)"
           (opened)="presenter.open($event)"
           (selectToggled)="presenter.toggleSelect($event)"
-          (selectionCleared)="presenter.clearSelection()"
           (favorited)="presenter.toggleFavorite($event)"
-          (favoritedMany)="presenter.favoriteMany($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (deleted)="presenter.requestDelete($event)"
@@ -185,6 +237,22 @@ import {
       min-block-size: 0;
     }
 
+    /* Pushed to the far end of the action row, away from "New song": these act on
+       what you already have, that one makes something new. */
+    .bulk {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-inline-start: auto;
+    }
+
+    .bulk-count {
+      margin-inline-end: var(--space-1);
+      font-size: var(--text-sm);
+      color: var(--brand);
+      white-space: nowrap;
+    }
+
     .warn {
       margin: 0 0 var(--space-2);
     }
@@ -242,8 +310,20 @@ export class SongsPage {
   );
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
 
+  protected readonly hasSelection = computed(
+    () => this.presenter.selectedIds().size > 0,
+  );
+
+  protected readonly selectionLabel = computed(
+    () =>
+      $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
+  );
+
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;
+  protected readonly bulkFavoriteLabel = $localize`:@@songs.bulkFavorite:Favorite the selected songs`;
+  protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
+  protected readonly bulkClearLabel = $localize`:@@songs.bulkClear:Clear the selection`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
   protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;

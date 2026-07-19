@@ -78,7 +78,7 @@ export function toExplorerSortDir(
  * Capabilities are per-*mount*, never per-row: a row does not know where it is.
  */
 export interface ExplorerCapabilities {
-  /** Multi-select checkboxes + the bulk bar. */
+  /** Multi-select checkboxes. What acts on the selection is the page's business. */
   readonly canSelect: boolean;
   readonly canFavorite: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */

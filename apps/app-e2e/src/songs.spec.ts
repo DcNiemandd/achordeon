@@ -190,6 +190,25 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('explorer-empty')).toBeVisible();
   });
 
+  // With a query that matches nothing there is no list left to navigate, so the
+  // clear button is not a shortcut - it is the way back.
+  test('clearing the query restores the list and empties the URL', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    const clear = page.getByTestId('explorer-search-clear');
+    await expect(clear).toHaveCount(0);
+
+    await page.getByTestId('explorer-search').fill('zzzz');
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+    await clear.click();
+
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+    await expect(page.getByTestId('explorer-search')).toHaveValue('');
+    await expect(page).not.toHaveURL(/[?&]q=/);
+    await expect(clear).toHaveCount(0);
+  });
+
   test('sorting rides in the URL and reorders the list', async ({ page }) => {
     await createSong(page, 'Zeta');
     await createSong(page, 'Alpha');
@@ -205,21 +224,29 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row').first()).toContainText('Zeta');
   });
 
-  test('multi-select drives the bulk bar', async ({ page }) => {
+  // The bulk actions are always mounted and always in the same place — that is
+  // the point of them being on the action row rather than in a bar that appears.
+  // What a selection changes is whether they are enabled, not whether they exist.
+  test('multi-select enables the bulk actions without moving the list', async ({
+    page,
+  }) => {
     await createSong(page, 'Wonderwall');
     await createSong(page, 'Yesterday');
-    const first = await page
-      .getByTestId('song-row')
-      .first()
-      .getAttribute('data-song-id');
+    const rows = page.getByTestId('song-row');
+    const first = await rows.first().getAttribute('data-song-id');
 
-    await expect(page.getByTestId('explorer-bulk')).toHaveCount(0);
+    const clear = page.getByTestId('explorer-bulk-clear');
+    await expect(clear).toBeDisabled();
+    const before = await rows.first().boundingBox();
 
     await page.getByTestId(`select-${first}`).check();
-    await expect(page.getByTestId('explorer-bulk')).toBeVisible();
+    await expect(clear).toBeEnabled();
+    await expect(page.getByTestId('explorer-bulk-count')).toContainText('1');
+    // The row did not budge when the checkbox was ticked.
+    expect((await rows.first().boundingBox())?.y).toBe(before?.y);
 
-    await page.getByTestId('explorer-bulk-clear').click();
-    await expect(page.getByTestId('explorer-bulk')).toHaveCount(0);
+    await clear.click();
+    await expect(clear).toBeDisabled();
   });
 
   test('bulk favorite sets, never toggles', async ({ page }) => {
@@ -354,8 +381,8 @@ test.describe('song explorer', () => {
     await page.getByTestId('delete-confirm').click();
 
     await expect(page.getByTestId('explorer-empty')).toBeVisible();
-    // The selection went with the songs — the bulk bar has nothing left to act on.
-    await expect(page.getByTestId('explorer-bulk')).toHaveCount(0);
+    // The selection went with the songs — nothing left to act on.
+    await expect(page.getByTestId('explorer-bulk-delete')).toBeDisabled();
   });
 
   test('below the breakpoint: the explorer is full width, with no render pane', async ({

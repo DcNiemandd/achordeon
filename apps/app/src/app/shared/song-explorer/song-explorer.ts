@@ -6,6 +6,7 @@ import {
   Component,
   computed,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -41,8 +42,12 @@ const PREFETCH_ROWS = 10;
 const SEARCH_DEBOUNCE_MS = 200;
 
 /**
- * The rich Song list: search, sort, multi-select, bulk actions, row actions
+ * The rich Song list: search, sort, multi-select, row actions
  * (CONTEXT.md §Song explorer).
+ *
+ * It reports the selection but does not act on it: **bulk actions belong to the
+ * page's action bar**, on the same row as its primary button, so that ticking a
+ * checkbox cannot resize the list you are ticking within.
  *
  * **One component, capability set per context.** It has two homes — the Songs
  * module at full power and the Songbooks left panel with the identity/destructive
@@ -75,15 +80,34 @@ const SEARCH_DEBOUNCE_MS = 200;
       <div class="search">
         <app-icon name="search" class="search-icon" />
         <input
+          #searchInput
           appField
           type="search"
           class="search-field"
+          [class.has-value]="hasQuery()"
           [value]="query()"
           [attr.aria-label]="searchLabel"
           [attr.placeholder]="searchLabel"
           data-testid="explorer-search"
           (input)="onSearchInput($event)"
         />
+        <!-- Only while there is something to clear. Unlike the row actions this
+             button is not a shortcut for anything reachable another way — with an
+             empty list and a stale query, it is the way back. -->
+        @if (hasQuery()) {
+          <button
+            appButton
+            type="button"
+            class="search-clear"
+            [isIconOnly]="true"
+            [attr.aria-label]="clearSearchLabel"
+            [appTooltip]="clearSearchLabel"
+            data-testid="explorer-search-clear"
+            (click)="clearQuery(searchInput)"
+          >
+            <app-icon name="close" />
+          </button>
+        }
       </div>
 
       <select
@@ -110,52 +134,6 @@ const SEARCH_DEBOUNCE_MS = 200;
         <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
       </button>
     </div>
-
-    <!-- The bulk bar exists only while a selection does: a permanently mounted
-         bar of disabled buttons is a worse answer than one that appears. -->
-    @if (capabilities().canSelect && selectedIds().size > 0) {
-      <div class="bulk" data-testid="explorer-bulk">
-        <span class="bulk-count">{{ selectionLabel() }}</span>
-
-        <!-- Epic 6 projects "Add to songbook" here. The explorer does not know
-             what a songbook is, and must not learn. -->
-        <ng-content select="[bulk-actions]" />
-
-        @if (capabilities().canFavorite) {
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            data-testid="explorer-bulk-favorite"
-            (click)="favoritedMany.emit([...selectedIds()])"
-          >
-            {{ favoriteLabel }}
-          </button>
-        }
-
-        @if (capabilities().canDelete) {
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            data-testid="explorer-bulk-delete"
-            (click)="deleted.emit([...selectedIds()])"
-          >
-            {{ deleteLabel }}
-          </button>
-        }
-
-        <button
-          appButton
-          type="button"
-          variant="ghost"
-          data-testid="explorer-bulk-clear"
-          (click)="selectionCleared.emit()"
-        >
-          {{ clearLabel }}
-        </button>
-      </div>
-    }
 
     @if (rows().length === 0) {
       <app-empty-state [text]="emptyText()" data-testid="explorer-empty" />
@@ -198,7 +176,7 @@ const SEARCH_DEBOUNCE_MS = 200;
               [attr.data-testid]="'favorite-' + row.id"
               (click)="favorited.emit(row.id)"
             >
-              <app-icon name="favorite" />
+              <app-icon name="favorite" [isFilled]="row.isFavorite" />
             </button>
           }
 
@@ -328,6 +306,26 @@ const SEARCH_DEBOUNCE_MS = 200;
       padding-inline-start: var(--space-5);
     }
 
+    /* Room for the clear button, so a long query does not run underneath it. */
+    .search-field.has-value {
+      padding-inline-end: var(--space-5);
+    }
+
+    .search-clear {
+      --icon-size: 14px;
+      position: absolute;
+      inset-inline-end: 2px;
+      block-size: 28px;
+      color: var(--text-faint);
+    }
+
+    /* The type="search" widget ships its own clear affordance in WebKit. Ours is
+       the one that also drops the pending debounce, so the native one has to go —
+       two X's a pixel apart, doing subtly different things, is worse than either. */
+    .search-field::-webkit-search-cancel-button {
+      display: none;
+    }
+
     .sort {
       block-size: 32px;
       border: 1px solid var(--border-strong);
@@ -336,21 +334,6 @@ const SEARCH_DEBOUNCE_MS = 200;
       color: var(--text);
       font: inherit;
       font-size: var(--text-sm);
-    }
-
-    .bulk {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-      padding: var(--space-1) var(--space-2);
-      background: var(--brand-subtle);
-      border-block-end: 1px solid var(--border);
-    }
-
-    .bulk-count {
-      margin-inline-end: auto;
-      font-size: var(--text-sm);
-      color: var(--brand);
     }
 
     .list {
@@ -394,6 +377,15 @@ const SEARCH_DEBOUNCE_MS = 200;
 
     .star.is-favorite {
       color: var(--brand);
+    }
+
+    /* The ghost skin tints the background of anything aria-pressed, which is
+       right for a toolbar toggle and wrong here: a permanently highlighted cell
+       down a list of favourites is noise. The glyph itself carries the state
+       (filled vs outline), so the background is free to mean what it means on
+       every other row action — "you are hovering me". */
+    .star[aria-pressed='true']:not(:hover) {
+      background: none;
     }
 
     .open {
@@ -445,8 +437,13 @@ const SEARCH_DEBOUNCE_MS = 200;
       opacity: 0;
     }
 
+    /* The current row is the one you are working on — its actions are the ones
+       you are about to want, and hiding them behind a hover means aiming at a row
+       you have already picked. It is exactly one row, so this cannot become the
+       noise the hover rule exists to prevent. */
     .row:hover .row-actions,
-    .row:focus-within .row-actions {
+    .row:focus-within .row-actions,
+    .row.is-current .row-actions {
       opacity: 1;
     }
 
@@ -477,9 +474,7 @@ export class SongExplorer {
   /** Open this song in the editor. */
   readonly opened = output<string>();
   readonly selectToggled = output<string>();
-  readonly selectionCleared = output<void>();
   readonly favorited = output<string>();
-  readonly favoritedMany = output<string[]>();
   /**
    * A request to delete, never the deed — one id from a row, many from the bulk
    * bar. Deleting a song can destroy songbook entries, so what happens next
@@ -494,13 +489,25 @@ export class SongExplorer {
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
 
+  /**
+   * What is in the search box *right now*, as opposed to what the URL has caught
+   * up to.
+   *
+   * The two differ for the length of the debounce, and the clear button has to
+   * obey the field rather than the URL — otherwise it takes 200ms to appear after
+   * the first keystroke and lingers 200ms after the last one is deleted. A
+   * `linkedSignal` because the URL is still the source of truth (§7): any
+   * navigation that changes `query` resets this to it.
+   */
+  private readonly typedQuery = linkedSignal(() => this.query());
+
+  protected readonly hasQuery = computed(() => this.typedQuery().length > 0);
+
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly searchLabel = $localize`:@@explorer.search:Search songs`;
   protected readonly sortLabel = $localize`:@@explorer.sort:Sort by`;
-  protected readonly clearLabel = $localize`:@@explorer.clearSelection:Clear`;
-  protected readonly favoriteLabel = $localize`:@@explorer.favorite:Favorite`;
-  protected readonly deleteLabel = $localize`:@@explorer.delete:Delete`;
+  protected readonly clearSearchLabel = $localize`:@@explorer.clearSearch:Clear search`;
 
   protected readonly sortOptions: readonly {
     value: ExplorerSort;
@@ -511,11 +518,6 @@ export class SongExplorer {
     { value: 'changed', label: $localize`:@@explorer.sort.changed:Changed` },
     { value: 'favorite', label: $localize`:@@explorer.sort.favorite:Favorite` },
   ];
-
-  protected readonly selectionLabel = computed(
-    () =>
-      $localize`:@@explorer.selected:${this.selectedIds().size}:count: selected`,
-  );
 
   protected readonly dirLabel = computed(() =>
     this.dir() === 'asc'
@@ -558,6 +560,7 @@ export class SongExplorer {
 
   protected onSearchInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
+    this.typedQuery.set(value);
     if (this.searchTimer !== null) {
       clearTimeout(this.searchTimer);
     }
@@ -565,6 +568,23 @@ export class SongExplorer {
       () => this.queryChange.emit(value),
       SEARCH_DEBOUNCE_MS,
     );
+  }
+
+  /**
+   * Emptying the box is an explicit act, so it skips the debounce: the user asked
+   * for the whole library back, not for it in 200ms. The pending timer is dropped
+   * with it, or the keystrokes it was still holding would re-apply the query that
+   * was just cleared.
+   */
+  protected clearQuery(field: HTMLInputElement): void {
+    if (this.searchTimer !== null) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
+    field.value = '';
+    this.typedQuery.set('');
+    this.queryChange.emit('');
+    field.focus();
   }
 
   /** A new axis comes with its own natural direction — see `SortChange.dir`. */
