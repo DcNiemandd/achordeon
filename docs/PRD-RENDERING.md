@@ -177,6 +177,15 @@ guardrail. Other docs link here; none restate it.**
   - **There is no type/font scale.** Font size is never authored. "Bigger text" =
     fewer columns, a render-box ratio nearer the content, or a manual `scale` beyond
     fit (accepting overflow).
+  - **`'auto'` has a ceiling — the render box has a minimum size** (`minBoxEm`, a
+    **tuning** constant, not a setting). The box is what the medium scales to fill,
+    so a box drawn tight around a two-line song is an instruction to magnify it
+    enormously — a one-line song printed in letters an inch tall. Below the floor the
+    box grows while the content keeps its natural size, so the song gains blank page
+    rather than magnification. The floor is on the **short axis** (portrait and
+    landscape cap alike) and the ratio is preserved, so §4.1's "the render box's shape
+    is the `aspectRatio` setting" still holds. **Applies to `'auto'` only** — a manual
+    number is the user overriding the fit deliberately, and stays unclamped.
 - **Raster scale** — export-only DPI knob (the PoC's `smallerSide = 1920px`), so a
   rasterized PNG is sharp. A `DownloadService` concern; **not** layout, **not** a
   render setting, has no effect on geometry.

@@ -42,6 +42,7 @@ export function fitContent(
   contentH: number,
   ratio: number,
   scale: GlobalSettings['scale'],
+  minBox = 0,
 ): FitResult {
   const fit = parseScale(scale);
   const origin = { x: 0, y: 0 }; // hug top-left (§4.5)
@@ -55,5 +56,22 @@ export function fitContent(
     contentW / contentH >= ratio
       ? { width: contentW, height: contentW / ratio }
       : { width: contentH * ratio, height: contentH };
+
+  // The auto-fit ceiling (§4.1). The box is what the medium scales to fill, so a
+  // box tight around two words IS a magnification instruction: a one-line song
+  // came out in letters an inch tall. Growing the box to a floor size caps that —
+  // the content keeps its natural size and gains empty page instead. Expressed as
+  // a floor on the SHORT axis so portrait and landscape cap alike, and applied to
+  // 'auto' only: a manual scale is the user overriding the fit on purpose, and
+  // §4.1 already promises not to clamp it.
+  if (minBox > 0 && scale === 'auto') {
+    const short = Math.min(box.width, box.height);
+    if (short > 0 && short < minBox) {
+      const grow = minBox / short;
+      box.width *= grow;
+      box.height *= grow;
+    }
+  }
+
   return { box, fit, origin };
 }

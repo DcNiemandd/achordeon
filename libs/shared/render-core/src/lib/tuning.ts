@@ -62,6 +62,18 @@ export interface RenderTuning {
     chordOnlyGapEm: number;
   };
 
+  /**
+   * The auto-fit ceiling: the render box's short axis is never smaller than this
+   * many `baseSizePx` (§4.1).
+   *
+   * The box is what the medium scales to fill, so a box drawn tight around a
+   * two-line song is an instruction to magnify it enormously. This is the floor
+   * that stops it — below it the song keeps its natural size and gains blank page
+   * instead. Effectively "text is at most 1/N of the page's short side". Applies
+   * to `scale: 'auto'` only.
+   */
+  minBoxEm: number;
+
   /** All-chord-only Block renders larger (§4.9 bridge). Applied in base units before the fit. */
   bridgeSizeMultiplier: number;
 
@@ -123,6 +135,9 @@ export const DEFAULT_TUNING: RenderTuning = {
     titleInlineGapEm: 1.5, // PoC `.titles` column-gap 24px
     chordOnlyGapEm: 1.5,
   },
+  // 32 ≈ "a line of lyrics is never wider than a third of the page". Roughly a
+  // full A4 of song at natural size; tune to taste.
+  minBoxEm: 32,
   // The PoC had no per-block bridge rule; it sized any chord row sitting over an
   // EMPTY lyric at the full 1em while a chorded lyric line got 0.7em. 1/0.7
   // reproduces that exactly through the bridge knob.

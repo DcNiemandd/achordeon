@@ -85,6 +85,7 @@ export function layoutCore(
     contentH,
     ratio,
     settings.scale,
+    tuning.minBoxEm * tuning.baseSizePx,
   );
 
   return {

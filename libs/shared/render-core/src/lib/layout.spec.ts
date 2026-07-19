@@ -20,6 +20,15 @@ const ast = (over: Partial<SongAst> = {}): SongAst => ({
   ...over,
 });
 
+/**
+ * The auto-fit floor is off for the placement tests below.
+ *
+ * These fixtures are two-word songs, so the floor (32em on the short axis) would
+ * be the only thing setting the box and every assertion about item coordinates
+ * would be measuring the cap instead of the layout. It has its own test.
+ */
+const UNCAPPED = { tuning: { minBoxEm: 0 } };
+
 describe('layoutCore — assembly (§1, §5)', () => {
   it('produces an empty plan for an empty song', () => {
     const plan = layoutCore(ast(), settings, measure);
@@ -30,9 +39,15 @@ describe('layoutCore — assembly (§1, §5)', () => {
 
   it('insets the content by the padding without reshaping the render box (§4.11)', () => {
     const song = ast({ blocks: [{ lines: [{ text: 'aa', chords: [] }] }] });
-    const bare = layoutCore(song, settings, measure);
+    const bare = layoutCore(song, settings, measure, {}, UNCAPPED);
     // 0.5em at base 16 = an 8px border on every side (the PoC's page padding).
-    const padded = layoutCore(song, { ...settings, padding: 0.5 }, measure);
+    const padded = layoutCore(
+      song,
+      { ...settings, padding: 0.5 },
+      measure,
+      {},
+      UNCAPPED,
+    );
 
     const at = (p: typeof bare) => p.items.find((i) => i.role === 'lyric');
     expect(at(padded)?.x).toBeCloseTo((at(bare)?.x as number) + 8);
@@ -53,11 +68,33 @@ describe('layoutCore — assembly (§1, §5)', () => {
     expect(plan.box).toEqual({ width: 0, height: 0 });
   });
 
+  it('caps how far auto-fit may magnify a short song (§4.1)', () => {
+    const tiny = ast({ blocks: [{ lines: [{ text: 'aa', chords: [] }] }] });
+    const plan = layoutCore(tiny, settings, measure);
+
+    // The floor is on the short axis; A4 is portrait, so that is the width.
+    expect(Math.min(plan.box.width, plan.box.height)).toBeCloseTo(32 * 16);
+    // The content itself did not move or grow — it gained blank page around it,
+    // which is the whole point: a two-word song must not print an inch tall.
+    expect(plan.items.find((i) => i.role === 'lyric')?.y).toBeCloseTo(12.8);
+    // And the page is still the shape the user asked for.
+    expect(plan.box.width / plan.box.height).toBeCloseTo(210 / 297);
+  });
+
+  it('does not cap a manually scaled song — the user overrode the fit', () => {
+    const tiny = ast({ blocks: [{ lines: [{ text: 'aa', chords: [] }] }] });
+    const plan = layoutCore(tiny, { ...settings, scale: 2 }, measure);
+    expect(plan.box.width).toBeCloseTo(19.2);
+    expect(plan.fit).toBe(2);
+  });
+
   it('places the title region and offsets content below it (top)', () => {
     const plan = layoutCore(
       ast({ title: 'T', blocks: [{ lines: [{ text: 'aa', chords: [] }] }] }),
       settings,
       measure,
+      {},
+      UNCAPPED,
     );
     const title = plan.items.find((i) => i.role === 'title');
     const lyric = plan.items.find((i) => i.role === 'lyric');
