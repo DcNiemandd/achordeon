@@ -291,6 +291,31 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('abc');
   });
 
+  // On mobile the on-screen keyboard follows focus, so flipping Source/Render
+  // must not blur the editor — otherwise the keyboard drops and the layout jumps
+  // on every tab switch. Focus retention is the verifiable proxy for that (a real
+  // soft keyboard cannot be driven here).
+  test('switching Source/Render on mobile keeps focus in the editor', async ({
+    page,
+  }) => {
+    await type(page, 'la [C]la');
+    await page.getByTestId('editor').locator('.cm-content').click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('bottom-bar')).toBeVisible();
+
+    await page.getByTestId('pane-render').click();
+
+    // The editor pane is covered, not removed — still in the DOM and still
+    // focused, which is what lets the keyboard survive the switch.
+    await expect(page.getByTestId('pane-a')).toBeVisible();
+    await expect(page.getByTestId('pane-b')).toBeVisible();
+    const focusedInEditor = await page.evaluate(() => {
+      const editor = document.querySelector('[data-testid="editor"]');
+      return !!editor && editor.contains(document.activeElement);
+    });
+    expect(focusedInEditor).toBe(true);
+  });
+
   test('pressing Title on a title line just goes to the end of it', async ({
     page,
   }) => {

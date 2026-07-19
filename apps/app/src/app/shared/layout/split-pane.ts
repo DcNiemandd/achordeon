@@ -42,7 +42,12 @@ const KEY_STEP = 0.02;
     '[style.--split]': 'ratio()',
   },
   template: `
-    <div class="pane" [class.is-hidden]="isHidden('a')" data-testid="pane-a">
+    <div
+      class="pane"
+      [class.is-absent]="isAbsent('a')"
+      [class.is-covered]="isCovered('a')"
+      data-testid="pane-a"
+    >
       <ng-content select="[pane-a]" />
     </div>
 
@@ -65,7 +70,12 @@ const KEY_STEP = 0.02;
       ></div>
     }
 
-    <div class="pane" [class.is-hidden]="isHidden('b')" data-testid="pane-b">
+    <div
+      class="pane"
+      [class.is-absent]="isAbsent('b')"
+      [class.is-covered]="isCovered('b')"
+      data-testid="pane-b"
+    >
       <ng-content select="[pane-b]" />
     </div>
   `,
@@ -78,8 +88,21 @@ const KEY_STEP = 0.02;
       block-size: 100%;
     }
 
+    /* Compact: one column, and the two panes STACK in the single cell rather
+       than the inactive one being removed. That is deliberate — a covered pane
+       stays in the DOM, so a focused editor keeps the on-screen keyboard when
+       you flip to the render and back. display:none would destroy the editor and
+       drop the keyboard every time you switched tab. */
     :host(.is-compact) {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    :host(.is-compact) .pane {
+      grid-area: 1 / 1;
+      /* An opaque base, so the pane on top fully hides the one beneath even where
+         its own content does not paint every pixel. */
+      background: var(--surface);
     }
 
     .pane {
@@ -88,8 +111,23 @@ const KEY_STEP = 0.02;
       overflow: auto;
     }
 
-    .is-hidden {
+    /* The unused second pane of a single-pane frame (hasTwoPanes=false): truly
+       gone, not stacked — there is no tab to bring it back and nothing to keep
+       focused behind. */
+    .is-absent {
       display: none;
+    }
+
+    /* The inactive tab in a compact split: underneath, and inert to touch so a
+       tap lands on the pane on top. Kept visible (not hidden) on purpose — see
+       the stacking note above. */
+    :host(.is-compact) .pane.is-covered {
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    :host(.is-compact) .pane:not(.is-covered) {
+      z-index: 1;
     }
 
     .resizer {
@@ -155,11 +193,18 @@ export class SplitPane {
   protected readonly RESET_RATIO = RESET_RATIO;
   protected readonly percent = computed(() => Math.round(this.ratio() * 100));
 
-  protected isHidden(pane: 'a' | 'b'): boolean {
-    if (!this.hasTwoPanes()) {
-      return pane === 'b';
-    }
-    return this.viewport.isCompact() && this.activePane() !== pane;
+  /** The dropped second pane of a single-pane frame — removed, not stacked. */
+  protected isAbsent(pane: 'a' | 'b'): boolean {
+    return !this.hasTwoPanes() && pane === 'b';
+  }
+
+  /** The inactive tab of a compact split — kept in the DOM, stacked underneath. */
+  protected isCovered(pane: 'a' | 'b'): boolean {
+    return (
+      this.hasTwoPanes() &&
+      this.viewport.isCompact() &&
+      this.activePane() !== pane
+    );
   }
 
   protected onPointerDown(event: PointerEvent): void {

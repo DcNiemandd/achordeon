@@ -66,6 +66,7 @@ import { Viewport } from './viewport';
                     [class.is-active]="panes.active() === option.pane"
                     [attr.aria-pressed]="panes.active() === option.pane"
                     [attr.data-testid]="'pane-' + option.value"
+                    (pointerdown)="keepFocus($event)"
                     (click)="showPane(option.value)"
                   >
                     {{ option.label }}
@@ -204,5 +205,18 @@ export class Shell {
     if (this.fullscreen.isActive()) {
       this.fullscreen.reveal();
     }
+  }
+
+  /**
+   * Switch tab without stealing focus.
+   *
+   * A button takes focus on press, which blurs the editor's textarea and drops
+   * the on-screen keyboard. Preventing the pointerdown default keeps focus where
+   * it is — combined with the covered (not removed) inactive pane, the keyboard
+   * survives the flip to the render and back. The `click` still fires, so the
+   * switch itself is unaffected.
+   */
+  protected keepFocus(event: Event): void {
+    event.preventDefault();
   }
 }

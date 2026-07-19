@@ -4,7 +4,15 @@
     <meta charset="utf-8" />
     <title>app</title>
     <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- interactive-widget=resizes-content: when the on-screen keyboard opens,
+         shrink the layout above it instead of letting it overlay content. That
+         is what keeps the editor and the Source/Render switcher usable with the
+         keyboard up, rather than hidden behind it. Chrome/Android honours it;
+         other engines fall back to their default and lose nothing. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+    />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <script>
       // Pre-paint theme stamp (PRD-UI-SHELL.md §6). Angular boots after first
