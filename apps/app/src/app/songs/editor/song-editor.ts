@@ -20,6 +20,7 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
+  indentWithTab,
   isolateHistory,
   redo,
   undo,
@@ -108,6 +109,10 @@ export class SongEditor {
   readonly editorLabel = input($localize`:@@editor.label:Song content`);
   readonly placeholderText = input(
     $localize`:@@editor.placeholder:Type your song here.`,
+  );
+  /** Announced with the field, because Tab no longer leaves it (see `extensions`). */
+  readonly escapeHint = input(
+    $localize`:@@editor.escapeHint:Tab indents. Press Escape to leave the editor.`,
   );
 
   /** Fired on every settled edit. Debouncing is the caller's business — parse
@@ -318,7 +323,15 @@ export class SongEditor {
     return [
       lineNumbers(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      // `indentWithTab` LAST, so it only claims Tab where nothing else wanted it.
+      //
+      // CodeMirror leaves Tab unbound on purpose: capturing it costs a keyboard
+      // user the normal way out of a control. We take it anyway, because leading
+      // whitespace is real content here — it is how you line a lyric up under a
+      // chord — and a Tab that silently jumped to the toolbar instead was the
+      // bug. WCAG 2.1.2 permits this exactly when the user is told the way out,
+      // so Escape leaves the editor and `aria-description` below says so.
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       EditorView.lineWrapping,
       placeholder(this.placeholderText()),
       achordeonHighlight(this.theory),
@@ -337,6 +350,10 @@ export class SongEditor {
       }),
       EditorView.contentAttributes.of({
         'aria-label': this.editorLabel(),
+        // Tab is captured here, so the way out has to be announced rather than
+        // discovered — that is the condition WCAG 2.1.2 attaches to taking it.
+        'aria-description': this.escapeHint(),
+        'aria-keyshortcuts': 'Escape',
         // The content is a song, not code: it should not be announced as a
         // multi-line code editor, and it must be findable by its label.
         role: 'textbox',

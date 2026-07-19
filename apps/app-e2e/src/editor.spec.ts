@@ -228,6 +228,26 @@ test.describe('song editor', () => {
     );
   });
 
+  // Leading whitespace is real content here — it is how you line a lyric up
+  // under a chord — so Tab indents rather than jumping to the toolbar.
+  test('tab indents inside the editor', async ({ page }) => {
+    await type(page, 'la la');
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Tab');
+
+    await expect(page.getByTestId('editor').locator('.cm-line')).toHaveCount(1);
+    const text = await page
+      .getByTestId('editor')
+      .locator('.cm-line')
+      .first()
+      .innerText();
+    expect(text.startsWith(' ') || text.startsWith('\t')).toBe(true);
+
+    // Focus stayed put: the toolbar did not steal it.
+    await page.keyboard.insertText('x');
+    await expect(page.getByTestId('editor')).toContainText('x');
+  });
+
   test('pressing Title on a title line just goes to the end of it', async ({
     page,
   }) => {
