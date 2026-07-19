@@ -60,4 +60,23 @@ export interface InsertRequest {
    * ignores. Pressing it repeatedly should stop mattering after the first press.
    */
   readonly hasBlankBlockGuard?: boolean;
+  /**
+   * Put `before` at the END of the current line rather than at the cursor.
+   *
+   * For inserts that act on the line as a unit from below, the way `atLineStart`
+   * does from above. A block boundary is the case: it separates this line from
+   * the next, so it belongs after the line — inserting it at the cursor split
+   * whatever word the caret happened to be sitting in.
+   */
+  readonly atLineEnd?: boolean;
 }
+
+/**
+ * What kind of line the caret is on, in the editor's own vocabulary.
+ *
+ * Enough for a toolbar to grey out an action that would write markup the grammar
+ * ignores here — a chord in a title is literal text, not a chord (PARSER-GRAMMAR
+ * §Phase 1: `*` lines never reach the inline scan). Deliberately coarse: this is
+ * a hint for enabling buttons, not a second parser.
+ */
+export type CaretLineKind = 'title' | 'subtitle' | 'content';

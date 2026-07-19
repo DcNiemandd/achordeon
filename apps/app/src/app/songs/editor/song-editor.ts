@@ -11,6 +11,7 @@ import {
   inject,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 import { EditorState, type Extension } from '@codemirror/state';
@@ -27,7 +28,11 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import { ChordTheory } from '@achordeon/shared/domain';
 import { achordeonHighlight, achordeonTags } from './highlight';
-import type { EditorMarker, InsertRequest } from './editor-model';
+import type {
+  CaretLineKind,
+  EditorMarker,
+  InsertRequest,
+} from './editor-model';
 
 /**
  * **The only file in the app that knows CodeMirror exists** (ADR-0010).
@@ -87,6 +92,29 @@ export class SongEditor {
 
   private view: EditorView | null = null;
 
+  /**
+   * What kind of line the caret is on.
+   *
+   * The toolbar reads it to grey out actions the grammar would ignore here — a
+   * chord written into a title is literal text, because a `*` line never reaches
+   * the inline scan (PARSER-GRAMMAR §Phase 1). Classified with the same two
+   * prefixes Phase 1 uses, and nothing else: this is a hint for enabling buttons,
+   * not a second parser (ADR-0010).
+   */
+  private readonly _caretLineKind = signal<CaretLineKind>('content');
+  readonly caretLineKind = this._caretLineKind.asReadonly();
+
+  private syncCaretLineKind(state: EditorState): void {
+    const line = state.doc.lineAt(state.selection.main.head);
+    this._caretLineKind.set(
+      line.text.startsWith('** ')
+        ? 'subtitle'
+        : line.text.startsWith('* ')
+          ? 'title'
+          : 'content',
+    );
+  }
+
   constructor() {
     afterNextRender(() => this.mount());
     inject(DestroyRef).onDestroy(() => this.view?.destroy());
@@ -117,9 +145,13 @@ export class SongEditor {
       // the button is idempotent and Title/Subtitle interchange.
       const line = view.state.doc.lineAt(from);
       const existing = request.replacesLineStart?.exec(line.text)?.[0] ?? '';
-      // Already exactly this marker: nothing to write, and rewriting it would
-      // cost an undo step and move the caret for no visible change.
+      // Already exactly this marker: nothing to write. Rewriting it would cost
+      // an undo step for no visible change — but do move the caret to the end of
+      // the line, because pressing "Title" on a line that is already a title
+      // means "let me write the title", and leaving the caret where it was made
+      // the button look broken.
       if (existing === request.before) {
+        view.dispatch({ selection: { anchor: line.to }, scrollIntoView: true });
         view.focus();
         return;
       }
@@ -139,6 +171,19 @@ export class SongEditor {
           insert: request.before,
         },
         selection: { anchor },
+        scrollIntoView: true,
+      });
+      view.focus();
+      return;
+    }
+
+    if (request.atLineEnd) {
+      // Acts on the line as a unit from below, the way `atLineStart` does from
+      // above: the text goes after the line, and the caret follows it there.
+      const end = view.state.doc.lineAt(to).to;
+      view.dispatch({
+        changes: { from: end, insert: request.before },
+        selection: { anchor: end + request.before.length },
         scrollIntoView: true,
       });
       view.focus();
@@ -216,6 +261,7 @@ export class SongEditor {
       }),
     });
     this.syncMarkers(this.markers());
+    this.syncCaretLineKind(this.view.state);
   }
 
   private extensions(): Extension[] {
@@ -232,6 +278,11 @@ export class SongEditor {
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           this.contentChange.emit(update.state.doc.toString());
+        }
+        // Moving the caret changes it too, not just editing — clicking into a
+        // title line has to disable the chord button as surely as typing one.
+        if (update.docChanged || update.selectionSet) {
+          this.syncCaretLineKind(update.state);
         }
       }),
       EditorView.contentAttributes.of({

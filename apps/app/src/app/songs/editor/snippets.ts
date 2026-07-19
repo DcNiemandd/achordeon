@@ -61,9 +61,16 @@ export const SNIPPETS = {
     caretOffset: 0,
   } satisfies InsertRequest,
 
-  /** A blank line — the block boundary (PARSER-GRAMMAR §Block boundaries). */
+  /**
+   * A blank line — the block boundary (PARSER-GRAMMAR §Block boundaries).
+   *
+   * Written at the END of the line, not at the cursor: a boundary separates this
+   * line from the next, so putting it wherever the caret happened to be split the
+   * word you were in the middle of.
+   */
   block: {
     before: '\n\n',
+    atLineEnd: true,
     hasBlankBlockGuard: true,
   } satisfies InsertRequest,
 

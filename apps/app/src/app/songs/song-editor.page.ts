@@ -88,6 +88,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
                     type="button"
                     variant="secondary"
                     class="insert"
+                    [disabled]="isInsertBlocked(item)"
                     [attr.aria-label]="item.label"
                     [appTooltip]="item.label"
                     [attr.data-testid]="item.testid"
@@ -409,6 +410,8 @@ export class SongEditorPage {
     icon: IconName;
     /** Mirror the glyph horizontally — Lucide has a slash but no backslash. */
     isFlipped?: boolean;
+    /** Writes markup the grammar ignores on a title/subtitle line — see `isInsertBlocked`. */
+    isContentOnly?: boolean;
     glyph: string;
     label: string;
     snippet: InsertRequest;
@@ -416,6 +419,7 @@ export class SongEditorPage {
     {
       testid: 'insert-chord',
       icon: 'brackets',
+      isContentOnly: true,
       glyph: '[ ]',
       label: $localize`:@@editor.insertChord:Chord`,
       snippet: SNIPPETS.chord,
@@ -437,6 +441,7 @@ export class SongEditorPage {
     {
       testid: 'insert-label',
       icon: 'tag',
+      isContentOnly: true,
       glyph: ':',
       label: $localize`:@@editor.insertLabel:Label`,
       snippet: SNIPPETS.label,
@@ -499,6 +504,23 @@ export class SongEditorPage {
     }
     event.preventDefault();
     void this.router.navigate(['/songs']);
+  }
+
+  /**
+   * Grey out an insert that would write markup this line's grammar ignores.
+   *
+   * A `*` or `**` line never reaches the inline scan (PARSER-GRAMMAR §Phase 1),
+   * so a chord typed into a title is not a chord — it is the literal text `[C]`,
+   * which then prints on the page. Same for a label: a title line cannot carry
+   * one. The buttons offering to write them there were offering a mistake, and
+   * the result was invisible until you looked at the render.
+   *
+   * Disabled rather than hidden: a bar whose buttons come and go as the caret
+   * moves is harder to use than one where a button greys out, and the tooltip
+   * still names what it would have done.
+   */
+  protected isInsertBlocked(item: { isContentOnly?: boolean }): boolean {
+    return !!item.isContentOnly && this.editor().caretLineKind() !== 'content';
   }
 
   constructor() {

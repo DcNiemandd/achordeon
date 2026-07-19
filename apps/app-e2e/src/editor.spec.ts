@@ -163,6 +163,60 @@ test.describe('song editor', () => {
     );
   });
 
+  // A `*` line never reaches the inline scan, so a chord typed into a title is
+  // the literal text "[C]" — which then prints on the page.
+  test('chord and label are disabled on a title or subtitle line', async ({
+    page,
+  }) => {
+    const chord = page.getByTestId('insert-chord');
+    const label = page.getByTestId('insert-label');
+
+    await type(page, 'a lyric line');
+    await expect(chord).toBeEnabled();
+
+    await type(page, '\n* My title');
+    await expect(chord).toBeDisabled();
+    await expect(label).toBeDisabled();
+
+    await type(page, '\n** My subtitle');
+    await expect(chord).toBeDisabled();
+
+    // And moving the caret back to content re-enables them — it follows the
+    // caret, not just what was typed last.
+    await type(page, '\nback to lyrics');
+    await expect(chord).toBeEnabled();
+    await expect(label).toBeEnabled();
+  });
+
+  test('pressing Title on a title line just goes to the end of it', async ({
+    page,
+  }) => {
+    await type(page, '* My title');
+    await page.keyboard.press('Home'); // caret to column 0
+
+    await page.getByTestId('insert-title').click();
+    await page.keyboard.insertText('!');
+
+    // No second marker, and the caret landed where you would write.
+    await expect(page.getByTestId('editor')).toContainText('* My title!');
+  });
+
+  test('the block button breaks after the line, not at the cursor', async ({
+    page,
+  }) => {
+    await type(page, 'one two');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft'); // caret inside "two"
+
+    await page.getByTestId('insert-block').click();
+    await page.keyboard.insertText('next');
+
+    // The word survived: the boundary went after the line, not through it.
+    await expect(page.getByTestId('editor')).toContainText('one two');
+    await expect(page.getByTestId('editor')).toContainText('next');
+  });
+
   test('the block button stops adding blank lines to a blank block', async ({
     page,
   }) => {
