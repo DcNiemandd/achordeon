@@ -65,6 +65,33 @@ describe('emit — SVG shell (§1, §5)', () => {
   });
 });
 
+describe('emit — whitespace is content (§4.6)', () => {
+  // `layout` measures chord x against the real string, spaces included, so the
+  // browser has to draw that same string. SVG's default collapses it.
+  it('preserves the whitespace the geometry was measured against', () => {
+    const indented = plan({
+      blocks: [
+        {
+          lines: [
+            { text: '   la  la', chords: [{ raw: 'C', at: 3, valid: true }] },
+          ],
+        },
+      ],
+    });
+    const svg = emit(indented);
+
+    const lyric = svg.match(/<text[^>]*>[^<]*la[^<]*<\/text>/)?.[0] ?? '';
+    expect(lyric).toContain('xml:space="preserve"');
+    // The exact string, with its indent and its double space intact.
+    expect(svg).toContain('>   la  la<');
+
+    // And the chord still sits over the character the anchor names: three
+    // leading spaces at the fake measurer's 9.6 advance.
+    const chord = indented.items.find((i) => i.role === 'chord');
+    expect(chord?.x).toBeCloseTo(3 * 9.6);
+  });
+});
+
 describe('emit — fonts (§2, §4.10)', () => {
   it('inlines @font-face base64 only when inlineFonts is set (export)', () => {
     const p = plan(song);
