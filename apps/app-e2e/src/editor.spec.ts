@@ -26,6 +26,24 @@ async function freshEditor(page: Page): Promise<void> {
   await page.getByTestId('songs-add').click();
   await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
   await expect(page.getByTestId('editor')).toBeVisible();
+  await clearEditor(page);
+}
+
+/**
+ * Empty the editor.
+ *
+ * A new song is born holding the tutorial (`songs/new-song.ts`), which is the
+ * point of it — but every test below is about what the editor does with *its own*
+ * content, so it starts from a blank sheet. The starter content has its own test
+ * in `songs.spec.ts`.
+ */
+async function clearEditor(page: Page): Promise<void> {
+  await page.getByTestId('editor').locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  // Not toHaveText(''): CodeMirror always keeps one empty .cm-line, so an empty
+  // document is one blank line rather than no text at all.
+  await expect(page.getByTestId('editor').locator('.cm-line')).toHaveCount(1);
 }
 
 /** Type into the editor's content area. */
@@ -443,6 +461,9 @@ test.describe('song editor', () => {
     await page.goto(url);
 
     await expect(page.getByTestId('editor')).toContainText('Typed content');
-    await expect(page.getByTestId('module-title')).toHaveText('New song');
+    // The title is a rename field now, so the name is its value, not its text.
+    await expect(page.getByTestId('module-title-input')).toHaveValue(
+      'New song',
+    );
   });
 });

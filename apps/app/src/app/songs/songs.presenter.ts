@@ -19,6 +19,7 @@ import type {
   SongRow,
   SortChange,
 } from '../shared/song-explorer';
+import { TUTORIAL_CONTENT } from './new-song';
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
@@ -358,6 +359,10 @@ export class SongsPresenter {
 
   private newSong(): Song {
     const now = Date.now();
+    // The cache is derived from content, so seeded content has to seed it too —
+    // otherwise the new row shows a blank title until the first keystroke
+    // rewrites it (PRD-DOMAIN-MODEL §Song: derived, never authored).
+    const ast = this.parser.parse(TUTORIAL_CONTENT);
     return {
       id: crypto.randomUUID(),
       createdAt: now,
@@ -369,10 +374,10 @@ export class SongsPresenter {
       // asking the repository for every name on every create, to protect an
       // invariant no code relies on. Left unenforced deliberately.
       name: NEW_SONG_NAME,
-      content: '',
+      content: TUTORIAL_CONTENT,
       favorite: false,
       settings: {},
-      cache: { title: '', subtitle: '' },
+      cache: { title: ast.title ?? '', subtitle: ast.subtitle ?? '' },
     };
   }
 

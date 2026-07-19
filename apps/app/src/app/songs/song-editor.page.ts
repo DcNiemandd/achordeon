@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Button, Dialog, Icon, Tooltip } from '../primitives';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SongRender } from '../shared/song-render';
@@ -29,6 +29,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
   selector: 'app-song-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SongEditorPresenter],
+  host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
     RouterLink,
     ActionBar,
@@ -49,7 +50,12 @@ import { SongEditorPresenter } from './song-editor.presenter';
       (ratioChange)="ui.setSplitRatio($event)"
     >
       <div pane-a class="pane">
-        <app-action-bar [title]="presenter.name()">
+        <app-action-bar
+          [title]="presenter.name()"
+          [isTitleEditable]="true"
+          [titleLabel]="nameLabel"
+          (titleChange)="presenter.rename($event)"
+        >
           <!-- A link, because it navigates: it must middle-click, open in a
                new tab, and announce as a link (see the Button directive). -->
           <a
@@ -63,88 +69,101 @@ import { SongEditorPresenter } from './song-editor.presenter';
             <app-icon name="close" />
           </a>
 
-          <!-- Row 1: insert. Grouped by meaning, not by what happened to
-               overflow (PRD-UI-SHELL.md §4). -->
-          <div class="group" role="group" [attr.aria-label]="insertGroupLabel">
-            @for (item of insertButtons; track item.testid) {
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                [attr.aria-label]="item.label"
-                [appTooltip]="item.label"
-                [attr.data-testid]="item.testid"
-                (click)="editor().insert(item.snippet)"
+          <!-- One row when the width allows it, wrapping by GROUP when it does
+               not (PRD-UI-SHELL.md §4). The commands wrap inside their own box;
+               settings is a sibling of that box rather than a member of it,
+               which is what keeps it on the first line no matter how many rows
+               the commands take. -->
+          <div class="bar-row">
+            <div class="commands">
+              <div
+                class="group"
+                role="group"
+                [attr.aria-label]="insertGroupLabel"
               >
-                {{ item.glyph }}
-              </button>
-            }
-          </div>
+                @for (item of insertButtons; track item.testid) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    [attr.aria-label]="item.label"
+                    [appTooltip]="item.label"
+                    [attr.data-testid]="item.testid"
+                    (click)="editor().insert(item.snippet)"
+                  >
+                    {{ item.glyph }}
+                  </button>
+                }
+              </div>
 
-          <!-- Row 2: transform. -->
-          <div
-            class="group"
-            role="group"
-            [attr.aria-label]="transformGroupLabel"
-          >
+              <div
+                class="group"
+                role="group"
+                [attr.aria-label]="transposeGroupLabel"
+              >
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="transposeUpLabel"
+                  [appTooltip]="transposeUpLabel"
+                  data-testid="transpose-up"
+                  (click)="presenter.transpose(1)"
+                >
+                  <app-icon name="transposeUp" />
+                </button>
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="transposeDownLabel"
+                  [appTooltip]="transposeDownLabel"
+                  data-testid="transpose-down"
+                  (click)="presenter.transpose(-1)"
+                >
+                  <app-icon name="transposeDown" />
+                </button>
+              </div>
+
+              <div
+                class="group"
+                role="group"
+                [attr.aria-label]="historyGroupLabel"
+              >
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="undoLabel"
+                  [appTooltip]="undoLabel"
+                  data-testid="editor-undo"
+                  (click)="editor().undo()"
+                >
+                  <app-icon name="undo" />
+                </button>
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="redoLabel"
+                  [appTooltip]="redoLabel"
+                  data-testid="editor-redo"
+                  (click)="editor().redo()"
+                >
+                  <app-icon name="redo" />
+                </button>
+              </div>
+            </div>
+
             <button
               appButton
               type="button"
               variant="secondary"
-              [isIconOnly]="true"
-              [attr.aria-label]="transposeUpLabel"
-              [appTooltip]="transposeUpLabel"
-              data-testid="transpose-up"
-              (click)="presenter.transpose(1)"
-            >
-              <app-icon name="transposeUp" />
-            </button>
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              [isIconOnly]="true"
-              [attr.aria-label]="transposeDownLabel"
-              [appTooltip]="transposeDownLabel"
-              data-testid="transpose-down"
-              (click)="presenter.transpose(-1)"
-            >
-              <app-icon name="transposeDown" />
-            </button>
-
-            <span class="spacer"></span>
-
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              [isIconOnly]="true"
-              [attr.aria-label]="undoLabel"
-              [appTooltip]="undoLabel"
-              data-testid="editor-undo"
-              (click)="editor().undo()"
-            >
-              <app-icon name="undo" />
-            </button>
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              [isIconOnly]="true"
-              [attr.aria-label]="redoLabel"
-              [appTooltip]="redoLabel"
-              data-testid="editor-redo"
-              (click)="editor().redo()"
-            >
-              <app-icon name="redo" />
-            </button>
-
-            <span class="spacer"></span>
-
-            <button
-              appButton
-              type="button"
-              variant="secondary"
+              class="settings"
               [isIconOnly]="true"
               [class.is-active]="presenter.isSettingsOpen()"
               [attr.aria-pressed]="presenter.isSettingsOpen()"
@@ -215,26 +234,48 @@ import { SongEditorPresenter } from './song-editor.presenter';
       overflow: hidden;
     }
 
-    /* Each group takes a full row of the action bar's wrapping flex line, so the
-       rows break by MEANING (insert / transform) rather than wherever the width
-       happens to run out (PRD-UI-SHELL.md §4). */
-    .group {
+    /* The row does NOT wrap: it is the commands box and the settings button, and
+       those two never share a line boundary. Top-aligned so that when the
+       commands do wrap, settings stays level with the FIRST row rather than
+       drifting to the vertical middle of a two-row bar. */
+    .bar-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      inline-size: 100%;
+    }
+
+    /* This is what wraps, and it wraps between groups: a break falls where the
+       meaning already changes (insert / transpose / history), never through the
+       middle of one (PRD-UI-SHELL.md §4). */
+    .commands {
+      flex: 1;
+      min-inline-size: 0;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: var(--space-1);
-      flex-basis: 100%;
+      /* The gap between groups is the spacer — no empty elements needed; wrapped
+         rows get the same separation as the row they broke out of. */
+      gap: var(--space-1) var(--space-4);
     }
 
-    /* Undo/redo are transforms too, but they are not transpose. */
-    .spacer {
-      inline-size: var(--space-3);
+    .group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    /* Never squeezed by the commands, and pinned to the far end. */
+    .settings {
+      flex: none;
+      margin-inline-start: auto;
     }
   `,
 })
 export class SongEditorPage {
   protected readonly ui = inject(UiStore);
   protected readonly presenter = inject(SongEditorPresenter);
+  private readonly router = inject(Router);
 
   /** `/songs/:id/edit`, delivered by `withComponentInputBinding()`. */
   readonly id = input.required<string>();
@@ -266,8 +307,10 @@ export class SongEditorPage {
   });
 
   protected readonly backLabel = $localize`:@@editor.back:Back to songs`;
+  protected readonly nameLabel = $localize`:@@editor.name:Song name`;
   protected readonly insertGroupLabel = $localize`:@@editor.insertGroup:Insert`;
-  protected readonly transformGroupLabel = $localize`:@@editor.transformGroup:Transform`;
+  protected readonly transposeGroupLabel = $localize`:@@editor.transposeGroup:Transpose`;
+  protected readonly historyGroupLabel = $localize`:@@editor.historyGroup:History`;
   protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
   protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
@@ -312,6 +355,45 @@ export class SongEditorPage {
       snippet: SNIPPETS.block,
     },
   ];
+
+  /**
+   * Escape leaves the editor for the library.
+   *
+   * **Only when it is not already someone else's Escape.** The settings dialog
+   * and the rename field both use it to mean "undo this smaller thing", and a key
+   * that sometimes throws you out of the screen entirely is worse than no key at
+   * all. So the dialog closes first and stops there, and a keypress that came
+   * from a text field is left to the field.
+   *
+   * The guard reads the event's **target**, not `document.activeElement`: the
+   * rename field blurs itself on Escape, so by the time this runs the active
+   * element is already `<body>` and the field's Escape looked exactly like a bare
+   * one. The target still names where the key was pressed.
+   *
+   * `input`/`textarea` only — deliberately **not** `isContentEditable`, because
+   * the song editor itself is a contenteditable and Escape out of it is the whole
+   * point of this handler.
+   *
+   * There is no keyboard-shortcut epic yet — the docs carry "custom shortcuts" as
+   * TBD. This is one shortcut, not a keymap; full keyboard navigability is
+   * recorded as a follow-up in `docs/achordeon-implementation.md` rather than
+   * smuggled in here.
+   */
+  protected onEscape(event: Event): void {
+    if (this.presenter.isSettingsOpen()) {
+      this.presenter.closeSettings();
+      return;
+    }
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
+    event.preventDefault();
+    void this.router.navigate(['/songs']);
+  }
 
   constructor() {
     effect(() => {

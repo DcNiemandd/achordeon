@@ -128,6 +128,53 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(1);
   });
 
+  // A blank page teaches nothing: the content syntax is invisible until you have
+  // seen it work, so a new song opens as a worked example that also renders.
+  test('a new song opens holding the tutorial, and it parses cleanly', async ({
+    page,
+  }) => {
+    await page.getByTestId('songs-add').click();
+    await expect(page.getByTestId('editor')).toContainText('My first song');
+    await expect(page.getByTestId('editor')).toContainText('[C]');
+
+    // It has to be a *correct* example — a starter song that warns at the user
+    // on sight teaches them the language is fussy rather than how it works.
+    await expect(
+      page.getByTestId('editor').locator('.cm-lintRange-warning'),
+    ).toHaveCount(0);
+    // And it has to render, or the example does not demonstrate anything.
+    await expect(page.getByTestId('song-render')).toBeVisible();
+  });
+
+  // The list's rename is unreachable from the editor, so a song created and
+  // written in stayed called "New song" until you navigated back out.
+  test('renames the song from the editor title', async ({ page }) => {
+    await page.getByTestId('songs-add').click();
+    const title = page.getByTestId('module-title-input');
+    await expect(title).toHaveValue('New song');
+
+    await title.fill('Wonderwall');
+    await title.press('Enter');
+    await page.waitForTimeout(700);
+
+    await page.goBack();
+    await expect(page.getByTestId('song-row')).toContainText('Wonderwall');
+  });
+
+  test('escape leaves the editor for the library', async ({ page }) => {
+    await page.getByTestId('songs-add').click();
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+
+    // Not while a field has the caret: there Escape reverts the edit instead.
+    await page.getByTestId('module-title-input').focus();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/edit$/);
+
+    await page.getByTestId('editor').locator('.cm-content').click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('explorer-list')).toBeVisible();
+  });
+
   test('renames a song in place, and the rename survives a reload', async ({
     page,
   }) => {

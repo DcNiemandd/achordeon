@@ -201,6 +201,29 @@ export class SongEditorPresenter {
     this.scheduleSave();
   }
 
+  /**
+   * Rename the song from the editor's title.
+   *
+   * The library list has a rename action, but you cannot see the list from in
+   * here — so a song created and immediately written in stayed called "New song"
+   * until you went back out to fix it. The name is a field of the same record as
+   * the content (ADR-0001), so it rides the same autosave and needs no more
+   * ceremony than typing does.
+   *
+   * A blank name is refused rather than stored: the list would render an
+   * unclickable empty row, and nothing else identifies the song there.
+   */
+  rename(name: string): void {
+    const song = this._song();
+    const trimmed = name.trim();
+    if (!song || !trimmed || trimmed === song.name) {
+      return;
+    }
+    this._song.set({ ...song, name: trimmed, updatedAt: Date.now() });
+    this.isDirty = true;
+    this.scheduleSave();
+  }
+
   /** An edit from the editor. Debounced into one reparse per settled edit. */
   setContent(content: string): void {
     this._content.set(content);

@@ -281,9 +281,17 @@ Corrections the build forced, recorded so they aren't re-litigated:
   `/songbooks/:id` route (the in-use warning links to it) and the shell's pane
   switcher (§4 gave it a slot but no control).
 
-**Still open:** the render has no bundled font — `fontFamily: 'Achordeon'` falls
-back to the CSS stack everywhere. Screen is honest now (both sides agree), but
-**Epic 7 must embed real bytes** or the PDF has nothing to register (§3, §4.10).
+**Still open:** the render names the bundled Roboto Mono and screen is honest, but
+the FontBook carries no bytes — **Epic 7 must embed real ones** or the PDF has
+nothing to register (§3, §4.10).
+
+**Still open — keyboard navigability.** Escape leaves the editor for the library
+(guarded so the settings dialog and the rename field keep their own Escape). That
+is _one shortcut, not a keymap_. The whole-app requirement — every action
+reachable without a pointer, a documented map, roving focus in the toolbars and
+the list, and the custom-shortcut config UI that `DOC-REVISION-PLAN.md` carries as
+TBD — is **not** done and does not belong to this epic. It wants its own, after
+the module set is complete and there is a full inventory of actions to bind.
 
 ---
 

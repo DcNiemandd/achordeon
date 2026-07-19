@@ -123,20 +123,36 @@ import { Viewport } from './viewport';
       padding-block-end: env(safe-area-inset-bottom, 0);
     }
 
+    /* Takes the bar's leftover width rather than hugging its own content. The
+       module switcher keeps its natural size on the left; everything after it is
+       the pane switcher's. */
     .bar-slot {
+      flex: 1;
+      min-inline-size: 0;
       display: flex;
       align-items: center;
       gap: var(--space-1);
-      margin-inline-start: auto;
     }
 
     .switcher {
+      flex: 1;
       display: flex;
       gap: 2px;
       padding: 2px;
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       background: var(--surface);
+    }
+
+    /* Source and Render are the primary act on a small screen — this bar is how
+       you get between writing the song and looking at it, and there is nothing
+       else competing for the space. Two shrink-to-fit labels made a pair of
+       ~60px targets floating at one end of an otherwise empty bar; an even split
+       of the full width is both easier to hit and easier to read as a toggle. */
+    .switcher > button {
+      flex: 1;
+      min-inline-size: 0;
+      block-size: 36px;
     }
   `,
 })

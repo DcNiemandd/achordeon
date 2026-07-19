@@ -6,6 +6,7 @@ import {
   Component,
   inject,
   input,
+  output,
 } from '@angular/core';
 import { Fullscreen } from './fullscreen';
 
@@ -45,7 +46,26 @@ import { Fullscreen } from './fullscreen';
     <div class="bar" data-testid="action-bar">
       @if (title()) {
         <div class="title-row">
-          <h1 class="title" data-testid="module-title">{{ title() }}</h1>
+          @if (isTitleEditable()) {
+            <!-- Still an <h1> to the accessibility tree: it is the page's
+                 heading, and being editable does not change what it is. The
+                 input carries the heading's own text, so nothing is announced
+                 twice. -->
+            <h1 class="title title-field" data-testid="module-title">
+              <input
+                #titleInput
+                class="title-input"
+                [value]="title()"
+                [attr.aria-label]="titleLabel()"
+                data-testid="module-title-input"
+                (keydown.enter)="titleInput.blur()"
+                (keydown.escape)="revert(titleInput)"
+                (blur)="commitTitle(titleInput)"
+              />
+            </h1>
+          } @else {
+            <h1 class="title" data-testid="module-title">{{ title() }}</h1>
+          }
           <ng-content select="[bar-end]" />
         </div>
       }
@@ -98,6 +118,37 @@ import { Fullscreen } from './fullscreen';
       white-space: nowrap;
     }
 
+    .title-field {
+      flex: 1;
+      min-inline-size: 0;
+      overflow: visible;
+    }
+
+    /* Reads as the heading it is until you touch it, then as the field it also
+       is. A permanently boxed input at the top of the page would claim to be the
+       main thing to fill in, which it is not — the song is. */
+    .title-input {
+      inline-size: 100%;
+      padding: 2px var(--space-1);
+      margin-inline-start: calc(var(--space-1) * -1);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-overflow: ellipsis;
+    }
+
+    .title-input:hover {
+      border-color: var(--border);
+    }
+
+    .title-input:focus {
+      border-color: var(--brand);
+      background: var(--surface);
+      text-overflow: clip;
+    }
+
     /* Wrap to as many rows as the module needs. */
     .actions {
       display: flex;
@@ -116,4 +167,35 @@ export class ActionBar {
 
   readonly title = input('');
   readonly actionsLabel = input($localize`:@@actionBar.label:Actions`);
+
+  /**
+   * Turn the heading into a rename field.
+   *
+   * The module title *is* the thing's name, so the place it is already written is
+   * the obvious place to change it — rather than a dialog, or a trip back to a
+   * list you cannot see from here.
+   */
+  readonly isTitleEditable = input(false);
+  readonly titleLabel = input($localize`:@@actionBar.rename:Name`);
+  readonly titleChange = output<string>();
+
+  /**
+   * Enter and blur commit; Esc reverts. The same contract as renaming in the song
+   * list, because it is the same act — learning it twice would be the surprise.
+   * A blank or unchanged name is dropped here as well as downstream: the field
+   * has to snap back to something, and that something is the current name.
+   */
+  protected commitTitle(field: HTMLInputElement): void {
+    const name = field.value.trim();
+    if (!name || name === this.title()) {
+      field.value = this.title();
+      return;
+    }
+    this.titleChange.emit(name);
+  }
+
+  protected revert(field: HTMLInputElement): void {
+    field.value = this.title();
+    field.blur();
+  }
 }
