@@ -135,9 +135,9 @@ export const DEFAULT_TUNING: RenderTuning = {
     titleInlineGapEm: 1.5, // PoC `.titles` column-gap 24px
     chordOnlyGapEm: 1.5,
   },
-  // 32 ≈ "a line of lyrics is never wider than a third of the page". Roughly a
+  // 24 ≈ "a line of lyrics is never wider than a third of the page". Roughly a
   // full A4 of song at natural size; tune to taste.
-  minBoxEm: 32,
+  minBoxEm: 24,
   // The PoC had no per-block bridge rule; it sized any chord row sitting over an
   // EMPTY lyric at the full 1em while a chorded lyric line got 0.7em. 1/0.7
   // reproduces that exactly through the bridge knob.
