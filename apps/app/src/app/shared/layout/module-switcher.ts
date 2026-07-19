@@ -127,12 +127,14 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
     }
 
     /* Badged into the corner, not stacked: the hamburger stays the primary mark
-       and the module reads as its state. */
+       and the module reads as its state. Large enough to tell the five module
+       glyphs apart at arm's length — at 13px they were all just "a small dark
+       shape" and the badge carried no state at all. */
     .module-badge {
-      --icon-size: 13px;
+      --icon-size: 17px;
       position: absolute;
-      inset-block-end: 4px;
-      inset-inline-end: 4px;
+      inset-block-end: 2px;
+      inset-inline-end: 2px;
       color: var(--brand);
       background: var(--surface-raised);
       border-radius: 50%;

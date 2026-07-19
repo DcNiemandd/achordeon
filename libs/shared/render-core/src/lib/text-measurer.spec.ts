@@ -40,7 +40,7 @@ describe('normalizeMetrics', () => {
 describe('fontShorthand', () => {
   it('builds a canvas font shorthand', () => {
     const f: FontSpec = { family: 'Foo', sizePx: 18, weight: 'bold' };
-    expect(fontShorthand(f)).toBe('bold 18px Foo');
+    expect(fontShorthand(f)).toBe("bold 18px 'Foo'");
   });
 
   it('includes an italic style when set', () => {
@@ -50,7 +50,22 @@ describe('fontShorthand', () => {
       weight: 'normal',
       style: 'italic',
     };
-    expect(fontShorthand(f)).toBe('italic normal 18px Foo');
+    expect(fontShorthand(f)).toBe("italic normal 18px 'Foo'");
+  });
+
+  it('names the fallback stack too, so it measures what emit draws', () => {
+    // The bundled family is absent on screen, so both sides fall back — and they
+    // must fall back to the SAME font. Without the stack here, the canvas used
+    // its own default while the SVG used this one, and every width was wrong.
+    const f: FontSpec = {
+      family: 'Achordeon',
+      sizePx: 16,
+      weight: 'normal',
+      fallback: 'ui-sans-serif, system-ui, sans-serif',
+    };
+    expect(fontShorthand(f)).toBe(
+      "normal 16px 'Achordeon', ui-sans-serif, system-ui, sans-serif",
+    );
   });
 });
 
@@ -64,7 +79,11 @@ describe('createFakeMeasurer', () => {
 
   it('scales the font box with size', () => {
     const measure = createFakeMeasurer();
-    const m = measure.measure('x', { family: 'x', sizePx: 20, weight: 'normal' });
+    const m = measure.measure('x', {
+      family: 'x',
+      sizePx: 20,
+      weight: 'normal',
+    });
     expect(m.fontBoundingBoxAscent).toBeCloseTo(16);
     expect(m.fontBoundingBoxDescent).toBeCloseTo(4);
   });

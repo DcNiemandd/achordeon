@@ -56,9 +56,27 @@ export const SongStore = signalStore(
   withMethods((store) => {
     const repo = inject(SONG_REPOSITORY);
 
+    /**
+     * Fetches are stamped, and one that resolves after a newer one started is
+     * dropped.
+     *
+     * Every fetch here is an `await` that ends by replacing the window, so
+     * without a stamp the **last to resolve wins rather than the latest to be
+     * asked** — and those are not the same fetch. Two in flight is the normal
+     * case, not an exotic one: typing in the search box, or creating a song and
+     * immediately renaming it, each queue a second query while the first is still
+     * reading IndexedDB. When the older one landed last it wrote an answer to a
+     * question nobody was asking any more — the newly created song simply
+     * vanished from the list until a reload.
+     */
+    let fetchSeq = 0;
+    const claim = (): number => ++fetchSeq;
+    const isStale = (seq: number): boolean => seq !== fetchSeq;
+
     // Reset the window and refetch page 1. Every sort/search change funnels here
     // so the cache never mixes rows from two different queries (§4).
     async function reload(): Promise<void> {
+      const seq = claim();
       patchState(store, { loading: true });
       const page = await repo.page({
         limit: PAGE_LIMIT,
@@ -66,6 +84,9 @@ export const SongStore = signalStore(
         dir: store.dir(),
         query: store.query(),
       });
+      if (isStale(seq)) {
+        return; // a newer fetch owns the window (and `loading`) now
+      }
       patchState(store, setAllEntities(page.rows), {
         nextCursor: page.nextCursor,
         loading: false,
@@ -84,6 +105,7 @@ export const SongStore = signalStore(
         if (store.loading() || store.nextCursor() === null) {
           return;
         }
+        const seq = claim();
         patchState(store, { loading: true });
         const page = await repo.page({
           limit: PAGE_LIMIT,
@@ -92,9 +114,49 @@ export const SongStore = signalStore(
           query: store.query(),
           cursor: store.nextCursor(),
         });
+        if (isStale(seq)) {
+          return; // the query changed under us; this page belongs to the old one
+        }
         patchState(store, setEntities(page.rows), {
           nextCursor: page.nextCursor,
           loading: false,
+        });
+      },
+
+      /**
+       * Re-run the current query over the window's current extent.
+       *
+       * `upsert` reflects a write into the map but **cannot place it**: the map
+       * keeps insertion order, so a locally renamed song holds its old slot under
+       * a name sort, a favorited one ignores a favorite sort, and a new one lands
+       * at the bottom whatever the sort says. The window is a prefix of a sorted
+       * query result, so the only honest way to restore it is to ask the query
+       * again — filtering or re-sorting in a presenter would be a second, drifting
+       * copy of the rules `pageRecords` already owns.
+       *
+       * Keeps the extent the user scrolled to rather than snapping back to page 1,
+       * and keeps tombstones in the map (they are invisible to `live`, and sync
+       * still needs them).
+       */
+      async refresh(): Promise<void> {
+        if (!store.loaded()) {
+          return;
+        }
+        const seq = claim();
+        const page = await repo.page({
+          limit: Math.max(PAGE_LIMIT, store.live().length),
+          sort: store.sort(),
+          dir: store.dir(),
+          query: store.query(),
+        });
+        if (isStale(seq)) {
+          return;
+        }
+        const tombstones = store
+          .entities()
+          .filter((song) => song.deletedAt !== null);
+        patchState(store, setAllEntities([...page.rows, ...tombstones]), {
+          nextCursor: page.nextCursor,
         });
       },
 
@@ -108,6 +170,35 @@ export const SongStore = signalStore(
       async setSearch(query: string): Promise<void> {
         patchState(store, { query });
         await reload();
+      },
+
+      /**
+       * The single most recently updated live Song, or `undefined` on an empty
+       * library — what `/songs` auto-selects on entry (PRD-UI-SHELL.md §4).
+       *
+       * **Not `live()[0]`.** The entity map is a growing windowed cache sorted by
+       * whatever the explorer is showing (`name` by default), so the most recently
+       * updated song may not be in it at all. This is a real query, run past the
+       * window and without disturbing it — asking the repository directly would put
+       * the same knowledge in a presenter, one layer too high.
+       */
+      async lastChanged(): Promise<Song | undefined> {
+        const page = await repo.page({
+          limit: 1,
+          sort: 'changed',
+          dir: 'desc',
+        });
+        return page.rows[0];
+      },
+
+      /**
+       * One song by id, from the repository — for `/songs/:id/edit`, which is a
+       * deep link and cannot assume the window has ever held the row. Not put
+       * into the window: opening a song is not a claim that it belongs in the
+       * list the user is looking at.
+       */
+      byId(id: Uuid): Promise<Song | undefined> {
+        return repo.get(id);
       },
 
       /** Persist an add/edit and reflect it in the window immediately. */

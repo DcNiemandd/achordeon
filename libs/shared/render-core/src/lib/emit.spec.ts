@@ -4,6 +4,7 @@ import { createFontBook } from './fonts';
 import { layoutCore } from './layout';
 import { emit } from './emit';
 import type { RenderPlan } from './render-plan';
+import { DEFAULT_TUNING } from './tuning';
 
 const settings: GlobalSettings = {
   scale: 'auto',
@@ -11,6 +12,8 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  titleFont: 'body',
+  padding: 0,
   chordColor: '#aa0000',
   chordSize: 1,
 };
@@ -62,6 +65,33 @@ describe('emit — SVG shell (§1, §5)', () => {
   });
 });
 
+describe('emit — whitespace is content (§4.6)', () => {
+  // `layout` measures chord x against the real string, spaces included, so the
+  // browser has to draw that same string. SVG's default collapses it.
+  it('preserves the whitespace the geometry was measured against', () => {
+    const indented = plan({
+      blocks: [
+        {
+          lines: [
+            { text: '   la  la', chords: [{ raw: 'C', at: 3, valid: true }] },
+          ],
+        },
+      ],
+    });
+    const svg = emit(indented);
+
+    const lyric = svg.match(/<text[^>]*>[^<]*la[^<]*<\/text>/)?.[0] ?? '';
+    expect(lyric).toContain('xml:space="preserve"');
+    // The exact string, with its indent and its double space intact.
+    expect(svg).toContain('>   la  la<');
+
+    // And the chord still sits over the character the anchor names: three
+    // leading spaces at the fake measurer's 9.6 advance.
+    const chord = indented.items.find((i) => i.role === 'chord');
+    expect(chord?.x).toBeCloseTo(3 * 9.6);
+  });
+});
+
 describe('emit — fonts (§2, §4.10)', () => {
   it('inlines @font-face base64 only when inlineFonts is set (export)', () => {
     const p = plan(song);
@@ -73,7 +103,7 @@ describe('emit — fonts (§2, §4.10)', () => {
   it('lists the family then the fallback stack', () => {
     const svg = emit(plan(song));
     expect(svg).toContain(
-      `font-family="'Achordeon', ui-sans-serif, system-ui, sans-serif"`,
+      `font-family="'${DEFAULT_TUNING.fontFamily}', ${DEFAULT_TUNING.fallbackStack}"`,
     );
   });
 });

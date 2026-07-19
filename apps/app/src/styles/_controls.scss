@@ -86,3 +86,28 @@
     cursor: not-allowed;
   }
 }
+
+.app-field {
+  inline-size: 100%;
+  block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  &:focus-visible {
+    border-color: var(--brand);
+    // The ring is inset so a field flush against a container edge doesn't clip
+    // it — :focus-visible in styles.scss offsets outward, which is right for a
+    // button in open space and wrong for an input in a row.
+    outline: 2px solid var(--brand);
+    outline-offset: -2px;
+  }
+}

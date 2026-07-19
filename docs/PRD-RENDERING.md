@@ -177,6 +177,15 @@ guardrail. Other docs link here; none restate it.**
   - **There is no type/font scale.** Font size is never authored. "Bigger text" =
     fewer columns, a render-box ratio nearer the content, or a manual `scale` beyond
     fit (accepting overflow).
+  - **`'auto'` has a ceiling — the render box has a minimum size** (`minBoxEm`, a
+    **tuning** constant, not a setting). The box is what the medium scales to fill,
+    so a box drawn tight around a two-line song is an instruction to magnify it
+    enormously — a one-line song printed in letters an inch tall. Below the floor the
+    box grows while the content keeps its natural size, so the song gains blank page
+    rather than magnification. The floor is on the **short axis** (portrait and
+    landscape cap alike) and the ratio is preserved, so §4.1's "the render box's shape
+    is the `aspectRatio` setting" still holds. **Applies to `'auto'` only** — a manual
+    number is the user overriding the fit deliberately, and stays unclamped.
 - **Raster scale** — export-only DPI knob (the PoC's `smallerSide = 1920px`), so a
   rasterized PNG is sharp. A `DownloadService` concern; **not** layout, **not** a
   render setting, has no effect on geometry.
@@ -340,9 +349,12 @@ the fit (§4.1) — so spacing never drives a reflow.
 > not separately grilled. Both are **render properties read off the AST**, not parse types.
 
 - **Chord-only line** (a line whose `text` is empty/whitespace but carries anchors) —
-  its chords are **distributed across the column content width** rather than measured over
-  characters (there are none). Recommended default: **evenly spaced (justified) across the
-  width**; exact distribution is a visual-tuning detail.
+  its chords are **distributed along the line** rather than measured over characters
+  (there are none). Default: **packed from the left at a fixed gap** (`chordOnlyGapEm`).
+  Justified-across-the-column is the other implemented mode and was the original default,
+  changed because it made the gap a function of the column width — the same four chords
+  sat inches apart in a one-column song and tight in a three-column one. Exact
+  distribution remains a visual-tuning detail.
 - **Bridge convention** — a Block whose lines are **all** chord-only renders **slightly
   larger** than normal blocks. Recommended mechanism: a per-block size multiplier applied
   in base units (so the uniform fit still scales the whole song afterward, §4.1). The
@@ -351,11 +363,54 @@ the fit (§4.1) — so spacing never drives a reflow.
 
 ### 4.10 Fonts, chord colour & chord size
 
-- **Font selection is post-v1.** v1 ships **one bundled font**; the `font` setting
-  (registry `scopes: ['songbook','song']`) stays as a future capability but is not
-  user-selectable in v1. (Scope note: the offline-PWA aspect is an afterthought, not a
-  v1 driver — see `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**,
-  not PWA.)
+- **Font selection is post-v1 for the body**; the `font` setting (registry
+  `scopes: ['songbook','song']`) stays as a future capability but is not user-selectable
+  in v1. (Scope note: the offline-PWA aspect is an afterthought, not a v1 driver — see
+  `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**, not PWA.)
+- **`titleFont` IS selectable** — the one exception, because a title in a different face
+  is what makes a song sheet look like a song sheet rather than a printout. It sets
+  **Title and Subtitle together**: they are one title block (§4.5), so letting them differ
+  would be two decisions where the author made one. Everything else stays in the song's
+  own font. Registry `scopes: ['songbook','song']` — a songbook can impose a house style.
+
+#### The font catalog — names now, bytes in Epic 7
+
+`titleFont` names a **choice**, and `resolveFontChoice` (render-core) turns that name
+into the `family` + `fallback` stack that `measure` and `emit` both use. Those two must
+always name the identical stack, or the geometry describes a font the browser never draws
+with — the catalog exists so that agreement is made in one place.
+
+- **Today every choice resolves to a CSS generic** (`ui-serif`, `ui-sans-serif`). Zero
+  bundled weight, renders anywhere, and enough to make the setting real. It is explicitly
+  **interim**: a generic is whatever the _viewer's_ machine calls a serif, so two people
+  see different pages and an exported PDF can embed nothing.
+- **Epic 7 replaces the right-hand side with bundled TTFs.** Nothing above the catalog
+  changes, because callers only ever name a choice. That epic already has to solve "where
+  do the real font bytes come from" for the single body font (`FontBook` carries none
+  today); doing it for N faces at the same time is barely more work than doing it for one,
+  and doing it earlier would mean building the plumbing twice.
+- **Recommended bundle (Epic 7):** a **serif**, a **condensed/display**, and a
+  **script/hand** — the three that actually look unlike Roboto Mono at title size. Each
+  adds ~100–300 KB to the bundle, which collides with the Epic 11 precache decision:
+  precache the body font only, and fetch a title face on first use.
+
+#### Importing a font from a URL — dropped [decided]
+
+**Not built, and not deferred — rejected.** A user-supplied Google Fonts URL fails three
+ways at once, and the third is fatal:
+
+- **CSP** — a new origin the policy must allow (`PRD-INFRASTRUCTURE.md` §7).
+- **Offline** — the service worker cannot precache a URL nobody has typed yet, so the
+  face is missing on a cold offline boot (`CONTEXT.md`'s offline promise).
+- **The PDF** — jsPDF `addFont` accepts **`.ttf` only**, and Google Fonts serves
+  **`.woff2`**. The screen would show the chosen face and the exported PDF would silently
+  fall back to another, which is the one failure mode a document app cannot have (§3).
+
+**The escape hatch instead: let the user upload a `.ttf` they own.** Bytes go to IndexedDB,
+so it stays offline, embeds in the SVG, and registers in jsPDF — the same path a bundled
+face takes. Same freedom, none of the three failures. Not v1; it lands with or after the
+bundled set.
+
 - **The one font is still embedded both ways** — this is core v1, not PWA-dependent:
   - **base64-inlined** into the SVG (`@font-face`) so screen + PNG render identically
     cross-browser (ADR-0002: external font URLs fail in Safari);
@@ -368,8 +423,42 @@ the fit (§4.1) — so spacing never drives a reflow.
   absolute size (consistent with §4.1 "font size is never authored" — it's a _ratio_, so
   it's allowed). `1` = chords equal to lyric cap height. It feeds the chord-row height
   (§4.7), so changing it changes vertical rhythm before the uniform fit.
-- **`chordColor`** (registry default `#000`) = fill applied to **chord glyphs only**;
-  lyrics render in a fixed colour (black) — there is no lyric-colour setting in v1.
+- **`chordColor`** (registry default `#9f1212`) = fill applied to **chord glyphs only**;
+  lyrics render in a fixed colour (black) — there is no lyric-colour setting in v1. The
+  subtitle is the one other role with a colour of its own (a grey, from the PoC); it is a
+  **tuning** constant, not a setting.
+
+> **The v1 look is the PoC's, transcribed.** `DEFAULT_TUNING` in `render-core/tuning.ts`
+> carries the HTML/CSS proof-of-concept's magnitudes converted out of px: 16px base,
+> chords at **0.7em**, subtitle 1.2em grey, title 1.5em bold, 1.5-slot inter-block gap,
+> 1em column gap, 0.25em label gutter. Two consequences worth naming:
+>
+> - **`chordSize: 1` means "the PoC default" (0.7 × the lyric size), not "the lyric
+>   size."** It remains a multiplier of the lyric font size as described above; only the
+>   role's base factor moved.
+> - **The bundled family is Roboto Mono** (`@fontsource-variable/roboto-mono`, already in
+>   the app's build). It is the family `tuning.fontFamily` must name, and the name must
+>   match a face the platform has actually loaded — a family nobody loaded measures and
+>   draws as the system default, silently.
+
+### 4.11 Padding — the page's white border
+
+A **`padding` setting** (registry default `0.5`, `scopes: ['song']`) reserves a blank
+border between the song and the edge of its render box.
+
+- **Unit: em** — a multiple of the base font size, so padding lives in **base units**
+  alongside every other magnitude (§4.7) and is carried by the uniform fit. The border is
+  therefore always the same size _relative to the text_, at any scale, on any medium. The
+  PoC's `padding: 8px` at a 16px base is `0.5`.
+- **It is an INSET, not an outset.** `layout` translates every item in by the padding and
+  grows the **content** box by twice it on each axis; `fitContent` then wraps that padded
+  box at the user's `aspectRatio`. Padding can consequently **never** bend the render box
+  away from the shape the user chose — the axiom of §4.1 ("the render box's shape is the
+  `aspectRatio` setting, always user-owned") survives intact.
+- **An empty song stays a zero box.** Padding is a border around content; with no content
+  there is nothing to border, and a page of pure margin is not a render.
+- **Not a songbook scope.** The songbook contributes a **print margin** that _adds_ to
+  each song's padding rather than overriding it — see §6.
 
 ---
 
@@ -473,20 +562,31 @@ stamps chrome into the **margins**; each song SVG stays pure.
 cascade or persist on entities, so they stay **out of the SETTINGS registry**, alongside
 `hideChords` / `inlineFonts`):
 
-| Option                   | v1            | Notes                                                           |
-| ------------------------ | ------------- | --------------------------------------------------------------- |
-| **Page size**            | ✅ option     | A4 / Letter / … — sets the page; slot = page − margins.         |
-| **Page margins**         | ✅ **fixed**  | A v1 constant; becomes a user option later.                     |
-| **Title page visible**   | ✅ toggle     | Built from the Songbook's Title / Subtitle / Author.            |
-| **Summary visible**      | ✅ toggle     | The setlist as a contents page (CONTEXT §Summary list).         |
-| **Page number visible**  | ✅ toggle     | —                                                               |
-| **Page number position** | ✅ option     | `left \| center \| right` in the **bottom** margin.             |
-| **Multiple songs/page**  | 🔮 **not v1** | One song per page in v1 ("one song, one page"); multi-up later. |
+| Option                   | v1            | Notes                                                             |
+| ------------------------ | ------------- | ----------------------------------------------------------------- |
+| **Page size**            | ✅ option     | A4 / Letter / … — sets the page; slot = page − margins.           |
+| **Page margins**         | ✅ option     | In em, like `padding`. **Adds to** each song's `padding` (§4.11). |
+| **Title page visible**   | ✅ toggle     | Built from the Songbook's Title / Subtitle / Author.              |
+| **Summary visible**      | ✅ toggle     | The setlist as a contents page (CONTEXT §Summary list).           |
+| **Page number visible**  | ✅ toggle     | —                                                                 |
+| **Page number position** | ✅ option     | `left \| center \| right` in the **bottom** margin.               |
+| **Multiple songs/page**  | 🔮 **not v1** | One song per page in v1 ("one song, one page"); multi-up later.   |
 
 - **Composition order:** title page (if visible) → summary (if visible) → song pages, one
   song per page (outer fit, §4.3).
 - **Numbering:** page-number position is horizontal (`left/center/right`); vertical is the
   **bottom margin** (fixed in v1). Numbering starts at the first **song** page = `1`; the
   title page and summary are **unnumbered** (tunable).
-- **Page size / number toggle+position / title-page / summary** are v1 dialog options;
-  **margins are fixed** in v1; **multi-song-per-page is deferred.**
+- **Margins add, they do not override.** The songbook's page margin and a song's `padding`
+  (§4.11) are the **same quantity at two levels**, and the printed border is their **sum**.
+  This is deliberately _not_ the settings cascade (ADR-0006), and that is why the margin is
+  a **print-dialog option and `padding` is NOT a songbook-scope setting**: a songbook says
+  "every song in this book gets this much extra air on the page", which is an addition to
+  whatever breathing room the song already asked for — not a replacement for it. A song
+  that wants a generous border keeps it inside a tightly-margined book.
+  - Mechanically: the song's `padding` is inside its per-song `RenderPlan` (the inner fit,
+    §4.3); the page margin is applied by `DownloadService` when it sizes the page slot (the
+    outer fit). Two transforms, one visual result. Both are in em against the same base
+    size, which is what makes "add" meaningful.
+- **Page size / number toggle+position / title-page / summary / margins** are v1 dialog
+  options; **multi-song-per-page is deferred.**

@@ -9,6 +9,9 @@ import {
 } from '@angular/core';
 import { Fullscreen } from './fullscreen';
 
+/** A4 portrait, width ÷ height — the registry default for `aspectRatio`. */
+const A4_RATIO = 210 / 297;
+
 /**
  * The page-on-a-desk frame the render sits in.
  *
@@ -27,7 +30,7 @@ import { Fullscreen } from './fullscreen';
   host: { '[class.is-performing]': 'fullscreen.isActive()' },
   template: `
     <div class="desk">
-      <div class="page" [style.aspect-ratio]="aspectRatio()">
+      <div class="page" [style.--page-ratio]="ratio()">
         <ng-content />
       </div>
     </div>
@@ -44,7 +47,11 @@ import { Fullscreen } from './fullscreen';
       block-size: 100%;
       padding: var(--space-4);
       background: var(--surface-sunken);
-      overflow: auto;
+      /* One song, one page (CONTEXT.md): the page is scaled to fit, never
+         scrolled. It also makes the desk a definite-size box, so the container
+         units below measure the space available, not the content inside it. */
+      overflow: hidden;
+      container-type: size;
     }
 
     /* Deliberately hard-coded, not tokenised: paper is paper in both themes.
@@ -52,9 +59,14 @@ import { Fullscreen } from './fullscreen';
     .page {
       background: #fff;
       box-shadow: var(--shadow-2);
-      max-block-size: 100%;
-      max-inline-size: 100%;
-      block-size: 100%;
+      aspect-ratio: var(--page-ratio);
+      /* Contain-fit in BOTH axes. This was block-size:100%, which let a tall
+         song's width fill the desk while its height overflowed off the bottom —
+         the grid row grew to the SVG's intrinsic height, so "100%" was huge.
+         This takes the width that fits by height (100cqb times the ratio) or the
+         full width, whichever is SMALLER; the aspect ratio then sets the height.
+         A portrait page fits by height, a landscape one by width, neither spills. */
+      inline-size: min(100cqi, 100cqb * var(--page-ratio));
     }
 
     /* Performing: the song is the only thing on screen, so give it every pixel.
@@ -74,6 +86,11 @@ import { Fullscreen } from './fullscreen';
 export class BlankPage {
   protected readonly fullscreen = inject(Fullscreen);
 
-  /** A4 is the registry default for the Song-scope `aspectRatio` setting. */
-  readonly aspectRatio = input('210 / 297');
+  /**
+   * The page shape, as **width ÷ height** — the same number the render's box
+   * already resolved, so the paper you look at is the paper it prints on. A
+   * number, not a CSS string, because the contain-fit maths needs to multiply by
+   * it (see `.page`).
+   */
+  readonly ratio = input(A4_RATIO);
 }

@@ -53,6 +53,33 @@ export function chordTheoryContract(make: () => ChordTheory): void {
           expect(theory.parseChord(text)).toBeNull();
         }
       });
+
+      it('accepts the German H as B natural (root and bass)', () => {
+        // The mixed convention: B stays B natural, H is the extra name for it.
+        // The root normalises to B; the original H survives for display in the
+        // anchor's `raw`, not here.
+        expect(theory.parseChord('H')).toEqual({
+          root: 'B',
+          bass: null,
+          quality: '',
+        });
+        expect(theory.parseChord('Hm7')).toEqual({
+          root: 'B',
+          bass: null,
+          quality: 'm7',
+        });
+        expect(theory.parseChord('C/H')).toEqual({
+          root: 'C',
+          bass: 'B',
+          quality: '',
+        });
+        // And plain B is untouched — no English chord changed meaning.
+        expect(theory.parseChord('B')).toEqual({
+          root: 'B',
+          bass: null,
+          quality: '',
+        });
+      });
     });
 
     describe('noteChroma', () => {

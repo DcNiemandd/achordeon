@@ -60,8 +60,40 @@ describe('phase2 — inline scan', () => {
       expect(scan('a\\nb').text).toBe('a\\nb');
     });
 
+    it('resolves \\  to a literal space (the kept-leading-space escape)', () => {
+      // Phase 1 strips leading whitespace; `\ ` is how a deliberate one survives,
+      // and its backslash must not reach the rendered lyric.
+      expect(scan('\\ kept').text).toBe(' kept');
+      expect(scan('\\ \\ two').text).toBe('  two');
+      // A chord anchored on the escaped space's neighbour counts the space.
+      const line = scan('\\ [C]x');
+      expect(line.text).toBe(' x');
+      expect(line.chords).toEqual([{ raw: 'C', at: 1, valid: true }]);
+    });
+
     it('does not treat an escaped bracket as a chord anchor', () => {
       expect(scan('a\\[C]b')).toEqual({ text: 'a[C]b', chords: [] });
+    });
+
+    it('resolves \\] to a literal ], symmetric with \\[', () => {
+      // Escaping both brackets for a literal bracketed word must not leave the
+      // trailing backslash stranded in the output.
+      expect(scan('a\\[word\\]b').text).toBe('a[word]b');
+    });
+
+    it('resolves escapes INSIDE a bracket token', () => {
+      // A repeat sign must escape its colon to avoid becoming a label, and the
+      // backslash must not survive into the rendered annotation.
+      const line = scan('[||\\: Em G :||]');
+      expect(line.text).toBe('');
+      expect(line.chords.map((c) => c.raw)).toEqual(['||:', 'Em', 'G', ':||']);
+      // The escaped bars are annotations, the real chords stay valid.
+      expect(line.chords.map((c) => c.valid)).toEqual([
+        false,
+        true,
+        true,
+        false,
+      ]);
     });
   });
 

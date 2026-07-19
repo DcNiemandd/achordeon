@@ -44,13 +44,48 @@ const ICONS = {
   plus: 'plus',
   minus: 'minus',
   download: 'download',
-  undo: 'undo-2',
-  redo: 'redo-2',
+  // The full circular arrow, which is what an undo arrow is in most people's
+  // heads. It used to be `undo-2`/`redo-2` — an arrow that runs left and loops
+  // back — which reads as "go left" before it reads as "go back".
+  undo: 'rotate-ccw',
+  redo: 'rotate-cw',
+  // Transpose is a musical act, so it gets a musical mark: a note, badged with
+  // the direction it moves. Bare arrows said "move something" and left which
+  // something to the tooltip. The two halves are composed in the template (see
+  // the editor page), not merged into one glyph, so the badge can be positioned
+  // and coloured independently.
+  // `music-4` is two beamed notes, which is a lot of ink under a badge. A single
+  // flagged note reads as "a note" at 18px and leaves room for the arrow.
+  note: 'music-2',
   transposeUp: 'arrow-up',
   transposeDown: 'arrow-down',
   favorite: 'star',
   title: 'type',
-  reset: 'rotate-ccw',
+  // An eraser, NOT a circular arrow — undo took that shape, and two controls in
+  // the same app pointing the same way meaning different things is worse than
+  // either icon being slightly off. It is the more honest mark anyway: reset
+  // DELETES this scope's override so the cascade reaches through again
+  // (ADR-0006), which is rubbing something out rather than winding it back.
+  reset: 'eraser',
+  // editor insert bar (Epic 5). Each button pairs one of these with the syntax
+  // it writes, so the mark carries the meaning and the glyph underneath keeps
+  // the markup learnable.
+  brackets: 'brackets',
+  heading1: 'heading-1',
+  heading2: 'heading-2',
+  tag: 'tag',
+  pilcrow: 'pilcrow',
+  backslash: 'slash',
+  // song explorer (Epic 5)
+  // `edit` opens the editor, `rename` retitles the library label — two different
+  // jobs on the same row, so they must not look alike.
+  edit: 'file-pen',
+  rename: 'text-cursor-input',
+  duplicate: 'copy',
+  delete: 'trash-2',
+  sortAsc: 'arrow-up-narrow-wide',
+  sortDesc: 'arrow-down-narrow-wide',
+  warning: 'triangle-alert',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

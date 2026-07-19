@@ -7,6 +7,7 @@ import {
   computed,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { Button, Icon, Tooltip } from '../../primitives';
@@ -84,7 +85,27 @@ interface Section {
                     <app-icon name="help" />
                   </button>
 
-                  @if (scope() !== 'global') {
+                  @if (scope() === 'global') {
+                    <!-- Global is the base of the cascade, so it inherits from
+                         nothing — "reset" here means back to the REGISTRY
+                         default, not to an inherited value. Shown only once the
+                         value has moved off its default, like the override reset
+                         below: there is nothing to reset a default to. -->
+                    @if (!isAtDefault(row)) {
+                      <button
+                        appButton
+                        type="button"
+                        class="reset"
+                        [isIconOnly]="true"
+                        [appTooltip]="resetDefaultLabel"
+                        [attr.aria-label]="resetDefaultLabel"
+                        [attr.data-testid]="'reset-' + row.key"
+                        (click)="resetToDefault(row.key)"
+                      >
+                        <app-icon name="reset" />
+                      </button>
+                    }
+                  } @else {
                     @if (row.isOverridden) {
                       <button
                         appButton
@@ -124,34 +145,56 @@ interface Section {
                   }
 
                   @case ('select') {
-                    <!-- One control, not two: the field always shows the value
-                         and always takes a typed one; the chevron is a shortcut
-                         to the named answers. There is no "custom mode" to be
-                         in, so there is no way to be stuck in it. -->
-                    <div class="input-group">
-                      <input
-                        class="group-field"
-                        type="text"
+                    @if (!allowsCustom(row)) {
+                      <!-- A closed list: every valid answer is in it, so there is
+                           nothing to type. A free-text box here would invite a
+                           value the renderer has no idea what to do with. -->
+                      <select
+                        class="control"
                         [id]="row.key"
                         [value]="row.value"
-                        [attr.data-testid]="'input-' + row.key"
-                        (change)="setFromInput(row.key, $event)"
-                      />
-                      <select
-                        class="group-picker"
-                        [value]="pickerValue(row)"
-                        [attr.aria-label]="pickLabel(row)"
                         [attr.data-testid]="'select-' + row.key"
-                        (change)="onPick(row.key, $event)"
+                        (change)="setFromInput(row, $event)"
                       >
-                        <!-- A typed value matches nothing here, so the picker
-                             shows blank rather than lying about the value. -->
-                        <option value=""></option>
                         @for (opt of options(row); track opt.value) {
                           <option [value]="opt.value">{{ opt.label }}</option>
                         }
                       </select>
-                    </div>
+                    } @else {
+                      <!-- One control, not two: the field always shows the value
+                         and always takes a typed one; the chevron is a shortcut
+                         to the named answers. There is no "custom mode" to be
+                         in, so there is no way to be stuck in it. -->
+                      <div class="input-group" [class.is-invalid]="error(row)">
+                        <input
+                          class="group-field"
+                          type="text"
+                          [id]="row.key"
+                          [value]="row.value"
+                          [class.is-invalid]="error(row)"
+                          [attr.aria-invalid]="error(row) ? 'true' : null"
+                          [attr.aria-errormessage]="
+                            error(row) ? row.key + '-error' : null
+                          "
+                          [attr.data-testid]="'input-' + row.key"
+                          (change)="setFromInput(row, $event)"
+                        />
+                        <select
+                          class="group-picker"
+                          [value]="pickerValue(row)"
+                          [attr.aria-label]="pickLabel(row)"
+                          [attr.data-testid]="'select-' + row.key"
+                          (change)="onPick(row, $event)"
+                        >
+                          <!-- A typed value matches nothing here, so the picker
+                             shows blank rather than lying about the value. -->
+                          <option value=""></option>
+                          @for (opt of options(row); track opt.value) {
+                            <option [value]="opt.value">{{ opt.label }}</option>
+                          }
+                        </select>
+                      </div>
+                    }
                   }
 
                   @case ('color') {
@@ -160,7 +203,7 @@ interface Section {
                       type="color"
                       [id]="row.key"
                       [value]="row.value"
-                      (change)="setFromInput(row.key, $event)"
+                      (change)="setFromInput(row, $event)"
                     />
                   }
 
@@ -178,9 +221,25 @@ interface Section {
                       >
                         <app-icon name="minus" />
                       </button>
-                      <output class="stepper-value" [attr.for]="row.key">{{
-                        row.value
-                      }}</output>
+                      <!-- Typable, not an <output>. The steps are fine for a
+                           nudge, but reaching 2.5 from 1 at 0.1 a click is
+                           fifteen clicks, and the value was right there looking
+                           like a field. Committed on change (blur/Enter), so a
+                           half-typed "0." never reaches the renderer. -->
+                      <input
+                        class="stepper-value"
+                        type="text"
+                        inputmode="decimal"
+                        [id]="row.key"
+                        [value]="row.value"
+                        [class.is-invalid]="error(row)"
+                        [attr.aria-invalid]="error(row) ? 'true' : null"
+                        [attr.aria-errormessage]="
+                          error(row) ? row.key + '-error' : null
+                        "
+                        [attr.data-testid]="'input-' + row.key"
+                        (change)="setFromStepperInput(row, $event)"
+                      />
                       <button
                         appButton
                         type="button"
@@ -193,8 +252,42 @@ interface Section {
                       >
                         <app-icon name="plus" />
                       </button>
+
+                      @for (preset of presets(row); track preset.value) {
+                        <!-- A named value that is not a number, sitting with the
+                             stepper rather than in a separate control: "auto" is
+                             one of the answers to "how big", not a mode. -->
+                        <button
+                          appButton
+                          type="button"
+                          variant="ghost"
+                          class="preset"
+                          [class.is-active]="isPreset(row, preset.value)"
+                          [attr.aria-pressed]="isPreset(row, preset.value)"
+                          [attr.data-testid]="row.key + '-' + preset.value"
+                          (click)="setPreset(row.key, preset.value)"
+                        >
+                          {{ preset.label }}
+                        </button>
+                      }
                     </div>
                   }
+                }
+
+                @if (error(row); as message) {
+                  <!-- Outside the switch, because any control that takes typed
+                       text can be wrong — not just the stepper. Under the field
+                       rather than in a tooltip: you are looking at the thing you
+                       just mistyped, and the rule you broke is what tells you how
+                       to fix it. -->
+                  <p
+                    class="error"
+                    role="alert"
+                    [id]="row.key + '-error'"
+                    [attr.data-testid]="'error-' + row.key"
+                  >
+                    {{ message }}
+                  </p>
                 }
               </div>
             }
@@ -354,19 +447,65 @@ interface Section {
     /* Big arrows: a native number spinner is a ~10px target and unusable on
        touch. Sized to the content, not the column — arrows flung to opposite
        edges of a wide row read as two unrelated buttons, not one control. */
+    /* 3ch fitted the old read-only <output>, which never showed more than "1".
+       A typable field has to hold what someone types into it — "0.5" was being
+       clipped to "0." the moment padding moved off its default. */
+    /* 3ch fitted the old read-only output, which never showed more than "1".
+       A typable field has to hold what someone types into it — "0.5" was being
+       clipped to "0." the moment padding moved off its default. */
     .stepper {
-      display: grid;
-      grid-template-columns: 32px 3ch 32px;
+      display: flex;
       align-items: center;
       gap: var(--space-1);
-      justify-content: start;
+      max-inline-size: 240px;
+    }
+
+    .stepper > button {
+      flex: none;
+    }
+
+    .preset {
+      padding-inline: var(--space-2);
+      font-size: var(--text-xs);
     }
 
     .stepper-value {
+      flex: 1;
+      inline-size: 100%;
+      min-inline-size: 5ch;
+      block-size: 32px;
+      padding-inline: var(--space-1);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-ui);
       text-align: center;
       font-size: var(--text-sm);
       /* Lining figures, so the value doesn't jitter as digits change. */
       font-variant-numeric: tabular-nums;
+    }
+
+    .stepper-value:focus-visible {
+      border-color: var(--brand);
+      outline: 2px solid var(--brand);
+      outline-offset: -2px;
+    }
+
+    /* Not colour alone: the message below says what is wrong in words, so this
+       is the mark that draws the eye to which field it is about. */
+    /* The group draws the border, not the field inside it — marking the input
+       would have set a border-color on an element whose border is 0. */
+    .stepper-value.is-invalid,
+    .input-group.is-invalid {
+      border-color: var(--danger);
+      background: var(--danger-subtle);
+    }
+
+    .error {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--danger);
     }
   `,
 })
@@ -383,6 +522,7 @@ export class SettingsPanel {
 
   protected readonly inheritedLabel = $localize`:@@settings.inherited:Inherited`;
   protected readonly resetLabel = $localize`:@@settings.reset:Reset to inherited`;
+  protected readonly resetDefaultLabel = $localize`:@@settings.resetDefault:Reset to default`;
 
   private readonly rows = computed<Row[]>(() =>
     keysForScope(this.scope()).map((key) => {
@@ -427,7 +567,7 @@ export class SettingsPanel {
       return false;
     }
     const { min, max, step } = row.ui.control;
-    const next = Number(row.value) + step * direction;
+    const next = this.stepperNumber(row) + step * direction;
     return next >= min && next <= max;
   }
 
@@ -436,9 +576,12 @@ export class SettingsPanel {
       return;
     }
     const { min, max, step } = row.ui.control;
-    const next = Number(row.value) + step * direction;
-    // Float steps (chordSize is 0.1) accumulate error: 1.1 + 0.1 = 1.2000000002.
+    // From a preset, stepping starts at the number that preset behaves like —
+    // nudging away from "auto" should land next to it, not at the range's floor.
+    const next = this.stepperNumber(row) + step * direction;
+    // Float steps accumulate error: 1.1 + 0.1 = 1.2000000002.
     const rounded = Math.round(next * 100) / 100;
+    this.setError(row.key, null);
     this.set(row.key, Math.min(max, Math.max(min, rounded)));
   }
 
@@ -452,12 +595,15 @@ export class SettingsPanel {
     return $localize`:@@settings.choose:Choose ${row.ui.label}:setting:`;
   }
 
-  protected onPick(key: SettingKey, event: Event): void {
+  protected onPick(row: Row, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     // The blank row is a display state, not a choice — picking it would wipe a
     // typed value for no reason.
     if (value !== '') {
-      this.set(key, value);
+      // A listed option is legal by construction, so picking one is also how you
+      // get out of an error you typed yourself.
+      this.setError(row.key, null);
+      this.set(row.key, value);
     }
   }
 
@@ -465,13 +611,142 @@ export class SettingsPanel {
     this.changed.emit({ [key]: value });
   }
 
-  protected setFromInput(key: SettingKey, event: Event): void {
-    this.set(key, (event.target as HTMLInputElement).value);
+  /**
+   * A typed value from a free-text control, validated before it is stored.
+   *
+   * Same contract as the stepper: refused rather than repaired, your text left
+   * on screen to correct, and nothing written while it is wrong.
+   */
+  protected setFromInput(row: Row, event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const problem = row.ui.validate?.(raw) ?? null;
+    this.setError(row.key, problem);
+    if (problem === null) {
+      this.set(row.key, raw);
+    }
+  }
+
+  /** A preset beside a stepper (`scale: auto`) — not a number, and always legal. */
+  protected setPreset(key: SettingKey, value: string): void {
+    this.setError(key, null);
+    this.set(key, value);
+  }
+
+  protected presets(row: Row): readonly Option[] {
+    return row.ui.control.kind === 'stepper'
+      ? (row.ui.control.presets ?? [])
+      : [];
+  }
+
+  protected isPreset(row: Row, value: string): boolean {
+    return String(row.value) === value;
+  }
+
+  /** The number a stepper starts from when the value is currently a preset. */
+  private stepperNumber(row: Row): number {
+    const asNumber = Number(row.value);
+    return Number.isFinite(asNumber) ? asNumber : 1;
+  }
+
+  /** A `select` row with no `custom` flag is a closed list — dropdown only. */
+  protected allowsCustom(row: Row): boolean {
+    return row.ui.control.kind === 'select' && row.ui.control.custom === true;
+  }
+
+  /**
+   * Why a typed stepper value was refused, or null while it is fine.
+   *
+   * Keyed per row, because two rows can be wrong at once and each has to say
+   * which. Cleared the moment a row becomes valid again.
+   */
+  private readonly errors = signal<ReadonlyMap<SettingKey, string>>(new Map());
+
+  protected error(row: Row): string | null {
+    return this.errors().get(row.key) ?? null;
+  }
+
+  /** Record or clear one row's complaint, leaving the other rows alone. */
+  private setError(key: SettingKey, message: string | null): void {
+    if ((this.errors().get(key) ?? null) === message) {
+      return;
+    }
+    const next = new Map(this.errors());
+    if (message === null) {
+      next.delete(key);
+    } else {
+      next.set(key, message);
+    }
+    this.errors.set(next);
+  }
+
+  /**
+   * Validate a typed stepper value; **refuse it rather than repair it**.
+   *
+   * An earlier version clamped silently — 99 columns became 3 — which is a guess
+   * dressed up as an answer: it looks like the app accepted what you typed, and
+   * you only find out it did not by re-reading the field. Saying "1 to 6" and
+   * keeping your text on screen lets you correct it; quietly rewriting it does
+   * not.
+   *
+   * **Whole vs fractional comes from the row's own `step`** rather than a second
+   * list to keep in sync: a step of 1 is a counting setting (columns), anything
+   * finer takes decimals (padding, chord size). Nothing is written while invalid,
+   * so a half-typed value never reaches the renderer or the database.
+   */
+  protected setFromStepperInput(row: Row, event: Event): void {
+    const field = event.target as HTMLInputElement;
+    if (row.ui.control.kind !== 'stepper') {
+      return;
+    }
+    const { min, max, step, presets } = row.ui.control;
+    const raw = field.value.trim();
+
+    // A preset typed out by hand ("auto") is exactly as legal as clicking it.
+    if (presets?.some((preset) => preset.value === raw)) {
+      this.setError(row.key, null);
+      this.set(row.key, raw);
+      return;
+    }
+
+    // A comma is what half the world's keyboards put on the numeric key.
+    const typed = Number(raw.replace(',', '.'));
+    const names = presets?.map((preset) => preset.label).join(', ');
+
+    const problem =
+      !Number.isFinite(typed) || raw === ''
+        ? names
+          ? $localize`:@@settings.error.numberOrPreset:Enter a number, or ${names}:presets:.`
+          : $localize`:@@settings.error.number:Enter a number.`
+        : Number.isInteger(step) && !Number.isInteger(typed)
+          ? $localize`:@@settings.error.whole:Whole numbers only.`
+          : typed < min || typed > max
+            ? $localize`:@@settings.error.range:Enter a value between ${min}:min: and ${max}:max:.`
+            : null;
+
+    this.setError(row.key, problem);
+    if (problem === null) {
+      this.set(row.key, typed);
+    }
   }
 
   protected reset(key: SettingKey): void {
     // Sparse storage (ADR-0006): resetting means REMOVING this scope's override
     // so the cascade resolves again, not writing the inherited value down.
     this.changed.emit({ [key]: undefined });
+  }
+
+  /** True when a Global value is still its registry default. Compared as text so
+   * a `2` typed into a field reads equal to a `2` stepped into it. */
+  protected isAtDefault(row: Row): boolean {
+    return String(row.value) === String(SETTINGS[row.key].default);
+  }
+
+  /**
+   * Reset a Global value to the registry default. Unlike `reset`, this emits the
+   * default VALUE, not `undefined` — Global defines every setting, so there is no
+   * override to remove and nothing below to fall back to (ADR-0006).
+   */
+  protected resetToDefault(key: SettingKey): void {
+    this.changed.emit({ [key]: SETTINGS[key].default });
   }
 }

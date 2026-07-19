@@ -51,6 +51,15 @@ function emitItem(item: TextItem, plan: RenderPlan): string {
   const attrs = [
     `x="${item.x}"`,
     `y="${item.y}"`,
+    // SVG's default is `xml:space="default"`, which STRIPS leading and trailing
+    // whitespace and collapses runs of it to one space. That silently broke the
+    // signature behaviour: `layout` measures chord x against the real string —
+    // spaces and all, because `measureText` counts them — and then the browser
+    // drew a shorter string. A lyric indented to sit under a chord lost its
+    // indent and every chord on that line pointed at the wrong character.
+    // Preserving is not a style choice here; the geometry was computed for the
+    // untouched text, so the untouched text is what has to be drawn.
+    `xml:space="preserve"`,
     `font-family="${familyAttr(style.family, style.fallback)}"`,
     `font-size="${size}"`,
     `font-weight="${style.weight}"`,

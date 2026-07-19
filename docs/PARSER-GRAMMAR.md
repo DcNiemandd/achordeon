@@ -130,7 +130,19 @@ kill legitimate multi-word labels like `Chorus 2:`.
 4. **Title/Subtitle lines are boundaries** (decision ii): a `*`/`**` line is lifted
    to song-level _and_ separates blocks. It is neither blank nor content, so it
    never lives inside a block and never welds two blocks together.
-5. **A block may have a label with zero content lines** (label-only, e.g. `Verse:`
+5. **A content line's leading whitespace is stripped [decided].** The pass ends by
+   trimming leading `[ \t]` from every content line — bare lyric and post-delimiter
+   labelled content alike (`Verse:  x` and `Verse: x` become the same). It is
+   almost always the editor's accidental indent (a tabbed lyric, a pasted block),
+   and left in it shoved the line right and pulled every chord off its character
+   (anchors are indices into this text, §Line model). A **deliberate** leading
+   space is kept with the `\ ` escape: the strip is a `[ \t]` run so it stops at
+   the backslash, and Phase 2 resolves `\ ` to a bare space. **Only leading**
+   whitespace, and **only content lines** — interior spacing is significant
+   (chord-only distribution, alignment) and is preserved; title/subtitle bodies
+   are left as typed (they carry no escapes and are positional). Trailing
+   whitespace is left untouched.
+6. **A block may have a label with zero content lines** (label-only, e.g. `Verse:`
    at EOF). Otherwise every block has ≥1 content line; no synthesized empty lines.
 
 **Label position is preserved (`labelInline`).** `Verse: foo` (content on the label
@@ -185,6 +197,31 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
   the interval picked (`m2` vs `A1` are both one semitone), which direction supplies.
   Full detail belongs to the transpose grilling, not here.
 
+### Notation — English now, a German/English setting later [partly decided]
+
+- **Now (shipped):** the engine is English, plus the **German `H` as an extra name
+  for B natural** — the common _mixed_ convention, where `B` stays B natural and
+  `H` is the other name for it. `toEnglishNotation` (in `shared/domain`) rewrites a
+  leading `H` and a `/bass` H to `B` before validity/transpose; both `ChordTheory`
+  implementations call it, and the shared contract asserts it, so the real adapter
+  and the fake cannot drift. The original `H` survives for display (it is the
+  anchor's `raw`); only the parsed root normalises, so `[H]` transposes as the B it
+  names and re-spells into **English** (`[H]`+1 ⇒ `[C]`).
+- **Future — a `notation` setting (`german | english`, deferred).** Everything below
+  changes what an **existing** symbol means or how transpose spells, so it must be a
+  user choice (per-song / global, like other render settings), **not** a silent
+  default:
+  - **Strict German input:** `B` means **B♭** (and `H` means B natural). Today `B` is
+    B natural for everyone; flipping it is exactly why this needs a setting.
+  - **Solfège accidentals:** `Cis`/`Des`/`As`/`Es` (…) as note spellings.
+  - **German transpose _output_:** re-spell B natural back to `H` and B♭ to `B`, so a
+    German-notation song stays in German notation after transpose (today it comes
+    back English).
+  - Interacts with the **key-aware spelling** refinement already parked above — both
+    are "how is a transposed note spelled", one by key, one by notation.
+  - _Domain-model ripple when built:_ a new `notation` row in the SETTINGS registry
+    (`scopes: ['songbook','song']`), see `PRD-DOMAIN-MODEL.md`.
+
 ### No nesting [decided]
 
 Chords and markdown never nest: no chord inside a chord, no `[` inside `[…]`, and
@@ -195,10 +232,19 @@ upgrade (see Authoring notes).
 
 ### Escapes [decided]
 
-- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `\` → the
-  backslash is **consumed** and the char is literal. `\\` → one literal `\`.
+- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `]` `\` `‹space›`
+  → the backslash is **consumed** and the char is literal. `\\` → one literal `\`.
+  `]` is escapable for symmetry with `[`, so a literal bracketed word reads `\[word\]`
+  without stranding the trailing backslash. **Space** is escapable so a deliberate
+  _leading_ space survives the Phase-1 indent strip (below); `\ ` mid-line just
+  renders a space like any other char.
 - **`\` before anything else is a literal backslash** (kept): `C:\path` keeps `\p`,
   `\n` is backslash-then-n, a trailing `\` at EOL is literal. No backslash-eating.
+- **Resolved inside bracket tokens too, not only lyric text.** A repeat sign
+  `[||\: … :||]` must escape its colon — an unescaped `[||:` is a colon-run
+  followed by a space, so Phase 1 reads `[||` as a **label**. The escape is
+  load-bearing, and its backslash is consumed when the token is rendered
+  (`||\:` → `||:`), never left in the output.
 - **Phase split:**
   - **Phase 1 is escape-_aware_ but does not consume.** An escaped `:` is not a
     label delimiter (`Narrator\:` → lyric); an escaped leading `*` is not a title.

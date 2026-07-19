@@ -4,6 +4,8 @@
 // title-vs-emphasis collision cannot arise (ADR-0005). Escape-AWARE but does not
 // consume — the raw characters pass through to Phase 2, which resolves them.
 
+import { findLabelDelimiter } from './chords';
+
 /** A block before Phase 2: raw content strings awaiting the inline scan. */
 export interface RawBlock {
   label?: string;
@@ -43,35 +45,40 @@ type Classified =
  * Empty label text → not a label. Returns null for an ordinary lyric.
  */
 function findLabel(line: string): { label: string; content: string } | null {
-  let i = 0;
-  while (i < line.length) {
-    const c = line[i];
-    if (c === '\\') {
-      // Escape-aware: skip the escaped char so `\:` can never be a delimiter.
-      i += 2;
-      continue;
+  // The rule itself lives in `findLabelDelimiter` — the editor's highlighter
+  // colours labels with the same recogniser, so the two cannot disagree.
+  const delimiter = findLabelDelimiter(line);
+  if (delimiter !== -1) {
+    // Everything before the run, plus the run's earlier colons as literal text.
+    let runStart = delimiter;
+    while (runStart > 0 && line[runStart - 1] === ':') {
+      runStart--;
     }
-    if (c === ':') {
-      let j = i;
-      while (j < line.length && line[j] === ':') {
-        j++;
-      }
-      const runLength = j - i;
-      const after = j < line.length ? line[j] : undefined;
-      if (after === undefined || after === ' ') {
-        const label = line.slice(0, i) + ':'.repeat(runLength - 1);
-        if (label.length === 0) {
-          return null; // empty label text is meaningless → lyric
-        }
-        const contentStart = after === ' ' ? j + 1 : j;
-        return { label, content: line.slice(contentStart) };
-      }
-      i = j; // colon-run not a delimiter; keep scanning past it
-      continue;
-    }
-    i++;
+    const label = line.slice(0, runStart) + ':'.repeat(delimiter - runStart);
+    // Exactly one following space is consumed; the rest is the content line.
+    const after = line[delimiter + 1];
+    const contentStart = after === ' ' ? delimiter + 2 : delimiter + 1;
+    return { label, content: line.slice(contentStart) };
   }
   return null;
+}
+
+/**
+ * Strip a content line's leading whitespace — the trim the pass ends with.
+ *
+ * Leading spaces/tabs on a content line are almost always the editor's own
+ * indentation (you tabbed a lyric across, you pasted an indented block), not
+ * something the song wants; keeping them shoved the line right and pulled every
+ * chord on it off its character. So they go.
+ *
+ * The run of `[ \t]` naturally stops at the first non-whitespace char — including
+ * a backslash — so a leading `\ ` survives untouched and Phase 2 resolves it to a
+ * deliberate space (`ESCAPABLE`). That is the whole escape mechanism: no special
+ * casing here, just "strip real leading whitespace, and an escaped space is not
+ * real leading whitespace because the backslash is not whitespace".
+ */
+function stripLeadingWhitespace(content: string): string {
+  return content.replace(/^[ \t]+/, '');
 }
 
 function classify(line: string, lineNo: number): Classified {
@@ -102,9 +109,15 @@ function classify(line: string, lineNo: number): Classified {
   }
   const label = findLabel(line);
   if (label) {
-    return { kind: 'labelled', label: label.label, content: label.content };
+    // The label already consumed one delimiting space; strip any further indent
+    // the same as a bare lyric, so `Verse:    sing` and `Verse: sing` render alike.
+    return {
+      kind: 'labelled',
+      label: label.label,
+      content: stripLeadingWhitespace(label.content),
+    };
   }
-  return { kind: 'lyric', content: line };
+  return { kind: 'lyric', content: stripLeadingWhitespace(line) };
 }
 
 /**

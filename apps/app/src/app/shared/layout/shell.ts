@@ -2,9 +2,12 @@
 // Spec: PRD-UI-SHELL.md §4
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { Button } from '../../primitives';
 import { Fullscreen } from './fullscreen';
+import { BackNavigation } from './back-navigation';
 import { ModuleSwitcher } from './module-switcher';
+import { Panes } from './panes';
 import { Rail } from './rail';
 import { Viewport } from './viewport';
 
@@ -24,7 +27,7 @@ import { Viewport } from './viewport';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, Rail, ModuleSwitcher],
+  imports: [RouterOutlet, Rail, ModuleSwitcher, Button],
   // While performing, any pointer movement or tap brings the bars back.
   host: {
     '(document:pointermove)': 'onActivity()',
@@ -45,7 +48,32 @@ import { Viewport } from './viewport';
         <div class="bottom-bar" data-testid="bottom-bar">
           <app-module-switcher />
           <div class="bar-slot">
-            <!-- The pane switcher and module actions mount here (§4). -->
+            <!-- The pane switcher: segmented, and only in split modules (§4).
+                 It is the shell's, because the bar is; which panes exist is the
+                 feature's, and reaches us through the Panes service. -->
+            @if (panes.isSplit()) {
+              <div
+                class="switcher"
+                role="group"
+                [attr.aria-label]="paneGroupLabel"
+                data-testid="pane-switcher"
+              >
+                @for (option of paneOptions; track option.pane) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="ghost"
+                    [class.is-active]="panes.active() === option.pane"
+                    [attr.aria-pressed]="panes.active() === option.pane"
+                    [attr.data-testid]="'pane-' + option.value"
+                    (pointerdown)="keepFocus($event)"
+                    (click)="showPane(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
       }
@@ -97,23 +125,98 @@ import { Viewport } from './viewport';
       padding-block-end: env(safe-area-inset-bottom, 0);
     }
 
+    /* Takes the bar's leftover width rather than hugging its own content. The
+       module switcher keeps its natural size on the left; everything after it is
+       the pane switcher's. */
     .bar-slot {
+      flex: 1;
+      min-inline-size: 0;
       display: flex;
       align-items: center;
       gap: var(--space-1);
-      margin-inline-start: auto;
+    }
+
+    .switcher {
+      flex: 1;
+      display: flex;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+
+    /* Source and Render are the primary act on a small screen — this bar is how
+       you get between writing the song and looking at it, and there is nothing
+       else competing for the space. Two shrink-to-fit labels made a pair of
+       ~60px targets floating at one end of an otherwise empty bar; an even split
+       of the full width is both easier to hit and easier to read as a toggle. */
+    .switcher > button {
+      flex: 1;
+      min-inline-size: 0;
+      block-size: 36px;
     }
   `,
 })
 export class Shell {
   protected readonly viewport = inject(Viewport);
+  protected readonly panes = inject(Panes);
   private readonly fullscreen = inject(Fullscreen);
+  /**
+   * Injected for its side effect, not for anything the shell draws: it counts
+   * navigations, so it has to be alive from boot, and the shell is the one thing
+   * that always is. See `BackNavigation`.
+   */
+  private readonly backNavigation = inject(BackNavigation);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly isChrome = this.fullscreen.isChromeVisible;
+
+  protected readonly paneGroupLabel = $localize`:@@shell.panes:Show`;
+
+  /** `?pane=source|render` (§7). The URL's words are the user's words; `a`/`b`
+   * is the split's internal vocabulary and stays out of the address bar. */
+  protected readonly paneOptions = [
+    {
+      pane: 'a' as const,
+      value: 'source',
+      label: $localize`:@@shell.paneSource:Source`,
+    },
+    {
+      pane: 'b' as const,
+      value: 'render',
+      label: $localize`:@@shell.paneRender:Render`,
+    },
+  ];
+
+  /** Into the URL, so it survives a reload and a rotation, and so a link can
+   * land straight on the render (§7). */
+  protected showPane(value: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { pane: value },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   protected onActivity(): void {
     if (this.fullscreen.isActive()) {
       this.fullscreen.reveal();
     }
+  }
+
+  /**
+   * Switch tab without stealing focus.
+   *
+   * A button takes focus on press, which blurs the editor's textarea and drops
+   * the on-screen keyboard. Preventing the pointerdown default keeps focus where
+   * it is — combined with the covered (not removed) inactive pane, the keyboard
+   * survives the flip to the render and back. The `click` still fires, so the
+   * switch itself is unaffected.
+   */
+  protected keepFocus(event: Event): void {
+    event.preventDefault();
   }
 }

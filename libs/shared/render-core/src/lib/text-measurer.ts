@@ -12,6 +12,18 @@ export interface FontSpec {
   sizePx: number;
   weight: 'normal' | 'bold';
   style?: 'normal' | 'italic';
+  /**
+   * The CSS generic(s) after `family` — the SAME fallback `emit` writes.
+   *
+   * Load-bearing: `measure` and `emit` must name the identical font stack, or
+   * the geometry describes a font the browser never draws with. When the bundled
+   * family is missing (it always is on screen — the face is CSS-loaded, and there
+   * is no face at all today), the canvas falls back to *its* default while the
+   * SVG falls back to *this* stack. Those are different fonts with different
+   * metrics, and every measured width is then wrong: lyrics were laid out to a
+   * box narrower than they drew, and ran off the page.
+   */
+  fallback?: string;
 }
 
 /**
@@ -28,6 +40,21 @@ export interface TextMetrics {
 /** The measurement port. Bound once as a platform dependency (§5). */
 export interface TextMeasurer {
   measure(text: string, font: FontSpec): TextMetrics;
+}
+
+/**
+ * A measurer that memoises, and can therefore be told its answers went stale.
+ *
+ * The one thing that invalidates a cached metric is the **font arriving**. A
+ * web-loaded face is not there on the first frame, so a measurement taken before
+ * it lands describes the fallback font — and a permanent cache would keep
+ * describing it forever, leaving every chord a few pixels off its character for
+ * the rest of the session. The platform adapter that knows when fonts settle
+ * (`document.fonts.ready`) calls `clear()`; the geometry core neither knows nor
+ * cares that this happened.
+ */
+export interface CachingTextMeasurer extends TextMeasurer {
+  clear(): void;
 }
 
 /**
@@ -72,8 +99,16 @@ export function normalizeMetrics(
   };
 }
 
-/** Build the CSS `font` shorthand a 2D canvas context expects. */
+/**
+ * Build the CSS `font` shorthand a 2D canvas context expects.
+ *
+ * Quoted family + the fallback stack, so this string names exactly the stack
+ * `emit` writes into `font-family` (see `FontSpec.fallback`).
+ */
 export function fontShorthand(font: FontSpec): string {
   const style = font.style && font.style !== 'normal' ? `${font.style} ` : '';
-  return `${style}${font.weight} ${font.sizePx}px ${font.family}`;
+  const family = font.fallback
+    ? `'${font.family}', ${font.fallback}`
+    : `'${font.family}'`;
+  return `${style}${font.weight} ${font.sizePx}px ${family}`;
 }

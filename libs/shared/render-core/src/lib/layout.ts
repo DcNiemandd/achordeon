@@ -51,6 +51,22 @@ export function layoutCore(
   // {band+gap, 0} for the 'left' spine — the direction is baked into `title.offset`.
   const offset = title.offset;
 
+  // The page's white border (§4.11). `padding` is in em, so it is a base-unit
+  // inset: every item shifts in by it and the content box grows by twice it on
+  // each axis. Being inside the box is what keeps the render box exactly the
+  // user's `aspectRatio` — padding never reshapes the page, it only pushes the
+  // song away from its edges. Being in base units is what makes it scale with
+  // the fit, so the border reads the same at any scale.
+  //
+  // A song with nothing in it stays a ZERO box rather than a box of pure
+  // padding: padding is a border around content, and there is no content.
+  const bareW = Math.max(title.width, offset.x + columns.width);
+  const bareH = Math.max(title.height, offset.y + columns.height);
+  const isEmpty = bareW <= 0 || bareH <= 0;
+  const pad = isEmpty
+    ? 0
+    : Math.max(0, Number(settings.padding) || 0) * tuning.baseSizePx;
+
   const items: TextItem[] = [
     ...title.items,
     ...columns.items.map((it) => ({
@@ -58,10 +74,10 @@ export function layoutCore(
       x: it.x + offset.x,
       y: it.y + offset.y,
     })),
-  ];
+  ].map((it) => ({ ...it, x: it.x + pad, y: it.y + pad }));
 
-  const contentW = Math.max(title.width, offset.x + columns.width);
-  const contentH = Math.max(title.height, offset.y + columns.height);
+  const contentW = bareW + pad * 2;
+  const contentH = bareH + pad * 2;
 
   const ratio = parseAspectRatio(settings.aspectRatio);
   const { box, fit, origin } = fitContent(
@@ -69,6 +85,7 @@ export function layoutCore(
     contentH,
     ratio,
     settings.scale,
+    tuning.minBoxEm * tuning.baseSizePx,
   );
 
   return {

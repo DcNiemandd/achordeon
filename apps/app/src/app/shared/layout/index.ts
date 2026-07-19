@@ -9,6 +9,7 @@
 
 export { ActionBar } from './action-bar';
 export { Fullscreen } from './fullscreen';
+export { BackNavigation } from './back-navigation';
 export { BlankPage } from './blank-page';
 export { ModuleSwitcher } from './module-switcher';
 export { Rail } from './rail';

@@ -21,6 +21,20 @@ describe('phase1 — classification & blocking', () => {
       expect(phase1('').blocks).toEqual([]);
       expect(phase1('   \n\t\n  ').blocks).toEqual([]);
     });
+
+    it('strips a lyric line’s leading whitespace (the editor’s indent)', () => {
+      // Leading spaces/tabs are almost always accidental indentation and pulled
+      // every chord on the line off its character — so they go.
+      const { blocks } = phase1('   indented\n\tby a tab\nflush');
+      expect(blocks).toEqual([{ lines: ['indented', 'by a tab', 'flush'] }]);
+    });
+
+    it('keeps a leading space that is escaped', () => {
+      // The strip stops at the backslash; Phase 2 turns `\ ` back into a space.
+      expect(phase1('\\ kept').blocks).toEqual([{ lines: ['\\ kept'] }]);
+      // An unescaped run before an escaped space: the run goes, the escape stays.
+      expect(phase1('  \\ one').blocks).toEqual([{ lines: ['\\ one'] }]);
+    });
   });
 
   describe('title / subtitle (asterisk rule)', () => {
@@ -104,8 +118,16 @@ describe('phase1 — classification & blocking', () => {
       expect(blocks).toEqual([{ lines: ['Narrator\\: hi'] }]);
     });
 
-    it('consumes exactly one following space into the content', () => {
-      expect(label('Verse:  spaced').content).toBe(' spaced');
+    it('strips the content indent, delimiter space and all', () => {
+      // The one delimiter space plus any further indent both go — a labelled
+      // line's content is trimmed like a bare lyric.
+      expect(label('Verse:  spaced').content).toBe('spaced');
+      expect(label('Verse: spaced').content).toBe('spaced');
+    });
+
+    it('keeps a leading space in the content when it is escaped', () => {
+      // `\ ` survives the strip (backslash is not whitespace); Phase 2 resolves it.
+      expect(label('Verse: \\ kept').content).toBe('\\ kept');
     });
   });
 

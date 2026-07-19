@@ -6,7 +6,7 @@
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Button, Premium } from '../primitives';
-import { ActionBar } from '../shared/layout';
+import { ActionBar, BackNavigation } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter } from './settings.presenter';
 
@@ -14,6 +14,7 @@ import { SettingsPresenter } from './settings.presenter';
   selector: 'app-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SettingsPresenter],
+  host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [ActionBar, SettingsPanel, Button, Premium],
   template: `
     <app-action-bar [title]="title" />
@@ -92,6 +93,37 @@ import { SettingsPresenter } from './settings.presenter';
 })
 export class SettingsPage {
   protected readonly presenter = inject(SettingsPresenter);
+  private readonly backNavigation = inject(BackNavigation);
+
+  /**
+   * Escape goes back to whatever you were doing.
+   *
+   * Settings is a destination, not a peer (§4) — you come here to change one
+   * thing and then return, so the way out should not be "find the rail and pick
+   * a module again". The same gesture the editor uses to step back to its list.
+   *
+   * **Browser history, with a floor under it** — see `BackNavigation`. History is
+   * what returns you to the *song you were editing* rather than merely to the
+   * module it lives in; the floor is for when there is no history to step into,
+   * which is every bookmark, shared link and reload.
+   *
+   * Left alone while a text field has the caret, because there Escape means
+   * "undo this edit". Read from the event's target rather than
+   * `document.activeElement` for the same reason the editor does: a field that
+   * blurs itself first would otherwise look like a bare press.
+   */
+  protected onEscape(event: Event): void {
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    ) {
+      return;
+    }
+    event.preventDefault();
+    this.backNavigation.back();
+  }
 
   protected readonly title = $localize`:@@settings.title:Settings`;
   protected readonly appHeading = $localize`:@@settings.app:Application`;

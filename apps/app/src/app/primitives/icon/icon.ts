@@ -32,7 +32,7 @@ import { ICON_SET, type IconName } from './icon-set.generated';
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="none"
+      [attr.fill]="isFilled() ? 'currentColor' : 'none'"
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"
@@ -58,6 +58,17 @@ import { ICON_SET, type IconName } from './icon-set.generated';
 })
 export class Icon {
   readonly name = input.required<IconName>();
+
+  /**
+   * Paint the glyph solid instead of drawing it as an outline.
+   *
+   * Lucide is an outline set, so "on" and "off" otherwise differ only in colour —
+   * and colour alone is not a state anyone should have to notice. A filled star
+   * reads as favourited at a glance and, unlike a tinted one, still reads that way
+   * to someone who cannot separate the two hues (PRD-UI-SHELL.md §5.2). Only
+   * closed-path glyphs (star, heart) look right filled.
+   */
+  readonly isFilled = input(false);
 
   private readonly sanitizer = inject(DomSanitizer);
 

@@ -3,6 +3,7 @@
 // a small, self-consistent chord grammar so the parser/transpose tests never
 // depend on tonal. Excluded from the lib build (see tsconfig.lib.json exclude).
 
+import { toEnglishNotation } from './chords';
 import { ChordTheory, type ParsedChord } from './theory';
 
 const CHROMA: Record<string, number> = {
@@ -29,7 +30,9 @@ const CHORD = /^([A-G](?:#|b)?)([^/\s]*)(?:\/([A-G](?:#|b)?))?$/;
 
 export class FakeChordTheory extends ChordTheory {
   parseChord(text: string): ParsedChord | null {
-    const m = CHORD.exec(text);
+    // Same German → English step as the real adapter, from the same helper, so
+    // the fake can never disagree with tonal on which symbols are valid.
+    const m = CHORD.exec(toEnglishNotation(text));
     if (!m) {
       return null;
     }
@@ -42,6 +45,7 @@ export class FakeChordTheory extends ChordTheory {
   }
 
   noteChroma(note: string): number | null {
-    return note in CHROMA ? CHROMA[note] : null;
+    const n = toEnglishNotation(note);
+    return n in CHROMA ? CHROMA[n] : null;
   }
 }

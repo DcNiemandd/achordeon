@@ -103,6 +103,48 @@ export const SongbookStore = signalStore(
         patchState(store, setEntity(songbook));
       },
 
+      /**
+       * Every live songbook holding this song — what the "in use" delete warning
+       * asks (CONTEXT.md §Delete vs Remove).
+       *
+       * Asked of the **repository, not the window**: the window holds one page of
+       * a name-sorted query, so a songbook the user has not scrolled to would
+       * answer "not in use" and the warning would lie about the destruction it is
+       * warning about. A tombstoned songbook is not "in use" — it is deleted.
+       */
+      async songbooksWith(songId: Uuid): Promise<Songbook[]> {
+        const all = await repo.all();
+        return all.filter(
+          (book) => book.deletedAt === null && book.entries.includes(songId),
+        );
+      },
+
+      /**
+       * Drop every slot referencing this song, from every songbook that has one —
+       * the cascade half of deleting a Song (CONTEXT.md §Delete vs Remove).
+       *
+       * The same song may occupy several slots in one songbook, so this filters
+       * rather than removing an index. Songbooks whose entries do not change are
+       * not rewritten: an `updatedAt` bump is a sync push (ADR-0004), and a
+       * songbook that never held the song has not changed.
+       */
+      async removeSongEverywhere(songId: Uuid): Promise<void> {
+        const all = await repo.all();
+        const at = Date.now();
+        for (const book of all) {
+          if (!book.entries.includes(songId)) {
+            continue;
+          }
+          const updated: Songbook = {
+            ...book,
+            entries: book.entries.filter((entry) => entry !== songId),
+            updatedAt: at,
+          };
+          await repo.put(updated);
+          patchState(store, setEntity(updated));
+        }
+      },
+
       /** Soft-delete: tombstone the row (kept in the map for sync; hidden from `live`). */
       async remove(id: Uuid): Promise<void> {
         const at = Date.now();

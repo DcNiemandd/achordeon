@@ -2,7 +2,11 @@
 // Spec: ADR-0008, PRD-DOMAIN-MODEL.md §Music-theory seam
 
 import { Injectable } from '@angular/core';
-import { ChordTheory, type ParsedChord } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  toEnglishNotation,
+  type ParsedChord,
+} from '@achordeon/shared/domain';
 import { get as getChord } from '@tonaljs/chord';
 import { chroma } from '@tonaljs/note';
 
@@ -16,17 +20,20 @@ import { chroma } from '@tonaljs/note';
 @Injectable()
 export class TonalChordTheory extends ChordTheory {
   parseChord(text: string): ParsedChord | null {
-    const chord = getChord(text);
+    // German → English first, so `[H]` reaches tonal as `B` (§notation).
+    const symbol = toEnglishNotation(text);
+    const chord = getChord(symbol);
     if (chord.empty || !chord.tonic) {
       return null;
     }
     const root = chord.tonic;
     const bass = chord.bass ? chord.bass : null;
 
-    // Quality = the suffix as the user wrote it (verbatim, so transpose preserves
-    // it). Strip the recognised root off the front and the /bass off the back;
-    // tonal's own normalisation is deliberately ignored here.
-    let quality = text.startsWith(root) ? text.slice(root.length) : text;
+    // Quality = the suffix as written (verbatim, so transpose preserves it),
+    // measured against the NORMALISED symbol so the root length lines up — the
+    // original `H` is preserved for display in the anchor's `raw`, not here.
+    // tonal's own normalisation is deliberately ignored.
+    let quality = symbol.startsWith(root) ? symbol.slice(root.length) : symbol;
     if (bass) {
       const slash = quality.lastIndexOf('/');
       if (slash !== -1) {
@@ -37,7 +44,7 @@ export class TonalChordTheory extends ChordTheory {
   }
 
   noteChroma(note: string): number | null {
-    const c = chroma(note);
+    const c = chroma(toEnglishNotation(note));
     return Number.isFinite(c) ? c : null;
   }
 }

@@ -24,6 +24,12 @@ export const SETTINGS = {
     default: 'stacked' as 'stacked' | 'inline',
     scopes: ['song'],
   }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
+  titleFont: {
+    default: 'body' as 'body' | 'serif' | 'sans',
+    scopes: ['songbook', 'song'],
+  }, // the face for Title AND Subtitle together — one title block, one decision.
+  // 'body' = whatever the rest of the song is set in. Songbook scope so a book can
+  // impose one house style. See PRD-RENDERING §4.10
   aspectRatio: {
     default: 'A4' as
       | 'A4'
@@ -32,6 +38,12 @@ export const SETTINGS = {
       | `${number}/${number}`,
     scopes: ['song'],
   },
+  padding: {
+    default: 0.5 as number,
+    scopes: ['song'],
+  }, // white border inside the render box, in em (× the base font size). Inset —
+  // the aspect ratio stays user-owned. The songbook's print margin ADDS to this
+  // rather than overriding it, so it is NOT a songbook scope. See PRD-RENDERING §4.11
   chordColor: {
     default: '#9f1212' as `#${string}`,
     scopes: ['songbook', 'song'],

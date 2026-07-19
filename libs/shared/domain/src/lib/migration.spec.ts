@@ -8,6 +8,8 @@ const globalSettings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  titleFont: 'body',
+  padding: 0.5,
   chordColor: '#000',
   chordSize: 1,
 };

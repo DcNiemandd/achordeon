@@ -20,9 +20,21 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./songs/songs.page').then((m) => m.SongsPage),
   },
   {
+    path: 'songs/:id/edit',
+    loadComponent: () =>
+      import('./songs/song-editor.page').then((m) => m.SongEditorPage),
+  },
+  {
     path: 'songbooks',
     loadComponent: () =>
       import('./songbooks/songbooks.page').then((m) => m.SongbooksPage),
+  },
+  {
+    path: 'songbooks/:id',
+    loadComponent: () =>
+      import('./songbooks/songbook-detail.page').then(
+        (m) => m.SongbookDetailPage,
+      ),
   },
   {
     path: 'stage',

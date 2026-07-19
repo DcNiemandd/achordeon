@@ -9,6 +9,7 @@ import type { GlobalSettings } from '@achordeon/shared/domain';
 import type { TextMeasurer, FontSpec } from './text-measurer';
 import type { TextRole, TextStyle } from './render-plan';
 import type { RenderTuning } from './tuning';
+import { resolveFontChoice, type FontChoiceName } from './font-catalog';
 
 /** String-independent line-pitch for one role (§4.7). `height` = ascent+descent. */
 export interface RoleMetrics {
@@ -35,6 +36,8 @@ export function toFontSpec(style: TextStyle): FontSpec {
     sizePx: style.sizePx,
     weight: style.weight,
     style: style.style,
+    // Carried, not dropped: measuring must name the same stack `emit` draws with.
+    fallback: style.fallback,
   };
 }
 
@@ -45,18 +48,32 @@ export function resolveStyles(
 ): Record<TextRole, TextStyle> {
   const roles = Object.keys(tuning.typography) as TextRole[];
   const styles = {} as Record<TextRole, TextStyle>;
+  // Title and subtitle share one face, always — they are one title block (§4.5),
+  // and letting them differ would be two decisions where the user made one.
+  const titleFont = resolveFontChoice(
+    settings.titleFont as FontChoiceName,
+    tuning,
+  );
   for (const role of roles) {
     const t = tuning.typography[role];
     // Chords are the only role that carries a user setting: size (× chordSize)
     // and colour (chordColor). Every other role is fixed by tuning (§4.10).
     const chordScale = role === 'chord' ? settings.chordSize : 1;
+    const isTitleRole = role === 'title' || role === 'subtitle';
+    const font = isTitleRole
+      ? titleFont
+      : { family: tuning.fontFamily, fallback: tuning.fallbackStack };
     styles[role] = {
-      family: tuning.fontFamily,
+      family: font.family,
       sizePx: tuning.baseSizePx * t.sizeFactor * chordScale,
       weight: t.weight,
       style: t.style,
-      fill: role === 'chord' ? settings.chordColor : tuning.textColor,
-      fallback: tuning.fallbackStack,
+      // Chords are the one user-coloured role. Everything else takes its own
+      // `color` if tuning names one (the PoC's grey subtitle) and `textColor`
+      // otherwise.
+      fill:
+        role === 'chord' ? settings.chordColor : (t.color ?? tuning.textColor),
+      fallback: font.fallback,
     };
   }
   return styles;

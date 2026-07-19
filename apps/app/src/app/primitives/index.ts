@@ -5,8 +5,11 @@
 // Achordeon — it could be lifted into an unrelated app unchanged. That rule is
 // enforced in apps/app/eslint.config.mjs, not just asserted here.
 
+export { Autofocus } from './autofocus/autofocus';
 export { Button } from './button/button';
+export { Dialog } from './dialog/dialog';
 export { EmptyState } from './empty-state/empty-state';
+export { Field } from './field/field';
 export { Icon } from './icon/icon';
 export { Tooltip, TooltipPanel } from './tooltip/tooltip';
 export type { IconName } from './icon/icon-set.generated';

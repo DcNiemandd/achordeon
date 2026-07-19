@@ -4,13 +4,15 @@ import { DEFAULT_TUNING } from './tuning';
 import { createContext } from './context';
 import { layoutTitle } from './title-layout';
 
-// title size 28 (adv 16.8, ascent 22.4, h 28); subtitle 18.4 (adv 11.04, ascent 14.72, h 18.4)
+// title size 24 (adv 14.4, ascent 19.2, h 24); subtitle 19.2 (adv 11.52, ascent 15.36, h 19.2)
 const base: GlobalSettings = {
   scale: 'auto',
   columns: 1,
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  titleFont: 'body',
+  padding: 0,
   chordColor: '#000000',
   chordSize: 1,
 };
@@ -45,12 +47,12 @@ describe('layoutTitle — top (§4.5)', () => {
     const title = r.items.find((i) => i.role === 'title');
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.x).toBe(0);
-    expect(title?.y).toBeCloseTo(22.4);
+    expect(title?.y).toBeCloseTo(19.2);
     expect(title?.rotate).toBeUndefined();
     expect(subtitle?.x).toBe(0);
-    expect(subtitle?.y).toBeGreaterThan(28); // below the title row
+    expect(subtitle?.y).toBeGreaterThan(24); // below the title row
     expect(r.offset.x).toBe(0);
-    expect(r.offset.y).toBeCloseTo(r.height + 16); // region height + title gap
+    expect(r.offset.y).toBeCloseTo(r.height + 32); // region height + title gap
   });
 
   it('puts title and subtitle on one row side by side when inline', () => {
@@ -62,7 +64,7 @@ describe('layoutTitle — top (§4.5)', () => {
     const title = r.items.find((i) => i.role === 'title');
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.y).toBeCloseTo(subtitle?.y as number); // same row
-    expect(subtitle?.x).toBeCloseTo(4 * 16.8 + 0.75 * 16); // titleW + inline gap
+    expect(subtitle?.x).toBeCloseTo(4 * 14.4 + 1.5 * 16); // titleW + inline gap
   });
 });
 
@@ -79,7 +81,7 @@ describe('layoutTitle — left spine (§4.5)', () => {
     expect(subtitle?.rotate).toBe(-90);
     expect(subtitle?.x).toBeGreaterThan(title?.x as number); // subtitle spine is inner
     expect(r.offset.y).toBe(0);
-    expect(r.offset.x).toBeCloseTo(28 + 18.4 + 16); // both bands + gap
+    expect(r.offset.x).toBeCloseTo(24 + 19.2 + 32); // both bands + gap
   });
 
   it('reads title then subtitle up one spine when inline', () => {
@@ -92,7 +94,7 @@ describe('layoutTitle — left spine (§4.5)', () => {
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.x).toBeCloseTo(subtitle?.x as number); // one band
     expect(title?.y).toBeGreaterThan(subtitle?.y as number); // title sits below (read first)
-    expect(r.offset.x).toBeCloseTo(28 + 16); // one band width + gap
+    expect(r.offset.x).toBeCloseTo(24 + 32); // one band width + gap
   });
 });
 
