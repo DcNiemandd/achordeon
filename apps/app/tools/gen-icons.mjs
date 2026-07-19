@@ -51,7 +51,9 @@ const ICONS = {
   // something to the tooltip. The two halves are composed in the template (see
   // the editor page), not merged into one glyph, so the badge can be positioned
   // and coloured independently.
-  note: 'music-4',
+  // `music-4` is two beamed notes, which is a lot of ink under a badge. A single
+  // flagged note reads as "a note" at 18px and leaves room for the arrow.
+  note: 'music-2',
   transposeUp: 'arrow-up',
   transposeDown: 'arrow-down',
   favorite: 'star',

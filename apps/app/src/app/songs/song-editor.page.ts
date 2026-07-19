@@ -305,7 +305,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
        is a quotation of the source text. */
     .insert-syntax {
       font-family: var(--font-ui);
-      font-size: 10px;
+      font-size: 12px;
       line-height: 1;
       color: var(--text-faint);
       /* The chord glyph is three characters wide and was wrapping inside a 40px
@@ -331,16 +331,17 @@ import { SongEditorPresenter } from './song-editor.presenter';
     }
 
     .transpose app-icon {
-      --icon-size: 18px;
+      --icon-size: 17px;
     }
 
+    /* The direction is the thing you are choosing between the two buttons, so
+       the arrow is nearly as large as the note rather than a small corner mark. */
     .transpose .transpose-badge {
-      --icon-size: 11px;
+      --icon-size: 15px;
       position: absolute;
-      inset-block-start: 3px;
-      inset-inline-end: 2px;
+      inset-block-start: 1px;
+      inset-inline-end: 0;
       color: var(--brand);
-      stroke-width: 3;
     }
   `,
 })

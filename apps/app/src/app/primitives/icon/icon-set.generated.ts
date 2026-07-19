@@ -25,7 +25,7 @@ export const ICON_SET = {
     '<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />',
   undo: '<path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />',
   redo: '<path d="m15 14 5-5-5-5" /><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />',
-  note: '<path d="M9 18V5l12-2v13" /><path d="m9 9 12-2" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />',
+  note: '<circle cx="8" cy="18" r="4" /><path d="M12 18V2l7 4" />',
   transposeUp: '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />',
   transposeDown: '<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />',
   favorite:
