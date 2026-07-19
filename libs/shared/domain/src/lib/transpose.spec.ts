@@ -36,6 +36,14 @@ describe('transposeContent', () => {
     expect(shift('[F#m7/C#]', 1)).toBe('[Gm7/D]');
   });
 
+  it('transposes a German H (= B natural), re-spelling into English', () => {
+    // H is valid input and moves like the B it names. Output uses the English
+    // spelling table — a German-notation OUTPUT mode is a separate setting.
+    expect(shift('[H]', 1)).toBe('[C]');
+    expect(shift('[Hm7]', 2)).toBe('[C#m7]');
+    expect(shift('[C/H]', 2)).toBe('[D/C#]');
+  });
+
   it('skips invalid-as-annotation brackets', () => {
     expect(shift('[Solo] [x2] [N.C.]', 5)).toBe('[Solo] [x2] [N.C.]');
   });

@@ -134,6 +134,24 @@ test.describe('song editor', () => {
     expect(at('[Solo]')?.cls).not.toEqual(chordClass);
   });
 
+  // German notation: H is B natural. It must colour as a chord, not a grey
+  // annotation, the same as any English chord.
+  test('the German H is a valid chord', async ({ page }) => {
+    await type(page, '[C]real [H]german [Solo]not');
+
+    const styled = await page
+      .getByTestId('editor')
+      .locator('.cm-line span[class]')
+      .evaluateAll((spans) =>
+        spans.map((s) => ({ text: s.textContent, cls: s.className })),
+      );
+    const at = (text: string) => styled.find((s) => s.text === text);
+
+    expect(at('[H]')?.cls).toBeTruthy();
+    expect(at('[H]')?.cls).toEqual(at('[C]')?.cls);
+    expect(at('[H]')?.cls).not.toEqual(at('[Solo]')?.cls);
+  });
+
   test('title and subtitle buttons replace each other, never stack', async ({
     page,
   }) => {

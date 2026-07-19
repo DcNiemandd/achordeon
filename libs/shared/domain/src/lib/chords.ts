@@ -20,6 +20,28 @@
 export const ESCAPABLE = new Set([':', '*', '[', ']', '\\', ' ']);
 
 /**
+ * Rewrite German note names to English, so the one English-based chord engine
+ * recognises them (ADR-0008: the engine is quarantined; notation policy is the
+ * domain's).
+ *
+ * **Today: `H` → `B` natural, and nothing else.** This is the common *mixed*
+ * convention — `B` stays B natural and `H` is simply the extra name for it — so
+ * no English chord changes meaning and `[H]` stops reading as a grey annotation.
+ * It rewrites a **leading** `H` (the root) and an `H` right after the `/` (the
+ * bass); a quality never starts with a note letter, so the middle is untouched.
+ *
+ * **Deferred (a notation *mode*, not this):** strict German where `B` means B♭,
+ * and the solfège spellings `Cis`/`Des`/`As`/`Es`. Those change what existing
+ * symbols mean, so they belong behind a per-song/global setting, not here.
+ *
+ * One helper, shared by every `ChordTheory` (the tonal adapter and the fake), so
+ * the two can never drift on which symbols are valid.
+ */
+export function toEnglishNotation(chord: string): string {
+  return chord.replace(/(^|\/)H/g, '$1B');
+}
+
+/**
  * Index of the closing `]` for a bracket opened at `open`, or -1 if unterminated.
  * A backslash escapes the next char, so `\]` does not close and `\\` is skipped
  * (no nesting: everything up to the first unescaped `]` is chord content).
