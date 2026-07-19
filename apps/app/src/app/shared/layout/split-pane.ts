@@ -15,10 +15,10 @@ import {
 import { Panes } from './panes';
 import { Viewport } from './viewport';
 
-/** Sized to hold the render-settings dialog (~300px) with margin, so the dialog
- * never spills over the render. Coupled to that number — move one, check the
- * other (PRD-UI-SHELL.md §4, §5.1). */
-const MIN_A_PX = 320;
+/** Sized to hold the render-settings dialog (520px) with margin, so the dialog
+ * gets its full width instead of being clamped to a narrow pane. Coupled to that
+ * number — move one, check the other (PRD-UI-SHELL.md §4, §5.1). */
+const MIN_A_PX = 560;
 /** No structural floor; a narrow pane B is a deliberate "focus on the text" drag. */
 const MIN_B_PX = 240;
 const RESET_RATIO = 0.5;

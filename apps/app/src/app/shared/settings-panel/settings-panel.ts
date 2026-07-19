@@ -144,34 +144,51 @@ interface Section {
                   }
 
                   @case ('select') {
-                    <!-- One control, not two: the field always shows the value
-                         and always takes a typed one; the chevron is a shortcut
-                         to the named answers. There is no "custom mode" to be
-                         in, so there is no way to be stuck in it. -->
-                    <div class="input-group">
-                      <input
-                        class="group-field"
-                        type="text"
+                    @if (!allowsCustom(row)) {
+                      <!-- A closed list: every valid answer is in it, so there is
+                           nothing to type. A free-text box here would invite a
+                           value the renderer has no idea what to do with. -->
+                      <select
+                        class="control"
                         [id]="row.key"
                         [value]="row.value"
-                        [attr.data-testid]="'input-' + row.key"
-                        (change)="setFromInput(row.key, $event)"
-                      />
-                      <select
-                        class="group-picker"
-                        [value]="pickerValue(row)"
-                        [attr.aria-label]="pickLabel(row)"
                         [attr.data-testid]="'select-' + row.key"
-                        (change)="onPick(row.key, $event)"
+                        (change)="setFromInput(row.key, $event)"
                       >
-                        <!-- A typed value matches nothing here, so the picker
-                             shows blank rather than lying about the value. -->
-                        <option value=""></option>
                         @for (opt of options(row); track opt.value) {
                           <option [value]="opt.value">{{ opt.label }}</option>
                         }
                       </select>
-                    </div>
+                    } @else {
+                      <!-- One control, not two: the field always shows the value
+                         and always takes a typed one; the chevron is a shortcut
+                         to the named answers. There is no "custom mode" to be
+                         in, so there is no way to be stuck in it. -->
+                      <div class="input-group">
+                        <input
+                          class="group-field"
+                          type="text"
+                          [id]="row.key"
+                          [value]="row.value"
+                          [attr.data-testid]="'input-' + row.key"
+                          (change)="setFromInput(row.key, $event)"
+                        />
+                        <select
+                          class="group-picker"
+                          [value]="pickerValue(row)"
+                          [attr.aria-label]="pickLabel(row)"
+                          [attr.data-testid]="'select-' + row.key"
+                          (change)="onPick(row.key, $event)"
+                        >
+                          <!-- A typed value matches nothing here, so the picker
+                             shows blank rather than lying about the value. -->
+                          <option value=""></option>
+                          @for (opt of options(row); track opt.value) {
+                            <option [value]="opt.value">{{ opt.label }}</option>
+                          }
+                        </select>
+                      </div>
+                    }
                   }
 
                   @case ('color') {
@@ -198,9 +215,20 @@ interface Section {
                       >
                         <app-icon name="minus" />
                       </button>
-                      <output class="stepper-value" [attr.for]="row.key">{{
-                        row.value
-                      }}</output>
+                      <!-- Typable, not an <output>. The steps are fine for a
+                           nudge, but reaching 2.5 from 1 at 0.1 a click is
+                           fifteen clicks, and the value was right there looking
+                           like a field. Committed on change (blur/Enter), so a
+                           half-typed "0." never reaches the renderer. -->
+                      <input
+                        class="stepper-value"
+                        type="text"
+                        inputmode="decimal"
+                        [id]="row.key"
+                        [value]="row.value"
+                        [attr.data-testid]="'input-' + row.key"
+                        (change)="setFromStepperInput(row, $event)"
+                      />
                       <button
                         appButton
                         type="button"
@@ -374,19 +402,38 @@ interface Section {
     /* Big arrows: a native number spinner is a ~10px target and unusable on
        touch. Sized to the content, not the column — arrows flung to opposite
        edges of a wide row read as two unrelated buttons, not one control. */
+    /* 3ch fitted the old read-only <output>, which never showed more than "1".
+       A typable field has to hold what someone types into it — "0.5" was being
+       clipped to "0." the moment padding moved off its default. */
     .stepper {
       display: grid;
-      grid-template-columns: 32px 3ch 32px;
+      grid-template-columns: 32px minmax(5ch, 1fr) 32px;
       align-items: center;
       gap: var(--space-1);
       justify-content: start;
+      max-inline-size: 180px;
     }
 
     .stepper-value {
+      inline-size: 100%;
+      min-inline-size: 0;
+      block-size: 32px;
+      padding-inline: var(--space-1);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-ui);
       text-align: center;
       font-size: var(--text-sm);
       /* Lining figures, so the value doesn't jitter as digits change. */
       font-variant-numeric: tabular-nums;
+    }
+
+    .stepper-value:focus-visible {
+      border-color: var(--brand);
+      outline: 2px solid var(--brand);
+      outline-offset: -2px;
     }
   `,
 })
@@ -488,6 +535,35 @@ export class SettingsPanel {
 
   protected setFromInput(key: SettingKey, event: Event): void {
     this.set(key, (event.target as HTMLInputElement).value);
+  }
+
+  /** A `select` row with no `custom` flag is a closed list — dropdown only. */
+  protected allowsCustom(row: Row): boolean {
+    return row.ui.control.kind === 'select' && row.ui.control.custom === true;
+  }
+
+  /**
+   * A typed stepper value, clamped to the row's own range.
+   *
+   * Clamped rather than rejected: someone who types 99 columns meant "as many as
+   * I can have", and snapping to the maximum says what that is. Nonsense that is
+   * not a number at all snaps back to the current value, because the field has to
+   * show *something* and the old value is the only honest candidate.
+   */
+  protected setFromStepperInput(row: Row, event: Event): void {
+    const field = event.target as HTMLInputElement;
+    if (row.ui.control.kind !== 'stepper') {
+      return;
+    }
+    const { min, max } = row.ui.control;
+    const typed = Number(field.value.replace(',', '.'));
+    if (!Number.isFinite(typed)) {
+      field.value = String(row.value);
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, Math.round(typed * 100) / 100));
+    field.value = String(clamped);
+    this.set(row.key, clamped);
   }
 
   protected reset(key: SettingKey): void {

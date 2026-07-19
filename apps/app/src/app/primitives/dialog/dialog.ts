@@ -120,7 +120,14 @@ import { Icon } from '../icon/icon';
       display: flex;
       flex-direction: column;
       gap: var(--space-3);
-      max-inline-size: min(420px, calc(100% - var(--space-4)));
+      /* A set size, not merely a maximum: the panel is a centred flex item, so a
+         max alone left it shrink-wrapped around its content — the settings
+         dialog came out ~190px wide however high the maximum was, with its
+         labels wrapping and the padding field clipping "0.5" to "0.". Setting
+         the size makes 520 the width it actually takes, still clamped to the
+         container so a narrow pane A gets a narrow dialog rather than a clipped
+         one. Coupled to MIN_A_PX in split-pane.ts — move one, check the other. */
+      inline-size: min(520px, calc(100% - var(--space-4)));
       max-block-size: calc(100% - var(--space-4));
       padding: var(--space-3);
       border: 1px solid var(--border);

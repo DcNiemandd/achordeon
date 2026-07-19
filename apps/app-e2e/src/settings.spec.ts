@@ -23,16 +23,50 @@ test.describe('global render settings', () => {
   test('a stepped value shows a reset that returns it to the default', async ({
     page,
   }) => {
-    const value = page.getByTestId('setting-columns').locator('output');
+    const value = page.getByTestId('input-columns');
 
     await page.getByTestId('inc-columns').click();
-    await expect(value).toHaveText('2');
+    await expect(value).toHaveValue('2');
     await expect(page.getByTestId('reset-columns')).toBeVisible();
 
     await page.getByTestId('reset-columns').click();
     // Back to the registry default, and the reset retires itself.
-    await expect(value).toHaveText('1');
+    await expect(value).toHaveValue('1');
     await expect(page.getByTestId('reset-columns')).toHaveCount(0);
+  });
+
+  // The steps are fine for a nudge; reaching 2.5 from 1 at 0.1 a click is not.
+  test('a stepped value can be typed, and is clamped to its range', async ({
+    page,
+  }) => {
+    const value = page.getByTestId('input-chordSize');
+
+    await value.fill('2.5');
+    await value.press('Enter');
+    await expect(value).toHaveValue('2.5');
+
+    // Above the maximum snaps to it: "as many as I can have" is a real intent,
+    // and the field says what that turned out to be.
+    await value.fill('99');
+    await value.press('Enter');
+    await expect(value).toHaveValue('3');
+
+    // Not a number at all snaps back — the field has to show something, and the
+    // old value is the only honest candidate.
+    await value.fill('abc');
+    await value.press('Enter');
+    await expect(value).toHaveValue('3');
+  });
+
+  // A closed list: every valid answer is in it, so there is nothing to type.
+  test('the title font is a plain dropdown, with no free-text field', async ({
+    page,
+  }) => {
+    await expect(page.getByTestId('select-titleFont')).toBeVisible();
+    await expect(page.getByTestId('input-titleFont')).toHaveCount(0);
+
+    await page.getByTestId('select-titleFont').selectOption('serif');
+    await expect(page.getByTestId('reset-titleFont')).toBeVisible();
   });
 
   test('a picked value resets to the default too', async ({ page }) => {

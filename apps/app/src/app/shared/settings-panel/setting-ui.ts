@@ -113,8 +113,12 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     label: $localize`:@@setting.titleFont:Font`,
     help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,
     group: 'title',
+    // A dropdown, not a segmented row: the catalog grows (Epic 7 adds the
+    // bundled faces) and three side-by-side buttons already overflowed the
+    // song-settings dialog. A closed list, so no free-text escape hatch — a
+    // typed family name is not something the renderer could honour.
     control: {
-      kind: 'choice',
+      kind: 'select',
       options: [
         {
           value: 'body',
