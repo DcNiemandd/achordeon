@@ -31,6 +31,19 @@ const SHOW_DELAY_MS = 350;
 
 let nextId = 0;
 
+/**
+ * The one tooltip currently on screen, app-wide.
+ *
+ * A tooltip is a singleton in the user's mind — "the label for the thing I am
+ * pointing at" — but each directive owned its own overlay and only closed it on
+ * its *own* `pointerleave`. Any way of leaving a host without that event firing
+ * (the control being disabled, removed, or moved out from under the pointer by a
+ * layout change) stranded a panel on screen, and the next hover then added a
+ * second one beside it. Whatever the browser does with the events, only one of
+ * these can be open: showing one closes the other.
+ */
+let closeOpenTooltip: (() => void) | null = null;
+
 @Component({
   selector: 'app-tooltip-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -146,6 +159,11 @@ export class Tooltip {
 
   protected onClick(): void {
     if (this.appTooltipTrigger() !== 'click') {
+      // A label tooltip has done its job the moment you act on the control, and
+      // the act often removes or disables that control — taking its
+      // `pointerleave` with it. Closing here is what stops a panel outliving the
+      // button it names.
+      this.hide();
       return;
     }
     if (this.isOpen()) {
@@ -160,6 +178,11 @@ export class Tooltip {
     if (this.ref) {
       return;
     }
+    // Only ever one on screen (see `closeOpenTooltip`).
+    if (closeOpenTooltip !== null && closeOpenTooltip !== this.closeSelf) {
+      closeOpenTooltip();
+    }
+    closeOpenTooltip = this.closeSelf;
 
     const position = this.positions
       .flexibleConnectedTo(this.host)
@@ -226,10 +249,15 @@ export class Tooltip {
       this.onDocumentPointerDown,
       true,
     );
+    // The backstop for a `pointerleave` that never comes. A disabled button
+    // stops emitting pointer events entirely, and a control that is removed or
+    // shifted out from under the pointer never gets one either — in all three
+    // cases the pointer is demonstrably somewhere else, and this notices.
+    this.document.addEventListener('pointermove', this.onDocumentPointerMove);
     this.isOpen.set(true);
   }
 
-  protected hide(): void {
+  hide(): void {
     this.clearTimers();
     this.document.removeEventListener('keydown', this.onKeydown, true);
     this.document.removeEventListener(
@@ -237,11 +265,22 @@ export class Tooltip {
       this.onDocumentPointerDown,
       true,
     );
+    this.document.removeEventListener(
+      'pointermove',
+      this.onDocumentPointerMove,
+    );
     this.ref?.dispose();
     this.ref = null;
     this.panel = null;
     this.isOpen.set(false);
+    if (closeOpenTooltip === this.closeSelf) {
+      closeOpenTooltip = null;
+    }
   }
+
+  /** A stable identity for the registry above — the same reference every time,
+   * so "is the open one me?" is an identity check rather than a `this` alias. */
+  private readonly closeSelf = (): void => this.hide();
 
   /** WCAG 1.4.13 "dismissible": Esc closes without moving the pointer. */
   private readonly onKeydown = (event: KeyboardEvent): void => {
@@ -258,6 +297,23 @@ export class Tooltip {
     const inHost = (this.host.nativeElement as HTMLElement).contains(target);
     const inPanel = this.ref?.overlayElement.contains(target) ?? false;
     if (!inHost && !inPanel) {
+      this.hide();
+    }
+  };
+
+  /**
+   * Close a hover tooltip once the pointer is provably elsewhere.
+   *
+   * Only for `hover`: a `click` toggle-tip is meant to survive the pointer
+   * leaving, and closes on Esc or an outside pointerdown instead.
+   */
+  private readonly onDocumentPointerMove = (event: PointerEvent): void => {
+    if (this.appTooltipTrigger() !== 'hover') {
+      return;
+    }
+    const host = this.host.nativeElement as HTMLElement;
+    const target = event.target as Node | null;
+    if (target !== null && !host.contains(target)) {
       this.hide();
     }
   };

@@ -122,17 +122,20 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
       color: var(--brand);
     }
 
+    /* Nearly fills the tap target. It is the only navigation control on a small
+       screen, and at 24px inside a 48px button it read as a small mark floating
+       in a large empty square — the button looked disabled rather than primary. */
     .hamburger-glyph {
-      --icon-size: 24px;
+      --icon-size: 32px;
     }
 
     /* Badged into the corner, not stacked: the hamburger stays the primary mark
        and the module reads as its state. */
     .module-badge {
-      --icon-size: 13px;
+      --icon-size: 15px;
       position: absolute;
-      inset-block-end: 4px;
-      inset-inline-end: 4px;
+      inset-block-end: 0;
+      inset-inline-end: 0;
       color: var(--brand);
       background: var(--surface-raised);
       border-radius: 50%;
