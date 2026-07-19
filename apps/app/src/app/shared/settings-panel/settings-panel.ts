@@ -7,6 +7,7 @@ import {
   computed,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { Button, Icon, Tooltip } from '../../primitives';
@@ -226,6 +227,11 @@ interface Section {
                         inputmode="decimal"
                         [id]="row.key"
                         [value]="row.value"
+                        [class.is-invalid]="error(row)"
+                        [attr.aria-invalid]="error(row) ? 'true' : null"
+                        [attr.aria-errormessage]="
+                          error(row) ? row.key + '-error' : null
+                        "
                         [attr.data-testid]="'input-' + row.key"
                         (change)="setFromStepperInput(row, $event)"
                       />
@@ -242,6 +248,20 @@ interface Section {
                         <app-icon name="plus" />
                       </button>
                     </div>
+
+                    @if (error(row); as message) {
+                      <!-- Under the field, not in a tooltip: you are looking at
+                           the thing you just mistyped, and the rule you broke is
+                           what tells you how to fix it. -->
+                      <p
+                        class="error"
+                        role="alert"
+                        [id]="row.key + '-error'"
+                        [attr.data-testid]="'error-' + row.key"
+                      >
+                        {{ message }}
+                      </p>
+                    }
                   }
                 }
               </div>
@@ -435,6 +455,19 @@ interface Section {
       outline: 2px solid var(--brand);
       outline-offset: -2px;
     }
+
+    /* Not colour alone: the message below says what is wrong in words, so this
+       is the mark that draws the eye to which field it is about. */
+    .stepper-value.is-invalid {
+      border-color: var(--danger);
+      background: var(--danger-subtle);
+    }
+
+    .error {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--danger);
+    }
   `,
 })
 export class SettingsPanel {
@@ -507,6 +540,7 @@ export class SettingsPanel {
     const next = Number(row.value) + step * direction;
     // Float steps (chordSize is 0.1) accumulate error: 1.1 + 0.1 = 1.2000000002.
     const rounded = Math.round(next * 100) / 100;
+    this.clearError(row.key);
     this.set(row.key, Math.min(max, Math.max(min, rounded)));
   }
 
@@ -543,27 +577,67 @@ export class SettingsPanel {
   }
 
   /**
-   * A typed stepper value, clamped to the row's own range.
+   * Why a typed stepper value was refused, or null while it is fine.
    *
-   * Clamped rather than rejected: someone who types 99 columns meant "as many as
-   * I can have", and snapping to the maximum says what that is. Nonsense that is
-   * not a number at all snaps back to the current value, because the field has to
-   * show *something* and the old value is the only honest candidate.
+   * Keyed per row, because two rows can be wrong at once and each has to say
+   * which. Cleared the moment a row becomes valid again.
+   */
+  private readonly errors = signal<ReadonlyMap<SettingKey, string>>(new Map());
+
+  protected error(row: Row): string | null {
+    return this.errors().get(row.key) ?? null;
+  }
+
+  /**
+   * Validate a typed stepper value; **refuse it rather than repair it**.
+   *
+   * An earlier version clamped silently — 99 columns became 3 — which is a guess
+   * dressed up as an answer: it looks like the app accepted what you typed, and
+   * you only find out it did not by re-reading the field. Saying "1 to 6" and
+   * keeping your text on screen lets you correct it; quietly rewriting it does
+   * not.
+   *
+   * **Whole vs fractional comes from the row's own `step`** rather than a second
+   * list to keep in sync: a step of 1 is a counting setting (columns), anything
+   * finer takes decimals (padding, chord size). Nothing is written while invalid,
+   * so a half-typed value never reaches the renderer or the database.
    */
   protected setFromStepperInput(row: Row, event: Event): void {
     const field = event.target as HTMLInputElement;
     if (row.ui.control.kind !== 'stepper') {
       return;
     }
-    const { min, max } = row.ui.control;
-    const typed = Number(field.value.replace(',', '.'));
-    if (!Number.isFinite(typed)) {
-      field.value = String(row.value);
+    const { min, max, step } = row.ui.control;
+    // A comma is what half the world's keyboards put on the numeric key.
+    const typed = Number(field.value.trim().replace(',', '.'));
+
+    const problem = !Number.isFinite(typed)
+      ? $localize`:@@settings.error.number:Enter a number.`
+      : Number.isInteger(step) && !Number.isInteger(typed)
+        ? $localize`:@@settings.error.whole:Whole numbers only.`
+        : typed < min || typed > max
+          ? $localize`:@@settings.error.range:Enter a value between ${min}:min: and ${max}:max:.`
+          : null;
+
+    const next = new Map(this.errors());
+    if (problem === null) {
+      next.delete(row.key);
+      this.errors.set(next);
+      this.set(row.key, typed);
       return;
     }
-    const clamped = Math.min(max, Math.max(min, Math.round(typed * 100) / 100));
-    field.value = String(clamped);
-    this.set(row.key, clamped);
+    next.set(row.key, problem);
+    this.errors.set(next);
+  }
+
+  /** A step from the buttons is valid by construction — clear any typed error. */
+  private clearError(key: SettingKey): void {
+    if (!this.errors().has(key)) {
+      return;
+    }
+    const next = new Map(this.errors());
+    next.delete(key);
+    this.errors.set(next);
   }
 
   protected reset(key: SettingKey): void {

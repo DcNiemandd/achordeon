@@ -36,26 +36,55 @@ test.describe('global render settings', () => {
   });
 
   // The steps are fine for a nudge; reaching 2.5 from 1 at 0.1 a click is not.
-  test('a stepped value can be typed, and is clamped to its range', async ({
-    page,
-  }) => {
+  test('a stepped value can be typed', async ({ page }) => {
     const value = page.getByTestId('input-chordSize');
 
     await value.fill('2.5');
     await value.press('Enter');
     await expect(value).toHaveValue('2.5');
+    await expect(page.getByTestId('reset-chordSize')).toBeVisible();
+  });
 
-    // Above the maximum snaps to it: "as many as I can have" is a real intent,
-    // and the field says what that turned out to be.
+  // Refused, not repaired. Clamping 99 to 3 looks like the app accepted what you
+  // typed, and you only find out it did not by re-reading the field.
+  test('a bad number is refused with a reason, and nothing is saved', async ({
+    page,
+  }) => {
+    const value = page.getByTestId('input-chordSize');
+
     await value.fill('99');
     await value.press('Enter');
-    await expect(value).toHaveValue('3');
+    await expect(page.getByTestId('error-chordSize')).toBeVisible();
+    await expect(value).toHaveAttribute('aria-invalid', 'true');
+    // Your text is still there to correct, and nothing was written.
+    await expect(value).toHaveValue('99');
+    await expect(page.getByTestId('reset-chordSize')).toHaveCount(0);
 
-    // Not a number at all snaps back — the field has to show something, and the
-    // old value is the only honest candidate.
     await value.fill('abc');
     await value.press('Enter');
-    await expect(value).toHaveValue('3');
+    await expect(page.getByTestId('error-chordSize')).toBeVisible();
+
+    // Correcting it clears the error and saves.
+    await value.fill('1.5');
+    await value.press('Enter');
+    await expect(page.getByTestId('error-chordSize')).toHaveCount(0);
+    await expect(page.getByTestId('reset-chordSize')).toBeVisible();
+  });
+
+  // Whole vs fractional comes from the row's own step, not a second list.
+  test('a counting setting refuses a fraction', async ({ page }) => {
+    const value = page.getByTestId('input-columns');
+
+    await value.fill('2.5');
+    await value.press('Enter');
+    await expect(page.getByTestId('error-columns')).toContainText('Whole');
+    await expect(page.getByTestId('reset-columns')).toHaveCount(0);
+
+    // A fraction is fine on a setting whose step is fractional.
+    const padding = page.getByTestId('input-padding');
+    await padding.fill('1.25');
+    await padding.press('Enter');
+    await expect(page.getByTestId('error-padding')).toHaveCount(0);
   });
 
   // A closed list: every valid answer is in it, so there is nothing to type.

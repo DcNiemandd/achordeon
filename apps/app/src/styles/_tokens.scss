@@ -13,6 +13,9 @@
   // The brand lift. #C13515 is 5.6:1 on white but only 3.8:1 on black; at
   // l=55% it reaches 5.7:1. Lightness only — hue and saturation are the brand.
   --brand-l: 55%;
+  // Same lift, same reason: the light-mode red is 4.9:1 on white but far short of
+  // it on the dark surface.
+  --danger-l: 62%;
 
   --surface: #16181a;
   --surface-raised: #1f2225;
@@ -45,6 +48,18 @@
   --brand-active: hsl(var(--brand-h) var(--brand-s) calc(var(--brand-l) - 12%));
   --brand-subtle: hsl(var(--brand-h) var(--brand-s) var(--brand-l) / 0.12);
   --brand-on: #fff; // 5.6:1 on the brand — AA
+
+  // --- danger ----------------------------------------------------------------
+  // Rejected input, and nothing else. Stored as channels for the same reason the
+  // brand is: dark mode lifts lightness alone (see the dark block). Deliberately
+  // NOT the brand hue — the brand is 11deg and this is 8deg, which at a glance is
+  // the same colour, so it carries its own message rather than reading as
+  // emphasis. Never the only signal: an error always says what is wrong in words.
+  --danger-h: 358;
+  --danger-s: 68%;
+  --danger-l: 44%;
+  --danger: hsl(var(--danger-h) var(--danger-s) var(--danger-l));
+  --danger-subtle: hsl(var(--danger-h) var(--danger-s) var(--danger-l) / 0.1);
 
   // --- premium (§5.3) --------------------------------------------------------
   // Gold. Open question in §13: two warm tones this close may muddy.
