@@ -1,7 +1,7 @@
 // RenderService — Epic 5 ▸ subtask 6
 // Spec: PRD-RENDERING §1 (portability), §2 (screen vs export), §5 (the `layout` call)
 
-import { Injectable } from '@angular/core';
+import { Injectable, signal, type Signal } from '@angular/core';
 import {
   createCanvasMeasurer,
   createLayout,
@@ -35,7 +35,37 @@ export class RenderService {
    * of that cache is that the same tokens are measured again on every reflow and
    * every batch export.
    */
-  private readonly layoutWith: Layout = createLayout(createCanvasMeasurer());
+  private readonly measurer = createCanvasMeasurer();
+  private readonly layoutWith: Layout = createLayout(this.measurer);
+
+  /**
+   * Flips once the page's web fonts have settled.
+   *
+   * The bundled family is CSS-loaded, so on the first frame it does not exist
+   * yet and the canvas measures the *fallback* font instead. Those metrics are
+   * wrong by a few percent, which is enough to drift every chord off its
+   * character — and the measurer memoises, so without this they would stay wrong
+   * for the whole session. When the font lands we drop the cache and bump this
+   * signal; `layout` reads it, so every render `computed` re-runs against the
+   * real face by construction. Consumers opt in to nothing.
+   */
+  private readonly fontEpoch = signal(0);
+
+  /** Exposed so a caller can tell a first-frame render from a settled one. */
+  readonly fontsReady: Signal<boolean> = (() => {
+    const ready = signal(false);
+    // `document.fonts` is absent in jsdom and on very old engines; there, the
+    // first measurement is simply the only one, which is the old behaviour.
+    const fonts = (
+      globalThis as { document?: { fonts?: { ready?: Promise<unknown> } } }
+    ).document?.fonts;
+    void fonts?.ready?.then(() => {
+      this.measurer.clear();
+      this.fontEpoch.update((n) => n + 1);
+      ready.set(true);
+    });
+    return ready.asReadonly();
+  })();
 
   /** The geometry, as pure data — what tests assert against (§1). */
   layout(
@@ -43,6 +73,7 @@ export class RenderService {
     settings: GlobalSettings,
     opts?: RenderOpts,
   ): RenderPlan {
+    this.fontEpoch(); // re-render when the real font arrives (see `fontEpoch`)
     return this.layoutWith(ast, settings, opts);
   }
 

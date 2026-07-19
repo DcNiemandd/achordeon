@@ -43,6 +43,21 @@ export interface TextMeasurer {
 }
 
 /**
+ * A measurer that memoises, and can therefore be told its answers went stale.
+ *
+ * The one thing that invalidates a cached metric is the **font arriving**. A
+ * web-loaded face is not there on the first frame, so a measurement taken before
+ * it lands describes the fallback font — and a permanent cache would keep
+ * describing it forever, leaving every chord a few pixels off its character for
+ * the rest of the session. The platform adapter that knows when fonts settle
+ * (`document.fonts.ready`) calls `clear()`; the geometry core neither knows nor
+ * cares that this happened.
+ */
+export interface CachingTextMeasurer extends TextMeasurer {
+  clear(): void;
+}
+
+/**
  * Raw metrics as a 2D canvas returns them: `width` is always present, but the
  * `fontBoundingBox*` fields are missing on older engines / jsdom — the exact
  * reason `normalizeMetrics` exists. Distinct from `TextMetrics`, which is the
