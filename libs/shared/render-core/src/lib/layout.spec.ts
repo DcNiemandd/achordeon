@@ -2,6 +2,7 @@ import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
 import { createFontBook } from './fonts';
 import { createLayout, layoutCore } from './layout';
+import { DEFAULT_TUNING } from './tuning';
 
 const settings: GlobalSettings = {
   scale: 'auto',
@@ -24,8 +25,8 @@ const ast = (over: Partial<SongAst> = {}): SongAst => ({
 /**
  * The auto-fit floor is off for the placement tests below.
  *
- * These fixtures are two-word songs, so the floor (32em on the short axis) would
- * be the only thing setting the box and every assertion about item coordinates
+ * These fixtures are two-word songs, so the floor (`minBoxEm` on the short axis)
+ * would be the only thing setting the box and every assertion about item coordinates
  * would be measuring the cap instead of the layout. It has its own test.
  */
 const UNCAPPED = { tuning: { minBoxEm: 0 } };
@@ -74,7 +75,9 @@ describe('layoutCore — assembly (§1, §5)', () => {
     const plan = layoutCore(tiny, settings, measure);
 
     // The floor is on the short axis; A4 is portrait, so that is the width.
-    expect(Math.min(plan.box.width, plan.box.height)).toBeCloseTo(32 * 16);
+    expect(Math.min(plan.box.width, plan.box.height)).toBeCloseTo(
+      DEFAULT_TUNING.minBoxEm * DEFAULT_TUNING.baseSizePx,
+    );
     // The content itself did not move or grow — it gained blank page around it,
     // which is the whole point: a two-word song must not print an inch tall.
     expect(plan.items.find((i) => i.role === 'lyric')?.y).toBeCloseTo(12.8);
