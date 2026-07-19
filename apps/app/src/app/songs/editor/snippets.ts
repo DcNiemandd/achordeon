@@ -59,6 +59,7 @@ export const SNIPPETS = {
     before: ': ',
     atLineStart: true,
     caretOffset: 0,
+    movesToExistingLabel: true,
   } satisfies InsertRequest,
 
   /**

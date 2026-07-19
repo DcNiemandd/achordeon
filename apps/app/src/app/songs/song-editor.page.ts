@@ -412,6 +412,8 @@ export class SongEditorPage {
     isFlipped?: boolean;
     /** Writes markup the grammar ignores on a title/subtitle line — see `isInsertBlocked`. */
     isContentOnly?: boolean;
+    /** Writes a `[` — meaningless inside a bracket, since they do not nest. */
+    isBlockedInsideChord?: boolean;
     glyph: string;
     label: string;
     snippet: InsertRequest;
@@ -420,6 +422,7 @@ export class SongEditorPage {
       testid: 'insert-chord',
       icon: 'brackets',
       isContentOnly: true,
+      isBlockedInsideChord: true,
       glyph: '[ ]',
       label: $localize`:@@editor.insertChord:Chord`,
       snippet: SNIPPETS.chord,
@@ -519,8 +522,17 @@ export class SongEditorPage {
    * moves is harder to use than one where a button greys out, and the tooltip
    * still names what it would have done.
    */
-  protected isInsertBlocked(item: { isContentOnly?: boolean }): boolean {
-    return !!item.isContentOnly && this.editor().caretLineKind() !== 'content';
+  protected isInsertBlocked(item: {
+    isContentOnly?: boolean;
+    isBlockedInsideChord?: boolean;
+  }): boolean {
+    const caret = this.editor().caret();
+    if (item.isContentOnly && caret.lineKind !== 'content') {
+      return true;
+    }
+    // Brackets do not nest: a `[` written inside one closes nothing and the
+    // parser reads the whole thing as a single malformed bracket.
+    return !!item.isBlockedInsideChord && caret.isInsideChord;
   }
 
   constructor() {

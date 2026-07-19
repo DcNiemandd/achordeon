@@ -53,6 +53,17 @@ export interface InsertRequest {
    */
   readonly replacesLineStart?: RegExp;
   /**
+   * The line may already carry this construct — go to it instead of writing a
+   * second one.
+   *
+   * `label` is the case: a line reads `Chorus: sing`, and pressing Label again
+   * used to prepend another delimiter (`: Chorus: sing`), inventing an empty
+   * label in front of the real one. There can only be one label per line, so the
+   * button's job on a labelled line is to put the caret in the label that is
+   * already there.
+   */
+  readonly movesToExistingLabel?: boolean;
+  /**
    * Skip the insert when the caret already sits in an empty block.
    *
    * The block button writes a blank line, and a blank line between two blank
@@ -80,3 +91,16 @@ export interface InsertRequest {
  * a hint for enabling buttons, not a second parser.
  */
 export type CaretLineKind = 'title' | 'subtitle' | 'content';
+
+/**
+ * Where the caret is, in the terms a toolbar needs to decide what it may write.
+ *
+ * Deliberately coarse and deliberately *not* an AST: it answers "would this
+ * insert produce something the grammar honours here", nothing more (ADR-0010 —
+ * the editor never parses).
+ */
+export interface CaretContext {
+  readonly lineKind: CaretLineKind;
+  /** The caret sits between an unclosed `[` and its `]` — brackets do not nest. */
+  readonly isInsideChord: boolean;
+}

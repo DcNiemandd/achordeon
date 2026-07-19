@@ -26,13 +26,37 @@ import {
 } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
-import { ChordTheory } from '@achordeon/shared/domain';
+import { ChordTheory, findLabelDelimiter } from '@achordeon/shared/domain';
 import { achordeonHighlight, achordeonTags } from './highlight';
 import type {
+  CaretContext,
   CaretLineKind,
   EditorMarker,
   InsertRequest,
 } from './editor-model';
+
+/**
+ * Is `column` inside an open `[…]` on this line?
+ *
+ * Walks to the caret tracking whether a bracket is open, skipping escaped
+ * characters exactly as the parser does — `\[` is a literal bracket and opens
+ * nothing (PARSER-GRAMMAR §Escapes). Brackets do not nest, so an already-open one
+ * is enough to know a second `[` would be a mistake.
+ */
+function isInsideBracket(text: string, column: number): boolean {
+  let isOpen = false;
+  for (let i = 0; i < column && i < text.length; i++) {
+    const char = text[i];
+    if (char === '\\') {
+      i++; // whatever follows is literal, including a bracket
+    } else if (char === '[') {
+      isOpen = true;
+    } else if (char === ']') {
+      isOpen = false;
+    }
+  }
+  return isOpen;
+}
 
 /**
  * **The only file in the app that knows CodeMirror exists** (ADR-0010).
@@ -101,18 +125,24 @@ export class SongEditor {
    * prefixes Phase 1 uses, and nothing else: this is a hint for enabling buttons,
    * not a second parser (ADR-0010).
    */
-  private readonly _caretLineKind = signal<CaretLineKind>('content');
-  readonly caretLineKind = this._caretLineKind.asReadonly();
+  private readonly _caret = signal<CaretContext>({
+    lineKind: 'content',
+    isInsideChord: false,
+  });
+  readonly caret = this._caret.asReadonly();
 
-  private syncCaretLineKind(state: EditorState): void {
-    const line = state.doc.lineAt(state.selection.main.head);
-    this._caretLineKind.set(
-      line.text.startsWith('** ')
-        ? 'subtitle'
-        : line.text.startsWith('* ')
-          ? 'title'
-          : 'content',
-    );
+  private syncCaret(state: EditorState): void {
+    const head = state.selection.main.head;
+    const line = state.doc.lineAt(head);
+    const lineKind: CaretLineKind = line.text.startsWith('** ')
+      ? 'subtitle'
+      : line.text.startsWith('* ')
+        ? 'title'
+        : 'content';
+    this._caret.set({
+      lineKind,
+      isInsideChord: isInsideBracket(line.text, head - line.from),
+    });
   }
 
   constructor() {
@@ -144,6 +174,26 @@ export class SongEditor {
       // Line-scoped: prefix the line, REPLACING any marker it already carries, so
       // the button is idempotent and Title/Subtitle interchange.
       const line = view.state.doc.lineAt(from);
+
+      // A line can hold only one label, so on a labelled line the button goes to
+      // it rather than writing a second delimiter in front of the first.
+      if (request.movesToExistingLabel) {
+        const delimiter = findLabelDelimiter(line.text);
+        if (delimiter !== -1) {
+          // Before the whole colon run, which is where the label's NAME ends —
+          // a run may be `::`, and landing between its colons would split it.
+          let runStart = delimiter;
+          while (runStart > 0 && line.text[runStart - 1] === ':') {
+            runStart--;
+          }
+          view.dispatch({
+            selection: { anchor: line.from + runStart },
+            scrollIntoView: true,
+          });
+          view.focus();
+          return;
+        }
+      }
       const existing = request.replacesLineStart?.exec(line.text)?.[0] ?? '';
       // Already exactly this marker: nothing to write. Rewriting it would cost
       // an undo step for no visible change — but do move the caret to the end of
@@ -261,7 +311,7 @@ export class SongEditor {
       }),
     });
     this.syncMarkers(this.markers());
-    this.syncCaretLineKind(this.view.state);
+    this.syncCaret(this.view.state);
   }
 
   private extensions(): Extension[] {
@@ -282,7 +332,7 @@ export class SongEditor {
         // Moving the caret changes it too, not just editing — clicking into a
         // title line has to disable the chord button as surely as typing one.
         if (update.docChanged || update.selectionSet) {
-          this.syncCaretLineKind(update.state);
+          this.syncCaret(update.state);
         }
       }),
       EditorView.contentAttributes.of({

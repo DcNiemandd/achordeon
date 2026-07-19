@@ -188,6 +188,46 @@ test.describe('song editor', () => {
     await expect(label).toBeEnabled();
   });
 
+  // Brackets do not nest: a second `[` inside one closes nothing, and the parser
+  // reads the whole thing as a single malformed bracket.
+  test('the chord button is disabled while the caret is inside a chord', async ({
+    page,
+  }) => {
+    const chord = page.getByTestId('insert-chord');
+
+    await type(page, 'sing [C] here');
+    await expect(chord).toBeEnabled();
+
+    // Into the middle of the bracket.
+    await page.keyboard.press('Home');
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('ArrowRight');
+    }
+    await expect(chord).toBeDisabled();
+
+    // Out the other side of it.
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('ArrowRight');
+    }
+    await expect(chord).toBeEnabled();
+  });
+
+  // One label per line: a second press used to prepend another delimiter,
+  // inventing an empty label in front of the real one.
+  test('the label button goes to an existing label instead of adding one', async ({
+    page,
+  }) => {
+    await type(page, 'Chorus: sing this');
+
+    await page.getByTestId('insert-label').click();
+    await page.keyboard.insertText('!');
+
+    // Landed at the end of the label's name, just before the delimiter.
+    await expect(page.getByTestId('editor')).toContainText(
+      'Chorus!: sing this',
+    );
+  });
+
   test('pressing Title on a title line just goes to the end of it', async ({
     page,
   }) => {
