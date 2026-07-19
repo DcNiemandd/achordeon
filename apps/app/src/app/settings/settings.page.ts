@@ -5,9 +5,8 @@
 // are Epic 12 — it mounts THIS panel, it does not build another.
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { Button, Premium } from '../primitives';
-import { ActionBar, LastModule } from '../shared/layout';
+import { ActionBar, BackNavigation } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter } from './settings.presenter';
 
@@ -94,16 +93,19 @@ import { SettingsPresenter } from './settings.presenter';
 })
 export class SettingsPage {
   protected readonly presenter = inject(SettingsPresenter);
-  private readonly router = inject(Router);
-  private readonly lastModule = inject(LastModule);
+  private readonly backNavigation = inject(BackNavigation);
 
   /**
-   * Escape goes back to the module you came from.
+   * Escape goes back to whatever you were doing.
    *
    * Settings is a destination, not a peer (§4) — you come here to change one
-   * thing and then return to what you were doing, so the way out should not be
-   * "find the rail and pick a module again". The same gesture the editor uses to
-   * step back out to its list.
+   * thing and then return, so the way out should not be "find the rail and pick
+   * a module again". The same gesture the editor uses to step back to its list.
+   *
+   * **Browser history, with a floor under it** — see `BackNavigation`. History is
+   * what returns you to the *song you were editing* rather than merely to the
+   * module it lives in; the floor is for when there is no history to step into,
+   * which is every bookmark, shared link and reload.
    *
    * Left alone while a text field has the caret, because there Escape means
    * "undo this edit". Read from the event's target rather than
@@ -120,7 +122,7 @@ export class SettingsPage {
       return;
     }
     event.preventDefault();
-    void this.router.navigateByUrl(this.lastModule.route());
+    this.backNavigation.back();
   }
 
   protected readonly title = $localize`:@@settings.title:Settings`;

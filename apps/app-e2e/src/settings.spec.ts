@@ -16,15 +16,27 @@ test.describe('global render settings', () => {
 
   // Settings is a destination, not a peer: you come to change one thing and go
   // back to what you were doing.
-  test('escape returns to the module you came from', async ({ page }) => {
-    // Navigated in-app, not by page.goto: a full load restarts the app, and
-    // "where you were" is session memory with nothing to restore it from.
+  test('escape steps back through history to where you were', async ({
+    page,
+  }) => {
     await page.goto('songbooks');
     await page.getByTestId('rail-settings').click();
     await expect(page.getByTestId('settings-panel')).toBeVisible();
 
     await page.locator('body').press('Escape');
     await expect(page).toHaveURL(/\/songbooks/);
+  });
+
+  // The floor under the history: a bookmark, a shared link or a reload lands
+  // here with nothing behind it, and back() would walk out of the app entirely.
+  test('escape lands somewhere sensible with no history behind it', async ({
+    page,
+  }) => {
+    await page.goto('settings');
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+
+    await page.locator('body').press('Escape');
+    await expect(page).toHaveURL(/\/songs/);
   });
 
   test('a value at its default has no reset button', async ({ page }) => {
