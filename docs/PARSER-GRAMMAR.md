@@ -130,7 +130,19 @@ kill legitimate multi-word labels like `Chorus 2:`.
 4. **Title/Subtitle lines are boundaries** (decision ii): a `*`/`**` line is lifted
    to song-level _and_ separates blocks. It is neither blank nor content, so it
    never lives inside a block and never welds two blocks together.
-5. **A block may have a label with zero content lines** (label-only, e.g. `Verse:`
+5. **A content line's leading whitespace is stripped [decided].** The pass ends by
+   trimming leading `[ \t]` from every content line — bare lyric and post-delimiter
+   labelled content alike (`Verse:  x` and `Verse: x` become the same). It is
+   almost always the editor's accidental indent (a tabbed lyric, a pasted block),
+   and left in it shoved the line right and pulled every chord off its character
+   (anchors are indices into this text, §Line model). A **deliberate** leading
+   space is kept with the `\ ` escape: the strip is a `[ \t]` run so it stops at
+   the backslash, and Phase 2 resolves `\ ` to a bare space. **Only leading**
+   whitespace, and **only content lines** — interior spacing is significant
+   (chord-only distribution, alignment) and is preserved; title/subtitle bodies
+   are left as typed (they carry no escapes and are positional). Trailing
+   whitespace is left untouched.
+6. **A block may have a label with zero content lines** (label-only, e.g. `Verse:`
    at EOF). Otherwise every block has ≥1 content line; no synthesized empty lines.
 
 **Label position is preserved (`labelInline`).** `Verse: foo` (content on the label
@@ -195,10 +207,12 @@ upgrade (see Authoring notes).
 
 ### Escapes [decided]
 
-- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `]` `\` → the
-  backslash is **consumed** and the char is literal. `\\` → one literal `\`. `]` is
-  escapable for symmetry with `[`, so a literal bracketed word reads `\[word\]`
-  without stranding the trailing backslash.
+- **Escape set (resolved):** `\` immediately followed by `:` `*` `[` `]` `\` `‹space›`
+  → the backslash is **consumed** and the char is literal. `\\` → one literal `\`.
+  `]` is escapable for symmetry with `[`, so a literal bracketed word reads `\[word\]`
+  without stranding the trailing backslash. **Space** is escapable so a deliberate
+  _leading_ space survives the Phase-1 indent strip (below); `\ ` mid-line just
+  renders a space like any other char.
 - **`\` before anything else is a literal backslash** (kept): `C:\path` keeps `\p`,
   `\n` is backslash-then-n, a trailing `\` at EOL is literal. No backslash-eating.
 - **Resolved inside bracket tokens too, not only lyric text.** A repeat sign

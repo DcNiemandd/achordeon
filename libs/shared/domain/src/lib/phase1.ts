@@ -63,6 +63,24 @@ function findLabel(line: string): { label: string; content: string } | null {
   return null;
 }
 
+/**
+ * Strip a content line's leading whitespace — the trim the pass ends with.
+ *
+ * Leading spaces/tabs on a content line are almost always the editor's own
+ * indentation (you tabbed a lyric across, you pasted an indented block), not
+ * something the song wants; keeping them shoved the line right and pulled every
+ * chord on it off its character. So they go.
+ *
+ * The run of `[ \t]` naturally stops at the first non-whitespace char — including
+ * a backslash — so a leading `\ ` survives untouched and Phase 2 resolves it to a
+ * deliberate space (`ESCAPABLE`). That is the whole escape mechanism: no special
+ * casing here, just "strip real leading whitespace, and an escaped space is not
+ * real leading whitespace because the backslash is not whitespace".
+ */
+function stripLeadingWhitespace(content: string): string {
+  return content.replace(/^[ \t]+/, '');
+}
+
 function classify(line: string, lineNo: number): Classified {
   if (line.trim() === '') {
     return { kind: 'blank' };
@@ -91,9 +109,15 @@ function classify(line: string, lineNo: number): Classified {
   }
   const label = findLabel(line);
   if (label) {
-    return { kind: 'labelled', label: label.label, content: label.content };
+    // The label already consumed one delimiting space; strip any further indent
+    // the same as a bare lyric, so `Verse:    sing` and `Verse: sing` render alike.
+    return {
+      kind: 'labelled',
+      label: label.label,
+      content: stripLeadingWhitespace(label.content),
+    };
   }
-  return { kind: 'lyric', content: line };
+  return { kind: 'lyric', content: stripLeadingWhitespace(line) };
 }
 
 /**

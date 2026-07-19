@@ -10,8 +10,14 @@
  * `\]` would keep its backslash — the escape character left stranded in the
  * output. `\[word]` alone also works (no open bracket, so the `]` is already
  * literal), but nobody escapes one bracket and not the other.
+ *
+ * **Space is escapable so a leading space can be kept.** Phase 1 strips a content
+ * line's leading whitespace (it is almost always the editor's accidental indent),
+ * so `\ ` is the way to say "this leading space is deliberate" — the strip stops
+ * at the backslash and Phase 2 resolves `\ ` back to a bare space. A space
+ * mid-line never needs escaping; `\ ` there just renders a space like any other.
  */
-export const ESCAPABLE = new Set([':', '*', '[', ']', '\\']);
+export const ESCAPABLE = new Set([':', '*', '[', ']', '\\', ' ']);
 
 /**
  * Index of the closing `]` for a bracket opened at `open`, or -1 if unterminated.
