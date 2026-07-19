@@ -128,6 +128,21 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(1);
   });
 
+  // Opt-in: `?seed` fills an empty library once; a plain boot stays empty, which
+  // is why every other test here still starts from the empty state.
+  test('the ?seed param fills an empty library, and does not duplicate', async ({
+    page,
+  }) => {
+    await page.goto('songs?seed');
+    await expect(page.getByTestId('song-row').first()).toBeVisible();
+    const seeded = await page.getByTestId('song-row').count();
+    expect(seeded).toBeGreaterThan(1);
+
+    // A reload with the param still in the URL adds nothing.
+    await page.reload();
+    await expect(page.getByTestId('song-row')).toHaveCount(seeded);
+  });
+
   // A blank page teaches nothing: the content syntax is invisible until you have
   // seen it work, so a new song opens as a worked example that also renders.
   test('a new song opens holding the tutorial, and it parses cleanly', async ({
