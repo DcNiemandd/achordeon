@@ -5,6 +5,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Button } from '../../primitives';
 import { Fullscreen } from './fullscreen';
+import { LastModule } from './last-module';
 import { ModuleSwitcher } from './module-switcher';
 import { Panes } from './panes';
 import { Rail } from './rail';
@@ -160,6 +161,12 @@ export class Shell {
   protected readonly viewport = inject(Viewport);
   protected readonly panes = inject(Panes);
   private readonly fullscreen = inject(Fullscreen);
+  /**
+   * Injected for its side effect, not for anything the shell draws: it has to be
+   * alive from boot to see every navigation, and the shell is the one thing that
+   * always is. See `LastModule` for why tracking cannot be lazy.
+   */
+  private readonly lastModule = inject(LastModule);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
