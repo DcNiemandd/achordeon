@@ -228,24 +228,33 @@ test.describe('song editor', () => {
     );
   });
 
-  // Leading whitespace is real content here — it is how you line a lyric up
-  // under a chord — so Tab indents rather than jumping to the toolbar.
-  test('tab indents inside the editor', async ({ page }) => {
-    await type(page, 'la la');
+  // Tab pads to the next stop AT THE CURSOR, in spaces. Not the line, because
+  // you press it to push what is after the caret across; not a tab character,
+  // because chord anchors are character indices and a \t has no dependable width.
+  test('tab pads to the next stop at the cursor', async ({ page }) => {
+    await type(page, 'ab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.insertText('|');
+
+    const line = () =>
+      page.getByTestId('editor').locator('.cm-line').first().innerText();
+    // Column 2 → pad to column 4, so two spaces, then the marker.
+    expect(await line()).toBe('ab  |');
+    expect(await line()).not.toContain('\t');
+
+    // Focus stayed in the editor: the toolbar did not steal it.
+    await page.keyboard.insertText('x');
+    await expect(page.getByTestId('editor')).toContainText('x');
+  });
+
+  test('tab from column 0 fills a whole stop', async ({ page }) => {
+    await type(page, 'la');
     await page.keyboard.press('Home');
     await page.keyboard.press('Tab');
 
-    await expect(page.getByTestId('editor').locator('.cm-line')).toHaveCount(1);
-    const text = await page
-      .getByTestId('editor')
-      .locator('.cm-line')
-      .first()
-      .innerText();
-    expect(text.startsWith(' ') || text.startsWith('\t')).toBe(true);
-
-    // Focus stayed put: the toolbar did not steal it.
-    await page.keyboard.insertText('x');
-    await expect(page.getByTestId('editor')).toContainText('x');
+    expect(
+      await page.getByTestId('editor').locator('.cm-line').first().innerText(),
+    ).toBe('    la');
   });
 
   test('pressing Title on a title line just goes to the end of it', async ({

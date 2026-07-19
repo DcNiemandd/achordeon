@@ -14,13 +14,17 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { EditorState, type Extension } from '@codemirror/state';
+import {
+  EditorSelection,
+  EditorState,
+  type Extension,
+} from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, placeholder } from '@codemirror/view';
 import {
   defaultKeymap,
   history,
   historyKeymap,
-  indentWithTab,
+  indentLess,
   isolateHistory,
   redo,
   undo,
@@ -35,6 +39,43 @@ import type {
   EditorMarker,
   InsertRequest,
 } from './editor-model';
+
+/** Columns per tab stop. Monospace, so a stop is a column count, not a width. */
+const TAB_WIDTH = 4;
+
+/**
+ * Tab: advance the caret to the next tab stop, **in spaces, at the cursor**.
+ *
+ * Two deliberate departures from what an editor usually does with Tab.
+ *
+ * **At the cursor, not the line.** CodeMirror's `indentWithTab` re-indents the
+ * whole line, which is right for code and wrong here: you press Tab to push the
+ * words *after* the caret across so they sit under a chord, and re-indenting
+ * from the line start moves text you were not aiming at.
+ *
+ * **Spaces, never a tab character.** Chord anchors are character indices
+ * (PARSER-GRAMMAR §Phase 2) and the renderer turns an index into a pixel x with
+ * `measureText`. A `\t` is one character of wildly unpredictable width — canvas
+ * and SVG do not even agree on it — so a single tab would put every chord after
+ * it in the wrong place. Spaces make the index and the picture agree.
+ *
+ * Padding to a stop rather than inserting a fixed run, because the point is
+ * alignment: two lines tabbed once line up.
+ */
+function insertTabStop(view: EditorView): boolean {
+  view.dispatch(
+    view.state.changeByRange((range) => {
+      const column = range.head - view.state.doc.lineAt(range.head).from;
+      const pad = TAB_WIDTH - (column % TAB_WIDTH);
+      return {
+        changes: { from: range.from, to: range.to, insert: ' '.repeat(pad) },
+        range: EditorSelection.cursor(range.from + pad),
+      };
+    }),
+    { userEvent: 'input.indent', scrollIntoView: true },
+  );
+  return true;
+}
 
 /**
  * Is `column` inside an open `[…]` on this line?
@@ -112,7 +153,7 @@ export class SongEditor {
   );
   /** Announced with the field, because Tab no longer leaves it (see `extensions`). */
   readonly escapeHint = input(
-    $localize`:@@editor.escapeHint:Tab indents. Press Escape to leave the editor.`,
+    $localize`:@@editor.escapeHint:Tab inserts spaces. Press Escape to leave the editor.`,
   );
 
   /** Fired on every settled edit. Debouncing is the caller's business — parse
@@ -323,15 +364,19 @@ export class SongEditor {
     return [
       lineNumbers(),
       history(),
-      // `indentWithTab` LAST, so it only claims Tab where nothing else wanted it.
+      // Tab LAST, so it only claims the key where nothing else wanted it.
       //
       // CodeMirror leaves Tab unbound on purpose: capturing it costs a keyboard
-      // user the normal way out of a control. We take it anyway, because leading
-      // whitespace is real content here — it is how you line a lyric up under a
-      // chord — and a Tab that silently jumped to the toolbar instead was the
-      // bug. WCAG 2.1.2 permits this exactly when the user is told the way out,
-      // so Escape leaves the editor and `aria-description` below says so.
-      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      // user the normal way out of a control. We take it anyway, because a Tab
+      // that silently jumped to the toolbar was the bug being reported. WCAG
+      // 2.1.2 permits this exactly when the user is told the way out, so Escape
+      // leaves the editor and `aria-description` below says so.
+      keymap.of([
+        ...defaultKeymap,
+        ...historyKeymap,
+        { key: 'Tab', run: insertTabStop },
+        { key: 'Shift-Tab', run: indentLess },
+      ]),
       EditorView.lineWrapping,
       placeholder(this.placeholderText()),
       achordeonHighlight(this.theory),
