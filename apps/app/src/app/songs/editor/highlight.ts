@@ -31,18 +31,6 @@ export const achordeonTags = {
 };
 
 /**
- * **Colouring only, and strictly local** (ADR-0010). Cross-document facts — which
- * of three titles is the effective one — are `ParserService`'s, and arrive as
- * markers. A highlighter that tried to know them would be a second parser, drifting
- * against the first.
- *
- * It is line-oriented because the grammar is (PARSER-GRAMMAR §Phase 1), which is
- * exactly why a stream parser fits and a full Lezer grammar would be weight for
- * nothing. Chord validity comes from the injected `ChordTheory` port — the same
- * one the real parser uses, so `[Solo]` cannot look like a chord here and read as
- * an annotation there.
- */
-/**
  * Where the chord-bearing bracket we are inside ends, or null.
  *
  * The parser is line-oriented but a bracket is read in several tokens, so the
@@ -54,6 +42,19 @@ interface HighlightState {
   bracketEnd: number | null;
 }
 
+/**
+ * **Colouring only, and strictly local** (ADR-0010). Cross-document facts — which
+ * of three titles is the effective one — are `ParserService`'s, and arrive as
+ * markers. A highlighter that tried to know them would be a second parser, drifting
+ * against the first.
+ *
+ * It is line-oriented because the grammar is (PARSER-GRAMMAR §Phase 1), which is
+ * exactly why a stream parser fits and a full Lezer grammar would be weight for
+ * nothing. Chord validity comes from the injected `ChordTheory` port — the same
+ * one the real parser uses, so `[Solo]` cannot look like a chord here and read as
+ * an annotation there, and a token inside a bracket is judged by the same rule
+ * that decides whether the parser will transpose it.
+ */
 export function achordeonHighlight(
   theory: ChordTheory,
 ): StreamLanguage<HighlightState> {
