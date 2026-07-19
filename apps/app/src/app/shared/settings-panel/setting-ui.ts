@@ -103,6 +103,12 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     group: 'page',
     control: { kind: 'select', custom: true, options: ASPECT_PRESETS },
   },
+  padding: {
+    label: $localize`:@@setting.padding:Padding`,
+    help: $localize`:@@setting.padding.help:The white border between the song and the edge of the page. Measured in text sizes, so it stays in proportion however big the song is printed. A songbook's print margin is added on top of this.`,
+    group: 'page',
+    control: { kind: 'stepper', min: 0, max: 4, step: 0.25 },
+  },
   titlePosition: {
     label: $localize`:@@setting.titlePosition:Position`,
     help: $localize`:@@setting.titlePosition.help:Across the top, or sideways up the left edge as a spine. The title block always hugs the top-left corner.`,

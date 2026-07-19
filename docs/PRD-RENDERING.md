@@ -368,8 +368,42 @@ the fit (§4.1) — so spacing never drives a reflow.
   absolute size (consistent with §4.1 "font size is never authored" — it's a _ratio_, so
   it's allowed). `1` = chords equal to lyric cap height. It feeds the chord-row height
   (§4.7), so changing it changes vertical rhythm before the uniform fit.
-- **`chordColor`** (registry default `#000`) = fill applied to **chord glyphs only**;
-  lyrics render in a fixed colour (black) — there is no lyric-colour setting in v1.
+- **`chordColor`** (registry default `#9f1212`) = fill applied to **chord glyphs only**;
+  lyrics render in a fixed colour (black) — there is no lyric-colour setting in v1. The
+  subtitle is the one other role with a colour of its own (a grey, from the PoC); it is a
+  **tuning** constant, not a setting.
+
+> **The v1 look is the PoC's, transcribed.** `DEFAULT_TUNING` in `render-core/tuning.ts`
+> carries the HTML/CSS proof-of-concept's magnitudes converted out of px: 16px base,
+> chords at **0.7em**, subtitle 1.2em grey, title 1.5em bold, 1.5-slot inter-block gap,
+> 1em column gap, 0.25em label gutter. Two consequences worth naming:
+>
+> - **`chordSize: 1` means "the PoC default" (0.7 × the lyric size), not "the lyric
+>   size."** It remains a multiplier of the lyric font size as described above; only the
+>   role's base factor moved.
+> - **The bundled family is Roboto Mono** (`@fontsource-variable/roboto-mono`, already in
+>   the app's build). It is the family `tuning.fontFamily` must name, and the name must
+>   match a face the platform has actually loaded — a family nobody loaded measures and
+>   draws as the system default, silently.
+
+### 4.11 Padding — the page's white border
+
+A **`padding` setting** (registry default `0.5`, `scopes: ['song']`) reserves a blank
+border between the song and the edge of its render box.
+
+- **Unit: em** — a multiple of the base font size, so padding lives in **base units**
+  alongside every other magnitude (§4.7) and is carried by the uniform fit. The border is
+  therefore always the same size _relative to the text_, at any scale, on any medium. The
+  PoC's `padding: 8px` at a 16px base is `0.5`.
+- **It is an INSET, not an outset.** `layout` translates every item in by the padding and
+  grows the **content** box by twice it on each axis; `fitContent` then wraps that padded
+  box at the user's `aspectRatio`. Padding can consequently **never** bend the render box
+  away from the shape the user chose — the axiom of §4.1 ("the render box's shape is the
+  `aspectRatio` setting, always user-owned") survives intact.
+- **An empty song stays a zero box.** Padding is a border around content; with no content
+  there is nothing to border, and a page of pure margin is not a render.
+- **Not a songbook scope.** The songbook contributes a **print margin** that _adds_ to
+  each song's padding rather than overriding it — see §6.
 
 ---
 
@@ -473,20 +507,31 @@ stamps chrome into the **margins**; each song SVG stays pure.
 cascade or persist on entities, so they stay **out of the SETTINGS registry**, alongside
 `hideChords` / `inlineFonts`):
 
-| Option                   | v1            | Notes                                                           |
-| ------------------------ | ------------- | --------------------------------------------------------------- |
-| **Page size**            | ✅ option     | A4 / Letter / … — sets the page; slot = page − margins.         |
-| **Page margins**         | ✅ **fixed**  | A v1 constant; becomes a user option later.                     |
-| **Title page visible**   | ✅ toggle     | Built from the Songbook's Title / Subtitle / Author.            |
-| **Summary visible**      | ✅ toggle     | The setlist as a contents page (CONTEXT §Summary list).         |
-| **Page number visible**  | ✅ toggle     | —                                                               |
-| **Page number position** | ✅ option     | `left \| center \| right` in the **bottom** margin.             |
-| **Multiple songs/page**  | 🔮 **not v1** | One song per page in v1 ("one song, one page"); multi-up later. |
+| Option                   | v1            | Notes                                                             |
+| ------------------------ | ------------- | ----------------------------------------------------------------- |
+| **Page size**            | ✅ option     | A4 / Letter / … — sets the page; slot = page − margins.           |
+| **Page margins**         | ✅ option     | In em, like `padding`. **Adds to** each song's `padding` (§4.11). |
+| **Title page visible**   | ✅ toggle     | Built from the Songbook's Title / Subtitle / Author.              |
+| **Summary visible**      | ✅ toggle     | The setlist as a contents page (CONTEXT §Summary list).           |
+| **Page number visible**  | ✅ toggle     | —                                                                 |
+| **Page number position** | ✅ option     | `left \| center \| right` in the **bottom** margin.               |
+| **Multiple songs/page**  | 🔮 **not v1** | One song per page in v1 ("one song, one page"); multi-up later.   |
 
 - **Composition order:** title page (if visible) → summary (if visible) → song pages, one
   song per page (outer fit, §4.3).
 - **Numbering:** page-number position is horizontal (`left/center/right`); vertical is the
   **bottom margin** (fixed in v1). Numbering starts at the first **song** page = `1`; the
   title page and summary are **unnumbered** (tunable).
-- **Page size / number toggle+position / title-page / summary** are v1 dialog options;
-  **margins are fixed** in v1; **multi-song-per-page is deferred.**
+- **Margins add, they do not override.** The songbook's page margin and a song's `padding`
+  (§4.11) are the **same quantity at two levels**, and the printed border is their **sum**.
+  This is deliberately _not_ the settings cascade (ADR-0006), and that is why the margin is
+  a **print-dialog option and `padding` is NOT a songbook-scope setting**: a songbook says
+  "every song in this book gets this much extra air on the page", which is an addition to
+  whatever breathing room the song already asked for — not a replacement for it. A song
+  that wants a generous border keeps it inside a tightly-margined book.
+  - Mechanically: the song's `padding` is inside its per-song `RenderPlan` (the inner fit,
+    §4.3); the page margin is applied by `DownloadService` when it sizes the page slot (the
+    outer fit). Two transforms, one visual result. Both are in em against the same base
+    size, which is what makes "add" meaningful.
+- **Page size / number toggle+position / title-page / summary / margins** are v1 dialog
+  options; **multi-song-per-page is deferred.**

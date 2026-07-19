@@ -29,6 +29,6 @@ describe('resolveTuning', () => {
   it('does not mutate DEFAULT_TUNING', () => {
     resolveTuning({ baseSizePx: 99, spacing: { columnGapEm: 5 } });
     expect(DEFAULT_TUNING.baseSizePx).toBe(16);
-    expect(DEFAULT_TUNING.spacing.columnGapEm).toBe(2.0);
+    expect(DEFAULT_TUNING.spacing.columnGapEm).toBe(1.0);
   });
 });

@@ -18,6 +18,11 @@ export interface FitResult {
 /**
  * Fit a content box (`contentW × contentH`, base units) into a render box of the
  * given `ratio` (width ÷ height) under `scale` ('auto' | number).
+ *
+ * `contentW/H` arrive **already padded** (§4.11): the caller grew the box by the
+ * padding on every side and translated the items into it. Padding is therefore
+ * an INSET — it is part of the content box the ratio wraps, so it can never bend
+ * the render box away from the user's `aspectRatio`.
  */
 /**
  * The manual scale, or 1 for 'auto'.

@@ -4,6 +4,7 @@ import { createFontBook } from './fonts';
 import { layoutCore } from './layout';
 import { emit } from './emit';
 import type { RenderPlan } from './render-plan';
+import { DEFAULT_TUNING } from './tuning';
 
 const settings: GlobalSettings = {
   scale: 'auto',
@@ -11,6 +12,7 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  padding: 0,
   chordColor: '#aa0000',
   chordSize: 1,
 };
@@ -73,7 +75,7 @@ describe('emit — fonts (§2, §4.10)', () => {
   it('lists the family then the fallback stack', () => {
     const svg = emit(plan(song));
     expect(svg).toContain(
-      `font-family="'Achordeon', ui-sans-serif, system-ui, sans-serif"`,
+      `font-family="'${DEFAULT_TUNING.fontFamily}', ${DEFAULT_TUNING.fallbackStack}"`,
     );
   });
 });

@@ -57,7 +57,11 @@ export function resolveStyles(
       sizePx: tuning.baseSizePx * t.sizeFactor * chordScale,
       weight: t.weight,
       style: t.style,
-      fill: role === 'chord' ? settings.chordColor : tuning.textColor,
+      // Chords are the one user-coloured role. Everything else takes its own
+      // `color` if tuning names one (the PoC's grey subtitle) and `textColor`
+      // otherwise.
+      fill:
+        role === 'chord' ? settings.chordColor : (t.color ?? tuning.textColor),
       fallback: tuning.fallbackStack,
     };
   }

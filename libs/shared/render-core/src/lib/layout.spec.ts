@@ -9,6 +9,7 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  padding: 0,
   chordColor: '#000000',
   chordSize: 1,
 };
@@ -27,6 +28,31 @@ describe('layoutCore — assembly (§1, §5)', () => {
     expect(plan.fit).toBe(1);
   });
 
+  it('insets the content by the padding without reshaping the render box (§4.11)', () => {
+    const song = ast({ blocks: [{ lines: [{ text: 'aa', chords: [] }] }] });
+    const bare = layoutCore(song, settings, measure);
+    // 0.5em at base 16 = an 8px border on every side (the PoC's page padding).
+    const padded = layoutCore(song, { ...settings, padding: 0.5 }, measure);
+
+    const at = (p: typeof bare) => p.items.find((i) => i.role === 'lyric');
+    expect(at(padded)?.x).toBeCloseTo((at(bare)?.x as number) + 8);
+    expect(at(padded)?.y).toBeCloseTo((at(bare)?.y as number) + 8);
+
+    // The content box grows by twice the padding on each axis, and the render
+    // box still wraps it at the ratio the user asked for — padding lives INSIDE
+    // the box, so it can never bend the page's shape.
+    const ratio = (p: typeof bare) => p.box.width / p.box.height;
+    expect(ratio(padded)).toBeCloseTo(ratio(bare));
+    // This song is wider than A4, so width is the binding axis: it grows by 16
+    // and the ratio then carries the height along with it.
+    expect(padded.box.width).toBeCloseTo(bare.box.width + 16);
+  });
+
+  it('does not pad a song with nothing in it', () => {
+    const plan = layoutCore(ast(), { ...settings, padding: 2 }, measure);
+    expect(plan.box).toEqual({ width: 0, height: 0 });
+  });
+
   it('places the title region and offsets content below it (top)', () => {
     const plan = layoutCore(
       ast({ title: 'T', blocks: [{ lines: [{ text: 'aa', chords: [] }] }] }),
@@ -35,10 +61,10 @@ describe('layoutCore — assembly (§1, §5)', () => {
     );
     const title = plan.items.find((i) => i.role === 'title');
     const lyric = plan.items.find((i) => i.role === 'lyric');
-    expect(title?.y).toBeCloseTo(22.4);
-    // title region height (28) + gap (16) = 44, then lyric baseline 12.8
-    expect(lyric?.y).toBeCloseTo(44 + 12.8);
-    expect(plan.box.height).toBeCloseTo(60);
+    expect(title?.y).toBeCloseTo(19.2);
+    // title region height (24) + gap (32) = 56, then lyric baseline 12.8
+    expect(lyric?.y).toBeCloseTo(56 + 12.8);
+    expect(plan.box.height).toBeCloseTo(72);
   });
 
   it('carries the resolved per-role styles', () => {

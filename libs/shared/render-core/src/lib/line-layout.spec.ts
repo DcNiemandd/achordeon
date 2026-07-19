@@ -4,14 +4,16 @@ import { DEFAULT_TUNING } from './tuning';
 import { createContext } from './context';
 import { layoutLine } from './line-layout';
 
-// Fake metrics with base 16: lyric/chord glyph advance = 16 * 0.6 = 9.6,
-// font box height = 16 (ascent 12.8 + descent 3.2).
+// Fake metrics with base 16: lyric glyph advance = 16 * 0.6 = 9.6, font box
+// height 16 (ascent 12.8 + descent 3.2). Chords are 0.7em (PoC look), so the
+// chord font box is 11.2 (ascent 8.96 + descent 2.24) and its advance is 6.72.
 const settings: GlobalSettings = {
   scale: 'auto',
   columns: 1,
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  padding: 0,
   chordColor: '#123456',
   chordSize: 1,
 };
@@ -88,7 +90,7 @@ describe('layoutLine — vertical rhythm (§4.7)', () => {
     );
     const plain = layoutLine(line('a'), ctx(), 0);
     expect(chorded.hasChordRow).toBe(true);
-    expect(chorded.height).toBeCloseTo(32); // chord row 16 + lyric slot 16
+    expect(chorded.height).toBeCloseTo(27.2); // chord row 11.2 + lyric slot 16
     expect(plain.hasChordRow).toBe(false);
     expect(plain.height).toBeCloseTo(16);
   });
@@ -101,7 +103,7 @@ describe('layoutLine — vertical rhythm (§4.7)', () => {
     );
     const plain = layoutLine(line('a'), ctx(), 0);
     expect(chorded.items.find((i) => i.role === 'lyric')?.y).toBeCloseTo(
-      16 + 12.8,
+      11.2 + 12.8,
     );
     expect(plain.items.find((i) => i.role === 'lyric')?.y).toBeCloseTo(12.8);
   });

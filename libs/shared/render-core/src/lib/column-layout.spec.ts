@@ -10,6 +10,7 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  padding: 0,
   chordColor: '#000000',
   chordSize: 1,
 };
@@ -51,17 +52,17 @@ describe('layoutColumns — placement (§4.2)', () => {
     const r = layoutColumns([lyric('aa'), lyric('bb')], 1, ctx());
     const ys = r.items.filter((i) => i.role === 'lyric').map((i) => i.y);
     expect(ys[0]).toBeCloseTo(12.8); // first block lyric baseline
-    expect(ys[1]).toBeCloseTo(32 + 12.8); // 16 slot + 16 inter-block gap, then baseline
-    expect(r.height).toBeCloseTo(48); // 16 + 16 gap + 16
+    expect(ys[1]).toBeCloseTo(40 + 12.8); // 16 slot + 24 inter-block gap, then baseline
+    expect(r.height).toBeCloseTo(56); // 16 + 24 gap + 16
   });
 
   it('places columns left to right with the column gap', () => {
     const r = layoutColumns([lyric('aa'), lyric('bb')], 2, ctx());
     const xs = r.items.filter((i) => i.role === 'lyric').map((i) => i.x);
     expect(xs[0]).toBe(0);
-    expect(xs[1]).toBeCloseTo(19.2 + 32); // col width 19.2 + column gap (2em = 32)
+    expect(xs[1]).toBeCloseTo(19.2 + 16); // col width 19.2 + column gap (1em = 16)
     expect(r.height).toBeCloseTo(16); // one block per column
-    expect(r.width).toBeCloseTo(19.2 + 32 + 19.2);
+    expect(r.width).toBeCloseTo(19.2 + 16 + 19.2);
   });
 
   it('ignores empty blocks', () => {

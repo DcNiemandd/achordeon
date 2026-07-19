@@ -32,6 +32,12 @@ export const SETTINGS = {
       | `${number}/${number}`,
     scopes: ['song'],
   },
+  padding: {
+    default: 0.5 as number,
+    scopes: ['song'],
+  }, // white border inside the render box, in em (× the base font size). Inset —
+  // the aspect ratio stays user-owned. The songbook's print margin ADDS to this
+  // rather than overriding it, so it is NOT a songbook scope. See PRD-RENDERING §4.11
   chordColor: {
     default: '#9f1212' as `#${string}`,
     scopes: ['songbook', 'song'],
