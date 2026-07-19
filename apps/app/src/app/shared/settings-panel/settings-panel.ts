@@ -154,7 +154,7 @@ interface Section {
                         [id]="row.key"
                         [value]="row.value"
                         [attr.data-testid]="'select-' + row.key"
-                        (change)="setFromInput(row.key, $event)"
+                        (change)="setFromInput(row, $event)"
                       >
                         @for (opt of options(row); track opt.value) {
                           <option [value]="opt.value">{{ opt.label }}</option>
@@ -165,21 +165,26 @@ interface Section {
                          and always takes a typed one; the chevron is a shortcut
                          to the named answers. There is no "custom mode" to be
                          in, so there is no way to be stuck in it. -->
-                      <div class="input-group">
+                      <div class="input-group" [class.is-invalid]="error(row)">
                         <input
                           class="group-field"
                           type="text"
                           [id]="row.key"
                           [value]="row.value"
+                          [class.is-invalid]="error(row)"
+                          [attr.aria-invalid]="error(row) ? 'true' : null"
+                          [attr.aria-errormessage]="
+                            error(row) ? row.key + '-error' : null
+                          "
                           [attr.data-testid]="'input-' + row.key"
-                          (change)="setFromInput(row.key, $event)"
+                          (change)="setFromInput(row, $event)"
                         />
                         <select
                           class="group-picker"
                           [value]="pickerValue(row)"
                           [attr.aria-label]="pickLabel(row)"
                           [attr.data-testid]="'select-' + row.key"
-                          (change)="onPick(row.key, $event)"
+                          (change)="onPick(row, $event)"
                         >
                           <!-- A typed value matches nothing here, so the picker
                              shows blank rather than lying about the value. -->
@@ -198,7 +203,7 @@ interface Section {
                       type="color"
                       [id]="row.key"
                       [value]="row.value"
-                      (change)="setFromInput(row.key, $event)"
+                      (change)="setFromInput(row, $event)"
                     />
                   }
 
@@ -247,22 +252,42 @@ interface Section {
                       >
                         <app-icon name="plus" />
                       </button>
-                    </div>
 
-                    @if (error(row); as message) {
-                      <!-- Under the field, not in a tooltip: you are looking at
-                           the thing you just mistyped, and the rule you broke is
-                           what tells you how to fix it. -->
-                      <p
-                        class="error"
-                        role="alert"
-                        [id]="row.key + '-error'"
-                        [attr.data-testid]="'error-' + row.key"
-                      >
-                        {{ message }}
-                      </p>
-                    }
+                      @for (preset of presets(row); track preset.value) {
+                        <!-- A named value that is not a number, sitting with the
+                             stepper rather than in a separate control: "auto" is
+                             one of the answers to "how big", not a mode. -->
+                        <button
+                          appButton
+                          type="button"
+                          variant="ghost"
+                          class="preset"
+                          [class.is-active]="isPreset(row, preset.value)"
+                          [attr.aria-pressed]="isPreset(row, preset.value)"
+                          [attr.data-testid]="row.key + '-' + preset.value"
+                          (click)="setPreset(row.key, preset.value)"
+                        >
+                          {{ preset.label }}
+                        </button>
+                      }
+                    </div>
                   }
+                }
+
+                @if (error(row); as message) {
+                  <!-- Outside the switch, because any control that takes typed
+                       text can be wrong — not just the stepper. Under the field
+                       rather than in a tooltip: you are looking at the thing you
+                       just mistyped, and the rule you broke is what tells you how
+                       to fix it. -->
+                  <p
+                    class="error"
+                    role="alert"
+                    [id]="row.key + '-error'"
+                    [attr.data-testid]="'error-' + row.key"
+                  >
+                    {{ message }}
+                  </p>
                 }
               </div>
             }
@@ -425,18 +450,29 @@ interface Section {
     /* 3ch fitted the old read-only <output>, which never showed more than "1".
        A typable field has to hold what someone types into it — "0.5" was being
        clipped to "0." the moment padding moved off its default. */
+    /* 3ch fitted the old read-only output, which never showed more than "1".
+       A typable field has to hold what someone types into it — "0.5" was being
+       clipped to "0." the moment padding moved off its default. */
     .stepper {
-      display: grid;
-      grid-template-columns: 32px minmax(5ch, 1fr) 32px;
+      display: flex;
       align-items: center;
       gap: var(--space-1);
-      justify-content: start;
-      max-inline-size: 180px;
+      max-inline-size: 240px;
+    }
+
+    .stepper > button {
+      flex: none;
+    }
+
+    .preset {
+      padding-inline: var(--space-2);
+      font-size: var(--text-xs);
     }
 
     .stepper-value {
+      flex: 1;
       inline-size: 100%;
-      min-inline-size: 0;
+      min-inline-size: 5ch;
       block-size: 32px;
       padding-inline: var(--space-1);
       border: 1px solid var(--border-strong);
@@ -458,7 +494,10 @@ interface Section {
 
     /* Not colour alone: the message below says what is wrong in words, so this
        is the mark that draws the eye to which field it is about. */
-    .stepper-value.is-invalid {
+    /* The group draws the border, not the field inside it — marking the input
+       would have set a border-color on an element whose border is 0. */
+    .stepper-value.is-invalid,
+    .input-group.is-invalid {
       border-color: var(--danger);
       background: var(--danger-subtle);
     }
@@ -528,7 +567,7 @@ export class SettingsPanel {
       return false;
     }
     const { min, max, step } = row.ui.control;
-    const next = Number(row.value) + step * direction;
+    const next = this.stepperNumber(row) + step * direction;
     return next >= min && next <= max;
   }
 
@@ -537,10 +576,12 @@ export class SettingsPanel {
       return;
     }
     const { min, max, step } = row.ui.control;
-    const next = Number(row.value) + step * direction;
-    // Float steps (chordSize is 0.1) accumulate error: 1.1 + 0.1 = 1.2000000002.
+    // From a preset, stepping starts at the number that preset behaves like —
+    // nudging away from "auto" should land next to it, not at the range's floor.
+    const next = this.stepperNumber(row) + step * direction;
+    // Float steps accumulate error: 1.1 + 0.1 = 1.2000000002.
     const rounded = Math.round(next * 100) / 100;
-    this.clearError(row.key);
+    this.setError(row.key, null);
     this.set(row.key, Math.min(max, Math.max(min, rounded)));
   }
 
@@ -554,12 +595,15 @@ export class SettingsPanel {
     return $localize`:@@settings.choose:Choose ${row.ui.label}:setting:`;
   }
 
-  protected onPick(key: SettingKey, event: Event): void {
+  protected onPick(row: Row, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     // The blank row is a display state, not a choice — picking it would wipe a
     // typed value for no reason.
     if (value !== '') {
-      this.set(key, value);
+      // A listed option is legal by construction, so picking one is also how you
+      // get out of an error you typed yourself.
+      this.setError(row.key, null);
+      this.set(row.key, value);
     }
   }
 
@@ -567,8 +611,41 @@ export class SettingsPanel {
     this.changed.emit({ [key]: value });
   }
 
-  protected setFromInput(key: SettingKey, event: Event): void {
-    this.set(key, (event.target as HTMLInputElement).value);
+  /**
+   * A typed value from a free-text control, validated before it is stored.
+   *
+   * Same contract as the stepper: refused rather than repaired, your text left
+   * on screen to correct, and nothing written while it is wrong.
+   */
+  protected setFromInput(row: Row, event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const problem = row.ui.validate?.(raw) ?? null;
+    this.setError(row.key, problem);
+    if (problem === null) {
+      this.set(row.key, raw);
+    }
+  }
+
+  /** A preset beside a stepper (`scale: auto`) — not a number, and always legal. */
+  protected setPreset(key: SettingKey, value: string): void {
+    this.setError(key, null);
+    this.set(key, value);
+  }
+
+  protected presets(row: Row): readonly Option[] {
+    return row.ui.control.kind === 'stepper'
+      ? (row.ui.control.presets ?? [])
+      : [];
+  }
+
+  protected isPreset(row: Row, value: string): boolean {
+    return String(row.value) === value;
+  }
+
+  /** The number a stepper starts from when the value is currently a preset. */
+  private stepperNumber(row: Row): number {
+    const asNumber = Number(row.value);
+    return Number.isFinite(asNumber) ? asNumber : 1;
   }
 
   /** A `select` row with no `custom` flag is a closed list — dropdown only. */
@@ -586,6 +663,20 @@ export class SettingsPanel {
 
   protected error(row: Row): string | null {
     return this.errors().get(row.key) ?? null;
+  }
+
+  /** Record or clear one row's complaint, leaving the other rows alone. */
+  private setError(key: SettingKey, message: string | null): void {
+    if ((this.errors().get(key) ?? null) === message) {
+      return;
+    }
+    const next = new Map(this.errors());
+    if (message === null) {
+      next.delete(key);
+    } else {
+      next.set(key, message);
+    }
+    this.errors.set(next);
   }
 
   /**
@@ -607,37 +698,35 @@ export class SettingsPanel {
     if (row.ui.control.kind !== 'stepper') {
       return;
     }
-    const { min, max, step } = row.ui.control;
+    const { min, max, step, presets } = row.ui.control;
+    const raw = field.value.trim();
+
+    // A preset typed out by hand ("auto") is exactly as legal as clicking it.
+    if (presets?.some((preset) => preset.value === raw)) {
+      this.setError(row.key, null);
+      this.set(row.key, raw);
+      return;
+    }
+
     // A comma is what half the world's keyboards put on the numeric key.
-    const typed = Number(field.value.trim().replace(',', '.'));
+    const typed = Number(raw.replace(',', '.'));
+    const names = presets?.map((preset) => preset.label).join(', ');
 
-    const problem = !Number.isFinite(typed)
-      ? $localize`:@@settings.error.number:Enter a number.`
-      : Number.isInteger(step) && !Number.isInteger(typed)
-        ? $localize`:@@settings.error.whole:Whole numbers only.`
-        : typed < min || typed > max
-          ? $localize`:@@settings.error.range:Enter a value between ${min}:min: and ${max}:max:.`
-          : null;
+    const problem =
+      !Number.isFinite(typed) || raw === ''
+        ? names
+          ? $localize`:@@settings.error.numberOrPreset:Enter a number, or ${names}:presets:.`
+          : $localize`:@@settings.error.number:Enter a number.`
+        : Number.isInteger(step) && !Number.isInteger(typed)
+          ? $localize`:@@settings.error.whole:Whole numbers only.`
+          : typed < min || typed > max
+            ? $localize`:@@settings.error.range:Enter a value between ${min}:min: and ${max}:max:.`
+            : null;
 
-    const next = new Map(this.errors());
+    this.setError(row.key, problem);
     if (problem === null) {
-      next.delete(row.key);
-      this.errors.set(next);
       this.set(row.key, typed);
-      return;
     }
-    next.set(row.key, problem);
-    this.errors.set(next);
-  }
-
-  /** A step from the buttons is valid by construction — clear any typed error. */
-  private clearError(key: SettingKey): void {
-    if (!this.errors().has(key)) {
-      return;
-    }
-    const next = new Map(this.errors());
-    next.delete(key);
-    this.errors.set(next);
   }
 
   protected reset(key: SettingKey): void {

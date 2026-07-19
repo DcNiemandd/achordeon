@@ -2,6 +2,7 @@
 // Spec: PRD-UI-SHELL.md §4 (one panel, three homes), §5.2 (where help text lives)
 
 import { SETTINGS, SCOPES } from '@achordeon/shared/domain';
+import { tryParseAspectRatio } from '@achordeon/shared/render-core';
 
 export type Scope = (typeof SCOPES)[number];
 export type SettingKey = keyof typeof SETTINGS;
@@ -12,8 +13,20 @@ export interface Option {
 }
 
 export type Control =
-  /** Big-arrow stepper — a native number spinner is a ~10px hit target. */
-  | { kind: 'stepper'; min: number; max: number; step: number }
+  /**
+   * Big-arrow stepper — a native number spinner is a ~10px hit target.
+   *
+   * `presets` are named answers that are **not numbers** and sit beside the
+   * stepper as buttons. `scale` is the case: "auto" is a real value the renderer
+   * understands, but everything else about the setting is a number you nudge.
+   */
+  | {
+      kind: 'stepper';
+      min: number;
+      max: number;
+      step: number;
+      presets?: readonly Option[];
+    }
   | { kind: 'color' }
   /**
    * A named list plus an escape hatch. `custom: true` reveals a free-text field,
@@ -40,6 +53,19 @@ export interface SettingUi {
   readonly help: string;
   readonly group: Group;
   readonly control: Control;
+  /**
+   * Reject a typed value, saying why; `null` when it is fine.
+   *
+   * Only for rows whose legal values a `Control` cannot describe on its own — a
+   * stepper's range and whole-ness are already in its `min`/`max`/`step`, so the
+   * panel derives those itself. `aspectRatio` is the case that needs this: "3:4",
+   * "0.75" and "A4" are all legal and nothing about a text box says so.
+   *
+   * **Defers to the renderer's own parser** rather than restating it. A form with
+   * its own copy of the rule would eventually disagree with the code that draws
+   * the page, and the user would be the one to find out.
+   */
+  readonly validate?: (raw: string) => string | null;
 }
 
 /**
@@ -82,13 +108,15 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     label: $localize`:@@setting.scale:Scale`,
     help: $localize`:@@setting.scale.help:How big the text is. "Auto" fills the page as far as it can — a fixed number may overflow it.`,
     group: 'page',
+    // A stepper, not a text box with a picker: every value but one is a number,
+    // and nudging it is how you actually find the size you want. 0.01 because
+    // the difference between 1.00 and 1.05 is visible on a full page.
     control: {
-      kind: 'select',
-      custom: true,
-      options: [
-        { value: 'auto', label: $localize`:@@scale.auto:Auto (fit the page)` },
-        { value: '1', label: $localize`:@@scale.one:1 (actual size)` },
-      ],
+      kind: 'stepper',
+      min: 0.1,
+      max: 5,
+      step: 0.01,
+      presets: [{ value: 'auto', label: $localize`:@@scale.auto:Auto` }],
     },
   },
   columns: {
@@ -102,6 +130,13 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     help: $localize`:@@setting.aspectRatio.help:The shape of the page. Crop it to your content to waste less space — printing keeps the shape and scales to fit. Custom accepts a ratio like 3:4, a fraction like 3/4, or a number.`,
     group: 'page',
     control: { kind: 'select', custom: true, options: ASPECT_PRESETS },
+    // The renderer's own reader, asked whether it could make sense of the text
+    // (see `tryParseAspectRatio`). Anything it refuses would have been stored and
+    // then silently drawn as A4 — a setting that looks saved and does nothing.
+    validate: (raw) =>
+      tryParseAspectRatio(raw.trim() as never) === null
+        ? $localize`:@@settings.error.ratio:Use a ratio like 3:4, a fraction like 3/4, a number, or A4.`
+        : null,
   },
   padding: {
     label: $localize`:@@setting.padding:Padding`,

@@ -14,6 +14,19 @@ test.describe('global render settings', () => {
     await expect(page.getByTestId('settings-panel')).toBeVisible();
   });
 
+  // Settings is a destination, not a peer: you come to change one thing and go
+  // back to what you were doing.
+  test('escape returns to the module you came from', async ({ page }) => {
+    // Navigated in-app, not by page.goto: a full load restarts the app, and
+    // "where you were" is session memory with nothing to restore it from.
+    await page.goto('songbooks');
+    await page.getByTestId('rail-settings').click();
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+
+    await page.locator('body').press('Escape');
+    await expect(page).toHaveURL(/\/songbooks/);
+  });
+
   test('a value at its default has no reset button', async ({ page }) => {
     // Nothing to reset a default to — the button appears only once it moves off.
     await expect(page.getByTestId('reset-columns')).toHaveCount(0);
@@ -85,6 +98,50 @@ test.describe('global render settings', () => {
     await padding.fill('1.25');
     await padding.press('Enter');
     await expect(page.getByTestId('error-padding')).toHaveCount(0);
+  });
+
+  // Scale is a number you nudge, plus one named answer that is not a number.
+  test('scale steps as a number and has an auto preset', async ({ page }) => {
+    const value = page.getByTestId('input-scale');
+    await expect(value).toHaveValue('auto');
+
+    // Stepping away from auto lands next to 1, not at the range floor.
+    await page.getByTestId('inc-scale').click();
+    await expect(value).toHaveValue('1.01');
+
+    await page.getByTestId('scale-auto').click();
+    await expect(value).toHaveValue('auto');
+
+    // Typed by hand, the preset is exactly as legal as clicking it.
+    await value.fill('0.5');
+    await value.press('Enter');
+    await expect(page.getByTestId('error-scale')).toHaveCount(0);
+    await value.fill('auto');
+    await value.press('Enter');
+    await expect(page.getByTestId('error-scale')).toHaveCount(0);
+
+    await value.fill('nonsense');
+    await value.press('Enter');
+    await expect(page.getByTestId('error-scale')).toBeVisible();
+  });
+
+  // The renderer's own reader decides, so the form cannot drift from the page.
+  test('an unreadable aspect ratio is refused, not stored', async ({
+    page,
+  }) => {
+    const field = page.getByTestId('input-aspectRatio');
+
+    await field.fill('3:x');
+    await field.press('Enter');
+    await expect(page.getByTestId('error-aspectRatio')).toBeVisible();
+    await expect(page.getByTestId('reset-aspectRatio')).toHaveCount(0);
+
+    // Every dialect the renderer accepts is accepted here too.
+    for (const good of ['3:4', '3/4', '0.75', 'A4']) {
+      await field.fill(good);
+      await field.press('Enter');
+      await expect(page.getByTestId('error-aspectRatio')).toHaveCount(0);
+    }
   });
 
   // A closed list: every valid answer is in it, so there is nothing to type.
