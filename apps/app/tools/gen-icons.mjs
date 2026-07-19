@@ -44,8 +44,11 @@ const ICONS = {
   plus: 'plus',
   minus: 'minus',
   download: 'download',
-  undo: 'undo-2',
-  redo: 'redo-2',
+  // The full circular arrow, which is what an undo arrow is in most people's
+  // heads. It used to be `undo-2`/`redo-2` — an arrow that runs left and loops
+  // back — which reads as "go left" before it reads as "go back".
+  undo: 'rotate-ccw',
+  redo: 'rotate-cw',
   // Transpose is a musical act, so it gets a musical mark: a note, badged with
   // the direction it moves. Bare arrows said "move something" and left which
   // something to the tooltip. The two halves are composed in the template (see
@@ -58,7 +61,12 @@ const ICONS = {
   transposeDown: 'arrow-down',
   favorite: 'star',
   title: 'type',
-  reset: 'rotate-ccw',
+  // An eraser, NOT a circular arrow — undo took that shape, and two controls in
+  // the same app pointing the same way meaning different things is worse than
+  // either icon being slightly off. It is the more honest mark anyway: reset
+  // DELETES this scope's override so the cascade reaches through again
+  // (ADR-0006), which is rubbing something out rather than winding it back.
+  reset: 'eraser',
   // editor insert bar (Epic 5). Each button pairs one of these with the syntax
   // it writes, so the mark carries the meaning and the glyph underneath keeps
   // the markup learnable.
