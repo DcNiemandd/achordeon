@@ -257,6 +257,22 @@ test.describe('song editor', () => {
     ).toBe('    la');
   });
 
+  // The mirror of Tab: delete back to the previous stop, at the cursor. The old
+  // binding only outdented the line start, so after a mid-line Tab it did nothing.
+  test('shift-tab deletes back to the previous stop', async ({ page }) => {
+    await type(page, 'ab');
+    await page.keyboard.press('Tab'); // → 'ab  ', caret at column 4
+
+    const line = () =>
+      page.getByTestId('editor').locator('.cm-line').first().innerText();
+    await page.keyboard.press('Shift+Tab');
+    expect(await line()).toBe('ab');
+
+    // Focus stayed in the editor rather than moving to the previous control.
+    await page.keyboard.insertText('c');
+    await expect(page.getByTestId('editor')).toContainText('abc');
+  });
+
   test('pressing Title on a title line just goes to the end of it', async ({
     page,
   }) => {

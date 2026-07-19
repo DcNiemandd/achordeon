@@ -24,7 +24,6 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
-  indentLess,
   isolateHistory,
   redo,
   undo,
@@ -74,6 +73,41 @@ function insertTabStop(view: EditorView): boolean {
     }),
     { userEvent: 'input.indent', scrollIntoView: true },
   );
+  return true;
+}
+
+/**
+ * Shift-Tab: delete back to the previous tab stop, **at the cursor**.
+ *
+ * The mirror of `insertTabStop`. `indentLess` (the usual binding) only touches a
+ * line's *leading* indentation, so after a mid-line Tab there was nothing at the
+ * line start for it to remove and it did nothing — the reported bug. This removes
+ * the spaces immediately before the caret, up to the previous stop, and stops at
+ * the first non-space so it can never eat a word.
+ *
+ * **Always returns true**, even with nothing to delete: an unconsumed Shift-Tab
+ * is a focus change out of the editor, which is the whole thing we are avoiding.
+ */
+function removeTabStop(view: EditorView): boolean {
+  const { state } = view;
+  const changes = state.changeByRange((range) => {
+    const line = state.doc.lineAt(range.head);
+    const column = range.head - line.from;
+    const toStop = column % TAB_WIDTH === 0 ? TAB_WIDTH : column % TAB_WIDTH;
+    let n = 0;
+    while (n < toStop && line.text[column - n - 1] === ' ') {
+      n++;
+    }
+    return n === 0
+      ? { range }
+      : {
+          changes: { from: range.head - n, to: range.head },
+          range: EditorSelection.cursor(range.head - n),
+        };
+  });
+  if (!changes.changes.empty) {
+    view.dispatch(changes, { userEvent: 'delete.dedent' });
+  }
   return true;
 }
 
@@ -375,7 +409,7 @@ export class SongEditor {
         ...defaultKeymap,
         ...historyKeymap,
         { key: 'Tab', run: insertTabStop },
-        { key: 'Shift-Tab', run: indentLess },
+        { key: 'Shift-Tab', run: removeTabStop },
       ]),
       EditorView.lineWrapping,
       placeholder(this.placeholderText()),
