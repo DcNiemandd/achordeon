@@ -4,6 +4,7 @@ export * from './lib/fake-measurer';
 export * from './lib/render-plan';
 export * from './lib/tuning';
 export * from './lib/fonts';
+export * from './lib/font-catalog';
 export * from './lib/aspect';
 export * from './lib/context';
 export * from './lib/line-layout';

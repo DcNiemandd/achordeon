@@ -24,6 +24,12 @@ export const SETTINGS = {
     default: 'stacked' as 'stacked' | 'inline',
     scopes: ['song'],
   }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
+  titleFont: {
+    default: 'body' as 'body' | 'serif' | 'sans',
+    scopes: ['songbook', 'song'],
+  }, // the face for Title AND Subtitle together — one title block, one decision.
+  // 'body' = whatever the rest of the song is set in. Songbook scope so a book can
+  // impose one house style. See PRD-RENDERING §4.10
   aspectRatio: {
     default: 'A4' as
       | 'A4'

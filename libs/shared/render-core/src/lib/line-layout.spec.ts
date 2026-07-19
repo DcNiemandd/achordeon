@@ -13,6 +13,7 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  titleFont: 'body',
   padding: 0,
   chordColor: '#123456',
   chordSize: 1,

@@ -350,6 +350,16 @@ songbook output.
       size, outer fit per page (songs keep aspect ratio, scaled to slot).
 - [ ] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
       the real pipeline.
+- [ ] **Real font bytes, for N faces.** `FontBook` carries none today, so the
+      SVG relies on a CSS-loaded face and the PDF has nothing to register. Bundle
+      the body TTF **and** the `titleFont` catalog's faces (a serif, a
+      condensed/display, a script — PRD-RENDERING §4.10), keyed by family so only
+      the faces a song actually uses are embedded. Until then every catalog choice
+      resolves to a CSS generic: fine on screen, unembeddable on export. Doing
+      this for one font and then again for N would be building the plumbing twice,
+      which is why it is one subtask.
+- [ ] Coordinate with Epic 11's precache list: precache the body face only, fetch
+      a title face on first use. Each TTF is ~100–300 KB.
 
 ---
 

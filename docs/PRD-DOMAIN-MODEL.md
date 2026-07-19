@@ -112,6 +112,7 @@ const SETTINGS = {
   columns: { default: 1, scopes: ['song'] },
   titlePosition: { default: 'top', scopes: ['song'] }, // 'top' | 'left' (CCW spine). See PRD-RENDERING §4.5
   titleLayout: { default: 'stacked', scopes: ['song'] }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
+  titleFont: { default: 'body', scopes: ['songbook', 'song'] }, // the face for Title AND Subtitle together — one title block, one decision. 'body' = the song's own font. Names a catalog choice, not a family. See PRD-RENDERING §4.10
   aspectRatio: { default: 'A4', scopes: ['song'] },
   padding: { default: 0.5, scopes: ['song'] }, // blank border inside the render box, in em. An INSET, so it never bends the aspect ratio; the songbook's print margin ADDS to it rather than overriding, which is why there is no 'songbook' scope. See PRD-RENDERING §4.11 / §6
   chordColor: { default: '#9f1212', scopes: ['songbook', 'song'] },

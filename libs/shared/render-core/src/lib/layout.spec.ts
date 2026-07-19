@@ -9,6 +9,7 @@ const settings: GlobalSettings = {
   titlePosition: 'top',
   titleLayout: 'stacked',
   aspectRatio: 'A4',
+  titleFont: 'body',
   padding: 0,
   chordColor: '#000000',
   chordSize: 1,
@@ -108,6 +109,25 @@ describe('layoutCore — assembly (§1, §5)', () => {
     const plan = layoutCore(ast({ title: 'T' }), settings, measure);
     expect(plan.styles.chord.fill).toBe('#000000');
     expect(plan.styles.title.weight).toBe('bold');
+  });
+
+  // §4.10: title and subtitle are ONE title block, so they take one face — and
+  // choosing it must not disturb the font the song itself is set in.
+  it('gives title and subtitle the titleFont, leaving the rest alone', () => {
+    const body = layoutCore(ast({ title: 'T' }), settings, measure);
+    expect(body.styles.title.family).toBe(body.styles.lyric.family);
+
+    const serif = layoutCore(
+      ast({ title: 'T' }),
+      { ...settings, titleFont: 'serif' },
+      measure,
+    );
+    expect(serif.styles.title.family).toBe(serif.styles.subtitle.family);
+    expect(serif.styles.title.family).not.toBe(serif.styles.lyric.family);
+    // The measurer and the emitter must name the SAME stack, or the geometry
+    // describes a font the browser never draws with.
+    expect(serif.styles.title.fallback).toBe(serif.styles.subtitle.fallback);
+    expect(serif.styles.lyric.family).toBe(body.styles.lyric.family);
   });
 
   it('omits chord glyphs under hideChords but keeps the reserved rows', () => {

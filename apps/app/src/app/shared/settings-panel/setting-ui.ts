@@ -109,6 +109,22 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     group: 'page',
     control: { kind: 'stepper', min: 0, max: 4, step: 0.25 },
   },
+  titleFont: {
+    label: $localize`:@@setting.titleFont:Font`,
+    help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,
+    group: 'title',
+    control: {
+      kind: 'choice',
+      options: [
+        {
+          value: 'body',
+          label: $localize`:@@titleFont.body:Same as song`,
+        },
+        { value: 'serif', label: $localize`:@@titleFont.serif:Serif` },
+        { value: 'sans', label: $localize`:@@titleFont.sans:Sans` },
+      ],
+    },
+  },
   titlePosition: {
     label: $localize`:@@setting.titlePosition:Position`,
     help: $localize`:@@setting.titlePosition.help:Across the top, or sideways up the left edge as a spine. The title block always hugs the top-left corner.`,

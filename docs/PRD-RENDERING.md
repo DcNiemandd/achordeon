@@ -363,11 +363,54 @@ the fit (§4.1) — so spacing never drives a reflow.
 
 ### 4.10 Fonts, chord colour & chord size
 
-- **Font selection is post-v1.** v1 ships **one bundled font**; the `font` setting
-  (registry `scopes: ['songbook','song']`) stays as a future capability but is not
-  user-selectable in v1. (Scope note: the offline-PWA aspect is an afterthought, not a
-  v1 driver — see `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**,
-  not PWA.)
+- **Font selection is post-v1 for the body**; the `font` setting (registry
+  `scopes: ['songbook','song']`) stays as a future capability but is not user-selectable
+  in v1. (Scope note: the offline-PWA aspect is an afterthought, not a v1 driver — see
+  `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**, not PWA.)
+- **`titleFont` IS selectable** — the one exception, because a title in a different face
+  is what makes a song sheet look like a song sheet rather than a printout. It sets
+  **Title and Subtitle together**: they are one title block (§4.5), so letting them differ
+  would be two decisions where the author made one. Everything else stays in the song's
+  own font. Registry `scopes: ['songbook','song']` — a songbook can impose a house style.
+
+#### The font catalog — names now, bytes in Epic 7
+
+`titleFont` names a **choice**, and `resolveFontChoice` (render-core) turns that name
+into the `family` + `fallback` stack that `measure` and `emit` both use. Those two must
+always name the identical stack, or the geometry describes a font the browser never draws
+with — the catalog exists so that agreement is made in one place.
+
+- **Today every choice resolves to a CSS generic** (`ui-serif`, `ui-sans-serif`). Zero
+  bundled weight, renders anywhere, and enough to make the setting real. It is explicitly
+  **interim**: a generic is whatever the _viewer's_ machine calls a serif, so two people
+  see different pages and an exported PDF can embed nothing.
+- **Epic 7 replaces the right-hand side with bundled TTFs.** Nothing above the catalog
+  changes, because callers only ever name a choice. That epic already has to solve "where
+  do the real font bytes come from" for the single body font (`FontBook` carries none
+  today); doing it for N faces at the same time is barely more work than doing it for one,
+  and doing it earlier would mean building the plumbing twice.
+- **Recommended bundle (Epic 7):** a **serif**, a **condensed/display**, and a
+  **script/hand** — the three that actually look unlike Roboto Mono at title size. Each
+  adds ~100–300 KB to the bundle, which collides with the Epic 11 precache decision:
+  precache the body font only, and fetch a title face on first use.
+
+#### Importing a font from a URL — dropped [decided]
+
+**Not built, and not deferred — rejected.** A user-supplied Google Fonts URL fails three
+ways at once, and the third is fatal:
+
+- **CSP** — a new origin the policy must allow (`PRD-INFRASTRUCTURE.md` §7).
+- **Offline** — the service worker cannot precache a URL nobody has typed yet, so the
+  face is missing on a cold offline boot (`CONTEXT.md`'s offline promise).
+- **The PDF** — jsPDF `addFont` accepts **`.ttf` only**, and Google Fonts serves
+  **`.woff2`**. The screen would show the chosen face and the exported PDF would silently
+  fall back to another, which is the one failure mode a document app cannot have (§3).
+
+**The escape hatch instead: let the user upload a `.ttf` they own.** Bytes go to IndexedDB,
+so it stays offline, embeds in the SVG, and registers in jsPDF — the same path a bundled
+face takes. Same freedom, none of the three failures. Not v1; it lands with or after the
+bundled set.
+
 - **The one font is still embedded both ways** — this is core v1, not PWA-dependent:
   - **base64-inlined** into the SVG (`@font-face`) so screen + PNG render identically
     cross-browser (ADR-0002: external font URLs fail in Safari);
