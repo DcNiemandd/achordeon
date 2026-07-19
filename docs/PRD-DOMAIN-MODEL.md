@@ -121,6 +121,20 @@ const SETTINGS = {
 } satisfies Record<string, SettingDef>;
 ```
 
+**Parked settings (noted, not built):**
+
+- **`font`** — the body face; the row above is a placeholder. v1 ships one bundled
+  font, so it is commented out in code (`titleFont` is the one font choice that _is_
+  live). See PRD-RENDERING §4.10.
+- **`notation`** (`german | english`, default `english`; `scopes: ['songbook','song']`)
+  — chord-symbol notation. English is the engine today, already extended so the
+  German **`H`** reads as B natural (the mixed convention). The setting is what a
+  full switch needs, because it changes what existing symbols mean: **strict German**
+  (`B` = B♭), the **solfège** spellings (`Cis`/`Des`/`As`/`Es`), and German transpose
+  **output** (re-spell B natural back to `H`). Flipping any of these silently would
+  break every English song, which is why it is a choice, not a default. See
+  `PARSER-GRAMMAR.md` §Notation.
+
 `SettingDef` carries, alongside `default` + `scopes`, a **value-type / editor kind**:
 
 - **`select`** (must-select) — a fixed option set; dropdown only (e.g. `titlePosition`).

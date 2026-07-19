@@ -197,6 +197,31 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
   the interval picked (`m2` vs `A1` are both one semitone), which direction supplies.
   Full detail belongs to the transpose grilling, not here.
 
+### Notation — English now, a German/English setting later [partly decided]
+
+- **Now (shipped):** the engine is English, plus the **German `H` as an extra name
+  for B natural** — the common _mixed_ convention, where `B` stays B natural and
+  `H` is the other name for it. `toEnglishNotation` (in `shared/domain`) rewrites a
+  leading `H` and a `/bass` H to `B` before validity/transpose; both `ChordTheory`
+  implementations call it, and the shared contract asserts it, so the real adapter
+  and the fake cannot drift. The original `H` survives for display (it is the
+  anchor's `raw`); only the parsed root normalises, so `[H]` transposes as the B it
+  names and re-spells into **English** (`[H]`+1 ⇒ `[C]`).
+- **Future — a `notation` setting (`german | english`, deferred).** Everything below
+  changes what an **existing** symbol means or how transpose spells, so it must be a
+  user choice (per-song / global, like other render settings), **not** a silent
+  default:
+  - **Strict German input:** `B` means **B♭** (and `H` means B natural). Today `B` is
+    B natural for everyone; flipping it is exactly why this needs a setting.
+  - **Solfège accidentals:** `Cis`/`Des`/`As`/`Es` (…) as note spellings.
+  - **German transpose _output_:** re-spell B natural back to `H` and B♭ to `B`, so a
+    German-notation song stays in German notation after transpose (today it comes
+    back English).
+  - Interacts with the **key-aware spelling** refinement already parked above — both
+    are "how is a transposed note spelled", one by key, one by notation.
+  - _Domain-model ripple when built:_ a new `notation` row in the SETTINGS registry
+    (`scopes: ['songbook','song']`), see `PRD-DOMAIN-MODEL.md`.
+
 ### No nesting [decided]
 
 Chords and markdown never nest: no chord inside a chord, no `[` inside `[…]`, and
