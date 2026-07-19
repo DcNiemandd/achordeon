@@ -124,18 +124,37 @@ describe('layoutBlock — chord-only distribution (§4.9)', () => {
     ],
   };
 
-  it('justifies chords to the column content width when known', () => {
+  const gap = DEFAULT_TUNING.spacing.chordOnlyGapEm * 16; // 24
+
+  // The default. A chord-only line reads as a sequence you play through, and a
+  // fixed gap keeps it looking the same whatever column it lands in.
+  it('packs chords from the left at a fixed gap, even inside a wide column', () => {
     const r = layoutBlock(mixed, ctx(), 0, 200);
     const chords = r.items.filter((i) => i.role === 'chord');
     expect(chords[0].x).toBeCloseTo(0);
-    // last chord right edge hugs the column width (200); a chord advance is 6.72
-    expect(chords[1].x + 6.72).toBeCloseTo(200);
+    // A chord advance is 6.72 at the fake measurer's 0.7em chord size.
+    expect(chords[1].x).toBeCloseTo(6.72 + gap);
   });
 
-  it('packs chords at the natural gap when no column width is given', () => {
+  it('packs at the same gap when no column width is given at all', () => {
     const r = layoutBlock(mixed, ctx());
     const chords = r.items.filter((i) => i.role === 'chord');
-    const gap = DEFAULT_TUNING.spacing.chordOnlyGapEm * 16; // 24
     expect(chords[1].x).toBeCloseTo(6.72 + gap);
+  });
+
+  // Still implemented, and still the other half of the seam — just no longer the
+  // default (see `chordOnlyDistribution`).
+  it('spreads chords across the column when told to justify', () => {
+    const justified = createContext(
+      settings,
+      createFakeMeasurer(),
+      { ...DEFAULT_TUNING, chordOnlyDistribution: 'justified' },
+      false,
+    );
+    const chords = layoutBlock(mixed, justified, 0, 200).items.filter(
+      (i) => i.role === 'chord',
+    );
+    expect(chords[0].x).toBeCloseTo(0);
+    expect(chords[1].x + 6.72).toBeCloseTo(200);
   });
 });

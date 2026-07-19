@@ -349,9 +349,12 @@ the fit (§4.1) — so spacing never drives a reflow.
 > not separately grilled. Both are **render properties read off the AST**, not parse types.
 
 - **Chord-only line** (a line whose `text` is empty/whitespace but carries anchors) —
-  its chords are **distributed across the column content width** rather than measured over
-  characters (there are none). Recommended default: **evenly spaced (justified) across the
-  width**; exact distribution is a visual-tuning detail.
+  its chords are **distributed along the line** rather than measured over characters
+  (there are none). Default: **packed from the left at a fixed gap** (`chordOnlyGapEm`).
+  Justified-across-the-column is the other implemented mode and was the original default,
+  changed because it made the gap a function of the column width — the same four chords
+  sat inches apart in a one-column song and tight in a three-column one. Exact
+  distribution remains a visual-tuning detail.
 - **Bridge convention** — a Block whose lines are **all** chord-only renders **slightly
   larger** than normal blocks. Recommended mechanism: a per-block size multiplier applied
   in base units (so the uniform fit still scales the whole song afterward, §4.1). The

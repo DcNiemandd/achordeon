@@ -142,7 +142,12 @@ export const DEFAULT_TUNING: RenderTuning = {
   // EMPTY lyric at the full 1em while a chorded lyric line got 0.7em. 1/0.7
   // reproduces that exactly through the bridge knob.
   bridgeSizeMultiplier: 1.43,
-  chordOnlyDistribution: 'justified',
+  // Packed from the left at a fixed gap, not spread across the column. Justifying
+  // made the gaps a function of the column width, so the same four chords sat
+  // inches apart in a one-column song and tight in a three-column one — and a
+  // chord-only line reads as a sequence you play through, which spacing should
+  // not stretch. `chordOnlyGapEm` is that gap.
+  chordOnlyDistribution: 'left',
   sameIndexJoiner: ' ',
   overlapChords: true,
   fontBoundingBoxFallbackLeading: 1.2,
