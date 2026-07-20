@@ -14,7 +14,7 @@ import {
   input,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Button, EmptyState, Icon, Tooltip } from '../primitives';
+import { Button, Icon, Tooltip } from '../primitives';
 import { ActionBar, SplitPane, UiStore } from '../shared/layout';
 import {
   REDUCED_CAPABILITIES,
@@ -23,6 +23,7 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
+import { SongbookEntries } from './songbook-entries';
 import { SongbookDetailPresenter } from './songbook-detail.presenter';
 
 /**
@@ -43,8 +44,8 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     ActionBar,
     SplitPane,
     SongExplorer,
+    SongbookEntries,
     Button,
-    EmptyState,
     Icon,
     Tooltip,
   ],
@@ -66,6 +67,50 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           >
             <app-icon name="close" />
           </a>
+
+          <!-- The add buttons live above pane A because they act on **pane A's
+               selection**; where the songs land is the argument, not the
+               subject. Always mounted and disabled until there is a selection,
+               so ticking a checkbox never resizes the list you are ticking in
+               (the lesson Epic 5's bulk bar records). The virtual book takes no
+               additions at all (CONTEXT.md §Songbook). -->
+          @if (!presenter.isVirtual()) {
+            <div class="add" data-testid="songbook-add">
+              @if (presenter.selectedIds().size > 0) {
+                <span class="add-count" data-testid="songbook-add-count">
+                  {{ selectionLabel() }}
+                </span>
+              }
+
+              @for (option of addOptions; track option.where) {
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [disabled]="!hasSelection()"
+                  [attr.aria-label]="option.label"
+                  [appTooltip]="option.label"
+                  [attr.data-testid]="'add-' + option.where"
+                  (click)="presenter.addSelected(option.where)"
+                >
+                  {{ option.short }}
+                </button>
+              }
+
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [disabled]="!hasSelection()"
+                [attr.aria-label]="clearSelectionLabel"
+                [appTooltip]="clearSelectionLabel"
+                data-testid="songbook-add-clear"
+                (click)="presenter.clearSelection()"
+              >
+                <app-icon name="close" />
+              </button>
+            </div>
+          }
         </app-action-bar>
 
         <app-song-explorer
@@ -88,9 +133,16 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       </div>
 
       <div pane-b class="pane">
-        <app-empty-state
-          [text]="entriesPlaceholder()"
+        <app-songbook-entries
+          class="entries"
           data-testid="songbook-detail"
+          [rows]="presenter.entries()"
+          [selected]="presenter.selectedSlots()"
+          [isReadOnly]="presenter.isVirtual()"
+          [currentSongId]="presenter.currentId()"
+          [emptyText]="entriesEmptyText()"
+          (selectToggled)="presenter.toggleSelectSlot($event)"
+          (activated)="presenter.activate($event)"
         />
       </div>
     </app-split-pane>
@@ -108,9 +160,26 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       min-block-size: 0;
     }
 
-    .explorer {
+    .explorer,
+    .entries {
       flex: 1;
       min-block-size: 0;
+    }
+
+    /* Pushed to the far end of the action row, away from the back link: these
+       act on what you have already picked. */
+    .add {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-inline-start: auto;
+    }
+
+    .add-count {
+      margin-inline-end: var(--space-1);
+      font-size: var(--text-sm);
+      color: var(--brand);
+      white-space: nowrap;
     }
   `,
 })
@@ -152,8 +221,52 @@ export class SongbookDetailPage {
       : $localize`:@@songs.empty:No songs yet. Create one to get started.`,
   );
 
-  protected readonly entriesPlaceholder = computed(() =>
-    $localize`:@@songbooks.entriesCount:${this.presenter.entryIds().length}:count: songs in this songbook.`,
+  protected readonly hasSelection = computed(
+    () => this.presenter.selectedIds().size > 0,
+  );
+
+  protected readonly selectionLabel = computed(
+    () =>
+      $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
+  );
+
+  protected readonly clearSelectionLabel = $localize`:@@songbooks.clearSelection:Clear the selection`;
+
+  /**
+   * Four places to put them, named as the answer rather than the act: the verb
+   * ("Add") is the same for all four and is already carried by the group.
+   * `above`/`below` are relative to the slots ticked on the right, and fall back
+   * to the end when nothing is (see `insertionIndex`).
+   */
+  protected readonly addOptions = [
+    {
+      where: 'start' as const,
+      short: $localize`:@@songbooks.addStart.short:Start`,
+      label: $localize`:@@songbooks.addStart:Add the selected songs to the start`,
+    },
+    {
+      where: 'above' as const,
+      short: $localize`:@@songbooks.addAbove.short:Above`,
+      label: $localize`:@@songbooks.addAbove:Add the selected songs above the selected slot`,
+    },
+    {
+      where: 'below' as const,
+      short: $localize`:@@songbooks.addBelow.short:Below`,
+      label: $localize`:@@songbooks.addBelow:Add the selected songs below the selected slot`,
+    },
+    {
+      where: 'end' as const,
+      short: $localize`:@@songbooks.addEnd.short:End`,
+      label: $localize`:@@songbooks.addEnd:Add the selected songs to the end`,
+    },
+  ];
+
+  /** "All songs" is never empty for a reason the user can act on; a book you
+   * made is. Different facts, different sentences. */
+  protected readonly entriesEmptyText = computed(() =>
+    this.presenter.isVirtual()
+      ? $localize`:@@songs.empty:No songs yet. Create one to get started.`
+      : $localize`:@@entries.empty:No songs in this songbook yet.`,
   );
 
   constructor() {

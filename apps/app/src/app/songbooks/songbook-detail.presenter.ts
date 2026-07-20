@@ -12,6 +12,7 @@ import {
 import {
   ALL_SONGS_ID,
   isAllSongs,
+  type Song,
   type Songbook,
   type Uuid,
 } from '@achordeon/shared/domain';
@@ -21,6 +22,13 @@ import type {
   SongRow,
   SortChange,
 } from '../shared/song-explorer';
+import {
+  insertEntries,
+  insertionIndex,
+  shiftSelection,
+  type InsertPosition,
+} from './entry-ops';
+import type { EntryRow } from './songbook-entries';
 
 /**
  * The songbook builder's half of the app's state.
@@ -81,15 +89,17 @@ export class SongbookDetailPresenter {
    */
   async load(id: string): Promise<void> {
     this._id.set(id);
+    this._selectedSlots.set(new Set());
     if (isAllSongs(id)) {
       this._book.set(null);
       this._isFound.set(true);
       await this.refreshVirtual();
-      return;
+    } else {
+      const book = await this.books.byId(id);
+      this._book.set(book ?? null);
+      this._isFound.set(book !== undefined && book.deletedAt === null);
     }
-    const book = await this.books.byId(id);
-    this._book.set(book ?? null);
-    this._isFound.set(book !== undefined && book.deletedAt === null);
+    await this.hydrate();
   }
 
   /** Keep the store's query in line with the URL — the URL is the source of
@@ -170,9 +180,121 @@ export class SongbookDetailPresenter {
     this.isVirtual() ? this._allSongIds() : (this._book()?.entries ?? []),
   );
 
+  // --- Pane B: the songbook's own order. ----------------------------------
+
+  /**
+   * The songs an entry list needs to name its slots.
+   *
+   * Kept beside the window rather than read out of it: an entry may point at a
+   * song the explorer's current query never returned — a search is on, or the
+   * book is longer than the loaded page — and a slot that renders as blank
+   * because of what is typed in the search box is not a slot the user can work
+   * with.
+   */
+  private readonly _songsById = signal<ReadonlyMap<Uuid, Song>>(new Map());
+
+  /** Which **slots** are ticked. Indexes, not ids: the same song may fill
+   * several slots, and they are not interchangeable. */
+  private readonly _selectedSlots = signal<ReadonlySet<number>>(new Set());
+  readonly selectedSlots = this._selectedSlots.asReadonly();
+
+  readonly entries = computed<EntryRow[]>(() => {
+    const byId = this._songsById();
+    return this.entryIds().map((songId, index) => {
+      const song = byId.get(songId);
+      return {
+        index,
+        songId,
+        // A slot whose song is gone should not exist — deleting a song cascades
+        // out of every songbook — so this names the fault rather than drawing a
+        // blank row that looks like a bug in the list.
+        name: song?.name ?? $localize`:@@entries.missing:Missing song`,
+        title: song?.cache.title ?? '',
+      };
+    });
+  });
+
+  toggleSelectSlot(index: number): void {
+    this._selectedSlots.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(index)) {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
+  clearSlotSelection(): void {
+    this._selectedSlots.set(new Set());
+  }
+
+  /**
+   * Add the songs selected on the left into this book (songbooks/index.mdx).
+   *
+   * The songs go in **the order the library list is showing them**, not the
+   * order they happened to be ticked: what you see is what you get, and a
+   * selection has no order of its own to preserve.
+   */
+  async addSelected(where: InsertPosition): Promise<void> {
+    const book = this._book();
+    const selected = this.session.selectedIds();
+    if (!book || this.isVirtual() || selected.size === 0) {
+      return;
+    }
+    const songIds = this.rows()
+      .map((row) => row.id)
+      .filter((id) => selected.has(id));
+    const at = insertionIndex(
+      book.entries.length,
+      this._selectedSlots(),
+      where,
+    );
+
+    await this.writeEntries(insertEntries(book.entries, songIds, at));
+    this._selectedSlots.set(
+      shiftSelection(this._selectedSlots(), at, songIds.length),
+    );
+  }
+
   /** The library, in the virtual book's own (name) order. */
   private async refreshVirtual(): Promise<void> {
     this._allSongIds.set((await this.songs.allLive()).map((song) => song.id));
+  }
+
+  /** Persist a new order and keep the entry list naming its slots. */
+  private async writeEntries(entries: Uuid[]): Promise<void> {
+    const book = this._book();
+    if (!book) {
+      return;
+    }
+    const updated: Songbook = { ...book, entries, updatedAt: Date.now() };
+    this._book.set(updated);
+    await this.books.upsert(updated);
+    await this.hydrate();
+  }
+
+  /**
+   * Fetch the songs this book's slots point at, for the ones not already known.
+   *
+   * By id from the repository, because that is the only query that answers
+   * "this song" regardless of the list's sort, search or scroll position.
+   */
+  private async hydrate(): Promise<void> {
+    const known = this._songsById();
+    const missing = [...new Set(this.entryIds())].filter(
+      (id) => !known.has(id),
+    );
+    if (missing.length === 0) {
+      return;
+    }
+    const found = await Promise.all(missing.map((id) => this.songs.byId(id)));
+    const next = new Map(known);
+    for (const song of found) {
+      if (song) {
+        next.set(song.id, song);
+      }
+    }
+    this._songsById.set(next);
   }
 
   private navigate(queryParams: Record<string, string | null>): void {
