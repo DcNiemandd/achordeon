@@ -76,7 +76,7 @@ export class ExportService {
     name?: string,
   ): Promise<SnapshotEnvelope> {
     const snapshot = await this.snapshot(selection);
-    saveFile(
+    await saveFile(
       this.toJson(snapshot),
       this.filename(snapshot, name),
       'application/json',

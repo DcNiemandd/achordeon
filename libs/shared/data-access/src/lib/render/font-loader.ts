@@ -20,7 +20,11 @@
 // fetched.
 
 import { Injectable, signal, type Signal } from '@angular/core';
-import type { FontFaceKey, FontResolver } from '@achordeon/shared/render-core';
+import type {
+  FontBook,
+  FontFaceKey,
+  FontResolver,
+} from '@achordeon/shared/render-core';
 
 /** The bundled files, by the family name the render names (§4.10 catalog). */
 const FONT_FILES: Record<string, Partial<Record<'normal' | 'bold', string>>> = {
@@ -93,6 +97,26 @@ export class FontLoader {
 
   /** The sync lookup `layout` takes — a snapshot of what is loaded right now. */
   readonly resolver: FontResolver = (face) => this.lookup(face);
+
+  /**
+   * Every loaded face of the named families, as a `FontBook`.
+   *
+   * For the PDF's own text — the songbook summary — which is not a render and so
+   * has no `RenderPlan` to take its faces from. Without it jsPDF falls back to
+   * Helvetica, whose WinAnsi encoding has no `ě ř ů`: the summary came out with
+   * holes in every Czech title while the songs beside it were perfect.
+   */
+  book(families: readonly string[]): FontBook {
+    const faces: FontBook = [];
+    for (const family of new Set(families)) {
+      for (const weight of ['normal', 'bold'] as const) {
+        const face: FontFaceKey = { family, weight, style: 'normal' };
+        const base64 = this.lookup(face);
+        if (base64) faces.push({ ...face, base64 });
+      }
+    }
+    return faces;
+  }
 
   /**
    * Load every weight of the named families, once. Awaiting this is what an

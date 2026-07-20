@@ -91,6 +91,7 @@ export function layoutCore(
     ratio,
     settings.scale,
     tuning.minBoxEm * tuning.baseSizePx,
+    opts.align,
   );
 
   return {

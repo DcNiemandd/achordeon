@@ -49,4 +49,13 @@ export interface RenderPlan {
 export interface RenderOpts {
   /** Blank chord glyphs but keep their reserved rows (Audience, §4.6). */
   hideChords?: boolean;
+  /**
+   * Where the content sits in the render box. Default `top-left` — a song hugs
+   * the corner (§4.5). `center` is for a songbook's title page, which is a page
+   * of the book rather than a song and belongs in the middle of its paper.
+   *
+   * An OPTION and not a setting: it is a fact about what is being rendered, not
+   * something the user tunes per song (§5).
+   */
+  align?: 'top-left' | 'center';
 }

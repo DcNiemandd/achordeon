@@ -19,6 +19,7 @@ import {
 } from '@achordeon/shared/domain';
 import type { RenderPlan } from '@achordeon/shared/render-core';
 import { ParserService } from '../parser/parser-service';
+import { BODY_FAMILY, FontLoader } from '../render/font-loader';
 import { RenderService } from '../render/render-service';
 import { SettingsStore } from '../stores/settings-store';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
@@ -87,6 +88,7 @@ export class DownloadService {
   private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
   private readonly exporter = inject(ExportService);
+  private readonly fonts = inject(FontLoader);
 
   /** A single song as a picture. PNG carries the song inside it (see below). */
   async downloadSong(id: Uuid, format: SongFormat): Promise<void> {
@@ -95,10 +97,14 @@ export class DownloadService {
     const base = toFileSlug(rendered.song.name, 'song');
 
     if (format === 'png') {
-      saveFile(await this.toPng(rendered), `${base}.png`, 'image/png');
+      await saveFile(await this.toPng(rendered), `${base}.png`, 'image/png');
       return;
     }
-    saveFile(await this.toPdf([rendered]), `${base}.pdf`, 'application/pdf');
+    await saveFile(
+      await this.toPdf([rendered]),
+      `${base}.pdf`,
+      'application/pdf',
+    );
   }
 
   /**
@@ -117,7 +123,7 @@ export class DownloadService {
     const stamp = fileDate();
 
     if (format === 'pdf') {
-      saveFile(
+      await saveFile(
         await this.toPdf(rendered),
         `achordeon-songs-${stamp}.pdf`,
         'application/pdf',
@@ -133,7 +139,7 @@ export class DownloadService {
       files[uniqueName(files, toFileSlug(one.song.name, 'song'), ext)] =
         new Uint8Array(await blob.arrayBuffer());
     }
-    saveFile(
+    await saveFile(
       new Blob([(await zip(files)) as unknown as BlobPart], {
         type: 'application/zip',
       }),
@@ -164,6 +170,9 @@ export class DownloadService {
     const margin = opts.marginMm * MM;
 
     const doc = await createPdf(page);
+    // The body face first, for the PDF's own text (the summary). Songs bring
+    // their own faces; the summary is not a render and has none.
+    registerFonts(doc, this.fonts.book([BODY_FAMILY]));
     for (const one of rendered) registerFonts(doc, one.plan.fonts);
 
     // The title page is a *render*, not drawn text: it obeys the songbook's own
@@ -183,10 +192,20 @@ export class DownloadService {
     const summaryPages = opts.hasSummary
       ? this.summaryPageCount(rendered.length, page, margin)
       : 0;
-    const firstSongPage = 1 + (opts.hasTitlePage ? 1 : 0) + summaryPages;
+    /**
+     * How many sheets come before the songs.
+     *
+     * **The first song is page 1**, and the title page and summary carry no
+     * number at all — they are front matter. Numbering them would have the
+     * summary send a reader to "page 3" for the first song, which is a number
+     * they can only use by counting past two sheets that also claim numbers. The
+     * physical sheet index and the printed number therefore differ by exactly
+     * this, and every link below converts.
+     */
+    const frontMatter = (opts.hasTitlePage ? 1 : 0) + summaryPages;
 
     if (opts.hasSummary) {
-      this.drawSummary(doc, rendered, page, margin, firstSongPage, isFirst);
+      this.drawSummary(doc, rendered, page, margin, frontMatter, isFirst);
       isFirst = false;
     }
 
@@ -197,10 +216,16 @@ export class DownloadService {
     }
 
     if (opts.hasPageNumbers) {
-      this.drawPageNumbers(doc, page, margin, opts.pageNumberPosition);
+      this.drawPageNumbers(
+        doc,
+        page,
+        margin,
+        opts.pageNumberPosition,
+        frontMatter,
+      );
     }
 
-    saveFile(
+    await saveFile(
       doc.output('blob'),
       `${toFileSlug(book.name, 'songbook')}.pdf`,
       'application/pdf',
@@ -275,7 +300,12 @@ export class DownloadService {
   ): Promise<{ svg: string; box: Size; fonts: RenderPlan['fonts'] }> {
     const settings = resolveSettings(this.settings.global(), book.settings);
     await this.renderer.ensureFonts([settings]);
-    const plan = this.renderer.layout(titlePageAst(book), settings);
+    // Centred, not hugging the corner: this is a page of the book rather than a
+    // song, and three lines in the top-left of a sheet of paper read as a
+    // mistake. (§4.5 hugs for songs; `align` is the option that says otherwise.)
+    const plan = this.renderer.layout(titlePageAst(book), settings, {
+      align: 'center',
+    });
     return {
       svg: this.renderer.emit(plan, true),
       box: plan.box,
@@ -312,12 +342,17 @@ export class DownloadService {
     songs: readonly RenderedSong[],
     page: Size,
     margin: number,
-    firstSongPage: number,
+    frontMatter: number,
     isFirstPage: boolean,
   ): void {
     const lineHeight = this.summaryLineHeight(page);
     const perPage = this.summaryLinesPerPage(page, margin);
     let y = margin + lineHeight * 2;
+
+    // The bundled body face, not jsPDF's built-in Helvetica: Helvetica is
+    // WinAnsi-encoded and has no `ě ř ů`, so a Czech title came out of the
+    // summary with holes in it while the song two pages later was perfect.
+    doc.setFont(BODY_FAMILY, 'normal');
 
     songs.forEach((one, index) => {
       if (index > 0 && index % perPage === 0) {
@@ -327,19 +362,39 @@ export class DownloadService {
         doc.addPage([page.width, page.height]);
       }
       doc.setFontSize(lineHeight * 0.7);
-      const number = String(firstSongPage + index);
-      doc.text(one.song.cache.title || one.song.name, margin, y);
-      doc.text(number, page.width - margin, y, { align: 'right' });
+
+      // The printed number, and the sheet it is actually on — different by the
+      // front matter, which carries no number of its own.
+      const printed = String(index + 1);
+      const sheet = frontMatter + index + 1;
+      const title = one.song.cache.title || one.song.name;
+
+      // **The whole line links**, not only the digits: a page number is a
+      // two-character target, and the thing a reader is pointing at is the
+      // title. Both go to the same page.
+      doc.textWithLink(title, margin, y, { pageNumber: sheet });
+      doc.textWithLink(printed, page.width - margin, y, {
+        align: 'right',
+        pageNumber: sheet,
+      });
       y += lineHeight;
     });
   }
 
-  /** Numbers on every page, added last so the count is known. */
+  /**
+   * Numbers on the song pages, added last so the count is known.
+   *
+   * **Front matter carries none.** A title page that says "1" makes the first
+   * song page 2, and then every number the summary prints is one more than the
+   * number of songs the reader has counted past. Numbering starts where the
+   * songs start.
+   */
   private drawPageNumbers(
     doc: jsPDF,
     page: Size,
     margin: number,
     position: PageNumberPosition,
+    frontMatter: number,
   ): void {
     const total = doc.getNumberOfPages();
     const isTop = position.startsWith('top');
@@ -347,10 +402,13 @@ export class DownloadService {
     const y = isTop ? margin : page.height - margin / 2;
     const x = isRight ? page.width - margin : page.width / 2;
 
-    for (let n = 1; n <= total; n++) {
-      doc.setPage(n);
+    doc.setFont(BODY_FAMILY, 'normal');
+    for (let sheet = frontMatter + 1; sheet <= total; sheet++) {
+      doc.setPage(sheet);
       doc.setFontSize(9);
-      doc.text(String(n), x, y, { align: isRight ? 'right' : 'center' });
+      doc.text(String(sheet - frontMatter), x, y, {
+        align: isRight ? 'right' : 'center',
+      });
     }
   }
 }
