@@ -105,7 +105,9 @@ export class ExportService {
     ids: readonly Uuid[] | undefined,
   ): Promise<T[]> {
     if (!ids?.length) return [];
-    const rows = await Promise.all(ids.map((id) => repo.get(id)));
+    const rows: (T | undefined)[] = await Promise.all(
+      ids.map((id) => repo.get(id)),
+    );
     return rows.filter(
       (row): row is T => row !== undefined && row.deletedAt === null,
     );
