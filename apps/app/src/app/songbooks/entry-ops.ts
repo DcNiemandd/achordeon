@@ -127,6 +127,21 @@ export function moveEntries(
   return { entries: result, selected: next };
 }
 
+/**
+ * Drop slots by index — **remove from songbook, never delete a song**
+ * (CONTEXT.md §Delete vs Remove). The song stays in the library; only this
+ * positioned reference to it goes.
+ *
+ * By index and not by song id, for the reason everything here is: the same song
+ * may fill several slots, and removing one of them must not take the others.
+ */
+export function removeEntries(
+  entries: readonly Uuid[],
+  indexes: ReadonlySet<number>,
+): Uuid[] {
+  return entries.filter((_, i) => !indexes.has(i));
+}
+
 export function shiftSelection(
   selected: ReadonlySet<number>,
   at: number,

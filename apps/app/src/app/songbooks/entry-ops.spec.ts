@@ -2,6 +2,7 @@ import {
   insertEntries,
   insertionIndex,
   moveEntries,
+  removeEntries,
   shiftSelection,
 } from './entry-ops';
 
@@ -94,6 +95,16 @@ describe('moveEntries', () => {
 
   it('is a no-op with nothing selected', () => {
     expect(moveEntries(list, new Set(), 'up').entries).toEqual(list);
+  });
+});
+
+describe('removeEntries', () => {
+  it('drops the named slots', () => {
+    expect(removeEntries(['a', 'b', 'c'], new Set([1]))).toEqual(['a', 'c']);
+  });
+
+  it('removes one slot of a repeated song, not every slot holding it', () => {
+    expect(removeEntries(['a', 'b', 'a'], new Set([0]))).toEqual(['b', 'a']);
   });
 });
 

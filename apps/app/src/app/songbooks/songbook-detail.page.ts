@@ -164,6 +164,20 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             <button
               appButton
               type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [disabled]="!hasSlotSelection()"
+              [attr.aria-label]="removeSlotsLabel"
+              [appTooltip]="removeSlotsLabel"
+              data-testid="entry-remove-selected"
+              (click)="presenter.removeSlots([...presenter.selectedSlots()])"
+            >
+              <app-icon name="delete" />
+            </button>
+
+            <button
+              appButton
+              type="button"
               [isIconOnly]="true"
               [disabled]="!hasSlotSelection()"
               [attr.aria-label]="clearSlotsLabel"
@@ -186,6 +200,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           [emptyText]="entriesEmptyText()"
           (selectToggled)="presenter.toggleSelectSlot($event)"
           (activated)="presenter.activate($event)"
+          (removed)="presenter.removeSlots($event)"
         />
       </div>
     </app-split-pane>
@@ -337,6 +352,8 @@ export class SongbookDetailPage {
 
   protected readonly reorderGroupLabel = $localize`:@@entries.reorder:Reorder`;
   protected readonly clearSlotsLabel = $localize`:@@entries.clearSelection:Clear the slot selection`;
+  /** "From this songbook" is the load-bearing half of the sentence. */
+  protected readonly removeSlotsLabel = $localize`:@@entries.removeSelected:Remove the selected songs from this songbook`;
 
   /** One chevron is one step, two is all the way — the distinction the labels
    * spell out and the glyphs already carry. */

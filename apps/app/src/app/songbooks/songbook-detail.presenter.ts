@@ -26,6 +26,7 @@ import {
   insertEntries,
   insertionIndex,
   moveEntries,
+  removeEntries,
   shiftSelection,
   type InsertPosition,
   type MoveWhere,
@@ -274,6 +275,25 @@ export class SongbookDetailPresenter {
     // The selection travels with the slots, or the next press moves whatever
     // happened to slide into those indexes.
     this._selectedSlots.set(moved.selected);
+  }
+
+  /**
+   * Remove slots from this book. **No confirmation, on purpose**: nothing is
+   * destroyed — the song stays in the library, and putting it back is two clicks
+   * on the list already open beside it (CONTEXT.md §Delete vs Remove). A dialog
+   * here would train the user to click through the one that guards a real
+   * delete.
+   */
+  async removeSlots(indexes: readonly number[]): Promise<void> {
+    const book = this._book();
+    if (!book || this.isVirtual() || indexes.length === 0) {
+      return;
+    }
+    const dropped = new Set(indexes);
+    await this.writeEntries(removeEntries(book.entries, dropped));
+    // Every surviving index has shifted; nothing is left to point at, so the
+    // selection goes rather than silently coming to mean other slots.
+    this._selectedSlots.set(new Set());
   }
 
   /** The library, in the virtual book's own (name) order. */

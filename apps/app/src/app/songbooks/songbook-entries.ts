@@ -8,7 +8,7 @@ import {
   output,
 } from '@angular/core';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { EmptyState } from '../primitives';
+import { Button, EmptyState, Icon, Tooltip } from '../primitives';
 
 /** Row height in px — `cdk-virtual-scroll-viewport` needs it as a constant, and
  * the CSS below must agree with it. */
@@ -39,7 +39,7 @@ export interface EntryRow {
 @Component({
   selector: 'app-songbook-entries',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScrollingModule, EmptyState],
+  imports: [ScrollingModule, Button, EmptyState, Icon, Tooltip],
   template: `
     @if (rows().length === 0) {
       <app-empty-state [text]="emptyText()" data-testid="entries-empty" />
@@ -85,6 +85,25 @@ export interface EntryRow {
               <span class="title">{{ row.title }}</span>
             }
           </button>
+
+          @if (!isReadOnly()) {
+            <div class="row-actions">
+              <!-- An X, not a bin: this removes a slot and destroys nothing.
+                   The bin is the Songs module's, and it means the song
+                   (CONTEXT.md §Delete vs Remove). -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="removeRowLabel(row)"
+                [appTooltip]="removeRowLabel(row)"
+                [attr.data-testid]="'entry-remove-' + row.index"
+                (click)="removed.emit([row.index])"
+              >
+                <app-icon name="close" />
+              </button>
+            </div>
+          }
         </div>
       </cdk-virtual-scroll-viewport>
     }
@@ -208,6 +227,8 @@ export class SongbookEntries {
   readonly selectToggled = output<number>();
   /** A row was clicked: make that song current across the app. */
   readonly activated = output<string>();
+  /** Slot indexes to remove from the book — a request, never the deed. */
+  readonly removed = output<number[]>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
 
@@ -217,5 +238,10 @@ export class SongbookEntries {
 
   protected selectRowLabel(row: EntryRow): string {
     return $localize`:@@entries.selectRow:Select slot ${row.index + 1}:slot:, ${row.name}:name:`;
+  }
+
+  /** Names the songbook, so it cannot be read as "delete this song". */
+  protected removeRowLabel(row: EntryRow): string {
+    return $localize`:@@entries.removeRow:Remove ${row.name}:name: from this songbook`;
   }
 }
