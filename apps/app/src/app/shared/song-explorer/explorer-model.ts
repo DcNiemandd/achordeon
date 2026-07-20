@@ -103,6 +103,9 @@ export interface ExplorerCapabilities {
   readonly canFavorite: boolean;
   /** Drop the row from THIS list (an X). Not `canDelete`, which destroys. */
   readonly canRemove: boolean;
+  /** Per-row move buttons. They act on **that row alone**, never the selection
+   * — the row you are pointing at is the row you meant. */
+  readonly canReorder: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
   readonly canRename: boolean;
@@ -117,6 +120,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canSelect: true,
   canFavorite: true,
   canRemove: false,
+  canReorder: false,
   canEdit: true,
   canRename: true,
   canDuplicate: true,
@@ -134,6 +138,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canSelect: true,
   canFavorite: true,
   canRemove: false,
+  canReorder: false,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -154,6 +159,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSelect: true,
   canFavorite: false,
   canRemove: true,
+  canReorder: true,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -165,7 +171,17 @@ export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
   ...ENTRY_CAPABILITIES,
   canSelect: false,
   canRemove: false,
+  canReorder: false,
 };
+
+/** Where a per-row move sends that one row. Same vocabulary as the toolbar's,
+ * because it is the same act on a selection of one. */
+export type RowMove = 'start' | 'up' | 'down' | 'end';
+
+export interface RowMoveRequest {
+  readonly id: string;
+  readonly where: RowMove;
+}
 
 /** A rename committed in a row. */
 export interface RenameChange {

@@ -263,6 +263,28 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('entry-row').last()).toContainText('Zeta');
   });
 
+  // The row's own buttons move THAT row — no ticking first, no untick after.
+  test('a row reorders itself, leaving the slot selection alone', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+
+    // A selection on a different row must survive a row move untouched.
+    await page.getByTestId('select-0').check();
+
+    const second = page.getByTestId('entry-row').nth(1);
+    await second.hover();
+    await page.getByTestId('row-start-1').click();
+
+    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
+    // 'Alpha' was slot 0 and is now slot 1 — the tick went with it.
+    await expect(page.getByTestId('select-1')).toBeChecked();
+    await expect(page.getByTestId('select-0')).not.toBeChecked();
+  });
+
   // Remove is not delete: the song stays in the library (CONTEXT.md).
   test('removing a slot keeps the song in the library', async ({ page }) => {
     await createSong(page, 'Wonderwall');
@@ -292,8 +314,17 @@ test.describe('songbooks', () => {
     await expect(page).toHaveURL(/\/songbooks\/.+$/);
 
     // Nor out of the screen while the settings dialog is open: that closes
-    // first, so one key never does two things.
+    // first, so one key never does two things. Pressed from INSIDE the dialog,
+    // which is where the key bubbled through both handlers and did both.
     await page.getByTestId('songbook-settings').click();
+    await page.getByTestId('songbook-title').click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('songbook-settings-dialog')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+
+    // ...and from its chrome, where only the page's own handler sees it.
+    await page.getByTestId('songbook-settings').click();
+    await page.getByTestId('dialog').click();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('songbook-settings-dialog')).toHaveCount(0);
     await expect(page).toHaveURL(/\/songbooks\/.+$/);

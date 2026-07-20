@@ -11,6 +11,8 @@ export {
 } from './explorer-model';
 export type {
   ExplorerCapabilities,
+  RowMove,
+  RowMoveRequest,
   ExplorerSort,
   ExplorerSortDir,
   RenameChange,

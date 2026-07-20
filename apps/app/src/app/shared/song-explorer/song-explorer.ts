@@ -18,10 +18,13 @@ import {
   Field,
   Icon,
   Tooltip,
+  type IconName,
 } from '../../primitives';
 import {
   FULL_CAPABILITIES,
   type ExplorerCapabilities,
+  type RowMove,
+  type RowMoveRequest,
   type ExplorerSort,
   type ExplorerSortDir,
   type RenameChange,
@@ -267,6 +270,27 @@ const SEARCH_DEBOUNCE_MS = 200;
                 <app-icon name="duplicate" />
               </button>
             }
+            <!-- Reorder is per ROW here, not per selection: you are already
+                 pointing at the thing you want moved, and having to tick it
+                 first (and untick it after) is a step the pointer just made.
+                 The strip above still moves a whole selection as a block. -->
+            @if (capabilities().canReorder) {
+              @for (move of ROW_MOVES; track move.where) {
+                <button
+                  appButton
+                  type="button"
+                  class="move"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="moveRowLabel(row, move.where)"
+                  [appTooltip]="moveRowLabel(row, move.where)"
+                  [attr.data-testid]="'row-' + move.where + '-' + row.id"
+                  (click)="moved.emit({ id: row.id, where: move.where })"
+                >
+                  <app-icon [name]="move.icon" />
+                </button>
+              }
+            }
+
             @if (capabilities().canRemove) {
               <!-- An X, not a bin: this drops a slot and destroys nothing. The
                    bin is the library's, and it means the song itself
@@ -492,6 +516,13 @@ const SEARCH_DEBOUNCE_MS = 200;
       min-inline-size: 0;
     }
 
+    /* Five icons on a hovered row is a lot, so the moves are tighter than the
+       actions beside them and lean on their shared shape to read as one group. */
+    .move {
+      --icon-size: 15px;
+      min-inline-size: 24px;
+    }
+
     .row-actions {
       display: flex;
       align-items: center;
@@ -567,8 +598,20 @@ export class SongExplorer {
    * never a library row. A different act from `deleted`, which destroys.
    */
   readonly removed = output<string[]>();
+  /** Move **one row**, named by id — never the selection (see the template). */
+  readonly moved = output<RowMoveRequest>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
+
+  /** The four row moves, in list order: to the top, one up, one down, to the
+   * bottom — the same glyphs the strip above uses, because it is the same act. */
+  protected readonly ROW_MOVES: readonly { where: RowMove; icon: IconName }[] =
+    [
+      { where: 'start', icon: 'moveStart' },
+      { where: 'up', icon: 'moveUp' },
+      { where: 'down', icon: 'moveDown' },
+      { where: 'end', icon: 'moveEnd' },
+    ];
 
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
@@ -646,6 +689,16 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  protected moveRowLabel(row: SongRow, where: RowMove): string {
+    return where === 'start'
+      ? $localize`:@@explorer.moveRowStart:Move ${row.name}:name: to the start`
+      : where === 'up'
+        ? $localize`:@@explorer.moveRowUp:Move ${row.name}:name: up one`
+        : where === 'down'
+          ? $localize`:@@explorer.moveRowDown:Move ${row.name}:name: down one`
+          : $localize`:@@explorer.moveRowEnd:Move ${row.name}:name: to the end`;
   }
 
   /** Names where it is removed FROM — the load-bearing half of the sentence. */

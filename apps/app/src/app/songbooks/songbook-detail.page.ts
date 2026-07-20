@@ -291,6 +291,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           (selectToggled)="presenter.toggleSelectSlot($event)"
           (activated)="presenter.activateSlot($event)"
           (removed)="presenter.removeSlots($event)"
+          (moved)="presenter.moveSlot($event.id, $event.where)"
         />
       </div>
     </app-split-pane>

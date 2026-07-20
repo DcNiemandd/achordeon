@@ -350,6 +350,37 @@ export class SongbookDetailPresenter {
   }
 
   /**
+   * Move **one slot**, named by key — the row's own buttons, which act on the
+   * row you are pointing at and never on the selection.
+   *
+   * The ticks are carried along rather than cleared: they belong to a different
+   * gesture (the strip above), and a row move must not quietly disarm it. The
+   * order is computed over a list of *positions* and then applied to both, so
+   * the two can never disagree about where anything went.
+   */
+  async moveSlot(key: string, where: MoveWhere): Promise<void> {
+    const book = this._book();
+    const index = Number(key);
+    if (!book || this.isVirtual() || !Number.isInteger(index)) {
+      return;
+    }
+    const positions = book.entries.map((_, at) => String(at));
+    const moved = moveEntries(positions, new Set([index]), where);
+    const wasSelected = this.selectedIndexes();
+
+    await this.writeEntries(
+      moved.entries.map((position) => book.entries[Number(position)]),
+    );
+    this.setSlotSelection(
+      new Set(
+        moved.entries
+          .map((position, at) => (wasSelected.has(Number(position)) ? at : -1))
+          .filter((at) => at >= 0),
+      ),
+    );
+  }
+
+  /**
    * Remove slots from this book. **No confirmation, on purpose**: nothing is
    * destroyed — the song stays in the library, and putting it back is two clicks
    * on the list already open beside it (CONTEXT.md §Delete vs Remove). A dialog
