@@ -2,8 +2,8 @@
 // Spec: PRD-INFRASTRUCTURE.md §8 (single = PNG or PDF; several = ZIP of images,
 // ZIP of PDFs, or one multi-page PDF)
 //
-// Controlled: how many songs in, a format out. It holds no state but the radio
-// the user is pointing at, injects nothing, and knows no store.
+// Controlled: how many songs in, a format out. It holds no state at all — each
+// format is a button that downloads — injects nothing, and knows no store.
 
 import {
   ChangeDetectionStrategy,
@@ -11,9 +11,8 @@ import {
   computed,
   input,
   output,
-  signal,
 } from '@angular/core';
-import { Button, Dialog } from '../../primitives';
+import { Button, Dialog, Icon } from '../../primitives';
 import type { DownloadFormat } from './transfer-model';
 
 interface FormatOption {
@@ -25,36 +24,38 @@ interface FormatOption {
 @Component({
   selector: 'app-download-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Dialog],
+  imports: [Button, Dialog, Icon],
   template: `
     <app-dialog
       [title]="title()"
       data-testid="download-dialog"
       (closed)="closed.emit()"
     >
-      <!-- Radios, not a dropdown: there are at most three, each needs a line of
-           explanation, and the difference between a ZIP of PDFs and one PDF is
-           the whole decision being made here. -->
-      <fieldset class="options">
-        <legend class="sr-only">{{ title() }}</legend>
+      <!-- **Each option is its own button, and pressing it downloads.** A radio
+           list plus a Download button asks for two clicks to express one
+           decision, and puts the answer ("PDF") in one place and the verb
+           ("Download") in another. There is nothing to confirm here: the formats
+           are alternatives, not settings. -->
+      <div class="options">
         @for (option of options(); track option.value) {
-          <label class="option">
-            <input
-              type="radio"
-              name="download-format"
-              [value]="option.value"
-              [checked]="format() === option.value"
-              [attr.data-testid]="'download-' + option.value"
-              (change)="format.set(option.value)"
-            />
+          <button
+            appButton
+            type="button"
+            class="option"
+            [attr.data-testid]="'download-' + option.value"
+            (click)="chosen.emit(option.value)"
+          >
+            <app-icon name="download" class="mark" />
             <span class="label">
               <span class="name">{{ option.label }}</span>
               <span class="hint">{{ option.hint }}</span>
             </span>
-          </label>
+          </button>
         }
-      </fieldset>
+      </div>
 
+      <!-- Cancel stays where every dialog keeps it: nothing has happened yet,
+           and leaving is not one of the formats. -->
       <button
         dialog-actions
         appButton
@@ -65,16 +66,6 @@ interface FormatOption {
       >
         {{ cancelLabel }}
       </button>
-      <button
-        dialog-actions
-        appButton
-        type="button"
-        variant="primary"
-        data-testid="download-confirm"
-        (click)="chosen.emit(format())"
-      >
-        {{ downloadLabel }}
-      </button>
     </app-dialog>
   `,
   styles: `
@@ -82,34 +73,37 @@ interface FormatOption {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      margin: 0;
-      padding: 0;
-      border: 0;
     }
 
+    /* Full width and left-aligned: these are choices in a list, not a row of
+       equal actions, and the hint under each has to be readable as prose. */
     .option {
       display: flex;
       align-items: flex-start;
       gap: var(--space-2);
-      cursor: pointer;
+      inline-size: 100%;
+      padding: var(--space-2);
+      text-align: start;
+    }
+
+    .mark {
+      --icon-size: 18px;
+      flex: none;
+      margin-block-start: 2px;
+      color: var(--brand);
     }
 
     .label {
       display: flex;
       flex-direction: column;
+      gap: 2px;
     }
 
     .hint {
       color: var(--text-muted);
       font-size: var(--text-xs);
-    }
-
-    .sr-only {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
+      font-weight: 400;
+      white-space: normal;
     }
   `,
 })
@@ -120,8 +114,6 @@ export class DownloadDialog {
 
   readonly chosen = output<DownloadFormat>();
   readonly closed = output<void>();
-
-  protected readonly format = signal<DownloadFormat>('pdf');
 
   protected readonly title = computed(() =>
     this.count() === 1
@@ -167,5 +159,4 @@ export class DownloadDialog {
   );
 
   protected readonly cancelLabel = $localize`:@@download.cancel:Cancel`;
-  protected readonly downloadLabel = $localize`:@@download.confirm:Download`;
 }

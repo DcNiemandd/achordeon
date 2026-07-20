@@ -207,9 +207,8 @@ test.describe('download a song', () => {
   test('the PNG is a PNG, and carries the song inside it', async ({ page }) => {
     await createSong(page, 'Alpha');
     await page.getByTestId('songs-download').click();
-    await page.getByTestId('download-png').click();
     const file = await download(page, () =>
-      page.getByTestId('download-confirm').click(),
+      page.getByTestId('download-png').click(),
     );
 
     expect(file.subarray(0, 8)).toEqual(
@@ -226,9 +225,8 @@ test.describe('download a song', () => {
   }) => {
     await createSong(page, 'Alpha');
     await page.getByTestId('songs-download').click();
-    await page.getByTestId('download-png').click();
     const file = await download(page, () =>
-      page.getByTestId('download-confirm').click(),
+      page.getByTestId('download-png').click(),
     );
 
     await freshLibrary(page);
@@ -260,9 +258,8 @@ test.describe('download a song', () => {
   }) => {
     await createSong(page, 'Alpha');
     await page.getByTestId('songs-download').click();
-    await page.getByTestId('download-pdf').click();
     const file = await download(page, () =>
-      page.getByTestId('download-confirm').click(),
+      page.getByTestId('download-pdf').click(),
     );
 
     const raw = file.toString('latin1');
@@ -280,9 +277,8 @@ test.describe('download a song', () => {
     await selectRow(page, 'Beta');
 
     await page.getByTestId('songs-download').click();
-    await page.getByTestId('download-zip-pdf').click();
     const file = await download(page, () =>
-      page.getByTestId('download-confirm').click(),
+      page.getByTestId('download-zip-pdf').click(),
     );
 
     expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
@@ -298,9 +294,8 @@ test.describe('download a song', () => {
     await selectRow(page, 'Beta');
 
     await page.getByTestId('songs-download').click();
-    await page.getByTestId('download-pdf').click();
     const file = await download(page, () =>
-      page.getByTestId('download-confirm').click(),
+      page.getByTestId('download-pdf').click(),
     );
 
     const raw = file.toString('latin1');

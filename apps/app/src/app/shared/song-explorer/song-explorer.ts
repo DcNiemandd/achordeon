@@ -17,6 +17,7 @@ import {
   CdkDragHandle,
   CdkDropList,
   type CdkDragDrop,
+  type CdkDragEnter,
 } from '@angular/cdk/drag-drop';
 import {
   CdkVirtualScrollViewport,
@@ -207,8 +208,9 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
         [text]="emptyText()"
         [cdkDropListEnterPredicate]="acceptsDrop"
         [class.is-drop-target]="isDragOver()"
+        [class.is-foreign-drag]="isForeignDrag()"
         data-testid="explorer-empty"
-        (cdkDropListEntered)="onEnterEmpty()"
+        (cdkDropListEntered)="onEnterEmpty($event)"
         (cdkDropListExited)="onDragLeave()"
         (cdkDropListDropped)="onDropped($event)"
       />
@@ -221,9 +223,10 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
         [cdkDropListSortingDisabled]="true"
         [cdkDropListEnterPredicate]="acceptsDrop"
         [class.is-drop-target]="isDragOver()"
+        [class.is-foreign-drag]="isForeignDrag()"
         data-testid="explorer-list"
         (scrolledIndexChange)="onScrolledIndex($event)"
-        (cdkDropListEntered)="isDragOver.set(true)"
+        (cdkDropListEntered)="onEntered($event)"
         (cdkDropListExited)="onDragLeave()"
         (cdkDropListDropped)="onDropped($event)"
       >
@@ -626,6 +629,15 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
       opacity: 0.4;
     }
 
+    /* …but not in a list the row does not belong to. The CDK parks its
+       placeholder in whichever container the pointer is over, so a drag from the
+       library planted a ghost row at the bottom of the songbook that never
+       followed the insertion line — two marks, disagreeing, one of them wrong.
+       The line is the promise; this is only ever the origin. */
+    .list.is-foreign-drag .row.cdk-drag-placeholder {
+      display: none;
+    }
+
     /* The empty state stands in for the viewport as the drop target, so it has
        to occupy the same space — a message the height of one line is a target
        you have to aim at. */
@@ -810,6 +822,18 @@ export class SongExplorer {
 
   /** A drag is over this list right now — see `onPointerMove`. */
   protected readonly isDragOver = signal(false);
+
+  /**
+   * The drag over this list started in the **other** one.
+   *
+   * The CDK moves its placeholder — the row-shaped gap that marks where the
+   * dragged item came from — into whatever container the pointer enters. In a
+   * list that does not sort, that gap lands at the end and just sits there,
+   * miles from the insertion line, reading as a second and contradictory answer
+   * to "where will this go". So it is hidden here, and stays visible where it
+   * means something: the row's real position, in the list it left.
+   */
+  protected readonly isForeignDrag = signal(false);
 
   /**
    * The boundary the pointer is currently naming, while a drag is over this
@@ -1001,9 +1025,15 @@ export class SongExplorer {
     this.dragAt.set(Math.min(Math.max(at, 0), this.rows().length));
   }
 
-  /** An empty list has one boundary, and no pointer position can change it. */
-  protected onEnterEmpty(): void {
+  /** A drag crossed into this list. */
+  protected onEntered(event: CdkDragEnter<unknown>): void {
     this.isDragOver.set(true);
+    this.isForeignDrag.set(event.item.dropContainer !== event.container);
+  }
+
+  /** An empty list has one boundary, and no pointer position can change it. */
+  protected onEnterEmpty(event: CdkDragEnter<unknown>): void {
+    this.onEntered(event);
     this.dragAt.set(0);
   }
 
@@ -1024,6 +1054,7 @@ export class SongExplorer {
    * promising anything, so the line goes back to the Add buttons. */
   protected onDragLeave(): void {
     this.isDragOver.set(false);
+    this.isForeignDrag.set(false);
     this.dragAt.set(null);
   }
 

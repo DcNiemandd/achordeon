@@ -52,6 +52,24 @@ button {
   color: inherit;
 }
 
+// Checkboxes and radios in the brand colour, everywhere, from one line.
+//
+// `accent-color` recolours the NATIVE control rather than replacing it, so the
+// tick, the dot, the focus ring, the disabled state, the high-contrast forms and
+// every platform's own idea of the shape all keep working. A hand-drawn control
+// (appearance: none plus a background image) is the usual way to do this and it
+// throws all of that away to gain a colour we can get for free.
+//
+// Two rules that don't come free: the pointer, and a size that is not 13px on a
+// touch screen.
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--brand);
+  inline-size: 1rem;
+  block-size: 1rem;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

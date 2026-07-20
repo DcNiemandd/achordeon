@@ -263,7 +263,16 @@ import {
         data-testid="delete-dialog"
         (closed)="presenter.cancelDelete()"
       >
+        <!-- The names as a LIST, not a sentence. A comma-joined paragraph of
+             twelve titles is a wall you have to parse to answer a question
+             about; a list is countable at a glance, which is the only thing
+             that makes "yes" a considered answer. -->
         <p class="warn">{{ deleteQuestion(pending) }}</p>
+        <ul class="names" data-testid="delete-names">
+          @for (name of pending.names; track $index) {
+            <li>{{ name }}</li>
+          }
+        </ul>
 
         <!-- The in-use warning: not a count, but the songbooks themselves, each
              a way to go and look before you answer (CONTEXT.md §Delete vs
@@ -370,6 +379,13 @@ import {
       --icon-size: 16px;
       flex: none;
       color: var(--brand);
+    }
+
+    .names {
+      margin: 0 0 var(--space-3);
+      padding-inline-start: var(--space-4);
+      max-block-size: 40vh;
+      overflow: auto;
     }
 
     .uses {
@@ -483,10 +499,11 @@ export class SongsPage {
       : $localize`:@@songs.delete.titleMany:Delete ${pending.ids.length}:count: songs?`;
   }
 
+  /** The sentence above the list — which is why it names no songs itself. */
   protected deleteQuestion(pending: PendingDelete): string {
     return pending.ids.length === 1
-      ? $localize`:@@songs.delete.one:“${pending.names[0]}:name:” will be removed from your library.`
-      : $localize`:@@songs.delete.many:${pending.names.join(', ')}:names: will be removed from your library.`;
+      ? $localize`:@@songs.delete.one:This will be removed from your library:`
+      : $localize`:@@songs.delete.many:These ${pending.ids.length}:count: songs will be removed from your library:`;
   }
 
   /** A bulk delete's warning spans songs, so a bare songbook name would not say
