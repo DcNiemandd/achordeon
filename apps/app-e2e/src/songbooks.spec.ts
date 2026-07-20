@@ -281,6 +281,28 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(1);
   });
 
+  // The editor's gesture, on the editor's shape of screen: a thing you opened
+  // from a list and step back out of.
+  test('escape leaves the songbook for the list', async ({ page }) => {
+    await createSongbook(page, 'Campfire');
+
+    // Not while a field has the caret — there Escape reverts the edit.
+    await page.getByTestId('module-title-input').focus();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+
+    // Nor out of the screen while the settings dialog is open: that closes
+    // first, so one key never does two things.
+    await page.getByTestId('songbook-settings').click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('songbook-settings-dialog')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+
+    await page.getByTestId('songbook-detail').click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('songbook-list')).toBeVisible();
+  });
+
   test('songbook settings and title-page fields persist', async ({ page }) => {
     await createSongbook(page, 'Campfire');
 

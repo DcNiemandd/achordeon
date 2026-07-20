@@ -14,7 +14,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   Button,
   Dialog,
@@ -51,6 +51,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
   selector: 'app-songbook-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SongbookDetailPresenter],
+  host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
     RouterLink,
     ActionBar,
@@ -427,6 +428,37 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
 export class SongbookDetailPage {
   protected readonly ui = inject(UiStore);
   protected readonly presenter = inject(SongbookDetailPresenter);
+  private readonly router = inject(Router);
+
+  /**
+   * Escape leaves the songbook for the list of them — **the editor's gesture,
+   * because this is the editor's shape**: a thing you opened from a list, worked
+   * in, and step back out of.
+   *
+   * Guarded the same way, and for the same reasons. The settings dialog closes
+   * first and stops there, so one key never throws you out of the screen
+   * entirely. A press that came from a text field is left to the field, where
+   * Escape already means "undo this edit" — the songbook's name in the heading,
+   * the title-page fields, the search box. The guard reads the event's
+   * **target** rather than `document.activeElement`, because a field that blurs
+   * itself on Escape would otherwise look like a bare press.
+   */
+  protected onEscape(event: Event): void {
+    if (this.presenter.isSettingsOpen()) {
+      this.presenter.closeSettings();
+      return;
+    }
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    ) {
+      return;
+    }
+    event.preventDefault();
+    void this.router.navigate(['/songbooks']);
+  }
 
   /** `/songbooks/:id`, delivered by `withComponentInputBinding()`. */
   readonly id = input.required<string>();
