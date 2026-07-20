@@ -1,4 +1,4 @@
-// Songbook detail presenter — Epic 6 ▸ subtask 2
+// Songbook detail presenter — Epic 6 ▸ subtasks 2–6
 // Spec: CONTEXT.md §Songbook, §Song explorer; PRD-UI-SHELL.md §3, §4
 
 import { Injectable, computed, inject, signal } from '@angular/core';
@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
   SessionStore,
+  SettingsStore,
   SongStore,
   SongbookStore,
 } from '@achordeon/shared/data-access';
@@ -47,6 +48,7 @@ export class SongbookDetailPresenter {
   private readonly books = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly session = inject(SessionStore);
+  private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -296,20 +298,94 @@ export class SongbookDetailPresenter {
     this._selectedSlots.set(new Set());
   }
 
+  // --- The book itself: name, title page, and its scope of the cascade. ----
+
+  /** Title-page fields — **authored via GUI, never parsed** from any song's
+   * content (PRD-DOMAIN-MODEL §Songbook; ADR-0001). */
+  readonly titleFields = computed(() => ({
+    title: this._book()?.title ?? '',
+    subtitle: this._book()?.subtitle ?? '',
+    author: this._book()?.author ?? '',
+  }));
+
+  /** This scope's sparse overrides (ADR-0006), for the settings panel. */
+  readonly songbookSettings = computed(
+    () => (this._book()?.settings ?? {}) as Record<string, unknown>,
+  );
+
+  /**
+   * What this scope inherits: the Global defaults, which are the only thing
+   * below it in the cascade (ADR-0006). The panel needs them for the
+   * "inherited" badge and as the value it draws while nothing is overridden.
+   */
+  readonly inheritedSettings = computed(
+    () => this.settings.global() as Record<string, unknown>,
+  );
+
+  private readonly _isSettingsOpen = signal(false);
+  readonly isSettingsOpen = this._isSettingsOpen.asReadonly();
+
+  toggleSettings(): void {
+    this._isSettingsOpen.update((open) => !open);
+  }
+
+  closeSettings(): void {
+    this._isSettingsOpen.set(false);
+  }
+
+  async rename(name: string): Promise<void> {
+    await this.patchBook({ name });
+  }
+
+  async setTitleField(
+    field: 'title' | 'subtitle' | 'author',
+    value: string,
+  ): Promise<void> {
+    await this.patchBook({ [field]: value });
+  }
+
+  /**
+   * A sparse patch from the settings panel — **the songbook theme** that
+   * re-styles every song performed in this book (CONTEXT.md §Render settings).
+   *
+   * `undefined` for a key means "reset to inherited", which at this scope is a
+   * **deletion**, not a write of the global value: overrides are stored sparse
+   * so the cascade can keep resolving through them (ADR-0006).
+   */
+  async patchSettings(patch: Record<string, unknown>): Promise<void> {
+    const book = this._book();
+    if (!book || this.isVirtual()) {
+      return;
+    }
+    const settings: Record<string, unknown> = { ...book.settings };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        delete settings[key];
+      } else {
+        settings[key] = value;
+      }
+    }
+    await this.patchBook({ settings: settings as Songbook['settings'] });
+  }
+
+  private async patchBook(changes: Partial<Songbook>): Promise<void> {
+    const book = this._book();
+    if (!book || this.isVirtual()) {
+      return;
+    }
+    const updated: Songbook = { ...book, ...changes, updatedAt: Date.now() };
+    this._book.set(updated);
+    await this.books.upsert(updated);
+  }
+
   /** The library, in the virtual book's own (name) order. */
   private async refreshVirtual(): Promise<void> {
     this._allSongIds.set((await this.songs.allLive()).map((song) => song.id));
   }
 
-  /** Persist a new order and keep the entry list naming its slots. */
+  /** Persist a new order and keep the entry list able to name its slots. */
   private async writeEntries(entries: Uuid[]): Promise<void> {
-    const book = this._book();
-    if (!book) {
-      return;
-    }
-    const updated: Songbook = { ...book, entries, updatedAt: Date.now() };
-    this._book.set(updated);
-    await this.books.upsert(updated);
+    await this.patchBook({ entries });
     await this.hydrate();
   }
 

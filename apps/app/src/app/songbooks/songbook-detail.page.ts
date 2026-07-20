@@ -1,4 +1,4 @@
-// Songbook detail page — Epic 6 ▸ subtask 2
+// Songbook detail page — Epic 6 ▸ subtasks 2–6
 // Spec: PRD-UI-SHELL.md §4 (pane A: song explorer, pane B: songbook entries)
 //
 // This is the songbook builder. Epic 5's in-use delete warning links straight
@@ -14,8 +14,9 @@ import {
   input,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Button, Icon, Tooltip } from '../primitives';
+import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import { ActionBar, SplitPane, UiStore } from '../shared/layout';
+import { SettingsPanel } from '../shared/settings-panel';
 import {
   REDUCED_CAPABILITIES,
   SongExplorer,
@@ -45,7 +46,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     SplitPane,
     SongExplorer,
     SongbookEntries,
+    SettingsPanel,
     Button,
+    Dialog,
+    Field,
     Icon,
     Tooltip,
   ],
@@ -56,7 +60,12 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       (ratioChange)="ui.setSplitRatio($event)"
     >
       <div pane-a class="pane">
-        <app-action-bar [title]="presenter.name()">
+        <app-action-bar
+          [title]="presenter.name()"
+          [isTitleEditable]="!presenter.isVirtual()"
+          [titleLabel]="nameLabel"
+          (titleChange)="presenter.rename($event)"
+        >
           <a
             appButton
             bar-end
@@ -109,9 +118,64 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               >
                 <app-icon name="close" />
               </button>
+
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="settings"
+                [isIconOnly]="true"
+                [class.is-active]="presenter.isSettingsOpen()"
+                [attr.aria-pressed]="presenter.isSettingsOpen()"
+                [attr.aria-label]="settingsLabel"
+                [appTooltip]="settingsLabel"
+                data-testid="songbook-settings"
+                (click)="presenter.toggleSettings()"
+              >
+                <app-icon name="settings" />
+              </button>
             </div>
           }
         </app-action-bar>
+
+        <!-- The songbook's own scope of the cascade, plus the title-page fields
+             that only a songbook has. A modal, unlike the editor's: there is no
+             live render behind it to keep watching (§4). -->
+        @if (presenter.isSettingsOpen()) {
+          <app-dialog
+            [title]="settingsLabel"
+            data-testid="songbook-settings-dialog"
+            (closed)="presenter.closeSettings()"
+          >
+            <section class="fields">
+              <h3 class="fields-title">{{ titlePageHeading }}</h3>
+              <p class="fields-help">{{ titlePageHelp }}</p>
+
+              @for (field of titleFields; track field.key) {
+                <label class="field">
+                  <span class="field-label">{{ field.label }}</span>
+                  <input
+                    appField
+                    type="text"
+                    [value]="presenter.titleFields()[field.key]"
+                    [attr.data-testid]="'songbook-' + field.key"
+                    (change)="setField(field.key, $event)"
+                  />
+                </label>
+              }
+            </section>
+
+            <!-- The SAME panel the Settings page and the song editor mount, at
+                 songbook scope: chord colour and size re-theme every song
+                 performed in this book (CONTEXT.md §Render settings). -->
+            <app-settings-panel
+              scope="songbook"
+              [values]="presenter.songbookSettings()"
+              [inherited]="presenter.inheritedSettings()"
+              (changed)="presenter.patchSettings($event)"
+            />
+          </app-dialog>
+        }
 
         <app-song-explorer
           class="explorer"
@@ -240,6 +304,39 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       white-space: nowrap;
     }
 
+    .fields {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: 0 var(--space-3) var(--space-3);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .fields-title {
+      margin: 0;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .fields-help {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .field-label {
+      font-size: var(--text-sm);
+    }
+
     .entry-tools {
       display: flex;
       align-items: center;
@@ -292,6 +389,33 @@ export class SongbookDetailPage {
   protected readonly capabilities = REDUCED_CAPABILITIES;
 
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
+  protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
+  protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
+  protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
+  protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
+
+  /** The songbook's own metadata — authored here, never parsed (ADR-0001). */
+  protected readonly titleFields = [
+    {
+      key: 'title' as const,
+      label: $localize`:@@songbooks.field.title:Title`,
+    },
+    {
+      key: 'subtitle' as const,
+      label: $localize`:@@songbooks.field.subtitle:Subtitle`,
+    },
+    {
+      key: 'author' as const,
+      label: $localize`:@@songbooks.field.author:Author`,
+    },
+  ];
+
+  protected setField(key: 'title' | 'subtitle' | 'author', event: Event): void {
+    void this.presenter.setTitleField(
+      key,
+      (event.target as HTMLInputElement).value,
+    );
+  }
 
   protected readonly emptyText = computed(() =>
     this.query()
