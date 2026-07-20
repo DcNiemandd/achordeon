@@ -10,11 +10,26 @@
  * are derived-and-stored precisely so a list of 500 songs costs no parsing.
  */
 export interface SongRow {
+  /**
+   * What this row IS, for selection and every row action.
+   *
+   * A library row is a Song, so its id is the song's. **A songbook row is a
+   * slot**, and a slot is a position — the same song may fill several of them,
+   * so its id is the slot's key and never the song's, or removing one slot
+   * would take its twins with it (CONTEXT.md §Songbook).
+   */
   readonly id: string;
   readonly name: string;
   readonly title: string;
   readonly subtitle: string;
   readonly isFavorite: boolean;
+  /**
+   * The row's index in the list it is being drawn in. Shown as the slot number
+   * where position is the content (a songbook), and used to place the insertion
+   * line — both of which the list would otherwise have to infer from the
+   * viewport, which renders only a window of the rows.
+   */
+  readonly position: number;
 }
 
 /**
@@ -78,9 +93,16 @@ export function toExplorerSortDir(
  * Capabilities are per-*mount*, never per-row: a row does not know where it is.
  */
 export interface ExplorerCapabilities {
+  /** The search box and the sort controls. A songbook's order IS its content,
+   * so re-sorting the thing you are ordering is meaningless. */
+  readonly canSearch: boolean;
+  /** Number each row by its position — only where position is the content. */
+  readonly hasOrdinals: boolean;
   /** Multi-select checkboxes. What acts on the selection is the page's business. */
   readonly canSelect: boolean;
   readonly canFavorite: boolean;
+  /** Drop the row from THIS list (an X). Not `canDelete`, which destroys. */
+  readonly canRemove: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
   readonly canRename: boolean;
@@ -90,8 +112,11 @@ export interface ExplorerCapabilities {
 
 /** The Songs module: everything on. */
 export const FULL_CAPABILITIES: ExplorerCapabilities = {
+  canSearch: true,
+  hasOrdinals: false,
   canSelect: true,
   canFavorite: true,
+  canRemove: false,
   canEdit: true,
   canRename: true,
   canDuplicate: true,
@@ -104,12 +129,42 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
  * which is a different job in a different module.
  */
 export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
+  canSearch: true,
+  hasOrdinals: false,
   canSelect: true,
   canFavorite: true,
+  canRemove: false,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
   canDelete: false,
+};
+
+/**
+ * A songbook's entry list (Epic 6): **the same component again**, a third time.
+ *
+ * Numbered, removable, and with neither search nor sort — the order is the
+ * content. Selecting works exactly as it does in the library, which is the
+ * point: two lists side by side that behaved differently to the same click was
+ * the whole complaint.
+ */
+export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
+  canSearch: false,
+  hasOrdinals: true,
+  canSelect: true,
+  canFavorite: false,
+  canRemove: true,
+  canEdit: false,
+  canRename: false,
+  canDuplicate: false,
+  canDelete: false,
+};
+
+/** The virtual All songs book: a read-only order, so nothing may be moved out. */
+export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
+  ...ENTRY_CAPABILITIES,
+  canSelect: false,
+  canRemove: false,
 };
 
 /** A rename committed in a row. */

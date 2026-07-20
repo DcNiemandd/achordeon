@@ -113,7 +113,7 @@ test.describe('songbooks', () => {
     // No reorder strip, no per-row remove, nothing to add with.
     await expect(page.getByTestId('entry-tools')).toHaveCount(0);
     await expect(page.getByTestId('songbook-add')).toHaveCount(0);
-    await expect(page.getByTestId('entry-remove-0')).toHaveCount(0);
+    await expect(page.getByTestId('remove-0')).toHaveCount(0);
   });
 
   test('creates a songbook, names it, and it survives a reload', async ({
@@ -218,7 +218,7 @@ test.describe('songbooks', () => {
       .first()
       .getAttribute('data-song-id');
     await page.getByTestId(`select-${id}`).check();
-    await expect(page.getByTestId('selection-count')).toContainText('1');
+    await expect(page.getByTestId('selection-clear')).toContainText('1');
 
     await createSongbook(page, 'Campfire');
     await expect(page.getByTestId(`select-${id}`)).not.toBeChecked();
@@ -236,7 +236,7 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
 
     // Above the second slot puts it between the two.
-    await page.getByTestId('entry-select-1').check();
+    await page.getByTestId('select-1').check();
     await addSongs(page, ['Zeta'], 'above');
     await expect(page.getByTestId('entry-row')).toHaveCount(3);
     await expect(page.getByTestId('entry-row').nth(1)).toContainText('Zeta');
@@ -250,11 +250,11 @@ test.describe('songbooks', () => {
     await createSongbook(page, 'Campfire');
     await addSongs(page, ['Alpha', 'Zeta'], 'end');
 
-    await page.getByTestId('entry-select-1').check();
+    await page.getByTestId('select-1').check();
     await page.getByTestId('move-up').click();
     await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
     // The tick followed the slot, so pressing again acts on the same song.
-    await expect(page.getByTestId('entry-select-0')).toBeChecked();
+    await expect(page.getByTestId('select-0')).toBeChecked();
 
     await page.getByTestId('move-end').click();
     await expect(page.getByTestId('entry-row').last()).toContainText('Zeta');
@@ -270,8 +270,10 @@ test.describe('songbooks', () => {
     await addSongs(page, ['Wonderwall'], 'end');
 
     await page.getByTestId('entry-row').hover();
-    await page.getByTestId('entry-remove-0').click();
-    await expect(page.getByTestId('entries-empty')).toBeVisible();
+    await page.getByTestId('remove-0').click();
+    await expect(
+      page.getByTestId('songbook-detail').getByTestId('explorer-empty'),
+    ).toBeVisible();
 
     // Still in the explorer beside it, and still in the library after a reload.
     await expect(page.getByTestId('song-row')).toHaveCount(1);

@@ -366,18 +366,23 @@ Corrections the build forced, recorded so they aren't re-litigated:
   chevrons for one step): both answer "where in this list", and that is learnt
   once. Layout follows the transfer-list handoff — the transfer buttons in a
   column _between_ the two lists, move buttons at the left of pane B's toolbar.
-- **The transfer buttons say direction first, position second**: a right arrow
-  (into the songbook) badged with the reorder mark, the same composition the
-  editor's transpose buttons use. The badge rides the corner it means — top for
-  start/above, bottom for below/end — because four corner marks distinguished
-  only by a 12px glyph were not distinguishable. Remove is the same crossing
-  the other way: a left arrow, set apart below the four, and answering pane B's
-  selection rather than pane A's.
-- **`<app-selection-status>` is one component with two mounts.** "N selected /
-  Clear (N)" sits at the end of the action bar in both the Songs module and the
-  songbook builder — the same words in the same place above the list it
-  describes. It is text and not an X, because the bar already spends an X on
+- **The Add buttons wear the reorder set's own glyphs.** They briefly carried a
+  right arrow with the position badged onto it, to say "across into the book";
+  the direction is already obvious from which pane you are looking at, and the
+  badge cost the position mark its legibility. Remove is still a left arrow,
+  set apart below the four, and answers pane B's selection rather than pane A's.
+- **`<app-selection-status>` is one control, mounted three times**: the Songs
+  action bar, the songbook action bar, and the entry strip. It is "Clear (N)"
+  and nothing else — a "3 selected" label beside a "Clear (3)" button is the
+  same number twice. Text and not an X, because the bar already spends an X on
   "back to songbooks".
+- **Pane B is the _same list component_ as pane A** (`ENTRY_CAPABILITIES`:
+  numbered, removable, no search or sort). Two lists side by side that answered
+  the same click differently was the defect; one component cannot drift from
+  itself. `SongRow` grew `position` (its index in the list as drawn) and its
+  `id` is documented as "what this row IS" — a Song in the library, a **slot**
+  in a songbook, which is why removing one slot never takes its twins.
+  `SongbookEntries` is deleted.
 
 **Still open:** drag & drop between the panes (`songbooks/index.mdx` marks it
 FUTURE and the page carries the admonition); it wants the CDK's `cdkDropList`

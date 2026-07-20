@@ -306,7 +306,8 @@ test.describe('song explorer', () => {
 
     await page.getByTestId(`select-${first}`).check();
     await expect(del).toBeEnabled();
-    await expect(page.getByTestId('selection-count')).toContainText('1');
+    // The count rides the Clear button — one control, not a label beside it.
+    await expect(clear).toContainText('1');
     // The row did not budge when the checkbox was ticked.
     expect((await rows.first().boundingBox())?.y).toBe(before?.y);
 

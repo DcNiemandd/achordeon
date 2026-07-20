@@ -26,6 +26,8 @@ import {
 import { ActionBar, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
+  ENTRY_CAPABILITIES,
+  READONLY_ENTRY_CAPABILITIES,
   REDUCED_CAPABILITIES,
   SelectionStatus,
   SongExplorer,
@@ -34,7 +36,6 @@ import {
   type ExplorerSort,
 } from '../shared/song-explorer';
 import type { InsertPosition } from './entry-ops';
-import { SongbookEntries } from './songbook-entries';
 import { SongbookDetailPresenter } from './songbook-detail.presenter';
 
 /**
@@ -56,7 +57,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     SplitPane,
     SongExplorer,
     SelectionStatus,
-    SongbookEntries,
     SettingsPanel,
     Button,
     Dialog,
@@ -205,16 +205,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                   (blur)="preview.set(null)"
                   (click)="presenter.addSelected(option.where)"
                 >
-                  <app-icon name="transferIn" />
-                  <!-- The badge sits in the corner it means: the two that go
-                       upwards ride the top, the two that go downwards the
-                       bottom. Four near-identical corner marks were telling
-                       them apart by glyph alone, at 12px. -->
-                  <app-icon
-                    class="cross-badge"
-                    [class.is-bottom]="option.isBadgeBottom"
-                    [name]="option.icon"
-                  />
+                  <app-icon [name]="option.icon" />
                 </button>
               }
 
@@ -267,36 +258,37 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               </button>
             }
 
-            <!-- Right of the group it undoes, as text with the count in it —
-                 the same shape as the library side's, for the same reason. -->
-            <span class="entry-hint">{{ slotSelectionLabel() }}</span>
+            <!-- The hint explains the greyed buttons, so it goes when they
+                 come alive; the Clear that replaces it carries the count. Same
+                 control, same words as the library side. -->
             @if (hasSlotSelection()) {
-              <button
-                appButton
-                type="button"
-                variant="ghost"
-                class="clear"
-                [attr.aria-label]="clearSlotsLabel"
-                data-testid="entry-clear"
-                (click)="presenter.clearSlotSelection()"
-              >
-                {{ clearSlotsShort }}
-              </button>
+              <app-selection-status
+                class="entry-clear"
+                [count]="presenter.selectedSlots().size"
+                (cleared)="presenter.clearSlotSelection()"
+              />
+            } @else {
+              <span class="entry-hint">{{ slotSelectionLabel }}</span>
             }
           </div>
         }
 
-        <app-songbook-entries
+        <!-- **The same list component as pane A**, a third capability set:
+             numbered, removable, no search or sort (the order IS the content).
+             Two lists side by side that answered the same click differently was
+             the bug; one component cannot drift from itself. -->
+        <app-song-explorer
           class="entries"
           data-testid="songbook-detail"
+          rowTestid="entry-row"
           [rows]="presenter.entries()"
-          [selected]="presenter.selectedSlots()"
-          [isReadOnly]="presenter.isVirtual()"
-          [currentSongId]="presenter.currentId()"
+          [capabilities]="entryCapabilities()"
+          [selectedIds]="presenter.selectedSlots()"
+          [currentId]="presenter.currentSlot()"
           [insertAt]="previewIndex()"
           [emptyText]="entriesEmptyText()"
           (selectToggled)="presenter.toggleSelectSlot($event)"
-          (activated)="presenter.activate($event)"
+          (activated)="presenter.activateSlot($event)"
           (removed)="presenter.removeSlots($event)"
         />
       </div>
@@ -348,28 +340,8 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       background: var(--surface-raised);
     }
 
-    /* The direction is the subject and the position is the qualifier, so the
-       badge is a corner mark rather than a second equal glyph — the same
-       composition (and sizes) as the editor's transpose buttons. */
-    .cross {
-      position: relative;
-    }
-
     .cross app-icon {
       --icon-size: 17px;
-    }
-
-    .cross .cross-badge {
-      --icon-size: 13px;
-      position: absolute;
-      inset-block-start: 1px;
-      inset-inline-end: 1px;
-      color: var(--brand);
-    }
-
-    .cross .cross-badge.is-bottom {
-      inset-block-start: auto;
-      inset-block-end: 1px;
     }
 
     /* Set apart from the four that go the other way: it is a different
@@ -436,6 +408,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
        disabled icons is not a puzzle. After them, not before: the controls sit
        at the start of the strip (where a search box would be), and the sentence
        explains them from the right. */
+    .entry-clear {
+      margin-inline-start: var(--space-2);
+    }
+
     .entry-hint {
       flex: 1;
       min-inline-size: 0;
@@ -477,6 +453,13 @@ export class SongbookDetailPage {
 
   /** The Songbooks panel's capability set: identity/destructive actions off. */
   protected readonly capabilities = REDUCED_CAPABILITIES;
+
+  /** The virtual book's order is read-only, so its slots cannot be picked. */
+  protected readonly entryCapabilities = computed(() =>
+    this.presenter.isVirtual()
+      ? READONLY_ENTRY_CAPABILITIES
+      : ENTRY_CAPABILITIES,
+  );
 
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
   protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
@@ -531,10 +514,11 @@ export class SongbookDetailPage {
   });
 
   /**
-   * The four places to put them — **a right arrow badged with the reorder
-   * mark**: right is the crossing (into the songbook, which is the pane on the
-   * right), and the badge says which end. Direction first, position second, the
-   * same composition the editor's transpose buttons use.
+   * The four places to put them, in the **reorder set's own glyphs** — up/down
+   * for a step, arrow-into-a-line for an end. They briefly wore a right arrow
+   * with the position badged onto it, to say "across into the book"; the
+   * direction is already obvious from which pane you are looking at, and the
+   * badge cost the position mark its legibility.
    *
    * The label names the **resolved** position, not the rule: "Add above slot 3"
    * rather than "add above the selection", because the whole complaint was that
@@ -543,13 +527,11 @@ export class SongbookDetailPage {
   protected readonly addOptions: readonly {
     where: InsertPosition;
     icon: IconName;
-    /** Which corner the position mark rides — see the template. */
-    isBadgeBottom?: boolean;
   }[] = [
     { where: 'start', icon: 'moveStart' },
     { where: 'above', icon: 'moveUp' },
-    { where: 'below', icon: 'moveDown', isBadgeBottom: true },
-    { where: 'end', icon: 'moveEnd', isBadgeBottom: true },
+    { where: 'below', icon: 'moveDown' },
+    { where: 'end', icon: 'moveEnd' },
   ];
 
   protected addLabel(option: { where: InsertPosition }): string {
@@ -573,21 +555,11 @@ export class SongbookDetailPage {
     () => this.presenter.selectedSlots().size > 0,
   );
 
-  /**
-   * What the strip needs said. With no slots ticked it explains what the greyed
-   * buttons want; with some, it says how many — and adds the fact the Add
-   * buttons depend on, since "above" is meaningless without an anchor.
-   */
-  protected readonly slotSelectionLabel = computed(() => {
-    const count = this.presenter.selectedSlots().size;
-    return count === 0
-      ? $localize`:@@entries.pick:Pick slots to reorder, or to aim Add above/below`
-      : $localize`:@@entries.selected:${count}:count: selected`;
-  });
+  /** Only shown while nothing is ticked — it exists to explain the greyed
+   * buttons, and "above" is meaningless without an anchor. */
+  protected readonly slotSelectionLabel = $localize`:@@entries.pick:Pick slots to reorder, or to aim Add above/below`;
 
   protected readonly reorderGroupLabel = $localize`:@@entries.reorder:Reorder`;
-  protected readonly clearSlotsLabel = $localize`:@@entries.clearSelection:Clear the slot selection`;
-  protected readonly clearSlotsShort = $localize`:@@entries.clearShort:Clear`;
   /** "From this songbook" is the load-bearing half of the sentence. */
   protected readonly removeSlotsLabel = $localize`:@@entries.removeSelected:Remove the selected songs from this songbook`;
 

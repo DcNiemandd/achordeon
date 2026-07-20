@@ -76,64 +76,68 @@ const SEARCH_DEBOUNCE_MS = 200;
     Tooltip,
   ],
   template: `
-    <div class="tools">
-      <div class="search">
-        <app-icon name="search" class="search-icon" />
-        <input
-          #searchInput
-          appField
-          type="search"
-          class="search-field"
-          [class.has-value]="hasQuery()"
-          [value]="query()"
-          [attr.aria-label]="searchLabel"
-          [attr.placeholder]="searchLabel"
-          data-testid="explorer-search"
-          (input)="onSearchInput($event)"
-        />
-        <!-- Only while there is something to clear. Unlike the row actions this
-             button is not a shortcut for anything reachable another way — with an
-             empty list and a stale query, it is the way back. -->
-        @if (hasQuery()) {
-          <button
-            appButton
-            type="button"
-            class="search-clear"
-            [isIconOnly]="true"
-            [attr.aria-label]="clearSearchLabel"
-            [appTooltip]="clearSearchLabel"
-            data-testid="explorer-search-clear"
-            (click)="clearQuery(searchInput)"
-          >
-            <app-icon name="close" />
-          </button>
-        }
+    <!-- A songbook's entry list has nothing to search or sort: its order is the
+         content, and re-sorting the thing you are ordering is meaningless. -->
+    @if (capabilities().canSearch) {
+      <div class="tools">
+        <div class="search">
+          <app-icon name="search" class="search-icon" />
+          <input
+            #searchInput
+            appField
+            type="search"
+            class="search-field"
+            [class.has-value]="hasQuery()"
+            [value]="query()"
+            [attr.aria-label]="searchLabel"
+            [attr.placeholder]="searchLabel"
+            data-testid="explorer-search"
+            (input)="onSearchInput($event)"
+          />
+          <!-- Only while there is something to clear. Unlike the row actions this
+               button is not a shortcut for anything reachable another way — with an
+               empty list and a stale query, it is the way back. -->
+          @if (hasQuery()) {
+            <button
+              appButton
+              type="button"
+              class="search-clear"
+              [isIconOnly]="true"
+              [attr.aria-label]="clearSearchLabel"
+              [appTooltip]="clearSearchLabel"
+              data-testid="explorer-search-clear"
+              (click)="clearQuery(searchInput)"
+            >
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+
+        <select
+          class="sort"
+          [value]="sort()"
+          [attr.aria-label]="sortLabel"
+          data-testid="explorer-sort"
+          (change)="onSortPick($event)"
+        >
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="dirLabel()"
+          [appTooltip]="dirLabel()"
+          data-testid="explorer-sort-dir"
+          (click)="toggleDir()"
+        >
+          <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
+        </button>
       </div>
-
-      <select
-        class="sort"
-        [value]="sort()"
-        [attr.aria-label]="sortLabel"
-        data-testid="explorer-sort"
-        (change)="onSortPick($event)"
-      >
-        @for (option of sortOptions; track option.value) {
-          <option [value]="option.value">{{ option.label }}</option>
-        }
-      </select>
-
-      <button
-        appButton
-        type="button"
-        [isIconOnly]="true"
-        [attr.aria-label]="dirLabel()"
-        [appTooltip]="dirLabel()"
-        data-testid="explorer-sort-dir"
-        (click)="toggleDir()"
-      >
-        <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
-      </button>
-    </div>
+    }
 
     @if (rows().length === 0) {
       <app-empty-state [text]="emptyText()" data-testid="explorer-empty" />
@@ -149,7 +153,9 @@ const SEARCH_DEBOUNCE_MS = 200;
           class="row"
           [class.is-current]="row.id === currentId()"
           [class.is-selected]="selectedIds().has(row.id)"
-          [attr.data-testid]="'song-row'"
+          [class.is-insert-before]="insertAt() === row.position"
+          [class.is-insert-after]="isLastAndInsertAtEnd(row)"
+          [attr.data-testid]="rowTestid()"
           [attr.data-song-id]="row.id"
         >
           @if (capabilities().canSelect) {
@@ -161,6 +167,15 @@ const SEARCH_DEBOUNCE_MS = 200;
               [attr.data-testid]="'select-' + row.id"
               (change)="selectToggled.emit(row.id)"
             />
+          }
+
+          <!-- The slot number: what repeats and reorders, and what a performer
+               is counting down when they read a set list. Only where position
+               IS the content — a library sorted by name has no "number 4". -->
+          @if (capabilities().hasOrdinals) {
+            <span class="ordinal" aria-hidden="true">{{
+              row.position + 1
+            }}</span>
           }
 
           @if (capabilities().canFavorite) {
@@ -250,6 +265,22 @@ const SEARCH_DEBOUNCE_MS = 200;
                 (click)="duplicated.emit(row.id)"
               >
                 <app-icon name="duplicate" />
+              </button>
+            }
+            @if (capabilities().canRemove) {
+              <!-- An X, not a bin: this drops a slot and destroys nothing. The
+                   bin is the library's, and it means the song itself
+                   (CONTEXT.md §Delete vs Remove). -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="removeRowLabel(row)"
+                [appTooltip]="removeRowLabel(row)"
+                [attr.data-testid]="'remove-' + row.id"
+                (click)="removed.emit([row.id])"
+              >
+                <app-icon name="close" />
               </button>
             }
             @if (capabilities().canDelete) {
@@ -364,6 +395,41 @@ const SEARCH_DEBOUNCE_MS = 200;
       box-shadow: inset 3px 0 0 var(--brand);
     }
 
+    /* Where an add would land, while its button is hovered or focused — the
+       answer to "above what, exactly?". An inset shadow rather than a border,
+       so the row keeps its height and the list does not twitch as the pointer
+       moves between the buttons. */
+    .row.is-insert-before {
+      box-shadow: inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-insert-after {
+      box-shadow: inset 0 -3px 0 var(--brand);
+    }
+
+    /* Both marks can be true at once, and the later rule would drop one. */
+    .row.is-current.is-insert-before {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-current.is-insert-after {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 -3px 0 var(--brand);
+    }
+
+    .ordinal {
+      flex: none;
+      min-inline-size: 2ch;
+      text-align: end;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+      /* Lining figures, so a column of numbers stays a column. */
+      font-variant-numeric: tabular-nums;
+    }
+
     .check {
       accent-color: var(--brand);
       inline-size: 16px;
@@ -465,6 +531,19 @@ export class SongExplorer {
   readonly currentId = input<string | null>(null);
   readonly emptyText = input($localize`:@@explorer.empty:No songs yet.`);
 
+  /**
+   * Where an add would land, drawn as a line between rows. `null` while nothing
+   * is being previewed; `rows().length` means "after the last row".
+   */
+  readonly insertAt = input<number | null>(null);
+
+  /**
+   * The `data-testid` each row carries. Two mounts of this list can appear on
+   * one screen (the library and a songbook's entries), and a suite that selects
+   * `song-row` must be able to say which one it means.
+   */
+  readonly rowTestid = input('song-row');
+
   readonly queryChange = output<string>();
   readonly sortChange = output<SortChange>();
   /** The window is within a page of its end — grow it (PRD-INFRA §3). */
@@ -483,6 +562,11 @@ export class SongExplorer {
   readonly deleted = output<string[]>();
   readonly renamed = output<RenameChange>();
   readonly duplicated = output<string>();
+  /**
+   * Take these rows out of THIS list, leaving the songs alone — a songbook slot,
+   * never a library row. A different act from `deleted`, which destroys.
+   */
+  readonly removed = output<string[]>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
 
@@ -529,6 +613,12 @@ export class SongExplorer {
     return row.id;
   }
 
+  /** "After the end" has no row of its own, so the last row wears the line. */
+  protected isLastAndInsertAtEnd(row: SongRow): boolean {
+    const at = this.insertAt();
+    return at !== null && at === this.rows().length && row.position === at - 1;
+  }
+
   // Every row action names its row. "Rename" repeated down a list of 50 rows
   // tells a screen-reader user which button they are on and nothing about which
   // song it would rename (PRD-UI-SHELL.md §5.2).
@@ -556,6 +646,11 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  /** Names where it is removed FROM — the load-bearing half of the sentence. */
+  protected removeRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.removeRow:Remove ${row.name}:name: from this songbook`;
   }
 
   protected onSearchInput(event: Event): void {

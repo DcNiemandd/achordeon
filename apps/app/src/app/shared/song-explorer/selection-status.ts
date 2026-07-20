@@ -11,8 +11,9 @@ import {
 import { Button } from '../../primitives';
 
 /**
- * "3 selected — Clear (3)": how many rows are picked, and the way to unpick
- * them.
+ * "Clear (3)": how many rows are picked, and the way to unpick them — **one
+ * control, not two**. It briefly said "3 selected" beside a "Clear (3)", which
+ * is the same number twice in the same breath.
  *
  * **One component, so the two lists that carry a selection say it the same way
  * and in the same place** — the action bar above the list, at the end of the row
@@ -30,9 +31,6 @@ import { Button } from '../../primitives';
   imports: [Button],
   template: `
     @if (count() > 0) {
-      <span class="count" data-testid="selection-count">{{
-        countLabel()
-      }}</span>
       <button
         appButton
         type="button"
@@ -54,12 +52,6 @@ import { Button } from '../../primitives';
       min-inline-size: 0;
     }
 
-    .count {
-      font-size: var(--text-sm);
-      color: var(--brand);
-      white-space: nowrap;
-    }
-
     .clear {
       padding-inline: var(--space-1);
       font-size: var(--text-xs);
@@ -71,10 +63,6 @@ import { Button } from '../../primitives';
 export class SelectionStatus {
   readonly count = input.required<number>();
   readonly cleared = output<void>();
-
-  protected readonly countLabel = computed(
-    () => $localize`:@@explorer.selected:${this.count()}:count: selected`,
-  );
 
   protected readonly clearCountLabel = computed(
     () => $localize`:@@explorer.clearCount:Clear (${this.count()}:count:)`,

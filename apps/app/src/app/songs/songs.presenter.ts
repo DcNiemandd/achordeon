@@ -69,8 +69,12 @@ export class SongsPresenter {
   readonly pendingDelete = this._pendingDelete.asReadonly();
 
   readonly rows = computed<SongRow[]>(() =>
-    this.store.live().map((song) => ({
+    this.store.live().map((song, index) => ({
       id: song.id,
+      // Its place in the list as shown. The library never displays it — the
+      // ordinal is a songbook's affordance — but the insertion preview and the
+      // row contract are one shape for both mounts.
+      position: index,
       name: song.name,
       // The parser cache, not a re-parse: it is stored derived state precisely so
       // that listing 500 songs costs no parsing (PRD-DOMAIN-MODEL §Song).

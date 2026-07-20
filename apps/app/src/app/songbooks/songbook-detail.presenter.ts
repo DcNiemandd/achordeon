@@ -33,7 +33,6 @@ import {
   type InsertPosition,
   type MoveWhere,
 } from './entry-ops';
-import type { EntryRow } from './songbook-entries';
 
 /**
  * The songbook builder's half of the app's state.
@@ -83,8 +82,9 @@ export class SongbookDetailPresenter {
   // --- Pane A: the library, in reduced-capability form. -------------------
 
   readonly rows = computed<SongRow[]>(() =>
-    this.songs.live().map((song) => ({
+    this.songs.live().map((song, index) => ({
       id: song.id,
+      position: index,
       name: song.name,
       title: song.cache.title,
       subtitle: song.cache.subtitle,
@@ -114,7 +114,7 @@ export class SongbookDetailPresenter {
    */
   async load(id: string): Promise<void> {
     this._id.set(id);
-    this._selectedSlots.set(new Set());
+    this.slotSelection.clear();
     if (isAllSongs(id)) {
       this._book.set(null);
       this._isFound.set(true);
@@ -221,39 +221,71 @@ export class SongbookDetailPresenter {
    */
   private readonly _songsById = signal<ReadonlyMap<Uuid, Song>>(new Map());
 
-  /** Which **slots** are ticked. Indexes, not ids: the same song may fill
-   * several slots, and they are not interchangeable. */
-  private readonly _selectedSlots = signal<ReadonlySet<number>>(new Set());
-  readonly selectedSlots = this._selectedSlots.asReadonly();
+  /**
+   * Which **slots** are ticked, by slot key — the same `RowSelection` the
+   * library list uses, so both panes answer a click identically (the row picks
+   * one, the checkbox extends). The key is the position, never the song id: the
+   * same song may fill several slots and they are not interchangeable.
+   */
+  private readonly slotSelection = new RowSelection();
 
-  readonly entries = computed<EntryRow[]>(() => {
+  readonly selectedSlots = this.slotSelection.ids;
+
+  /** The ticked slots as indexes, which is what `entry-ops` speaks. */
+  private selectedIndexes(): Set<number> {
+    return new Set([...this.slotSelection.ids()].map(Number));
+  }
+
+  /**
+   * The songbook's slots, in the **same row shape the library list uses** — it
+   * is the same component (`ENTRY_CAPABILITIES`), so it is the same contract.
+   */
+  readonly entries = computed<SongRow[]>(() => {
     const byId = this._songsById();
     return this.entryIds().map((songId, index) => {
       const song = byId.get(songId);
       return {
-        index,
-        songId,
+        id: String(index),
+        position: index,
         // A slot whose song is gone should not exist — deleting a song cascades
         // out of every songbook — so this names the fault rather than drawing a
         // blank row that looks like a bug in the list.
         name: song?.name ?? $localize`:@@entries.missing:Missing song`,
         title: song?.cache.title ?? '',
+        subtitle: song?.cache.subtitle ?? '',
+        isFavorite: false,
       };
     });
   });
 
-  toggleSelectSlot(index: number): void {
-    this._selectedSlots.update((set) => {
-      const next = new Set(set);
-      if (!next.delete(index)) {
-        next.add(index);
-      }
-      return next;
-    });
+  /**
+   * The slot the rest of the app is pointing at, or null.
+   *
+   * Rows are keyed by slot, so "the current song" has to be translated into one
+   * of them — the first, when a song fills several: a mark on every copy would
+   * say "these are the same row", which is the one thing a slot is not.
+   */
+  readonly currentSlot = computed(() => {
+    const current = this.session.currentSongId();
+    const at = this.entryIds().findIndex((songId) => songId === current);
+    return at === -1 ? null : String(at);
+  });
+
+  toggleSelectSlot(key: string): void {
+    this.slotSelection.toggle(key);
+  }
+
+  /** A click on a slot's body: pick just it, and make its song current. */
+  activateSlot(key: string): void {
+    this.slotSelection.selectOnly(key);
+    const songId = this.entryIds()[Number(key)];
+    if (songId !== undefined) {
+      this.session.setCurrentSong(songId);
+    }
   }
 
   clearSlotSelection(): void {
-    this._selectedSlots.set(new Set());
+    this.slotSelection.clear();
   }
 
   /**
@@ -275,8 +307,8 @@ export class SongbookDetailPresenter {
     const at = this.insertAt(where) ?? book.entries.length;
 
     await this.writeEntries(insertEntries(book.entries, songIds, at));
-    this._selectedSlots.set(
-      shiftSelection(this._selectedSlots(), at, songIds.length),
+    this.setSlotSelection(
+      shiftSelection(this.selectedIndexes(), at, songIds.length),
     );
     // The songs have landed. Leaving them ticked invites a second, accidental
     // copy of the same set on the next press of a neighbouring button.
@@ -296,7 +328,7 @@ export class SongbookDetailPresenter {
     if (!book || this.isVirtual() || this.selection.isEmpty()) {
       return null;
     }
-    return insertionIndex(book.entries.length, this._selectedSlots(), where);
+    return insertionIndex(book.entries.length, this.selectedIndexes(), where);
   }
 
   /**
@@ -307,14 +339,14 @@ export class SongbookDetailPresenter {
    */
   async moveSelected(where: MoveWhere): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual() || this._selectedSlots().size === 0) {
+    if (!book || this.isVirtual() || this.slotSelection.isEmpty()) {
       return;
     }
-    const moved = moveEntries(book.entries, this._selectedSlots(), where);
+    const moved = moveEntries(book.entries, this.selectedIndexes(), where);
     await this.writeEntries(moved.entries);
     // The selection travels with the slots, or the next press moves whatever
     // happened to slide into those indexes.
-    this._selectedSlots.set(moved.selected);
+    this.setSlotSelection(moved.selected);
   }
 
   /**
@@ -324,16 +356,24 @@ export class SongbookDetailPresenter {
    * here would train the user to click through the one that guards a real
    * delete.
    */
-  async removeSlots(indexes: readonly number[]): Promise<void> {
+  async removeSlots(keys: readonly string[]): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual() || indexes.length === 0) {
+    if (!book || this.isVirtual() || keys.length === 0) {
       return;
     }
-    const dropped = new Set(indexes);
+    const dropped = new Set(keys.map(Number));
     await this.writeEntries(removeEntries(book.entries, dropped));
     // Every surviving index has shifted; nothing is left to point at, so the
     // selection goes rather than silently coming to mean other slots.
-    this._selectedSlots.set(new Set());
+    this.slotSelection.clear();
+  }
+
+  /** Put back a slot selection that `entry-ops` computed in index form. */
+  private setSlotSelection(indexes: ReadonlySet<number>): void {
+    this.slotSelection.clear();
+    for (const index of indexes) {
+      this.slotSelection.toggle(String(index));
+    }
   }
 
   // --- The book itself: name, title page, and its scope of the cascade. ----
