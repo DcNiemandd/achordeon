@@ -24,8 +24,10 @@ async function readSchemaVersion(db: AchordeonDb): Promise<number> {
   return row ? Number(row.value) : SCHEMA_VERSION;
 }
 
-/** This install's stable device id (feeds per-row LWW, ADR-0004); minted once. */
-async function readDeviceId(db: AchordeonDb): Promise<string> {
+/** This install's stable device id (feeds per-row LWW, ADR-0004); minted once.
+ * Exported because every outbound envelope carries it — Export (Epic 7) as much
+ * as sync (Epic 10). */
+export async function readDeviceId(db: AchordeonDb): Promise<string> {
   const row = await db.meta.get(META_DEVICE_ID);
   if (row) return row.value;
   const id = crypto.randomUUID();

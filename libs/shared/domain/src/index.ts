@@ -2,6 +2,7 @@ export * from './lib/entities';
 export * from './lib/settings';
 export * from './lib/snapshot';
 export * from './lib/migration';
+export * from './lib/import-plan';
 export * from './lib/theory';
 export * from './lib/ast';
 // The chord/label sub-grammar recognisers. Public because the editor's highlight
