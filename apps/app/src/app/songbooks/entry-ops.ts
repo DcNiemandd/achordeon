@@ -63,6 +63,70 @@ export function insertEntries(
  * different songs — the selection would appear to jump the moment you add above
  * it.
  */
+/**
+ * Where a reorder sends the selected slots (songbooks/index.mdx): "move the song
+ * one song over, to the start or to the end".
+ */
+export type MoveWhere = 'up' | 'down' | 'start' | 'end';
+
+/** A reorder: the new order, and where the selection followed it to. */
+export interface MoveResult {
+  readonly entries: Uuid[];
+  readonly selected: Set<number>;
+}
+
+/**
+ * Move the selected slots, **carrying the selection with them**.
+ *
+ * The selection is by index, so a move that did not return the new indexes would
+ * leave the ticks pointing at whatever slid into those positions — you would
+ * press "up" twice and watch two different songs move.
+ *
+ * A scattered selection keeps its relative order and compacts against the end it
+ * is moving toward: slots already at the wall hold their place and the ones
+ * behind them stack up, rather than the whole selection refusing to move because
+ * one member cannot.
+ */
+export function moveEntries(
+  entries: readonly Uuid[],
+  selected: ReadonlySet<number>,
+  where: MoveWhere,
+): MoveResult {
+  const sorted = [...selected]
+    .filter((i) => i >= 0 && i < entries.length)
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) {
+    return { entries: [...entries], selected: new Set(selected) };
+  }
+
+  if (where === 'start' || where === 'end') {
+    const picked = sorted.map((i) => entries[i]);
+    const rest = entries.filter((_, i) => !selected.has(i));
+    const at = where === 'start' ? 0 : rest.length;
+    return {
+      entries: insertEntries(rest, picked, at),
+      selected: new Set(picked.map((_, n) => at + n)),
+    };
+  }
+
+  const result = [...entries];
+  const next = new Set<number>();
+  // Ascending for "up", descending for "down": each slot must be resolved before
+  // the one behind it, or two selected neighbours would swap with each other.
+  const order = where === 'up' ? sorted : [...sorted].reverse();
+  for (const i of order) {
+    const to = where === 'up' ? i - 1 : i + 1;
+    // The wall, or a selected slot that has already claimed the target.
+    if (to < 0 || to >= result.length || next.has(to)) {
+      next.add(i);
+      continue;
+    }
+    [result[to], result[i]] = [result[i], result[to]];
+    next.add(to);
+  }
+  return { entries: result, selected: next };
+}
+
 export function shiftSelection(
   selected: ReadonlySet<number>,
   at: number,

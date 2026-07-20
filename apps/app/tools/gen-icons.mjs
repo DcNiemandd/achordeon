@@ -86,6 +86,13 @@ const ICONS = {
   sortAsc: 'arrow-up-narrow-wide',
   sortDesc: 'arrow-down-narrow-wide',
   warning: 'triangle-alert',
+  // songbook entry reordering (Epic 6). Chevrons, not the transpose arrows:
+  // those are already spoken for by a musical act, and one chevron vs two says
+  // "one step" vs "all the way" without a word.
+  moveUp: 'chevron-up',
+  moveDown: 'chevron-down',
+  moveStart: 'chevrons-up',
+  moveEnd: 'chevrons-down',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

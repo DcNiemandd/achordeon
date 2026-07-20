@@ -25,8 +25,10 @@ import type {
 import {
   insertEntries,
   insertionIndex,
+  moveEntries,
   shiftSelection,
   type InsertPosition,
+  type MoveWhere,
 } from './entry-ops';
 import type { EntryRow } from './songbook-entries';
 
@@ -254,6 +256,24 @@ export class SongbookDetailPresenter {
     this._selectedSlots.set(
       shiftSelection(this._selectedSlots(), at, songIds.length),
     );
+  }
+
+  /**
+   * Reorder the selected slots (songbooks/index.mdx).
+   *
+   * Refused outright on the virtual book: *All songs* has a read-only order
+   * (CONTEXT.md §Songbook), and there is no record to write a new one to.
+   */
+  async moveSelected(where: MoveWhere): Promise<void> {
+    const book = this._book();
+    if (!book || this.isVirtual() || this._selectedSlots().size === 0) {
+      return;
+    }
+    const moved = moveEntries(book.entries, this._selectedSlots(), where);
+    await this.writeEntries(moved.entries);
+    // The selection travels with the slots, or the next press moves whatever
+    // happened to slide into those indexes.
+    this._selectedSlots.set(moved.selected);
   }
 
   /** The library, in the virtual book's own (name) order. */

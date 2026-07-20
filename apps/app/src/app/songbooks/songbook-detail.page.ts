@@ -133,6 +133,49 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       </div>
 
       <div pane-b class="pane">
+        <!-- Pane B's own strip, not the action bar: the action bar is pane A's
+             (§4), and these act on the slots ticked HERE. The virtual book has
+             a read-only order, so it gets no strip at all. -->
+        @if (!presenter.isVirtual()) {
+          <div
+            class="entry-tools"
+            role="toolbar"
+            [attr.aria-label]="reorderGroupLabel"
+            data-testid="entry-tools"
+          >
+            <span class="entry-count">{{ slotSelectionLabel() }}</span>
+
+            @for (option of moveOptions; track option.where) {
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [isIconOnly]="true"
+                [disabled]="!hasSlotSelection()"
+                [attr.aria-label]="option.label"
+                [appTooltip]="option.label"
+                [attr.data-testid]="'move-' + option.where"
+                (click)="presenter.moveSelected(option.where)"
+              >
+                <app-icon [name]="option.icon" />
+              </button>
+            }
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSlotSelection()"
+              [attr.aria-label]="clearSlotsLabel"
+              [appTooltip]="clearSlotsLabel"
+              data-testid="entry-clear"
+              (click)="presenter.clearSlotSelection()"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
+        }
+
         <app-songbook-entries
           class="entries"
           data-testid="songbook-detail"
@@ -180,6 +223,26 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       font-size: var(--text-sm);
       color: var(--brand);
       white-space: nowrap;
+    }
+
+    .entry-tools {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: var(--space-2);
+      border-block-end: 1px solid var(--border);
+    }
+
+    /* Says what the buttons beside it need before they do anything, so a row of
+       disabled icons is not a puzzle. */
+    .entry-count {
+      flex: 1;
+      min-inline-size: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
     }
   `,
 })
@@ -258,6 +321,45 @@ export class SongbookDetailPage {
       where: 'end' as const,
       short: $localize`:@@songbooks.addEnd.short:End`,
       label: $localize`:@@songbooks.addEnd:Add the selected songs to the end`,
+    },
+  ];
+
+  protected readonly hasSlotSelection = computed(
+    () => this.presenter.selectedSlots().size > 0,
+  );
+
+  protected readonly slotSelectionLabel = computed(() => {
+    const count = this.presenter.selectedSlots().size;
+    return count === 0
+      ? $localize`:@@entries.pick:Pick slots to reorder`
+      : $localize`:@@entries.selected:${count}:count: selected`;
+  });
+
+  protected readonly reorderGroupLabel = $localize`:@@entries.reorder:Reorder`;
+  protected readonly clearSlotsLabel = $localize`:@@entries.clearSelection:Clear the slot selection`;
+
+  /** One chevron is one step, two is all the way — the distinction the labels
+   * spell out and the glyphs already carry. */
+  protected readonly moveOptions = [
+    {
+      where: 'start' as const,
+      icon: 'moveStart' as const,
+      label: $localize`:@@entries.moveStart:Move to the start`,
+    },
+    {
+      where: 'up' as const,
+      icon: 'moveUp' as const,
+      label: $localize`:@@entries.moveUp:Move up one`,
+    },
+    {
+      where: 'down' as const,
+      icon: 'moveDown' as const,
+      label: $localize`:@@entries.moveDown:Move down one`,
+    },
+    {
+      where: 'end' as const,
+      icon: 'moveEnd' as const,
+      label: $localize`:@@entries.moveEnd:Move to the end`,
     },
   ];
 
