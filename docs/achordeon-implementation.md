@@ -309,17 +309,51 @@ plus the songbook-scope settings that re-theme every song performed in it.
 
 ### Subtasks
 
-- [ ] Songbook list/CRUD; the always-present virtual **All songs** view
+- [x] Songbook list/CRUD; the always-present virtual **All songs** view
       (read-only order, no removal).
-- [ ] Reduced-capability explorer in the left panel (search/sort/select/favorite/
+- [x] Reduced-capability explorer in the left panel (search/sort/select/favorite/
       add-to-songbook on; delete/rename/duplicate/edit off).
-- [ ] Add songs to a songbook (to start / end / above / below selected); allow the
+- [x] Add songs to a songbook (to start / end / above / below selected); allow the
       same song in multiple slots.
-- [ ] Reorder entries (move one over / to start / to end). _(Drag & drop is
+- [x] Reorder entries (move one over / to start / to end). _(Drag & drop is
       marked future — track separately.)_
-- [ ] Remove-from-songbook (slot removal, song stays in library).
-- [ ] Songbook-scope settings (chord color/size; font is future) + title-page
+- [x] Remove-from-songbook (slot removal, song stays in library).
+- [x] Songbook-scope settings (chord color/size; font is future) + title-page
       fields (title/subtitle/author).
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **`ALL_SONGS_ID` is a domain constant, not a route special case.** It is an id
+  `crypto.randomUUID()` cannot produce, so `/songbooks/:id` carries the real and
+  the virtual book without a second route — and every write path asks
+  `isVirtual` once, in the presenter, rather than each button remembering.
+- **A row in pane B is a _slot_, keyed by index, never by song id.** The same
+  song may fill several, so ordering, selection and removal are all
+  index-shaped. Reorder therefore has to return the **new selection** as well as
+  the new order: without it the ticks stay on indexes that now hold other songs,
+  and pressing "up" twice moves two different songs.
+- **Entry songs are hydrated by id from the repository**, not read out of the
+  explorer's window — a slot must not render blank because of what is typed in
+  the search box.
+- **Remove-from-songbook gets no confirmation**, deliberately: nothing is
+  destroyed, and a dialog here would train the user to click through the one
+  guarding a real delete. The row mark is an X, not the bin.
+- **`chordSize` was song-scoped only** (Epic 1's registry), so a songbook could
+  re-colour its chords but not resize them — half a theme against CONTEXT.md
+  §Songbook. Fixed in the registry, which is all a data-driven cascade needs.
+- **A presenter's fallback name must not be another object's name.** `name()`
+  returned "All songs" for _any_ unloaded book; the action-bar heading is a
+  rename field bound to it, so the value arriving late overwrote what the user
+  had typed. Now empty while a real book loads.
+- **Songbook settings open as a modal**, unlike the editor's container dialog:
+  there is no live render behind it worth keeping visible.
+
+**Still open:** drag & drop between the panes (`songbooks/index.mdx` marks it
+FUTURE and the page carries the admonition); it wants the CDK's `cdkDropList`
+and the narrowest layout in the app, so it is its own piece of work. The songbook
+**download** options (title page / summary / print) are Epic 7's, not this one's.
 
 ---
 
