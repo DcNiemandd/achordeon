@@ -130,6 +130,43 @@ export function moveEntries(
 }
 
 /**
+ * Move the selected slots to an **arbitrary boundary** — what a drop supplies
+ * and the buttons never can (Epic 14).
+ *
+ * `at` is a boundary in the list's *current* coordinates: 0 is before the first
+ * slot, `entries.length` after the last, and it is the same number the insertion
+ * line is drawn at. Which is why it cannot be used as a splice index directly —
+ * lifting the selection out first shifts every boundary above it down by however
+ * many of them were below `at`.
+ *
+ * Selection travels with the block, for the reason it does in `moveEntries`: the
+ * ticks are indexes, and a move that left them behind would point them at
+ * whatever slid into those positions.
+ */
+export function moveEntriesTo(
+  entries: readonly Uuid[],
+  selected: ReadonlySet<number>,
+  at: number,
+): MoveResult {
+  const sorted = [...selected]
+    .filter((i) => i >= 0 && i < entries.length)
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) {
+    return { entries: [...entries], selected: new Set(selected) };
+  }
+  const picked = sorted.map((i) => entries[i]);
+  const rest = entries.filter((_, i) => !selected.has(i));
+  const target = Math.min(
+    Math.max(at - sorted.filter((i) => i < at).length, 0),
+    rest.length,
+  );
+  return {
+    entries: insertEntries(rest, picked, target),
+    selected: new Set(picked.map((_, n) => target + n)),
+  };
+}
+
+/**
  * Drop slots by index — **remove from songbook, never delete a song**
  * (CONTEXT.md §Delete vs Remove). The song stays in the library; only this
  * positioned reference to it goes.

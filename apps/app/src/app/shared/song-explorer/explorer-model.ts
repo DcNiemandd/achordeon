@@ -121,6 +121,16 @@ export interface ExplorerCapabilities {
   /** Per-row move buttons. They act on **that row alone**, never the selection
    * — the row you are pointing at is the row you meant. */
   readonly canReorder: boolean;
+  /**
+   * Rows carry a **drag handle** (Epic 14) — the row itself never starts a drag.
+   * A row is already a click target that selects, and a list where pressing a
+   * row might drag it is a list you cannot click confidently on touch.
+   */
+  readonly canDrag: boolean;
+  /** This list **accepts** a drop. Separate from `canDrag` because the library
+   * is a source and never a destination: its order is a sort, not an
+   * arrangement, so there is no "here" to drop something at. */
+  readonly canDrop: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
   readonly canRename: boolean;
@@ -137,6 +147,8 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canFavorite: true,
   canRemove: false,
   canReorder: false,
+  canDrag: false,
+  canDrop: false,
   canEdit: true,
   canRename: true,
   canDuplicate: true,
@@ -156,6 +168,8 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canFavorite: true,
   canRemove: false,
   canReorder: false,
+  canDrag: true,
+  canDrop: false,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -178,6 +192,8 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canFavorite: false,
   canRemove: true,
   canReorder: true,
+  canDrag: true,
+  canDrop: true,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -193,6 +209,8 @@ export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSelect: false,
   canRemove: false,
   canReorder: false,
+  canDrag: false,
+  canDrop: false,
 };
 
 /**
@@ -210,6 +228,8 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canFavorite: false,
   canRemove: false,
   canReorder: false,
+  canDrag: false,
+  canDrop: false,
   canEdit: true,
   canRename: true,
   canDuplicate: false,
@@ -223,6 +243,23 @@ export type RowMove = 'start' | 'up' | 'down' | 'end';
 export interface RowMoveRequest {
   readonly id: string;
   readonly where: RowMove;
+}
+
+/**
+ * A row was dropped onto a list that accepts drops (Epic 14).
+ *
+ * Emitted by the **receiving** list, because it is the only one that knows where
+ * the pointer was over it. `id` is in the *source* list's id-space — a song id
+ * coming from the library, a slot key coming from the list's own rows — and
+ * `isSameList` is what tells the two apart, so the presenter never has to guess
+ * which of its two id-spaces it has been handed.
+ */
+export interface RowDrop {
+  readonly id: string;
+  readonly isSameList: boolean;
+  /** The boundary the insertion line was drawn at: 0 is before the first row,
+   * `rows.length` after the last. Not a splice index — see `moveEntriesTo`. */
+  readonly at: number;
 }
 
 /** A rename committed in a row. */

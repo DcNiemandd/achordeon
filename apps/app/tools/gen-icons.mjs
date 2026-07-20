@@ -104,6 +104,10 @@ const ICONS = {
   // then which end of the list.
   transferIn: 'arrow-right',
   transferOut: 'arrow-left',
+  // The drag handle (Epic 14). A grip, not a move-cross: the cross says "this
+  // whole thing is draggable", which is exactly what we are not saying — the row
+  // is a click target, and only this one strip of it starts a drag.
+  drag: 'grip-vertical',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

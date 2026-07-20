@@ -15,6 +15,7 @@ import {
   signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { Router, RouterLink } from '@angular/router';
 import {
   Button,
@@ -35,6 +36,7 @@ import {
   toExplorerSort,
   toExplorerSortDir,
   type ExplorerSort,
+  type RowDrop,
 } from '../shared/song-explorer';
 import type { InsertPosition } from './entry-ops';
 import { SongbookDetailPresenter } from './songbook-detail.presenter';
@@ -55,6 +57,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
     NgTemplateOutlet,
+    CdkDropListGroup,
     RouterLink,
     ActionBar,
     SplitPane,
@@ -72,266 +75,281 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
          you move rows from one to the other, and a tab that hides the
          destination is a transfer list you cannot transfer across. So they sit
          side by side until there is genuinely no room, and then stack. -->
-    <app-split-pane
-      narrow="stack"
-      [ratio]="ui.splitRatio('songbooks')"
-      [hasTwoPanes]="hasTwoPanes()"
-      (ratioChange)="ui.setSplitRatio('songbooks', $event)"
-    >
-      <div pane-a class="pane">
-        <app-action-bar
-          [title]="presenter.name()"
-          [isTitleEditable]="!presenter.isVirtual()"
-          [titleLabel]="nameLabel"
-          (titleChange)="presenter.rename($event)"
-        >
-          <a
-            appButton
-            bar-end
-            routerLink="/songbooks"
-            [attr.aria-label]="backLabel"
-            [appTooltip]="backLabel"
-            data-testid="songbook-back"
+    <!-- **The group has to enclose the ng-template below, not just the panes**
+         [trap]. It is what connects the two lists so a row can cross between
+         them, and the CDK finds it by injector — which for a template follows
+         where the template is *declared*, not where it is rendered. Sitting on
+         the split pane, it was invisible to the entry list every time, since
+         that list is declared outside it. Which list actually *takes* a drop
+         stays a capability (see canDrop), not a wiring question. -->
+    <div class="screen" cdkDropListGroup>
+      <app-split-pane
+        narrow="stack"
+        [ratio]="ui.splitRatio('songbooks')"
+        [hasTwoPanes]="hasTwoPanes()"
+        (ratioChange)="ui.setSplitRatio('songbooks', $event)"
+      >
+        <div pane-a class="pane">
+          <app-action-bar
+            [title]="presenter.name()"
+            [isTitleEditable]="!presenter.isVirtual()"
+            [titleLabel]="nameLabel"
+            (titleChange)="presenter.rename($event)"
           >
-            <app-icon name="close" />
-          </a>
+            <a
+              appButton
+              bar-end
+              routerLink="/songbooks"
+              [attr.aria-label]="backLabel"
+              [appTooltip]="backLabel"
+              data-testid="songbook-back"
+            >
+              <app-icon name="close" />
+            </a>
 
-          @if (!presenter.isVirtual()) {
-            <!-- Same control, same place as the Songs module: the count and its
+            @if (!presenter.isVirtual()) {
+              <!-- Same control, same place as the Songs module: the count and its
                  Clear belong above the list they describe, not in the transfer
                  column between the panes — there it read as a fifth transfer
                  button and sat nowhere near the list it empties. -->
-            <app-selection-status
-              class="selection"
-              [count]="presenter.selectedIds().size"
-              (cleared)="presenter.clearSelection()"
-            />
+              <app-selection-status
+                class="selection"
+                [count]="presenter.selectedIds().size"
+                (cleared)="presenter.clearSelection()"
+              />
 
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              [isIconOnly]="true"
-              [class.is-active]="presenter.isSettingsOpen()"
-              [attr.aria-pressed]="presenter.isSettingsOpen()"
-              [attr.aria-label]="settingsLabel"
-              [appTooltip]="settingsLabel"
-              data-testid="songbook-settings"
-              (click)="presenter.toggleSettings()"
-            >
-              <app-icon name="settings" />
-            </button>
-          }
-        </app-action-bar>
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [isIconOnly]="true"
+                [class.is-active]="presenter.isSettingsOpen()"
+                [attr.aria-pressed]="presenter.isSettingsOpen()"
+                [attr.aria-label]="settingsLabel"
+                [appTooltip]="settingsLabel"
+                data-testid="songbook-settings"
+                (click)="presenter.toggleSettings()"
+              >
+                <app-icon name="settings" />
+              </button>
+            }
+          </app-action-bar>
 
-        <!-- The songbook's own scope of the cascade, plus the title-page fields
+          <!-- The songbook's own scope of the cascade, plus the title-page fields
              that only a songbook has. A modal, unlike the editor's: there is no
              live render behind it to keep watching (§4). -->
-        @if (presenter.isSettingsOpen()) {
-          <app-dialog
-            [title]="settingsLabel"
-            data-testid="songbook-settings-dialog"
-            (closed)="presenter.closeSettings()"
-          >
-            <section class="fields">
-              <h3 class="fields-title">{{ titlePageHeading }}</h3>
-              <p class="fields-help">{{ titlePageHelp }}</p>
+          @if (presenter.isSettingsOpen()) {
+            <app-dialog
+              [title]="settingsLabel"
+              data-testid="songbook-settings-dialog"
+              (closed)="presenter.closeSettings()"
+            >
+              <section class="fields">
+                <h3 class="fields-title">{{ titlePageHeading }}</h3>
+                <p class="fields-help">{{ titlePageHelp }}</p>
 
-              @for (field of titleFields; track field.key) {
-                <label class="field">
-                  <span class="field-label">{{ field.label }}</span>
-                  <input
-                    appField
-                    type="text"
-                    [value]="presenter.titleFields()[field.key]"
-                    [attr.data-testid]="'songbook-' + field.key"
-                    (change)="setField(field.key, $event)"
-                  />
-                </label>
-              }
-            </section>
+                @for (field of titleFields; track field.key) {
+                  <label class="field">
+                    <span class="field-label">{{ field.label }}</span>
+                    <input
+                      appField
+                      type="text"
+                      [value]="presenter.titleFields()[field.key]"
+                      [attr.data-testid]="'songbook-' + field.key"
+                      (change)="setField(field.key, $event)"
+                    />
+                  </label>
+                }
+              </section>
 
-            <!-- The SAME panel the Settings page and the song editor mount, at
+              <!-- The SAME panel the Settings page and the song editor mount, at
                  songbook scope: chord colour and size re-theme every song
                  performed in this book (CONTEXT.md §Render settings). -->
-            <app-settings-panel
-              scope="songbook"
-              [values]="presenter.songbookSettings()"
-              [inherited]="presenter.inheritedSettings()"
-              (changed)="presenter.patchSettings($event)"
-            />
-          </app-dialog>
-        }
+              <app-settings-panel
+                scope="songbook"
+                [values]="presenter.songbookSettings()"
+                [inherited]="presenter.inheritedSettings()"
+                (changed)="presenter.patchSettings($event)"
+              />
+            </app-dialog>
+          }
 
-        <!-- The library and, hard against the divider, the column that moves
+          <!-- The library and, hard against the divider, the column that moves
              rows across it. The transfer buttons sit BETWEEN the two lists —
              they belong to neither, they are the crossing itself.
 
              Gone entirely when the entry list has taken this pane over (see
              hasTwoPanes): picking songs to add is pointless with nothing to
              add them to. -->
-        @if (hasTwoPanes()) {
-          <div class="body">
-            <app-song-explorer
-              class="explorer"
-              [rows]="presenter.rows()"
-              [capabilities]="capabilities"
-              [query]="query()"
-              [sort]="sortKey()"
-              [dir]="presenter.effectiveDir(sortKey(), sortDir())"
-              [isFavoritesFirst]="isFavoritesFirst()"
-              [selectedIds]="presenter.selectedIds()"
-              [currentId]="presenter.currentId()"
-              [emptyText]="emptyText()"
-              (queryChange)="presenter.setQuery($event)"
-              (sortChange)="presenter.setSort($event)"
-              (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
-              (loadMore)="presenter.loadMore()"
-              (activated)="presenter.activate($event)"
-              (selectToggled)="presenter.toggleSelect($event)"
-              (favorited)="presenter.toggleFavorite($event)"
-            />
+          @if (hasTwoPanes()) {
+            <div class="body">
+              <app-song-explorer
+                class="explorer"
+                [rows]="presenter.rows()"
+                [capabilities]="capabilities"
+                [query]="query()"
+                [sort]="sortKey()"
+                [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+                [isFavoritesFirst]="isFavoritesFirst()"
+                [selectedIds]="presenter.selectedIds()"
+                [currentId]="presenter.currentId()"
+                [emptyText]="emptyText()"
+                (queryChange)="presenter.setQuery($event)"
+                (sortChange)="presenter.setSort($event)"
+                (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
+                (loadMore)="presenter.loadMore()"
+                (activated)="presenter.activate($event)"
+                (selectToggled)="presenter.toggleSelect($event)"
+                (favorited)="presenter.toggleFavorite($event)"
+              />
 
-            @if (!presenter.isVirtual()) {
-              <div
-                class="transfer"
-                role="toolbar"
-                aria-orientation="vertical"
-                [attr.aria-label]="addGroupLabel"
-                data-testid="songbook-add"
-              >
-                @for (option of addOptions; track option.where) {
-                  <!-- Hover or focus previews the landing position: the entry
+              @if (!presenter.isVirtual()) {
+                <div
+                  class="transfer"
+                  role="toolbar"
+                  aria-orientation="vertical"
+                  [attr.aria-label]="addGroupLabel"
+                  data-testid="songbook-add"
+                >
+                  @for (option of addOptions; track option.where) {
+                    <!-- Hover or focus previews the landing position: the entry
                      list draws a line there, so "above" stops being a word you
                      have to take on trust. -->
+                    <button
+                      appButton
+                      type="button"
+                      variant="secondary"
+                      class="cross"
+                      [isIconOnly]="true"
+                      [disabled]="!hasSelection()"
+                      [attr.aria-label]="addLabel(option)"
+                      [appTooltip]="option.label"
+                      [attr.data-testid]="'add-' + option.where"
+                      (pointerenter)="preview.set(option.where)"
+                      (pointerleave)="preview.set(null)"
+                      (focus)="preview.set(option.where)"
+                      (blur)="preview.set(null)"
+                      (click)="presenter.addSelected(option.where)"
+                    >
+                      <app-icon [name]="option.icon" />
+                    </button>
+                  }
+
+                  <!-- Set apart, and pointing the other way: it crosses the same
+                   gap in the opposite direction, and it answers pane B's
+                   selection rather than pane A's. -->
                   <button
                     appButton
                     type="button"
                     variant="secondary"
-                    class="cross"
+                    class="cross out"
                     [isIconOnly]="true"
-                    [disabled]="!hasSelection()"
-                    [attr.aria-label]="addLabel(option)"
+                    [disabled]="!hasSlotSelection()"
+                    [attr.aria-label]="removeSlotsLabel"
+                    [appTooltip]="removeSlotsShort"
+                    data-testid="entry-remove-selected"
+                    (click)="
+                      presenter.removeSlots([...presenter.selectedSlots()])
+                    "
+                  >
+                    <app-icon name="transferOut" />
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <ng-container [ngTemplateOutlet]="entryList" />
+          }
+        </div>
+
+        <div pane-b class="pane">
+          <!-- Nothing at all when pane A has taken the entry list over: the pane
+             is hidden either way, but an unguarded outlet would mount a SECOND
+             copy of the list — two of everything, including every testid. -->
+          @if (hasTwoPanes()) {
+            <!-- Pane B's own strip, not the action bar: the action bar is pane A's
+             (§4), and these act on the slots ticked HERE. The virtual book has
+             a read-only order, so it gets no strip at all. -->
+            @if (!presenter.isVirtual()) {
+              <div
+                class="entry-tools"
+                role="toolbar"
+                [attr.aria-label]="reorderGroupLabel"
+                data-testid="entry-tools"
+              >
+                @for (option of moveOptions; track option.where) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    [isIconOnly]="true"
+                    [disabled]="!hasSlotSelection()"
+                    [attr.aria-label]="option.label"
                     [appTooltip]="option.label"
-                    [attr.data-testid]="'add-' + option.where"
-                    (pointerenter)="preview.set(option.where)"
-                    (pointerleave)="preview.set(null)"
-                    (focus)="preview.set(option.where)"
-                    (blur)="preview.set(null)"
-                    (click)="presenter.addSelected(option.where)"
+                    [attr.data-testid]="'move-' + option.where"
+                    (click)="presenter.moveSelected(option.where)"
                   >
                     <app-icon [name]="option.icon" />
                   </button>
                 }
 
-                <!-- Set apart, and pointing the other way: it crosses the same
-                   gap in the opposite direction, and it answers pane B's
-                   selection rather than pane A's. -->
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="cross out"
-                  [isIconOnly]="true"
-                  [disabled]="!hasSlotSelection()"
-                  [attr.aria-label]="removeSlotsLabel"
-                  [appTooltip]="removeSlotsShort"
-                  data-testid="entry-remove-selected"
-                  (click)="
-                    presenter.removeSlots([...presenter.selectedSlots()])
-                  "
-                >
-                  <app-icon name="transferOut" />
-                </button>
-              </div>
-            }
-          </div>
-        } @else {
-          <ng-container [ngTemplateOutlet]="entryList" />
-        }
-      </div>
-
-      <div pane-b class="pane">
-        <!-- Nothing at all when pane A has taken the entry list over: the pane
-             is hidden either way, but an unguarded outlet would mount a SECOND
-             copy of the list — two of everything, including every testid. -->
-        @if (hasTwoPanes()) {
-          <!-- Pane B's own strip, not the action bar: the action bar is pane A's
-             (§4), and these act on the slots ticked HERE. The virtual book has
-             a read-only order, so it gets no strip at all. -->
-          @if (!presenter.isVirtual()) {
-            <div
-              class="entry-tools"
-              role="toolbar"
-              [attr.aria-label]="reorderGroupLabel"
-              data-testid="entry-tools"
-            >
-              @for (option of moveOptions; track option.where) {
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  [isIconOnly]="true"
-                  [disabled]="!hasSlotSelection()"
-                  [attr.aria-label]="option.label"
-                  [appTooltip]="option.label"
-                  [attr.data-testid]="'move-' + option.where"
-                  (click)="presenter.moveSelected(option.where)"
-                >
-                  <app-icon [name]="option.icon" />
-                </button>
-              }
-
-              <!-- The hint explains the greyed buttons, so it goes when they
+                <!-- The hint explains the greyed buttons, so it goes when they
                  come alive; the Clear that replaces it carries the count. Same
                  control, same words as the library side. -->
-              @if (hasSlotSelection()) {
-                <app-selection-status
-                  class="entry-clear"
-                  [count]="presenter.selectedSlots().size"
-                  (cleared)="presenter.clearSlotSelection()"
-                />
-              } @else {
-                <span class="entry-hint">{{ slotSelectionLabel }}</span>
-              }
-            </div>
+                @if (hasSlotSelection()) {
+                  <app-selection-status
+                    class="entry-clear"
+                    [count]="presenter.selectedSlots().size"
+                    (cleared)="presenter.clearSlotSelection()"
+                  />
+                } @else {
+                  <span class="entry-hint">{{ slotSelectionLabel }}</span>
+                }
+              </div>
+            }
+
+            <ng-container [ngTemplateOutlet]="entryList" />
           }
+        </div>
+      </app-split-pane>
 
-          <ng-container [ngTemplateOutlet]="entryList" />
-        }
-      </div>
-    </app-split-pane>
-
-    <!-- **The same list component as pane A**, a third capability set:
+      <!-- **The same list component as pane A**, a third capability set:
          numbered, removable, no search or sort (a stored book's order IS the
          content; the virtual one may only be sorted). Written once because it
          has two homes: pane B normally, pane A when the library pane is gone. -->
-    <ng-template #entryList>
-      <app-song-explorer
-        class="entries"
-        data-testid="songbook-detail"
-        rowTestid="entry-row"
-        [rows]="presenter.entries()"
-        [capabilities]="entryCapabilities()"
-        [selectedIds]="presenter.selectedSlots()"
-        [currentId]="presenter.currentSlot()"
-        [insertAt]="previewIndex()"
-        [emptyText]="entriesEmptyText()"
-        [sort]="presenter.entrySort()"
-        [dir]="presenter.entryDir()"
-        [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
-        (sortChange)="presenter.setEntrySort($event)"
-        (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
-        (selectToggled)="presenter.toggleSelectSlot($event)"
-        (activated)="presenter.activateSlot($event)"
-        (removed)="presenter.removeSlots($event)"
-        (moved)="presenter.moveSlot($event.id, $event.where)"
-      />
-    </ng-template>
+      <ng-template #entryList>
+        <app-song-explorer
+          class="entries"
+          data-testid="songbook-detail"
+          rowTestid="entry-row"
+          [rows]="presenter.entries()"
+          [capabilities]="entryCapabilities()"
+          [selectedIds]="presenter.selectedSlots()"
+          [currentId]="presenter.currentSlot()"
+          [insertAt]="previewIndex()"
+          [emptyText]="entriesEmptyText()"
+          [sort]="presenter.entrySort()"
+          [dir]="presenter.entryDir()"
+          [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
+          (sortChange)="presenter.setEntrySort($event)"
+          (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
+          (selectToggled)="presenter.toggleSelectSlot($event)"
+          (activated)="presenter.activateSlot($event)"
+          (removed)="presenter.removeSlots($event)"
+          (moved)="presenter.moveSlot($event.id, $event.where)"
+          (dropped)="onDropped($event)"
+        />
+      </ng-template>
+    </div>
   `,
   styles: `
     :host {
       display: block;
+      block-size: 100%;
+    }
+
+    /* The drag group's element, which must not become a layout of its own. */
+    .screen {
       block-size: 100%;
     }
 
@@ -647,6 +665,20 @@ export class SongbookDetailPage {
     return at === null
       ? option.label
       : $localize`:@@songbooks.addAt:${option.label}:action: — lands at ${at + 1}:position:`;
+  }
+
+  /**
+   * A drop on the entry list, sent to whichever command it means.
+   *
+   * The list reports where it landed and which side it came from; the id-space
+   * follows from that — a song from the library, a slot key from itself — and
+   * nothing else here knows both. The commands are the buttons' own, so a drag
+   * cannot grow behaviour a press does not have.
+   */
+  protected onDropped(drop: RowDrop): void {
+    void (drop.isSameList
+      ? this.presenter.dropReorder(drop.id, drop.at)
+      : this.presenter.dropIntoEntries(drop.id, drop.at));
   }
 
   protected readonly hasSlotSelection = computed(

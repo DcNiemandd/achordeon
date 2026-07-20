@@ -5,12 +5,23 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   input,
   linkedSignal,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import {
+  CdkDrag,
+  CdkDragHandle,
+  CdkDropList,
+  type CdkDragDrop,
+} from '@angular/cdk/drag-drop';
+import {
+  CdkVirtualScrollViewport,
+  ScrollingModule,
+} from '@angular/cdk/scrolling';
 import {
   Autofocus,
   Button,
@@ -28,6 +39,7 @@ import {
   type ExplorerSort,
   type ExplorerSortDir,
   type RenameChange,
+  type RowDrop,
   type SongRow,
   type SortChange,
 } from './explorer-model';
@@ -43,6 +55,15 @@ const PREFETCH_ROWS = 10;
 /** Search debounce. Each settled edit is a store refetch AND a router
  * navigation, so this is not the parser's ~80ms — it is "stopped typing". */
 const SEARCH_DEBOUNCE_MS = 200;
+
+/**
+ * How long a **touch** must rest on the handle before it becomes a drag.
+ *
+ * Zero for the mouse, where press-and-move is unambiguous. On touch the same
+ * gesture is also a tap and the start of a scroll, so the delay is what keeps
+ * all three usable from one finger: under it the touch is still the list's.
+ */
+const DRAG_START_DELAY = { touch: 250, mouse: 0 };
 
 /**
  * The rich Song list: search, sort, multi-select, row actions
@@ -69,8 +90,15 @@ const SEARCH_DEBOUNCE_MS = 200;
 @Component({
   selector: 'app-song-explorer',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // On the document, because a drag over this list may have started in the
+  // other one — see `onPointerMove`. The first line of the handler is the guard
+  // that makes this free while nothing is being dragged.
+  host: { '(document:pointermove)': 'onPointerMove($event)' },
   imports: [
     ScrollingModule,
+    CdkDrag,
+    CdkDragHandle,
+    CdkDropList,
     Autofocus,
     Button,
     EmptyState,
@@ -167,24 +195,68 @@ const SEARCH_DEBOUNCE_MS = 200;
     }
 
     @if (rows().length === 0) {
-      <app-empty-state [text]="emptyText()" data-testid="explorer-empty" />
+      <!-- **An empty list is still a destination.** The viewport is gone with
+           its rows, and with it the drop list — so an empty songbook could not
+           be dragged into at all, which is precisely the songbook most likely
+           to be. The empty state takes the job over: same handlers, and the
+           only boundary it can name is 0. -->
+      <app-empty-state
+        #dropArea
+        class="list empty"
+        cdkDropList
+        [text]="emptyText()"
+        [cdkDropListEnterPredicate]="acceptsDrop"
+        [class.is-drop-target]="isDragOver()"
+        data-testid="explorer-empty"
+        (cdkDropListEntered)="onEnterEmpty()"
+        (cdkDropListExited)="onDragLeave()"
+        (cdkDropListDropped)="onDropped($event)"
+      />
     } @else {
       <cdk-virtual-scroll-viewport
+        #dropArea
         class="list"
+        cdkDropList
         [itemSize]="ROW_HEIGHT"
+        [cdkDropListSortingDisabled]="true"
+        [cdkDropListEnterPredicate]="acceptsDrop"
+        [class.is-drop-target]="isDragOver()"
         data-testid="explorer-list"
         (scrolledIndexChange)="onScrolledIndex($event)"
+        (cdkDropListEntered)="isDragOver.set(true)"
+        (cdkDropListExited)="onDragLeave()"
+        (cdkDropListDropped)="onDropped($event)"
       >
         <div
           *cdkVirtualFor="let row of rows(); trackBy: trackById"
           class="row"
+          cdkDrag
+          [cdkDragData]="row.id"
+          [cdkDragDisabled]="!capabilities().canDrag"
+          [cdkDragStartDelay]="DRAG_START_DELAY"
           [class.is-current]="row.id === currentId()"
           [class.is-selected]="selectedIds().has(row.id)"
-          [class.is-insert-before]="insertAt() === row.position"
+          [class.is-insert-before]="activeInsertAt() === row.position"
           [class.is-insert-after]="isLastAndInsertAtEnd(row)"
           [attr.data-testid]="rowTestid()"
           [attr.data-song-id]="row.id"
+          (cdkDragStarted)="onDragStarted()"
         >
+          <!-- **Before the checkbox, and the only draggable part of the row.**
+               First in the reading order because it is what the row IS about to
+               do, and separate from the tick because dragging and selecting are
+               different gestures that must not be reachable from one press. -->
+          @if (capabilities().canDrag) {
+            <span
+              class="grip"
+              cdkDragHandle
+              aria-hidden="true"
+              [attr.data-testid]="'drag-' + row.id"
+            >
+              <app-icon name="drag" />
+            </span>
+          }
+
           @if (capabilities().canSelect) {
             <input
               type="checkbox"
@@ -509,6 +581,65 @@ const SEARCH_DEBOUNCE_MS = 200;
       font-variant-numeric: tabular-nums;
     }
 
+    .grip {
+      --icon-size: 16px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      padding-inline: 2px;
+      color: var(--text-faint);
+      cursor: grab;
+      /* The browser's own touch gestures must not claim the press before the
+         long-press does — without this, a drag off the handle scrolls the list. */
+      touch-action: none;
+    }
+
+    .grip:active {
+      cursor: grabbing;
+    }
+
+    /* The row travelling with the pointer. It is a clone lifted out of the
+       viewport, so it carries none of the list's own layout and needs its own. */
+    .row.cdk-drag-preview {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      box-sizing: border-box;
+      padding-inline: var(--space-2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface-overlay);
+      box-shadow: var(--shadow-2);
+      opacity: 0.95;
+    }
+
+    /* Nothing on a preview is clickable, and the actions it drew mid-hover would
+       ride along under the pointer. */
+    .row.cdk-drag-preview .row-actions {
+      display: none;
+    }
+
+    /* Where the row came from, while it is away. Sorting is off inside a
+       virtualised list, so this stays put and reads as the origin. */
+    .row.cdk-drag-placeholder {
+      opacity: 0.4;
+    }
+
+    /* The empty state stands in for the viewport as the drop target, so it has
+       to occupy the same space — a message the height of one line is a target
+       you have to aim at. */
+    .list.empty {
+      flex: 1;
+      min-block-size: 0;
+    }
+
+    /* The list currently under the pointer. Deliberately quiet — the insertion
+       line is the message; this only says which of the two lists is listening. */
+    .list.is-drop-target {
+      background: var(--brand-subtle);
+    }
+
     .check {
       accent-color: var(--brand);
       inline-size: 16px;
@@ -666,8 +797,47 @@ export class SongExplorer {
   readonly removed = output<string[]>();
   /** Move **one row**, named by id — never the selection (see the template). */
   readonly moved = output<RowMoveRequest>();
+  /** A row was dropped **onto this list** — from it or from the other one. */
+  readonly dropped = output<RowDrop>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
+  protected readonly DRAG_START_DELAY = DRAG_START_DELAY;
+
+  private readonly viewport = viewChild(CdkVirtualScrollViewport);
+  /** Whatever is carrying `cdkDropList` — the viewport, or the empty state that
+   * stands in for it. The geometry a drop is measured against. */
+  private readonly dropArea = viewChild('dropArea', { read: ElementRef });
+
+  /** A drag is over this list right now — see `onPointerMove`. */
+  protected readonly isDragOver = signal(false);
+
+  /**
+   * The boundary the pointer is currently naming, while a drag is over this
+   * list. Null otherwise, which is what hands the insertion line back to the
+   * Add buttons' preview.
+   */
+  private readonly dragAt = signal<number | null>(null);
+
+  /**
+   * **One insertion line, two things that can aim it** — Epic 14's rule.
+   *
+   * The Add buttons preview a landing position on hover (`insertAt`); a drag
+   * names one with the pointer. They are the same mark and the same promise, so
+   * they are the same signal, and a drag simply outranks a hover — the pointer
+   * is busy doing the thing the hover was only describing.
+   */
+  protected readonly activeInsertAt = computed(
+    () => this.dragAt() ?? this.insertAt(),
+  );
+
+  /**
+   * Whether this list will take the drop.
+   *
+   * A bound arrow, not a method: the CDK stores the predicate once, so a
+   * prototype method would be called with the wrong `this`. The library list
+   * refuses everything — its order is a sort, and there is no "here" in it.
+   */
+  protected readonly acceptsDrop = (): boolean => this.capabilities().canDrop;
 
   /** The four row moves, in list order: to the top, one up, one down, to the
    * bottom — the same glyphs the strip above uses, because it is the same act. */
@@ -786,8 +956,96 @@ export class SongExplorer {
 
   /** "After the end" has no row of its own, so the last row wears the line. */
   protected isLastAndInsertAtEnd(row: SongRow): boolean {
-    const at = this.insertAt();
+    const at = this.activeInsertAt();
     return at !== null && at === this.rows().length && row.position === at - 1;
+  }
+
+  /**
+   * Where the pointer is, in **boundaries between rows**.
+   *
+   * Tracked on the document rather than from the dragged row's own
+   * `cdkDragMoved`, because the two are not the same component: a drag that
+   * starts in the library is reported by the library's list, and the only thing
+   * that can turn a pointer position into an index is the list it is over.
+   *
+   * Rows are a fixed height (the virtual viewport requires it), so this is
+   * arithmetic rather than measurement — and it works for a row that has never
+   * been rendered, which is the whole reason a virtualised list cannot lean on
+   * the CDK's own DOM-order sorting.
+   */
+  protected onPointerMove(event: PointerEvent): void {
+    if (!this.isDragOver()) {
+      return;
+    }
+    const area = this.dropArea();
+    if (!area) {
+      return;
+    }
+    const box = (area.nativeElement as HTMLElement).getBoundingClientRect();
+    // Off the list entirely — including over the *other* pane, which the CDK
+    // leaves in this container's charge because it refuses the drop. Forgetting
+    // the boundary is what makes letting go out there mean nothing, rather than
+    // a reorder at whatever number the pointer last passed over.
+    if (
+      event.clientX < box.left ||
+      event.clientX > box.right ||
+      event.clientY < box.top ||
+      event.clientY > box.bottom
+    ) {
+      this.dragAt.set(null);
+      return;
+    }
+    const viewport = this.viewport();
+    const y = event.clientY - box.top + (viewport?.measureScrollOffset() ?? 0);
+    const at = Math.round(y / ROW_HEIGHT);
+    this.dragAt.set(Math.min(Math.max(at, 0), this.rows().length));
+  }
+
+  /** An empty list has one boundary, and no pointer position can change it. */
+  protected onEnterEmpty(): void {
+    this.isDragOver.set(true);
+    this.dragAt.set(0);
+  }
+
+  /**
+   * A row of **this** list started moving.
+   *
+   * The CDK announces `entered` only when a drag crosses into a container, so a
+   * reorder within one list would never be announced at all — the item was
+   * already there. This is that missing edge.
+   */
+  protected onDragStarted(): void {
+    if (this.capabilities().canDrop) {
+      this.isDragOver.set(true);
+    }
+  }
+
+  /** The drag went elsewhere, or ended. Either way this list is no longer
+   * promising anything, so the line goes back to the Add buttons. */
+  protected onDragLeave(): void {
+    this.isDragOver.set(false);
+    this.dragAt.set(null);
+  }
+
+  /**
+   * Report the drop and **let the presenter act** — a drop is a request, exactly
+   * as a row's move button is. It resolves to the same commands the buttons
+   * call, so a drag and a press can never disagree about what happened.
+   *
+   * Dropped with no tracked boundary (a press that never moved) is not a move,
+   * and silently landing it at 0 would reorder the list for a mis-click.
+   */
+  protected onDropped(event: CdkDragDrop<unknown>): void {
+    const at = this.dragAt();
+    this.onDragLeave();
+    if (at === null) {
+      return;
+    }
+    this.dropped.emit({
+      id: event.item.data as string,
+      isSameList: event.previousContainer === event.container,
+      at,
+    });
   }
 
   // Every row action names its row. "Rename" repeated down a list of 50 rows

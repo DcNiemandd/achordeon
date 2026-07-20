@@ -2,6 +2,7 @@ import {
   insertEntries,
   insertionIndex,
   moveEntries,
+  moveEntriesTo,
   removeEntries,
   shiftSelection,
 } from './entry-ops';
@@ -106,6 +107,48 @@ describe('removeEntries', () => {
 
   it('removes one slot of a repeated song, not every slot holding it', () => {
     expect(removeEntries(['a', 'b', 'a'], new Set([0]))).toEqual(['b', 'a']);
+  });
+});
+
+describe('moveEntriesTo', () => {
+  it('drops a single slot at the boundary the line was drawn at', () => {
+    const moved = moveEntriesTo(['a', 'b', 'c'], new Set([0]), 2);
+    expect(moved.entries).toEqual(['b', 'a', 'c']);
+    expect([...moved.selected]).toEqual([1]);
+  });
+
+  it('is a no-op when the boundary is either side of the slot itself', () => {
+    expect(moveEntriesTo(['a', 'b', 'c'], new Set([1]), 1).entries).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    expect(moveEntriesTo(['a', 'b', 'c'], new Set([1]), 2).entries).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('lands a scattered selection as one block, in list order', () => {
+    const moved = moveEntriesTo(['a', 'b', 'c', 'd'], new Set([0, 2]), 4);
+    expect(moved.entries).toEqual(['b', 'd', 'a', 'c']);
+    expect([...moved.selected]).toEqual([2, 3]);
+  });
+
+  it('clamps a boundary past either end', () => {
+    expect(moveEntriesTo(['a', 'b'], new Set([1]), 9).entries).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(moveEntriesTo(['a', 'b'], new Set([1]), -3).entries).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
+  it('leaves the order alone when nothing is selected', () => {
+    expect(moveEntriesTo(['a', 'b'], new Set(), 0).entries).toEqual(['a', 'b']);
   });
 });
 

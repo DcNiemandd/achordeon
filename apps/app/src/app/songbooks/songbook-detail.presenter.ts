@@ -28,6 +28,7 @@ import {
   insertEntries,
   insertionIndex,
   moveEntries,
+  moveEntriesTo,
   removeEntries,
   shiftSelection,
   type InsertPosition,
@@ -441,6 +442,68 @@ export class SongbookDetailPresenter {
         moved.entries
           .map((position, at) => (wasSelected.has(Number(position)) ? at : -1))
           .filter((at) => at >= 0),
+      ),
+    );
+  }
+
+  /**
+   * A row dropped onto the entry list (Epic 14) — the drag half of the Add
+   * buttons.
+   *
+   * **The selection rule is the buttons'**: a dragged row that is part of the
+   * selection carries the whole of it, because that is what the user built the
+   * selection for. Dragging a row that is *not* selected means that row and
+   * nothing else — the gesture named its own subject, and hijacking it into the
+   * selection would move songs the pointer never touched.
+   */
+  async dropIntoEntries(songId: string, at: number): Promise<void> {
+    const book = this._book();
+    if (!book || this.isVirtual()) {
+      return;
+    }
+    const selected = this.selection.ids();
+    const songIds = selected.has(songId)
+      ? this.rows()
+          .map((row) => row.id)
+          .filter((id) => selected.has(id))
+      : [songId];
+
+    await this.writeEntries(insertEntries(book.entries, songIds, at));
+    this.setSlotSelection(
+      shiftSelection(this.selectedIndexes(), at, songIds.length),
+    );
+    this.selection.clear();
+  }
+
+  /**
+   * A slot dropped back into the entry list: a reorder to an arbitrary
+   * boundary, which is the one thing the four move buttons cannot express.
+   *
+   * Same selection rule as the drop above, and the same reason.
+   */
+  async dropReorder(key: string, at: number): Promise<void> {
+    const book = this._book();
+    const index = Number(key);
+    if (!book || this.isVirtual() || !Number.isInteger(index)) {
+      return;
+    }
+    const selected = this.selectedIndexes();
+    const moving = selected.has(index) ? selected : new Set([index]);
+    // Over a list of positions, then applied to both the order and the ticks —
+    // the same trick `moveSlot` uses, and for the same reason: dragging an
+    // *unselected* row still shifts every ticked index around it, and a
+    // selection that stayed at its old numbers would come to mean other slots.
+    const positions = book.entries.map((_, slot) => String(slot));
+    const moved = moveEntriesTo(positions, moving, at);
+
+    await this.writeEntries(
+      moved.entries.map((position) => book.entries[Number(position)]),
+    );
+    this.setSlotSelection(
+      new Set(
+        moved.entries
+          .map((position, slot) => (selected.has(Number(position)) ? slot : -1))
+          .filter((slot) => slot >= 0),
       ),
     );
   }

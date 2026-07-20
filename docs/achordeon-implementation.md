@@ -583,25 +583,64 @@ subtask**, and the honest signal that it is done.
 
 ### Subtasks
 
-- [ ] `cdkDropList` on both panes of `/songbooks/:id`, with a drop indicator
+- [x] `cdkDropList` on both panes of `/songbooks/:id`, with a drop indicator
       that reuses Epic 6's insertion line (the same mark the Add buttons
       preview) rather than inventing a second one.
-- [ ] Drag from the library into the songbook: dropping inserts at the indicator,
+- [x] Drag from the library into the songbook: dropping inserts at the indicator,
       carrying the **whole selection** when the dragged row is part of it — the
       Add buttons' rule, so a drag and a button press behave alike.
-- [ ] Drag within the songbook to reorder, including a multi-slot selection as a
+- [x] Drag within the songbook to reorder, including a multi-slot selection as a
       block (`moveEntries` already answers this; the drop supplies the index).
-- [ ] A drag handle per row, and **not the whole row**: the row is already a
+- [x] A drag handle per row, and **not the whole row**: the row is already a
       click target that selects, and a list where pressing a row might drag it
       is a list you cannot click confidently on touch.
-- [ ] Auto-scroll at the edges of a virtualised viewport, and prove a drop lands
+- [x] Auto-scroll at the edges of a virtualised viewport, and prove a drop lands
       correctly when the source and target rows were never rendered together.
-- [ ] Keyboard parity is **already met** by Epic 6's buttons — confirm it stays
+- [x] Keyboard parity is **already met** by Epic 6's buttons — confirm it stays
       met (WCAG 2.1.1: dragging must not be the only way to reorder), and do not
       add a keyboard drag mode that duplicates them.
-- [ ] Touch: a long-press to start a drag, without stealing the tap that selects
+- [x] Touch: a long-press to start a drag, without stealing the tap that selects
       or the swipe that scrolls.
-- [ ] Remove the FUTURE admonition from `songbooks/index.mdx`.
+- [x] Remove the FUTURE admonition from `songbooks/index.mdx`.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The CDK's own sorting is off** (`cdkDropListSortingDisabled`), and the drop
+  index is arithmetic over the scroll offset instead. Its sorting reads the DOM,
+  and a virtualised list has only a window of it — a drop past the rendered rows
+  had nothing to sort against. Rows are a fixed height (the viewport requires
+  it), so the boundary is `round((pointerY - listTop + scrollOffset) /
+ROW_HEIGHT)` and works for a row that was never on screen.
+- **The pointer is tracked on `document`, not from `cdkDragMoved`.** A drag that
+  starts in the library is reported by the _library's_ component, and the only
+  thing that can turn a position into an index is the list it is over.
+- **`cdkDragEnded` fires immediately BEFORE the drop** (`_cleanupDragArtifacts`
+  emits `ended`, then `dropped`), so clearing the tracked boundary there ate
+  every drop. Cleanup belongs in the drop handler and in `cdkDropListExited`.
+- **`cdkDropListEntered` never fires for a reorder within one list** — the item
+  was already in the container. `cdkDragStarted` is that missing edge.
+- **`cdkDropListGroup` has to enclose the `<ng-template>`, not just the panes.**
+  The CDK finds the group by injector, and a template's injector follows where it
+  is _declared_, not where it is rendered — the entry list is declared outside
+  the split pane, so the group sitting on the pane was invisible to it and the
+  two lists were never siblings. Silent: no error, drops simply did nothing.
+- **An empty list is still a destination.** The viewport is `@else`'d away when
+  there are no rows, taking the drop list with it, so an empty songbook — the one
+  most likely to be dragged into — accepted nothing. The empty state carries
+  `cdkDropList` in its place; the only boundary it can name is 0.
+- **`insertionIndex` could not answer a drop**: it resolves four _named_
+  positions, and a drop supplies a number. `moveEntriesTo` is the addition, and
+  the boundary it takes is not a splice index — lifting the selection out first
+  shifts every boundary above it down by however many were below.
+- **Drag carries the selection only when the dragged row is in it.** The Add
+  buttons' rule, and the honest reading of the gesture: a drag of an unselected
+  row named its own subject.
+
+**Not built, on purpose:** a keyboard drag mode. Epic 6's move buttons are the
+non-pointer path (WCAG 2.1.1) and the handle is `aria-hidden` because it offers
+a screen-reader user nothing the buttons do not already do, better.
 
 ---
 
