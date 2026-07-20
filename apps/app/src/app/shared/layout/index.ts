@@ -17,6 +17,7 @@ export { Shell } from './shell';
 export { SplitPane } from './split-pane';
 export { ThemeApplier } from './theme-applier';
 export { UiStore } from './ui-store';
+export type { SplitScope } from './ui-store';
 export { Viewport } from './viewport';
 export { ALL_NAV_ITEMS, NAV_ITEMS, NAV_SETTINGS } from './nav-items';
 export type { NavItem } from './nav-items';

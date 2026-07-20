@@ -61,9 +61,9 @@ import {
   ],
   template: `
     <app-split-pane
-      [ratio]="ui.splitRatio()"
+      [ratio]="ui.splitRatio('songs')"
       [hasTwoPanes]="!viewport.isCompact()"
-      (ratioChange)="ui.setSplitRatio($event)"
+      (ratioChange)="ui.setSplitRatio('songs', $event)"
     >
       <div pane-a class="pane">
         <app-action-bar [title]="title">
@@ -132,11 +132,13 @@ import {
           [query]="query()"
           [sort]="sortKey()"
           [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+          [isFavoritesFirst]="isFavoritesFirst()"
           [selectedIds]="presenter.selectedIds()"
           [currentId]="presenter.currentId()"
           [emptyText]="emptyText()"
           (queryChange)="presenter.setQuery($event)"
           (sortChange)="presenter.setSort($event)"
+          (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
           (loadMore)="presenter.loadMore()"
           (activated)="presenter.activate($event)"
           (opened)="presenter.open($event)"
@@ -295,6 +297,7 @@ export class SongsPage {
   readonly q = input<string | undefined>();
   readonly sort = input<string | undefined>();
   readonly dir = input<string | undefined>();
+  readonly fav = input<string | undefined>();
 
   /** The params as the rest of the page may believe them: narrowed, defaulted. */
   protected readonly query = computed(() => this.q() ?? '');
@@ -302,6 +305,7 @@ export class SongsPage {
     () => toExplorerSort(this.sort()) ?? 'name',
   );
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
+  protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
 
   protected readonly hasSelection = computed(
     () => this.presenter.selectedIds().size > 0,
@@ -356,6 +360,7 @@ export class SongsPage {
         query: this.query(),
         sort: this.sortKey(),
         dir: this.sortDir(),
+        isFavoritesFirst: this.isFavoritesFirst(),
       });
     });
 

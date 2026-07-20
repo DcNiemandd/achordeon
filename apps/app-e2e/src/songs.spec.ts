@@ -286,6 +286,31 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row').first()).toContainText('Zeta');
   });
 
+  // A flag over the sort, not a sort of its own: sorting BY favourite left
+  // everything else in tiebreak order, which is a list nobody asked for.
+  test('favorites first floats starred songs without changing the sort', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Yesterday');
+    await createSong(page, 'Zeta');
+    const rows = page.getByTestId('song-row');
+    const last = await rows.last().getAttribute('data-song-id');
+
+    await page.getByTestId(`favorite-${last}`).click();
+    await page.getByTestId('explorer-favorites-first').click();
+
+    await expect(rows.first()).toContainText('Zeta');
+    // The rest keep the name order they had.
+    await expect(rows.nth(1)).toContainText('Alpha');
+    await expect(rows.nth(2)).toContainText('Yesterday');
+
+    // It rides in the URL, so a reload lands on the same list.
+    await expect(page).toHaveURL(/[?&]fav=1/);
+    await page.reload();
+    await expect(rows.first()).toContainText('Zeta');
+  });
+
   // The bulk actions are always mounted and always in the same place — that is
   // the point of them being on the action row rather than in a bar that appears.
   // What a selection changes is whether they are enabled, not whether they exist.

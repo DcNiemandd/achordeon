@@ -156,18 +156,29 @@ export class SongsPresenter {
     query: string;
     sort: ExplorerSort;
     dir?: ExplorerSortDir;
+    isFavoritesFirst: boolean;
   }): Promise<void> {
     const isSortStale =
       params.sort !== this.store.sort() || params.dir !== this.store.dir();
     const isQueryStale = params.query !== this.store.query();
+    const isFavoriteStale =
+      params.isFavoritesFirst !== this.store.favoritesFirst();
 
     if (isSortStale) {
       await this.store.setSort(params.sort, params.dir);
     }
+    if (isFavoriteStale) {
+      await this.store.setFavoritesFirst(params.isFavoritesFirst);
+    }
     if (isQueryStale) {
       await this.store.setSearch(params.query);
     }
-    if (!isSortStale && !isQueryStale && !this.store.loaded()) {
+    if (
+      !isSortStale &&
+      !isQueryStale &&
+      !isFavoriteStale &&
+      !this.store.loaded()
+    ) {
       await this.store.load();
     }
   }
@@ -200,6 +211,12 @@ export class SongsPresenter {
    * direction — `null` drops the param, so the default speaks again. */
   setSort(change: SortChange): void {
     this.navigate({ sort: change.key, dir: change.dir ?? null });
+  }
+
+  /** `?fav=1` rides in the URL like the sort, so a reload and a shared link
+   * land on the list you were actually looking at (§7). */
+  setFavoritesFirst(isFirst: boolean): void {
+    this.navigate({ fav: isFirst ? '1' : null });
   }
 
   /**

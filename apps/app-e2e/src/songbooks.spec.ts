@@ -107,6 +107,42 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('songbooks-empty')).toBeVisible();
   });
 
+  // It looks like a book you made and is not one, so it says so out loud.
+  test('All songs explains itself, and sorting is all it can be told', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songbooks');
+
+    await page.getByTestId('hint-all-songs').click();
+    await expect(page.getByRole('tooltip')).toContainText('library');
+
+    await page.getByTestId('open-all-songs').dblclick();
+    // Pane B: sorting, and nothing that would edit an order it does not own.
+    const entries = page.getByTestId('songbook-detail');
+    await expect(entries.getByTestId('explorer-sort')).toBeVisible();
+    await expect(entries.getByTestId('explorer-favorites-first')).toBeVisible();
+    await expect(entries.getByTestId('explorer-search')).toHaveCount(0);
+    await expect(page.getByTestId('entry-tools')).toHaveCount(0);
+  });
+
+  test('the virtual book sorts its own list without touching the library pane', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await page.goto('songbooks');
+    await page.getByTestId('open-all-songs').dblclick();
+
+    const entries = page.getByTestId('songbook-detail');
+    await expect(page.getByTestId('entry-row').first()).toContainText('Alpha');
+
+    await entries.getByTestId('explorer-sort-dir').click();
+    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
+    // Pane A is a separate list and keeps its own order.
+    await expect(page.getByTestId('song-row').first()).toContainText('Alpha');
+  });
+
   test('All songs holds the whole library, read-only', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSong(page, 'Yesterday');
@@ -290,6 +326,25 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('select-0')).not.toBeChecked();
   });
 
+  // Two affordances for one act, on one screen, would disagree: the strip
+  // moves the block, a row button would move one row out of it.
+  test('row move buttons stand down while a block is selected', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+
+    await page.getByTestId('entry-row').first().hover();
+    await expect(page.getByTestId('row-up-0')).toBeVisible();
+
+    await page.getByTestId('select-0').check();
+    await page.getByTestId('select-1').check();
+    await page.getByTestId('entry-row').first().hover();
+    await expect(page.getByTestId('row-up-0')).toHaveCount(0);
+  });
+
   // Remove is not delete: the song stays in the library (CONTEXT.md).
   test('removing a slot keeps the song in the library', async ({ page }) => {
     await createSong(page, 'Wonderwall');
@@ -369,7 +424,9 @@ test.describe('songbooks', () => {
     await createSongbook(page, 'Campfire');
     await page.goto('songbooks');
 
-    const row = page.getByTestId('songbook-row').filter({ hasText: 'Campfire' });
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
     await page.getByTestId(`open-${id}`).click();
 
@@ -391,7 +448,9 @@ test.describe('songbooks', () => {
     await page.getByTestId('songbook-author').blur();
 
     await page.goto('songbooks');
-    const row = page.getByTestId('songbook-row').filter({ hasText: 'Campfire' });
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
     await page.getByTestId(`open-${id}`).click();
 

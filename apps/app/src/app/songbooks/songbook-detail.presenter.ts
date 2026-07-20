@@ -133,18 +133,29 @@ export class SongbookDetailPresenter {
     query: string;
     sort: ExplorerSort;
     dir?: ExplorerSortDir;
+    isFavoritesFirst: boolean;
   }): Promise<void> {
     const isSortStale =
       params.sort !== this.songs.sort() || params.dir !== this.songs.dir();
     const isQueryStale = params.query !== this.songs.query();
+    const isFavoriteStale =
+      params.isFavoritesFirst !== this.songs.favoritesFirst();
 
     if (isSortStale) {
       await this.songs.setSort(params.sort, params.dir);
     }
+    if (isFavoriteStale) {
+      await this.songs.setFavoritesFirst(params.isFavoritesFirst);
+    }
     if (isQueryStale) {
       await this.songs.setSearch(params.query);
     }
-    if (!isSortStale && !isQueryStale && !this.songs.loaded()) {
+    if (
+      !isSortStale &&
+      !isQueryStale &&
+      !isFavoriteStale &&
+      !this.songs.loaded()
+    ) {
       await this.songs.load();
     }
   }
@@ -163,6 +174,41 @@ export class SongbookDetailPresenter {
 
   setSort(change: SortChange): void {
     this.navigate({ sort: change.key, dir: change.dir ?? null });
+  }
+
+  setFavoritesFirst(isFirst: boolean): void {
+    this.navigate({ fav: isFirst ? '1' : null });
+  }
+
+  // --- The virtual book's own order ---------------------------------------
+
+  /**
+   * How **All songs** is sorted.
+   *
+   * It is the one thing that book can be told: it has no arrangement of its own
+   * to protect (CONTEXT.md §Songbook — read-only order), so "sorted how" is the
+   * only question it can answer. Kept here rather than in the URL because it
+   * belongs to one pane of one book, not to the screen's address.
+   */
+  private readonly _entrySort = signal<ExplorerSort>('name');
+  private readonly _entryDir = signal<ExplorerSortDir | undefined>(undefined);
+  private readonly _entryFavoritesFirst = signal(false);
+
+  readonly entrySort = this._entrySort.asReadonly();
+  readonly entryDir = computed(
+    () => this._entryDir() ?? DEFAULT_SORT_DIR[this._entrySort()],
+  );
+  readonly isEntryFavoritesFirst = this._entryFavoritesFirst.asReadonly();
+
+  async setEntrySort(change: SortChange): Promise<void> {
+    this._entrySort.set(change.key);
+    this._entryDir.set(change.dir);
+    await this.refreshVirtual();
+  }
+
+  async setEntryFavoritesFirst(isFirst: boolean): Promise<void> {
+    this._entryFavoritesFirst.set(isFirst);
+    await this.refreshVirtual();
   }
 
   /** The row body: pick exactly this song, and make it the current one — so a
@@ -487,9 +533,18 @@ export class SongbookDetailPresenter {
     await this.books.upsert(updated);
   }
 
-  /** The library, in the virtual book's own (name) order. */
+  /** The library, in the virtual book's own order — see `_entrySort`. */
   private async refreshVirtual(): Promise<void> {
-    this._allSongIds.set((await this.songs.allLive()).map((song) => song.id));
+    if (!this.isVirtual()) {
+      return;
+    }
+    const songs = await this.songs.allLive({
+      sort: this._entrySort(),
+      dir: this._entryDir(),
+      favoritesFirst: this._entryFavoritesFirst(),
+    });
+    this._songsById.set(new Map(songs.map((song) => [song.id, song])));
+    this._allSongIds.set(songs.map((song) => song.id));
   }
 
   /** Persist a new order and keep the entry list able to name its slots. */

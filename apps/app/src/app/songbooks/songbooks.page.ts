@@ -47,9 +47,9 @@ import {
   ],
   template: `
     <app-split-pane
-      [ratio]="ui.splitRatio()"
+      [ratio]="ui.splitRatio('songbooks')"
       [hasTwoPanes]="!viewport.isCompact()"
-      (ratioChange)="ui.setSplitRatio($event)"
+      (ratioChange)="ui.setSplitRatio('songbooks', $event)"
     >
       <div pane-a class="pane">
         <app-action-bar [title]="title">

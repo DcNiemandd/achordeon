@@ -40,6 +40,12 @@ export interface SongRow {
    * can. Opening still works — there is something to open.
    */
   readonly isReadOnly?: boolean;
+  /**
+   * A `(?)` note about what this row *is*, for a row that is not what it looks
+   * like — the virtual **All songs** book, which is the library wearing a
+   * songbook's clothes. Absent on ordinary rows, which explain themselves.
+   */
+  readonly hint?: string;
 }
 
 /**
@@ -51,7 +57,7 @@ export interface SongRow {
  * through and a drift between the two breaks *its* build — which is where a
  * mismatch should surface, since the presenter is the only thing that spans both.
  */
-export type ExplorerSort = 'name' | 'created' | 'changed' | 'favorite';
+export type ExplorerSort = 'name' | 'created' | 'changed';
 export type ExplorerSortDir = 'asc' | 'desc';
 
 export interface SortChange {
@@ -65,12 +71,7 @@ export interface SortChange {
   readonly dir?: ExplorerSortDir;
 }
 
-const SORTS: readonly ExplorerSort[] = [
-  'name',
-  'created',
-  'changed',
-  'favorite',
-];
+const SORTS: readonly ExplorerSort[] = ['name', 'created', 'changed'];
 const DIRS: readonly ExplorerSortDir[] = ['asc', 'desc'];
 
 /**
@@ -103,9 +104,13 @@ export function toExplorerSortDir(
  * Capabilities are per-*mount*, never per-row: a row does not know where it is.
  */
 export interface ExplorerCapabilities {
-  /** The search box and the sort controls. A songbook's order IS its content,
-   * so re-sorting the thing you are ordering is meaningless. */
+  /** The search box. */
   readonly canSearch: boolean;
+  /** The sort axis, its direction, and the favourites-first toggle. A stored
+   * songbook's order IS its content, so re-sorting what you are ordering is
+   * meaningless; the virtual All songs book has no order of its own to protect,
+   * so sorting is the only thing it *can* offer. */
+  readonly canSort: boolean;
   /** Number each row by its position — only where position is the content. */
   readonly hasOrdinals: boolean;
   /** Multi-select checkboxes. What acts on the selection is the page's business. */
@@ -126,6 +131,7 @@ export interface ExplorerCapabilities {
 /** The Songs module: everything on. */
 export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canSearch: true,
+  canSort: true,
   hasOrdinals: false,
   canSelect: true,
   canFavorite: true,
@@ -144,6 +150,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
  */
 export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canSearch: true,
+  canSort: true,
   hasOrdinals: false,
   canSelect: true,
   canFavorite: true,
@@ -165,6 +172,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
  */
 export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSearch: false,
+  canSort: false,
   hasOrdinals: true,
   canSelect: true,
   canFavorite: false,
@@ -179,6 +187,9 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
 /** The virtual All songs book: a read-only order, so nothing may be moved out. */
 export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
   ...ENTRY_CAPABILITIES,
+  // The virtual All songs book: nothing to arrange, so **sorting is the one
+  // thing it can be told** (CONTEXT.md §Songbook — read-only order).
+  canSort: true,
   canSelect: false,
   canRemove: false,
   canReorder: false,
@@ -193,6 +204,7 @@ export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
  */
 export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canSearch: false,
+  canSort: false,
   hasOrdinals: false,
   canSelect: false,
   canFavorite: false,

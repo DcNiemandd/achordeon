@@ -67,9 +67,9 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
   ],
   template: `
     <app-split-pane
-      [ratio]="ui.splitRatio()"
+      [ratio]="ui.splitRatio('songbooks')"
       [activePane]="activePane()"
-      (ratioChange)="ui.setSplitRatio($event)"
+      (ratioChange)="ui.setSplitRatio('songbooks', $event)"
     >
       <div pane-a class="pane">
         <app-action-bar
@@ -167,11 +167,13 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             [query]="query()"
             [sort]="sortKey()"
             [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+            [isFavoritesFirst]="isFavoritesFirst()"
             [selectedIds]="presenter.selectedIds()"
             [currentId]="presenter.currentId()"
             [emptyText]="emptyText()"
             (queryChange)="presenter.setQuery($event)"
             (sortChange)="presenter.setSort($event)"
+            (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
             (loadMore)="presenter.loadMore()"
             (activated)="presenter.activate($event)"
             (selectToggled)="presenter.toggleSelect($event)"
@@ -288,6 +290,11 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           [currentId]="presenter.currentSlot()"
           [insertAt]="previewIndex()"
           [emptyText]="entriesEmptyText()"
+          [sort]="presenter.entrySort()"
+          [dir]="presenter.entryDir()"
+          [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
+          (sortChange)="presenter.setEntrySort($event)"
+          (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
           (selectToggled)="presenter.toggleSelectSlot($event)"
           (activated)="presenter.activateSlot($event)"
           (removed)="presenter.removeSlots($event)"
@@ -473,6 +480,7 @@ export class SongbookDetailPage {
   readonly q = input<string | undefined>();
   readonly sort = input<string | undefined>();
   readonly dir = input<string | undefined>();
+  readonly fav = input<string | undefined>();
   readonly pane = input<string | undefined>();
 
   protected readonly query = computed(() => this.q() ?? '');
@@ -480,6 +488,7 @@ export class SongbookDetailPage {
     () => toExplorerSort(this.sort()) ?? 'name',
   );
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
+  protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
   protected readonly activePane = computed<'a' | 'b'>(() =>
     this.pane() === 'render' ? 'b' : 'a',
   );
@@ -639,6 +648,7 @@ export class SongbookDetailPage {
         query: this.query(),
         sort: this.sortKey(),
         dir: this.sortDir(),
+        isFavoritesFirst: this.isFavoritesFirst(),
       });
     });
   }

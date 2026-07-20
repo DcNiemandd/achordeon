@@ -13,6 +13,13 @@ const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
 /** The virtual songbook's display name — it has no record to carry one. */
 const ALL_SONGS_NAME = $localize`:@@songbooks.allSongs:All songs`;
 
+/**
+ * What that row actually is. It looks like a songbook you made and is not one,
+ * which is the sort of thing a list should say out loud rather than leave you
+ * to discover by finding its buttons missing.
+ */
+const ALL_SONGS_HINT = $localize`:@@songbooks.allSongs.help:Every song in your library, always up to date. You cannot reorder it or remove songs from it — but you can choose how it is sorted.`;
+
 /** A songbook delete the user has asked for and not yet confirmed. */
 export interface PendingSongbookDelete {
   readonly id: string;
@@ -64,6 +71,7 @@ export class SongbooksPresenter {
       isFavorite: false,
       // No record behind it: nothing to rename, nothing to delete.
       isReadOnly: true,
+      hint: ALL_SONGS_HINT,
     },
     ...this.store.live().map((book, index) => ({
       id: book.id,

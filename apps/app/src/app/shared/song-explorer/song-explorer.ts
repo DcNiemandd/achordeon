@@ -79,66 +79,90 @@ const SEARCH_DEBOUNCE_MS = 200;
     Tooltip,
   ],
   template: `
-    <!-- A songbook's entry list has nothing to search or sort: its order is the
-         content, and re-sorting the thing you are ordering is meaningless. -->
-    @if (capabilities().canSearch) {
+    <!-- A stored songbook's entry list has nothing to search or sort: its order
+         is the content. The two halves are separate capabilities because the
+         virtual All songs book wants one and not the other. -->
+    @if (capabilities().canSearch || capabilities().canSort) {
       <div class="tools">
-        <div class="search">
-          <app-icon name="search" class="search-icon" />
-          <input
-            #searchInput
-            appField
-            type="search"
-            class="search-field"
-            [class.has-value]="hasQuery()"
-            [value]="query()"
-            [attr.aria-label]="searchLabel"
-            [attr.placeholder]="searchLabel"
-            data-testid="explorer-search"
-            (input)="onSearchInput($event)"
-          />
-          <!-- Only while there is something to clear. Unlike the row actions this
+        @if (capabilities().canSearch) {
+          <div class="search">
+            <app-icon name="search" class="search-icon" />
+            <input
+              #searchInput
+              appField
+              type="search"
+              class="search-field"
+              [class.has-value]="hasQuery()"
+              [value]="query()"
+              [attr.aria-label]="searchLabel"
+              [attr.placeholder]="searchLabel"
+              data-testid="explorer-search"
+              (input)="onSearchInput($event)"
+            />
+            <!-- Only while there is something to clear. Unlike the row actions this
                button is not a shortcut for anything reachable another way — with an
                empty list and a stale query, it is the way back. -->
-          @if (hasQuery()) {
-            <button
-              appButton
-              type="button"
-              class="search-clear"
-              [isIconOnly]="true"
-              [attr.aria-label]="clearSearchLabel"
-              [appTooltip]="clearSearchLabel"
-              data-testid="explorer-search-clear"
-              (click)="clearQuery(searchInput)"
-            >
-              <app-icon name="close" />
-            </button>
-          }
-        </div>
+            @if (hasQuery()) {
+              <button
+                appButton
+                type="button"
+                class="search-clear"
+                [isIconOnly]="true"
+                [attr.aria-label]="clearSearchLabel"
+                [appTooltip]="clearSearchLabel"
+                data-testid="explorer-search-clear"
+                (click)="clearQuery(searchInput)"
+              >
+                <app-icon name="close" />
+              </button>
+            }
+          </div>
+        }
 
-        <select
-          class="sort"
-          [value]="sort()"
-          [attr.aria-label]="sortLabel"
-          data-testid="explorer-sort"
-          (change)="onSortPick($event)"
-        >
-          @for (option of sortOptions; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
-        </select>
+        @if (capabilities().canSort) {
+          <select
+            class="sort"
+            [value]="sort()"
+            [attr.aria-label]="sortLabel"
+            data-testid="explorer-sort"
+            (change)="onSortPick($event)"
+          >
+            @for (option of sortOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
 
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [attr.aria-label]="dirLabel()"
-          [appTooltip]="dirLabel()"
-          data-testid="explorer-sort-dir"
-          (click)="toggleDir()"
-        >
-          <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
-        </button>
+          <button
+            appButton
+            type="button"
+            [isIconOnly]="true"
+            [attr.aria-label]="dirLabel()"
+            [appTooltip]="dirLabel()"
+            data-testid="explorer-sort-dir"
+            (click)="toggleDir()"
+          >
+            <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
+          </button>
+
+          <!-- A flag over the sort, not a sort of its own: "my starred songs at
+               the top of the list I am already reading". Sorting BY favourite
+               left everything else in tiebreak order, which is a list nobody
+               asked for. -->
+          <button
+            appButton
+            type="button"
+            class="star"
+            [isIconOnly]="true"
+            [class.is-favorite]="isFavoritesFirst()"
+            [attr.aria-pressed]="isFavoritesFirst()"
+            [attr.aria-label]="favoritesFirstLabel"
+            [appTooltip]="favoritesFirstLabel"
+            data-testid="explorer-favorites-first"
+            (click)="favoritesFirstChange.emit(!isFavoritesFirst())"
+          >
+            <app-icon name="favorite" [isFilled]="isFavoritesFirst()" />
+          </button>
+        }
       </div>
     }
 
@@ -195,6 +219,23 @@ const SEARCH_DEBOUNCE_MS = 200;
               (click)="favorited.emit(row.id)"
             >
               <app-icon name="favorite" [isFilled]="row.isFavorite" />
+            </button>
+          }
+
+          @if (row.hint) {
+            <!-- Click, not hover: touch has no hover, and this is the one row
+                 on the screen that is not what it appears to be. -->
+            <button
+              appButton
+              type="button"
+              class="hint"
+              [isIconOnly]="true"
+              [appTooltip]="row.hint"
+              appTooltipTrigger="click"
+              [attr.aria-label]="hintLabel(row)"
+              [attr.data-testid]="'hint-' + row.id"
+            >
+              <app-icon name="help" />
             </button>
           }
 
@@ -273,8 +314,13 @@ const SEARCH_DEBOUNCE_MS = 200;
             <!-- Reorder is per ROW here, not per selection: you are already
                  pointing at the thing you want moved, and having to tick it
                  first (and untick it after) is a step the pointer just made.
-                 The strip above still moves a whole selection as a block. -->
-            @if (capabilities().canReorder) {
+                 The strip above still moves a whole selection as a block.
+
+                 Gone once **several** rows are ticked, because then the two
+                 affordances disagree: the strip moves the block, these would
+                 move one row out of it. Same act, same screen, two answers —
+                 so the block's tool wins while a block exists. -->
+            @if (capabilities().canReorder && !hasBlockSelection()) {
               @for (move of ROW_MOVES; track move.where) {
                 <button
                   appButton
@@ -284,7 +330,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                   [attr.aria-label]="moveRowLabel(row, move.where)"
                   [appTooltip]="moveRowLabel(row, move.where)"
                   [attr.data-testid]="'row-' + move.where + '-' + row.id"
-                  (click)="moved.emit({ id: row.id, where: move.where })"
+                  (click)="onRowMove($event, row, move.where)"
                 >
                   <app-icon [name]="move.icon" />
                 </button>
@@ -292,9 +338,11 @@ const SEARCH_DEBOUNCE_MS = 200;
             }
 
             @if (capabilities().canRemove && !row.isReadOnly) {
-              <!-- An X, not a bin: this drops a slot and destroys nothing. The
-                   bin is the library's, and it means the song itself
-                   (CONTEXT.md §Delete vs Remove). -->
+              <!-- The left arrow the transfer column uses, not a bin and no
+                   longer an X: this sends the row back across to the library,
+                   which is where the column's own remove button points. A bin
+                   would mean the song itself (CONTEXT.md §Delete vs Remove),
+                   and an X read as "dismiss" rather than "put back". -->
               <button
                 appButton
                 type="button"
@@ -304,7 +352,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 [attr.data-testid]="'remove-' + row.id"
                 (click)="removed.emit([row.id])"
               >
-                <app-icon name="close" />
+                <app-icon name="transferOut" />
               </button>
             }
             @if (capabilities().canDelete && !row.isReadOnly) {
@@ -465,6 +513,14 @@ const SEARCH_DEBOUNCE_MS = 200;
       color: var(--text-faint);
     }
 
+    .hint {
+      --icon-size: 14px;
+      block-size: 24px;
+      min-inline-size: 24px;
+      flex: none;
+      color: var(--text-faint);
+    }
+
     .star.is-favorite {
       color: var(--brand);
     }
@@ -561,6 +617,8 @@ export class SongExplorer {
   /** The row pane B is rendering (`SessionStore.currentSongId`). */
   readonly currentId = input<string | null>(null);
   readonly emptyText = input($localize`:@@explorer.empty:No songs yet.`);
+  /** Float starred rows to the top, whatever the sort axis is. */
+  readonly isFavoritesFirst = input(false);
 
   /**
    * Where an add would land, drawn as a line between rows. `null` while nothing
@@ -577,6 +635,7 @@ export class SongExplorer {
 
   readonly queryChange = output<string>();
   readonly sortChange = output<SortChange>();
+  readonly favoritesFirstChange = output<boolean>();
   /** The window is within a page of its end — grow it (PRD-INFRA §3). */
   readonly loadMore = output<void>();
   /** A row was clicked: make it the current song. Does not open the editor. */
@@ -643,8 +702,9 @@ export class SongExplorer {
     { value: 'name', label: $localize`:@@explorer.sort.name:Name` },
     { value: 'created', label: $localize`:@@explorer.sort.created:Created` },
     { value: 'changed', label: $localize`:@@explorer.sort.changed:Changed` },
-    { value: 'favorite', label: $localize`:@@explorer.sort.favorite:Favorite` },
   ];
+
+  protected readonly favoritesFirstLabel = $localize`:@@explorer.favoritesFirst:Show favorites first`;
 
   protected readonly dirLabel = computed(() =>
     this.dir() === 'asc'
@@ -656,6 +716,31 @@ export class SongExplorer {
     return row.id;
   }
 
+  /** More than one row ticked — see the row-move buttons in the template. */
+  protected readonly hasBlockSelection = computed(
+    () => this.selectedIds().size > 1,
+  );
+
+  /**
+   * Move one row, and **let go of the button afterwards** when it was clicked
+   * [trap].
+   *
+   * The row actions are revealed by `:hover` *and* `:focus-within`, so a clicked
+   * button kept its row's actions on screen after the pointer left — and after a
+   * move the row under that index holds a different song, so the strip of
+   * buttons was left hanging over a row nobody was pointing at.
+   *
+   * Only for pointer clicks: `detail` is 0 when a button is activated from the
+   * keyboard, where blurring would throw the user's place away. There, focus
+   * staying put is the whole point.
+   */
+  protected onRowMove(event: MouseEvent, row: SongRow, where: RowMove): void {
+    this.moved.emit({ id: row.id, where });
+    if (event.detail > 0) {
+      (event.currentTarget as HTMLElement | null)?.blur();
+    }
+  }
+
   /** "After the end" has no row of its own, so the last row wears the line. */
   protected isLastAndInsertAtEnd(row: SongRow): boolean {
     const at = this.insertAt();
@@ -665,6 +750,10 @@ export class SongExplorer {
   // Every row action names its row. "Rename" repeated down a list of 50 rows
   // tells a screen-reader user which button they are on and nothing about which
   // song it would rename (PRD-UI-SHELL.md §5.2).
+  protected hintLabel(row: SongRow): string {
+    return $localize`:@@explorer.about:About ${row.name}:name:`;
+  }
+
   protected selectRowLabel(row: SongRow): string {
     return $localize`:@@explorer.selectRow:Select ${row.name}:name:`;
   }

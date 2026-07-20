@@ -46,9 +46,9 @@ import { SongEditorPresenter } from './song-editor.presenter';
   ],
   template: `
     <app-split-pane
-      [ratio]="ui.splitRatio()"
+      [ratio]="ui.splitRatio('songs')"
       [activePane]="activePane()"
-      (ratioChange)="ui.setSplitRatio($event)"
+      (ratioChange)="ui.setSplitRatio('songs', $event)"
     >
       <div pane-a class="pane">
         <app-action-bar

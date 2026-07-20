@@ -81,7 +81,12 @@ describe('SongbookStore', () => {
     await store.refresh();
 
     expect(store.live().map((b) => b.id)).toEqual(['a']);
-    expect(store.entities().map((b) => b.id).sort()).toEqual(['a', 'b']);
+    expect(
+      store
+        .entities()
+        .map((b) => b.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
   });
 
   it('reads one songbook by id, for a deep link past the window', async () => {

@@ -3,8 +3,16 @@
 
 import type { BaseRecord } from '@achordeon/shared/domain';
 
-/** Sort axes the Song explorer offers (CONTEXT.md §Song explorer). */
-export type SortKey = 'name' | 'created' | 'changed' | 'favorite';
+/**
+ * Sort axes the Song explorer offers (CONTEXT.md §Song explorer).
+ *
+ * **`favorite` is not one of them** [corrected]. Sorting *by* favourite answers
+ * "which are starred" and then leaves the rest in whatever order the tiebreak
+ * gives — which is not a list anybody wanted. What people mean by it is "my
+ * starred songs at the top of the list I am already reading", so it is a flag
+ * over any axis (`favoritesFirst`) rather than an axis of its own.
+ */
+export type SortKey = 'name' | 'created' | 'changed';
 export type SortDir = 'asc' | 'desc';
 
 /**
@@ -21,6 +29,8 @@ export interface PageQuery {
   sort: SortKey;
   dir?: SortDir; // omitted = the natural default for the sort key
   query?: string; // search text; empty/absent = no filter
+  /** Float favourites above everything else, keeping `sort` within each group. */
+  favoritesFirst?: boolean;
 }
 
 /** One page response. `nextCursor` null = the result is exhausted. */
@@ -42,6 +52,9 @@ export interface PagingConfig<T> {
   searchTiers: (record: T) => readonly [primary: string, secondary: string];
   /** Comparable value for a sort axis. */
   sortValue: (record: T, key: SortKey) => string | number | boolean;
+  /** Whether a record is starred. Absent for entities that cannot be — a
+   * songbook has no favourite flag, and `favoritesFirst` is then a no-op. */
+  isFavorite?: (record: T) => boolean;
 }
 
 /**
@@ -54,7 +67,6 @@ export const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
   name: 'asc',
   created: 'desc',
   changed: 'desc',
-  favorite: 'desc',
 };
 
 const encodeCursor = (offset: number): Cursor => String(offset);
@@ -107,8 +119,18 @@ export function pageRecords<T extends BaseRecord>(
         .filter((x) => x.tier >= 0)
     : live.map((r) => ({ r, tier: 0 }));
 
+  const isFavorite = config.isFavorite;
+  const wantsFavoritesFirst = query.favoritesFirst === true && !!isFavorite;
+
   ranked.sort((a, b) => {
     if (a.tier !== b.tier) return a.tier - b.tier; // metadata matches first
+    if (wantsFavoritesFirst) {
+      // Above the sort, not instead of it: the starred songs float to the top
+      // and both groups stay ordered by the axis the user chose.
+      const favA = isFavorite(a.r) ? 0 : 1;
+      const favB = isFavorite(b.r) ? 0 : 1;
+      if (favA !== favB) return favA - favB;
+    }
     const byKey =
       compareValues(
         config.sortValue(a.r, query.sort),
