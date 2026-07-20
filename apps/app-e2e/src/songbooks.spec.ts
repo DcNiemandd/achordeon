@@ -197,11 +197,11 @@ test.describe('songbooks', () => {
 
     await page.getByTestId(`select-${ids[0]}`).check();
     await page.getByTestId(`select-${ids[1]}`).check();
-    await expect(page.getByTestId('songbook-add-clear')).toContainText('2');
+    await expect(page.getByTestId('selection-clear')).toContainText('2');
 
     // Clicking a row throws the pair away and keeps just that row.
     await page.getByTestId(`open-${ids[1]}`).click();
-    await expect(page.getByTestId('songbook-add-clear')).toContainText('1');
+    await expect(page.getByTestId('selection-clear')).toContainText('1');
     await expect(page.getByTestId(`select-${ids[0]}`)).not.toBeChecked();
     await expect(page.getByTestId(`select-${ids[1]}`)).toBeChecked();
   });
@@ -218,10 +218,11 @@ test.describe('songbooks', () => {
       .first()
       .getAttribute('data-song-id');
     await page.getByTestId(`select-${id}`).check();
-    await expect(page.getByTestId('explorer-bulk-clear')).toBeEnabled();
+    await expect(page.getByTestId('selection-count')).toContainText('1');
 
     await createSongbook(page, 'Campfire');
     await expect(page.getByTestId(`select-${id}`)).not.toBeChecked();
+    await expect(page.getByTestId('selection-clear')).toHaveCount(0);
     await expect(page.getByTestId('add-end')).toBeDisabled();
   });
 

@@ -297,18 +297,22 @@ test.describe('song explorer', () => {
     const rows = page.getByTestId('song-row');
     const first = await rows.first().getAttribute('data-song-id');
 
-    const clear = page.getByTestId('explorer-bulk-clear');
-    await expect(clear).toBeDisabled();
+    const del = page.getByTestId('explorer-bulk-delete');
+    const clear = page.getByTestId('selection-clear');
+    await expect(del).toBeDisabled();
+    // The count and its Clear are not there at all until something is picked.
+    await expect(clear).toHaveCount(0);
     const before = await rows.first().boundingBox();
 
     await page.getByTestId(`select-${first}`).check();
-    await expect(clear).toBeEnabled();
-    await expect(page.getByTestId('explorer-bulk-count')).toContainText('1');
+    await expect(del).toBeEnabled();
+    await expect(page.getByTestId('selection-count')).toContainText('1');
     // The row did not budge when the checkbox was ticked.
     expect((await rows.first().boundingBox())?.y).toBe(before?.y);
 
     await clear.click();
-    await expect(clear).toBeDisabled();
+    await expect(del).toBeDisabled();
+    await expect(clear).toHaveCount(0);
   });
 
   test('bulk favorite sets, never toggles', async ({ page }) => {

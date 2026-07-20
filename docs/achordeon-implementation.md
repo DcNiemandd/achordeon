@@ -364,9 +364,20 @@ Corrections the build forced, recorded so they aren't re-litigated:
   promise the user has to take on trust.
 - **Add and reorder share one icon family** (arrow-into-a-line for the ends,
   chevrons for one step): both answer "where in this list", and that is learnt
-  once. Layout follows the transfer-list handoff — add buttons in a column
-  _between_ the two lists, move buttons at the left of pane B's toolbar,
-  "Clear (N)" as text rather than a second X beside "back to songbooks".
+  once. Layout follows the transfer-list handoff — the transfer buttons in a
+  column _between_ the two lists, move buttons at the left of pane B's toolbar.
+- **The transfer buttons say direction first, position second**: a right arrow
+  (into the songbook) badged with the reorder mark, the same composition the
+  editor's transpose buttons use. The badge rides the corner it means — top for
+  start/above, bottom for below/end — because four corner marks distinguished
+  only by a 12px glyph were not distinguishable. Remove is the same crossing
+  the other way: a left arrow, set apart below the four, and answering pane B's
+  selection rather than pane A's.
+- **`<app-selection-status>` is one component with two mounts.** "N selected /
+  Clear (N)" sits at the end of the action bar in both the Songs module and the
+  songbook builder — the same words in the same place above the list it
+  describes. It is text and not an X, because the bar already spends an X on
+  "back to songbooks".
 
 **Still open:** drag & drop between the panes (`songbooks/index.mdx` marks it
 FUTURE and the page carries the admonition); it wants the CDK's `cdkDropList`

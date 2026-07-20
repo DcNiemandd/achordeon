@@ -27,6 +27,7 @@ import { ActionBar, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
   REDUCED_CAPABILITIES,
+  SelectionStatus,
   SongExplorer,
   toExplorerSort,
   toExplorerSortDir,
@@ -54,6 +55,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     ActionBar,
     SplitPane,
     SongExplorer,
+    SelectionStatus,
     SongbookEntries,
     SettingsPanel,
     Button,
@@ -87,6 +89,16 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           </a>
 
           @if (!presenter.isVirtual()) {
+            <!-- Same control, same place as the Songs module: the count and its
+                 Clear belong above the list they describe, not in the transfer
+                 column between the panes — there it read as a fifth transfer
+                 button and sat nowhere near the list it empties. -->
+            <app-selection-status
+              class="selection"
+              [count]="presenter.selectedIds().size"
+              (cleared)="presenter.clearSelection()"
+            />
+
             <button
               appButton
               type="button"
@@ -181,6 +193,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                   appButton
                   type="button"
                   variant="secondary"
+                  class="cross"
                   [isIconOnly]="true"
                   [disabled]="!hasSelection()"
                   [attr.aria-label]="addLabel(option)"
@@ -192,27 +205,36 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                   (blur)="preview.set(null)"
                   (click)="presenter.addSelected(option.where)"
                 >
-                  <app-icon [name]="option.icon" />
+                  <app-icon name="transferIn" />
+                  <!-- The badge sits in the corner it means: the two that go
+                       upwards ride the top, the two that go downwards the
+                       bottom. Four near-identical corner marks were telling
+                       them apart by glyph alone, at 12px. -->
+                  <app-icon
+                    class="cross-badge"
+                    [class.is-bottom]="option.isBadgeBottom"
+                    [name]="option.icon"
+                  />
                 </button>
               }
 
-              <!-- A text button, not another X: the bar above already spends an
-                   X on "back to songbooks", and two of them a few pixels apart
-                   meaning different things is worse than either. It also
-                   carries the count, so the number is next to what acts on it. -->
-              @if (hasSelection()) {
-                <button
-                  appButton
-                  type="button"
-                  variant="ghost"
-                  class="clear"
-                  [attr.aria-label]="clearSelectionLabel"
-                  data-testid="songbook-add-clear"
-                  (click)="presenter.clearSelection()"
-                >
-                  {{ clearLabel() }}
-                </button>
-              }
+              <!-- Set apart, and pointing the other way: it crosses the same
+                   gap in the opposite direction, and it answers pane B's
+                   selection rather than pane A's. -->
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="cross out"
+                [isIconOnly]="true"
+                [disabled]="!hasSlotSelection()"
+                [attr.aria-label]="removeSlotsLabel"
+                [appTooltip]="removeSlotsLabel"
+                data-testid="entry-remove-selected"
+                (click)="presenter.removeSlots([...presenter.selectedSlots()])"
+              >
+                <app-icon name="transferOut" />
+              </button>
             </div>
           }
         </div>
@@ -244,20 +266,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                 <app-icon [name]="option.icon" />
               </button>
             }
-
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              [isIconOnly]="true"
-              [disabled]="!hasSlotSelection()"
-              [attr.aria-label]="removeSlotsLabel"
-              [appTooltip]="removeSlotsLabel"
-              data-testid="entry-remove-selected"
-              (click)="presenter.removeSlots([...presenter.selectedSlots()])"
-            >
-              <app-icon name="delete" />
-            </button>
 
             <!-- Right of the group it undoes, as text with the count in it —
                  the same shape as the library side's, for the same reason. -->
@@ -340,11 +348,47 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       background: var(--surface-raised);
     }
 
+    /* The direction is the subject and the position is the qualifier, so the
+       badge is a corner mark rather than a second equal glyph — the same
+       composition (and sizes) as the editor's transpose buttons. */
+    .cross {
+      position: relative;
+    }
+
+    .cross app-icon {
+      --icon-size: 17px;
+    }
+
+    .cross .cross-badge {
+      --icon-size: 13px;
+      position: absolute;
+      inset-block-start: 1px;
+      inset-inline-end: 1px;
+      color: var(--brand);
+    }
+
+    .cross .cross-badge.is-bottom {
+      inset-block-start: auto;
+      inset-block-end: 1px;
+    }
+
+    /* Set apart from the four that go the other way: it is a different
+       direction answering a different pane's selection. */
+    .cross.out {
+      margin-block-start: var(--space-3);
+    }
+
     .clear {
       padding-inline: var(--space-1);
       font-size: var(--text-xs);
       color: var(--brand);
       white-space: nowrap;
+    }
+
+    /* Ahead of the settings button, at the end of the action row — the Songs
+       module's position. */
+    .selection {
+      margin-inline-start: auto;
     }
 
     .fields {
@@ -473,14 +517,7 @@ export class SongbookDetailPage {
     () => this.presenter.selectedIds().size > 0,
   );
 
-  protected readonly clearSelectionLabel = $localize`:@@songbooks.clearSelection:Clear the selection`;
   protected readonly addGroupLabel = $localize`:@@songbooks.addGroup:Add to the songbook`;
-
-  /** "Clear (2)" — the count rides the button that undoes it. */
-  protected readonly clearLabel = computed(
-    () =>
-      $localize`:@@explorer.clearCount:Clear (${this.presenter.selectedIds().size}:count:)`,
-  );
 
   /**
    * Which Add button the pointer or focus is on, so the entry list can show
@@ -494,9 +531,10 @@ export class SongbookDetailPage {
   });
 
   /**
-   * The four places to put them — **icons, sharing the reorder set**: both
-   * groups answer "where in this list", and the arrows-into-a-line already read
-   * as the ends. Words in a vertical strip only repeated what the glyph said.
+   * The four places to put them — **a right arrow badged with the reorder
+   * mark**: right is the crossing (into the songbook, which is the pane on the
+   * right), and the badge says which end. Direction first, position second, the
+   * same composition the editor's transpose buttons use.
    *
    * The label names the **resolved** position, not the rule: "Add above slot 3"
    * rather than "add above the selection", because the whole complaint was that
@@ -505,11 +543,13 @@ export class SongbookDetailPage {
   protected readonly addOptions: readonly {
     where: InsertPosition;
     icon: IconName;
+    /** Which corner the position mark rides — see the template. */
+    isBadgeBottom?: boolean;
   }[] = [
     { where: 'start', icon: 'moveStart' },
     { where: 'above', icon: 'moveUp' },
-    { where: 'below', icon: 'moveDown' },
-    { where: 'end', icon: 'moveEnd' },
+    { where: 'below', icon: 'moveDown', isBadgeBottom: true },
+    { where: 'end', icon: 'moveEnd', isBadgeBottom: true },
   ];
 
   protected addLabel(option: { where: InsertPosition }): string {

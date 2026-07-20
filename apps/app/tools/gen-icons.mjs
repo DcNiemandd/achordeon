@@ -98,6 +98,12 @@ const ICONS = {
   moveDown: 'chevron-down',
   moveStart: 'arrow-up-to-line',
   moveEnd: 'arrow-down-to-line',
+  // The crossing itself: right is into the songbook, left is back out of it.
+  // The Add buttons carry one of these with the position mark badged onto it,
+  // the same composition the editor's transpose buttons use — direction first,
+  // then which end of the list.
+  transferIn: 'arrow-right',
+  transferOut: 'arrow-left',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

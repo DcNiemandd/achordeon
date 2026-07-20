@@ -1,5 +1,6 @@
 export { SongExplorer } from './song-explorer';
 export { RowSelection } from './row-selection';
+export { SelectionStatus } from './selection-status';
 export {
   FULL_CAPABILITIES,
   REDUCED_CAPABILITIES,

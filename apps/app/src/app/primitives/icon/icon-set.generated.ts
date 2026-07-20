@@ -42,6 +42,8 @@ export const ICON_SET = {
   moveDown: '<path d="m6 9 6 6 6-6" />',
   moveStart: '<path d="M5 3h14" /><path d="m18 13-6-6-6 6" /><path d="M12 7v14" />',
   moveEnd: '<path d="M12 17V3" /><path d="m6 11 6 6 6-6" /><path d="M19 21H5" />',
+  transferIn: '<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />',
+  transferOut: '<path d="m12 19-7-7 7-7" /><path d="M19 12H5" />',
 } as const;
 
 export type IconName = keyof typeof ICON_SET;

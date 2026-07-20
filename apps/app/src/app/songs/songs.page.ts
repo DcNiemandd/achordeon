@@ -19,6 +19,7 @@ import {
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import {
+  SelectionStatus,
   SongExplorer,
   toExplorerSort,
   toExplorerSortDir,
@@ -51,6 +52,7 @@ import {
     BlankPage,
     SplitPane,
     SongExplorer,
+    SelectionStatus,
     SongRender,
     Button,
     Dialog,
@@ -85,11 +87,13 @@ import {
                disabled icons costs a little clarity and buys back a stable list,
                which is the better trade while you are picking rows. -->
           <div class="bulk" data-testid="explorer-bulk">
-            @if (presenter.selectedIds().size > 0) {
-              <span class="bulk-count" data-testid="explorer-bulk-count">
-                {{ selectionLabel() }}
-              </span>
-            }
+            <!-- The same control the songbook builder mounts, in the same place
+                 (the end of the action row): both lists carry a selection, so
+                 both say so identically. -->
+            <app-selection-status
+              [count]="presenter.selectedIds().size"
+              (cleared)="presenter.clearSelection()"
+            />
 
             <button
               appButton
@@ -118,21 +122,6 @@ import {
               (click)="presenter.requestDelete([...presenter.selectedIds()])"
             >
               <app-icon name="delete" />
-            </button>
-
-            <!-- Text, not an X: the count belongs on the control that undoes
-                 it, and an icon-only X next to a delete bin is a coin flip. -->
-            <button
-              appButton
-              type="button"
-              variant="ghost"
-              class="bulk-clear"
-              [disabled]="!hasSelection()"
-              [attr.aria-label]="bulkClearLabel"
-              data-testid="explorer-bulk-clear"
-              (click)="presenter.clearSelection()"
-            >
-              {{ clearLabel() }}
             </button>
           </div>
         </app-action-bar>
@@ -251,18 +240,10 @@ import {
       margin-inline-start: auto;
     }
 
-    .bulk-count {
+    /* Ahead of the icon buttons, so the count reads before the actions it
+       describes. It renders nothing at all when the selection is empty. */
+    .bulk app-selection-status {
       margin-inline-end: var(--space-1);
-      font-size: var(--text-sm);
-      color: var(--brand);
-      white-space: nowrap;
-    }
-
-    .bulk-clear {
-      padding-inline: var(--space-1);
-      font-size: var(--text-xs);
-      color: var(--brand);
-      white-space: nowrap;
     }
 
     .warn {
@@ -326,16 +307,6 @@ export class SongsPage {
     () => this.presenter.selectedIds().size > 0,
   );
 
-  protected readonly selectionLabel = computed(
-    () =>
-      $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
-  );
-
-  protected readonly clearLabel = computed(
-    () =>
-      $localize`:@@explorer.clearCount:Clear (${this.presenter.selectedIds().size}:count:)`,
-  );
-
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;
   /** Names the act, not the object — the button does one of two things. */
@@ -345,7 +316,6 @@ export class SongsPage {
       : $localize`:@@songs.bulkFavorite:Favorite the selected songs`,
   );
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
-  protected readonly bulkClearLabel = $localize`:@@songs.bulkClear:Clear the selection`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
   protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
