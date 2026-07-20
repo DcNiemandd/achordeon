@@ -214,7 +214,7 @@ const SEARCH_DEBOUNCE_MS = 200;
               [class.is-favorite]="row.isFavorite"
               [attr.aria-pressed]="row.isFavorite"
               [attr.aria-label]="favoriteRowLabel(row)"
-              [appTooltip]="favoriteRowLabel(row)"
+              [appTooltip]="row.isFavorite ? UNFAVORITE : FAVORITE"
               [attr.data-testid]="'favorite-' + row.id"
               (click)="favorited.emit(row.id)"
             >
@@ -278,7 +278,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="editRowLabel(row)"
-                [appTooltip]="editRowLabel(row)"
+                [appTooltip]="EDIT"
                 [attr.data-testid]="'edit-' + row.id"
                 (click)="opened.emit(row.id)"
               >
@@ -291,7 +291,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="renameRowLabel(row)"
-                [appTooltip]="renameRowLabel(row)"
+                [appTooltip]="RENAME"
                 [attr.data-testid]="'rename-' + row.id"
                 (click)="startRename(row)"
               >
@@ -304,7 +304,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="duplicateRowLabel(row)"
-                [appTooltip]="duplicateRowLabel(row)"
+                [appTooltip]="DUPLICATE"
                 [attr.data-testid]="'duplicate-' + row.id"
                 (click)="duplicated.emit(row.id)"
               >
@@ -328,7 +328,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                   class="move"
                   [isIconOnly]="true"
                   [attr.aria-label]="moveRowLabel(row, move.where)"
-                  [appTooltip]="moveRowLabel(row, move.where)"
+                  [appTooltip]="move.label"
                   [attr.data-testid]="'row-' + move.where + '-' + row.id"
                   (click)="onRowMove($event, row, move.where)"
                 >
@@ -341,7 +341,9 @@ const SEARCH_DEBOUNCE_MS = 200;
                  strip above removes the block, and a row button would take one
                  row out of the set you just built. -->
             @if (
-              capabilities().canRemove && !row.isReadOnly && !hasBlockSelection()
+              capabilities().canRemove &&
+              !row.isReadOnly &&
+              !hasBlockSelection()
             ) {
               <!-- The left arrow the transfer column uses, not a bin and no
                    longer an X: this sends the row back across to the library,
@@ -353,7 +355,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="removeRowLabel(row)"
-                [appTooltip]="removeRowLabel(row)"
+                [appTooltip]="REMOVE"
                 [attr.data-testid]="'remove-' + row.id"
                 (click)="removed.emit([row.id])"
               >
@@ -366,7 +368,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="deleteRowLabel(row)"
-                [appTooltip]="deleteRowLabel(row)"
+                [appTooltip]="DELETE"
                 [attr.data-testid]="'delete-' + row.id"
                 (click)="deleted.emit([row.id])"
               >
@@ -669,13 +671,49 @@ export class SongExplorer {
 
   /** The four row moves, in list order: to the top, one up, one down, to the
    * bottom — the same glyphs the strip above uses, because it is the same act. */
-  protected readonly ROW_MOVES: readonly { where: RowMove; icon: IconName }[] =
-    [
-      { where: 'start', icon: 'moveStart' },
-      { where: 'up', icon: 'moveUp' },
-      { where: 'down', icon: 'moveDown' },
-      { where: 'end', icon: 'moveEnd' },
-    ];
+  protected readonly ROW_MOVES: readonly {
+    where: RowMove;
+    icon: IconName;
+    label: string;
+  }[] = [
+    {
+      where: 'start',
+      icon: 'moveStart',
+      label: $localize`:@@explorer.moveStart:Move to the start`,
+    },
+    {
+      where: 'up',
+      icon: 'moveUp',
+      label: $localize`:@@explorer.moveUp:Move up one`,
+    },
+    {
+      where: 'down',
+      icon: 'moveDown',
+      label: $localize`:@@explorer.moveDown:Move down one`,
+    },
+    {
+      where: 'end',
+      icon: 'moveEnd',
+      label: $localize`:@@explorer.moveEnd:Move to the end`,
+    },
+  ];
+
+  /**
+   * What the **tooltips** say: the act, and nothing else.
+   *
+   * The `aria-label`s still name the row ("Rename Wonderwall"), and that is not
+   * a contradiction — a pointer user reads the tooltip beside the row it belongs
+   * to, while a screen-reader user meets the button out of that context and gets
+   * nothing from "Rename" heard fifty times. WCAG 2.5.3 asks that the visible
+   * label be contained in the accessible name, which it is.
+   */
+  protected readonly FAVORITE = $localize`:@@explorer.favorite:Add to favorites`;
+  protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
+  protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
+  protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
+  protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
+  protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
+  protected readonly DELETE = $localize`:@@explorer.delete:Delete`;
 
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
@@ -785,6 +823,7 @@ export class SongExplorer {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
   }
 
+  /** The accessible name: the act **and** the row it would act on. */
   protected moveRowLabel(row: SongRow, where: RowMove): string {
     return where === 'start'
       ? $localize`:@@explorer.moveRowStart:Move ${row.name}:name: to the start`

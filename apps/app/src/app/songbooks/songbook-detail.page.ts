@@ -212,7 +212,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                     [isIconOnly]="true"
                     [disabled]="!hasSelection()"
                     [attr.aria-label]="addLabel(option)"
-                    [appTooltip]="addLabel(option)"
+                    [appTooltip]="option.label"
                     [attr.data-testid]="'add-' + option.where"
                     (pointerenter)="preview.set(option.where)"
                     (pointerleave)="preview.set(null)"
@@ -235,7 +235,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                   [isIconOnly]="true"
                   [disabled]="!hasSlotSelection()"
                   [attr.aria-label]="removeSlotsLabel"
-                  [appTooltip]="removeSlotsLabel"
+                  [appTooltip]="removeSlotsShort"
                   data-testid="entry-remove-selected"
                   (click)="
                     presenter.removeSlots([...presenter.selectedSlots()])
@@ -607,28 +607,46 @@ export class SongbookDetailPage {
   protected readonly addOptions: readonly {
     where: InsertPosition;
     icon: IconName;
+    /** What the tooltip says: the act, and nothing else. */
+    label: string;
   }[] = [
-    { where: 'start', icon: 'moveStart' },
-    { where: 'above', icon: 'moveUp' },
-    { where: 'below', icon: 'moveDown' },
-    { where: 'end', icon: 'moveEnd' },
+    {
+      where: 'start',
+      icon: 'moveStart',
+      label: $localize`:@@songbooks.addStart:Add to the start`,
+    },
+    {
+      where: 'above',
+      icon: 'moveUp',
+      label: $localize`:@@songbooks.addAboveShort:Add above selected`,
+    },
+    {
+      where: 'below',
+      icon: 'moveDown',
+      label: $localize`:@@songbooks.addBelowShort:Add below selected`,
+    },
+    {
+      where: 'end',
+      icon: 'moveEnd',
+      label: $localize`:@@songbooks.addEnd:Add to the end`,
+    },
   ];
 
-  protected addLabel(option: { where: InsertPosition }): string {
+  /**
+   * The accessible name — the act **and where it lands**.
+   *
+   * The tooltip says only the act: a pointer user sees the landing position
+   * drawn as a line in the list beside them, so repeating it in words is noise.
+   * A screen-reader user has no line to look at, so the number stays here. The
+   * visible text is contained in this, per WCAG 2.5.3.
+   */
+  protected addLabel(option: { where: InsertPosition; label: string }): string {
     const at = this.presenter.insertAt(option.where);
-    const base =
-      option.where === 'start'
-        ? $localize`:@@songbooks.addStart:Add to the start`
-        : option.where === 'end'
-          ? $localize`:@@songbooks.addEnd:Add to the end`
-          : option.where === 'above'
-            ? $localize`:@@songbooks.addAbove:Add above the selected slot`
-            : $localize`:@@songbooks.addBelow:Add below the selected slot`;
     // The position is only knowable while something is selected; without one
     // the button does nothing and there is nothing honest to promise.
     return at === null
-      ? base
-      : $localize`:@@songbooks.addAt:${base}:action: — lands at ${at + 1}:position:`;
+      ? option.label
+      : $localize`:@@songbooks.addAt:${option.label}:action: — lands at ${at + 1}:position:`;
   }
 
   protected readonly hasSlotSelection = computed(
@@ -642,6 +660,9 @@ export class SongbookDetailPage {
   protected readonly reorderGroupLabel = $localize`:@@entries.reorder:Reorder`;
   /** "From this songbook" is the load-bearing half of the sentence. */
   protected readonly removeSlotsLabel = $localize`:@@entries.removeSelected:Remove the selected songs from this songbook`;
+  /** The tooltip: the act. "From this songbook" stays in the accessible name,
+   * where there is no column of arrows beside it to make the direction obvious. */
+  protected readonly removeSlotsShort = $localize`:@@entries.removeSelectedShort:Remove selected`;
 
   /** One chevron is one step, two is all the way — the distinction the labels
    * spell out and the glyphs already carry. */
