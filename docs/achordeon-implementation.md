@@ -281,9 +281,9 @@ Corrections the build forced, recorded so they aren't re-litigated:
   `/songbooks/:id` route (the in-use warning links to it) and the shell's pane
   switcher (§4 gave it a slot but no control).
 
-**Still open:** the render names the bundled Roboto Mono and screen is honest, but
-the FontBook carries no bytes — **Epic 7 must embed real ones** or the PDF has
-nothing to register (§3, §4.10).
+**Closed by Epic 7:** the FontBook now carries real bytes. Four bundled TTFs
+(`apps/app/public/fonts`), fetched by `FontLoader`, inlined into the export SVG
+and registered with jsPDF (§3, §4.10).
 
 **Still open — keyboard navigability.** Escape leaves the editor for the library
 (guarded so the settings dialog and the rename field keep their own Escape). That
@@ -430,10 +430,10 @@ Corrections the build forced, recorded so they aren't re-litigated:
   in a songbook, which is why removing one slot never takes its twins.
   `SongbookEntries` is deleted.
 
-**Still open:** drag & drop is **Epic 14**, which depends on this epic. The
-songbook **download** options (title page / summary / print) are Epic 7's, not
-this one's — including the real title-page render, which `<app-title-page>`
-stands in for as plain text until then.
+**Closed since:** drag & drop landed as **Epic 14**. The songbook **download**
+options (title page / summary / print) landed as Epic 7 — including the real
+title-page render, which now draws `/songbooks` pane B as well as the PDF's first
+page. `<app-title-page>`, the plain-text stand-in, is deleted.
 
 ---
 
@@ -452,22 +452,22 @@ songbook output.
 
 ### Subtasks
 
-- [ ] Export selected songs/songbooks to the Snapshot JSON (content + settings).
-- [ ] Import Export JSON (and, nice-to-have, downloaded files with embedded
+- [x] Export selected songs/songbooks to the Snapshot JSON (content + settings).
+- [x] Import Export JSON (and, nice-to-have, downloaded files with embedded
       metadata) through the migration gateway.
-- [ ] Import conflict resolution: songs replace / ignore / create-new (+ import
+- [x] Import conflict resolution: songs replace / ignore / create-new (+ import
       all as new with date prefix); songbooks always create new.
-- [ ] Single-song download: PNG (rasterize SVG cross-browser) and vector PDF
+- [x] Single-song download: PNG (rasterize SVG cross-browser) and vector PDF
       (svg2pdf + jsPDF, selectable text).
-- [ ] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
-- [ ] Songbook PDF: title page / summary / page-number toggles + position, page
+- [x] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
+- [x] Songbook PDF: title page / summary / page-number toggles + position, page
       size, outer fit per page (songs keep aspect ratio, scaled to slot).
       **Replaces `<app-title-page>`**, the plain-text stand-in Epic 6 mounts in
       `/songbooks` pane B: the real title page is a rendered page, and its
       layout is decided by these options rather than by the preview.
-- [ ] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
+- [x] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
       the real pipeline.
-- [ ] **Real font bytes, for N faces.** `FontBook` carries none today, so the
+- [x] **Real font bytes, for N faces.** `FontBook` carries none today, so the
       SVG relies on a CSS-loaded face and the PDF has nothing to register. Bundle
       the body TTF **and** the `titleFont` catalog's faces (a serif, a
       condensed/display, a script — PRD-RENDERING §4.10), keyed by family so only
@@ -475,8 +475,84 @@ songbook output.
       resolves to a CSS generic: fine on screen, unembeddable on export. Doing
       this for one font and then again for N would be building the plumbing twice,
       which is why it is one subtask.
-- [ ] Coordinate with Epic 11's precache list: precache the body face only, fetch
+- [x] Coordinate with Epic 11's precache list: precache the body face only, fetch
       a title face on first use. Each TTF is ~100–300 KB.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The `FontBook` could not stay bound once.** `createLayout` took a fixed list
+  of faces, but which faces a render needs is a function of the song's
+  `titleFont` — a _setting_, not a platform fact. `LayoutConfig.fonts` is now a
+  `FontResolver` that `layout` calls with the faces the resolved styles actually
+  name, so a body-font song carries no script face it never draws with.
+- **The faces are assets, not a generated constant** [corrects the shape
+  `fonts.ts` implied]. Base64 in a TS file would be ~1.3× its own weight in the
+  initial bundle, times four families, and Epic 11 wants the opposite split. They
+  live in `apps/app/public/fonts` and `FontLoader` fetches each once, then spends
+  it three ways: registered with `FontFace` (measurer + screen), kept as base64
+  (`emit({inlineFonts})`), and handed to jsPDF. Same bytes, so a PDF cannot
+  disagree with the screen about where a chord sits.
+- **`tuning.fontFamily` is the STATIC Roboto Mono**, not the variable webfont the
+  chrome is set in. `addFont` takes a static TTF; a face the render measures and
+  the export cannot embed is the one failure a document app must not have.
+- **`titleFont` swapped `'sans'` for `'display'` + `'script'`** — §4.10's
+  recommended set, and a plain sans was the choice that looked least unlike the
+  body mono at title size while costing the same to bundle. Not a schema break:
+  nothing about the record's shape moved, and a song still holding `'sans'`
+  resolves to `'body'`, the setting's own default.
+- **jsPDF, svg2pdf and fflate are `import()`ed on the gesture.** Statically
+  imported they broke the app's 1 MB initial budget outright (~500 KB together).
+  The ZIP is stored rather than deflated: every entry is already a compressed
+  stream, so deflating buys a percent and costs a pass over megabytes on the
+  main thread.
+- **An exported songbook drags its songs along.** A book is a list of references,
+  so exporting one without them produces a file that imports an empty songbook on
+  precisely the machine that needed it. Conversely the envelope carries **no
+  `user` row**: that holds the global render defaults, and a file that re-based
+  the receiver's whole library on the sender's would change every song they had.
+- **Import is three calls, not one** (read / plan / apply). "What would this file
+  do to my library" has to be answerable before anything is written. And because
+  songbooks are always created new, their `entries` must be **re-pointed** through
+  the id map — a book that kept the old ids would quietly fill up with the local
+  songs it was never about. A slot neither the file nor the library can fill is
+  dropped rather than left dangling.
+- **Incoming tombstones are dropped, not applied.** A snapshot carries them so a
+  _sync_ can propagate a delete; an import is someone handing you songs, and a
+  file that silently deleted rows on the receiving side would be the least
+  expected thing it could do.
+- **Embedded metadata is PNG-only** [narrows §8's "downloaded files"]. A `tEXt`
+  chunk holds the Export JSON, so one file is both the picture and the song. A
+  PDF could carry the string in its document properties, but reading it back
+  means parsing PDF object streams to recover something already available two
+  other ways — a dependency for one more accepted file type. Not built.
+- **A single song's page IS its render box**, pinned to A4's short side, so an
+  A4-shaped song prints as exactly A4 and any other shape prints as itself. The
+  songbook is the other case and the only one where a single paper size is the
+  point.
+- **The songbook title page is a render**, from `titlePageAst` — one definition of
+  what a title page is made of, drawn by the PDF and previewed in `/songbooks`
+  pane B. `<app-title-page>` is deleted. The summary is the exception and is
+  drawn as PDF text: its page numbers are only knowable once pagination is
+  decided, so it is counted first and drawn second.
+- **"Double-sided" is dropped from the songbook download options** [corrects
+  `songbooks/index.mdx`]. Every song is exactly one page (PRD-RENDERING §4.1), so
+  there is no spread for a sheet turn to break — the option had nothing left to
+  decide. Page margin took its place, which duplex printing actually needs.
+- **All songs cannot be downloaded as a songbook.** It has no record, so no title
+  page, no author and no order of its own — the three things a songbook PDF is
+  made of. The buttons are off rather than pretending.
+- **The guardrail is an e2e that reads the file's bytes**, not a mock: `%PDF`,
+  `/FontFile2`, text operators, and no image XObject. The 2026-06-29 spike proved
+  svg2pdf _could_; this proves the production path still _does_, which is what
+  would catch a face that stopped being registered — a failure that is otherwise
+  silent, coming out as Helvetica with every chord over the wrong character.
+
+**Deferred to Epic 11, by design:** the precache _list_. There is no
+`ngsw-config.json` yet, so the split it will encode is expressed in code instead
+— `FontLoader` fetches the body face at boot and every title face on first use.
+Epic 11 writes that down; nothing about it needs revisiting.
 
 ---
 
@@ -803,7 +879,9 @@ the security posture.
       `<app-premium>` marker itself is **Epic 13** — it's a tooltip consumer; this
       subtask is only the guard + deciding which controls wear it.)
 - [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
-      the app shell; Audience + sync stay network paths.
+      the app shell; Audience + sync stay network paths. **Fonts: precache the
+      body face only** (`fonts/RobotoMono-*.ttf`) — Epic 7 already fetches the
+      three title faces on first use, so the config only has to not undo that.
 - [ ] Update strategy: gentle dismissible "update available" affordance (never
       silent reload mid-performance); forced refuse-and-update path for newer
       `schemaVersion`; recovery on unrecoverable SW.

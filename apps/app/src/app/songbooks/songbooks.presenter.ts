@@ -6,10 +6,17 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
+  RenderService,
+  SettingsStore,
   SongStore,
   SongbookStore,
 } from '@achordeon/shared/data-access';
-import { ALL_SONGS_ID, type Songbook } from '@achordeon/shared/domain';
+import {
+  ALL_SONGS_ID,
+  resolveSettings,
+  titlePageAst,
+  type Songbook,
+} from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
 import type { SongbookPdfChoice } from '../shared/transfer';
 
@@ -45,6 +52,8 @@ export class SongbooksPresenter {
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly downloads = inject(DownloadService);
+  private readonly renderer = inject(RenderService);
+  private readonly settings = inject(SettingsStore);
   private readonly exporter = inject(ExportService);
   private readonly router = inject(Router);
 
@@ -103,31 +112,35 @@ export class SongbooksPresenter {
   private readonly _currentId = signal<string | null>(null);
   readonly currentId = this._currentId.asReadonly();
 
-  /** The current row's title page, or null when nothing is picked. */
-  readonly currentTitlePage = computed(() => {
+  /**
+   * The picked book's title page, **rendered** — the same page the PDF prints
+   * (Epic 7 ▸ subtask 6), not a second stack of styled text that would have to
+   * be kept in step with it. `titlePageAst` is the one definition of what a
+   * title page is made of; this and `DownloadService` both draw from it.
+   *
+   * Empty for All songs, which has no record and therefore no title page: the
+   * pane shows the blank paper, which is the honest picture of "nothing to
+   * print here".
+   */
+  private readonly titlePlan = computed(() => {
     const id = this._currentId();
-    if (id === null) {
-      return null;
-    }
-    const book = this.find(id);
-    if (!book) {
-      // The virtual book has no record and no title page of its own — it is the
-      // library, so all it can honestly show is what it holds.
-      return id === ALL_SONGS_ID
-        ? {
-            title: ALL_SONGS_NAME,
-            subtitle: '',
-            author: '',
-            count: this._librarySize(),
-          }
-        : null;
-    }
-    return {
-      title: book.title || book.name,
-      subtitle: book.subtitle,
-      author: book.author,
-      count: book.entries.length,
-    };
+    const book = id === null ? undefined : this.find(id);
+    if (!book) return undefined;
+    return this.renderer.layout(
+      titlePageAst(book),
+      resolveSettings(this.settings.global(), book.settings),
+    );
+  });
+
+  readonly titlePageSvg = computed(() => {
+    const plan = this.titlePlan();
+    return plan ? this.renderer.emit(plan) : '';
+  });
+
+  /** The paper's shape, so the preview frame is the page it prints on. */
+  readonly titlePageRatio = computed(() => {
+    const box = this.titlePlan()?.box;
+    return box && box.height > 0 ? box.width / box.height : 210 / 297;
   });
 
   select(id: string): void {

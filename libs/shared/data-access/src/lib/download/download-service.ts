@@ -11,10 +11,10 @@
 import { Injectable, inject } from '@angular/core';
 import {
   resolveSettings,
+  titlePageAst,
   type GlobalSettings,
   type Song,
   type Songbook,
-  type SongAst,
   type Uuid,
 } from '@achordeon/shared/domain';
 import type { RenderPlan } from '@achordeon/shared/render-core';
@@ -275,15 +275,7 @@ export class DownloadService {
   ): Promise<{ svg: string; box: Size; fonts: RenderPlan['fonts'] }> {
     const settings = resolveSettings(this.settings.global(), book.settings);
     await this.renderer.ensureFonts([settings]);
-    const ast: SongAst = {
-      title: book.title || book.name,
-      subtitle: book.subtitle,
-      blocks: book.author
-        ? [{ lines: [{ text: book.author, chords: [] }] }]
-        : [],
-      warnings: [],
-    };
-    const plan = this.renderer.layout(ast, settings);
+    const plan = this.renderer.layout(titlePageAst(book), settings);
     return {
       svg: this.renderer.emit(plan, true),
       box: plan.box,

@@ -22,11 +22,15 @@ Downloading is little bit more complicated. The basics are:
 - download song(s): selected songs in a desired format, the songs will have aspect ratio from its setting or from global settings
 - [download songbook](/songbooks/index.mdx): selected songbook in a PDF format, the page size will be custom or A4 by default and the songs will keep their aspect ratio, but will be scaled to fit on the page
 
-A single song can be downloaded as a PDF or an image (PNG in the current proof-of-concept, image rendering currently works only in Chromium). Multiple songs can be a ZIP of images, ZIP of PDFs, or a single multi-page PDF. A songbook is always a PDF.
+A single song can be downloaded as a PDF or an image (PNG). Multiple songs can be a ZIP of images, ZIP of PDFs, or a single multi-page PDF. A songbook is always a PDF.
+
+The PDF is vector: its text stays text, so it can be selected, searched and printed at any size without going fuzzy. The fonts are embedded in the file, so it looks the same on a machine that does not have them.
 
 ## Import
 
 You can import all exported and downloaded files. The downloaded files has metadata that is the same as the exported files. This metadata can be lost if you edit the files.
+
+The metadata rides in the **PNG** — one file that is both the picture and the song. A PDF carries none, so import a PDF's song from the Export JSON or from the image.
 
 The rules of importing are as follows:
 
