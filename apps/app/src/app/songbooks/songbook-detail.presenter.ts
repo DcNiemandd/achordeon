@@ -17,11 +17,12 @@ import {
   type Songbook,
   type Uuid,
 } from '@achordeon/shared/domain';
-import type {
-  ExplorerSort,
-  ExplorerSortDir,
-  SongRow,
-  SortChange,
+import {
+  RowSelection,
+  type ExplorerSort,
+  type ExplorerSortDir,
+  type SongRow,
+  type SortChange,
 } from '../shared/song-explorer';
 import {
   insertEntries,
@@ -91,7 +92,16 @@ export class SongbookDetailPresenter {
     })),
   );
 
-  readonly selectedIds = this.session.selectedIds;
+  /**
+   * The library selection — **this screen's, not the app's**.
+   *
+   * It used to be `SessionStore`'s one set, so songs ticked in the Songs module
+   * arrived here already selected and armed against the Add buttons (see
+   * `RowSelection`).
+   */
+  private readonly selection = new RowSelection();
+
+  readonly selectedIds = this.selection.ids;
   readonly currentId = this.session.currentSongId;
   readonly isLoaded = this.songs.loaded;
 
@@ -155,16 +165,19 @@ export class SongbookDetailPresenter {
     this.navigate({ sort: change.key, dir: change.dir ?? null });
   }
 
+  /** The row body: pick exactly this song, and make it the current one — so a
+   * click is enough to then press Add (see `RowSelection`). */
   activate(id: Uuid): void {
+    this.selection.selectOnly(id);
     this.session.setCurrentSong(id);
   }
 
   toggleSelect(id: Uuid): void {
-    this.session.toggle(id);
+    this.selection.toggle(id);
   }
 
   clearSelection(): void {
-    this.session.clearSelection();
+    this.selection.clear();
   }
 
   /**
@@ -252,23 +265,38 @@ export class SongbookDetailPresenter {
    */
   async addSelected(where: InsertPosition): Promise<void> {
     const book = this._book();
-    const selected = this.session.selectedIds();
+    const selected = this.selection.ids();
     if (!book || this.isVirtual() || selected.size === 0) {
       return;
     }
     const songIds = this.rows()
       .map((row) => row.id)
       .filter((id) => selected.has(id));
-    const at = insertionIndex(
-      book.entries.length,
-      this._selectedSlots(),
-      where,
-    );
+    const at = this.insertAt(where) ?? book.entries.length;
 
     await this.writeEntries(insertEntries(book.entries, songIds, at));
     this._selectedSlots.set(
       shiftSelection(this._selectedSlots(), at, songIds.length),
     );
+    // The songs have landed. Leaving them ticked invites a second, accidental
+    // copy of the same set on the next press of a neighbouring button.
+    this.selection.clear();
+  }
+
+  /**
+   * Where `where` would put them, right now — the number the Add buttons show
+   * and the entry list draws a line at (fix: "there is no clear information
+   * where it puts the songs").
+   *
+   * Null when there is nothing to add, so the preview does not promise a
+   * position for a press that would do nothing.
+   */
+  insertAt(where: InsertPosition): number | null {
+    const book = this._book();
+    if (!book || this.isVirtual() || this.selection.isEmpty()) {
+      return null;
+    }
+    return insertionIndex(book.entries.length, this._selectedSlots(), where);
   }
 
   /**

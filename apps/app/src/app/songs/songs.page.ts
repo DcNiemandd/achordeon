@@ -120,17 +120,19 @@ import {
               <app-icon name="delete" />
             </button>
 
+            <!-- Text, not an X: the count belongs on the control that undoes
+                 it, and an icon-only X next to a delete bin is a coin flip. -->
             <button
               appButton
               type="button"
-              [isIconOnly]="true"
+              variant="ghost"
+              class="bulk-clear"
               [disabled]="!hasSelection()"
               [attr.aria-label]="bulkClearLabel"
-              [appTooltip]="bulkClearLabel"
               data-testid="explorer-bulk-clear"
               (click)="presenter.clearSelection()"
             >
-              <app-icon name="close" />
+              {{ clearLabel() }}
             </button>
           </div>
         </app-action-bar>
@@ -256,6 +258,13 @@ import {
       white-space: nowrap;
     }
 
+    .bulk-clear {
+      padding-inline: var(--space-1);
+      font-size: var(--text-xs);
+      color: var(--brand);
+      white-space: nowrap;
+    }
+
     .warn {
       margin: 0 0 var(--space-2);
     }
@@ -320,6 +329,11 @@ export class SongsPage {
   protected readonly selectionLabel = computed(
     () =>
       $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
+  );
+
+  protected readonly clearLabel = computed(
+    () =>
+      $localize`:@@explorer.clearCount:Clear (${this.presenter.selectedIds().size}:count:)`,
   );
 
   protected readonly title = $localize`:@@songs.title:Songs`;

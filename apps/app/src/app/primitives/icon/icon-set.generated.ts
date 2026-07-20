@@ -40,8 +40,8 @@ export const ICON_SET = {
   warning: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />',
   moveUp: '<path d="m18 15-6-6-6 6" />',
   moveDown: '<path d="m6 9 6 6 6-6" />',
-  moveStart: '<path d="m17 11-5-5-5 5" /><path d="m17 18-5-5-5 5" />',
-  moveEnd: '<path d="m7 6 5 5 5-5" /><path d="m7 13 5 5 5-5" />',
+  moveStart: '<path d="M5 3h14" /><path d="m18 13-6-6-6 6" /><path d="M12 7v14" />',
+  moveEnd: '<path d="M12 17V3" /><path d="m6 11 6 6 6-6" /><path d="M19 21H5" />',
 } as const;
 
 export type IconName = keyof typeof ICON_SET;

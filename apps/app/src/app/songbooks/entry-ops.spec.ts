@@ -18,13 +18,14 @@ describe('insertionIndex', () => {
     expect(insertionIndex(5, selected, 'below')).toBe(4);
   });
 
-  it('falls back to the end when there is no anchor', () => {
-    expect(insertionIndex(3, new Set(), 'above')).toBe(3);
+  // Each falls back to its OWN end: a button saying "above" must never append.
+  it('falls back to its own end when there is no anchor', () => {
+    expect(insertionIndex(3, new Set(), 'above')).toBe(0);
     expect(insertionIndex(3, new Set(), 'below')).toBe(3);
   });
 
   it('ignores a selected index the list no longer has', () => {
-    expect(insertionIndex(2, new Set([7]), 'above')).toBe(2);
+    expect(insertionIndex(2, new Set([7]), 'above')).toBe(0);
   });
 });
 

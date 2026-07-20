@@ -54,6 +54,8 @@ export interface EntryRow {
           class="row"
           [class.is-current]="row.songId === currentSongId()"
           [class.is-selected]="selected().has(row.index)"
+          [class.is-insert-before]="insertAt() === row.index"
+          [class.is-insert-after]="isLastAndInsertAtEnd(row)"
           data-testid="entry-row"
           [attr.data-entry-index]="row.index"
         >
@@ -138,6 +140,32 @@ export interface EntryRow {
       background: var(--brand-subtle);
     }
 
+    /* Where the songs would land, drawn while an Add button is hovered or
+       focused — the answer to "above what, exactly?". An inset shadow rather
+       than a border, so the row does not change height and the list does not
+       twitch as the pointer moves between buttons. */
+    .row.is-insert-before {
+      box-shadow: inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-insert-after {
+      box-shadow: inset 0 -3px 0 var(--brand);
+    }
+
+    /* The current-row mark and an insertion line can be true at once, and the
+       later rule would otherwise drop one of them. */
+    .row.is-current.is-insert-before {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-current.is-insert-after {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 -3px 0 var(--brand);
+    }
+
     /* The song the rest of the app is pointing at — the same mark the explorer
        uses, so the two panes agree about "this one". */
     .row.is-current {
@@ -220,6 +248,11 @@ export class SongbookEntries {
   /** The virtual **All songs** book: read-only order, nothing removable. */
   readonly isReadOnly = input(false);
   readonly currentSongId = input<string | null>(null);
+  /**
+   * Where an add would land, previewed as a line. `null` while nothing is
+   * being previewed; equal to `rows().length` means "after the last row".
+   */
+  readonly insertAt = input<number | null>(null);
   readonly emptyText = input(
     $localize`:@@entries.empty:No songs in this songbook yet.`,
   );
@@ -234,6 +267,12 @@ export class SongbookEntries {
 
   protected trackByIndex(_i: number, row: EntryRow): number {
     return row.index;
+  }
+
+  /** "After the end" has no row of its own, so the last row wears the line. */
+  protected isLastAndInsertAtEnd(row: EntryRow): boolean {
+    const at = this.insertAt();
+    return at !== null && at === this.rows().length && row.index === at - 1;
   }
 
   protected selectRowLabel(row: EntryRow): string {

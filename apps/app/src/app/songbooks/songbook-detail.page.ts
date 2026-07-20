@@ -12,9 +12,17 @@ import {
   effect,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
+import {
+  Button,
+  Dialog,
+  Field,
+  Icon,
+  Tooltip,
+  type IconName,
+} from '../primitives';
 import { ActionBar, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
@@ -24,6 +32,7 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
+import type { InsertPosition } from './entry-ops';
 import { SongbookEntries } from './songbook-entries';
 import { SongbookDetailPresenter } from './songbook-detail.presenter';
 
@@ -77,64 +86,21 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             <app-icon name="close" />
           </a>
 
-          <!-- The add buttons live above pane A because they act on **pane A's
-               selection**; where the songs land is the argument, not the
-               subject. Always mounted and disabled until there is a selection,
-               so ticking a checkbox never resizes the list you are ticking in
-               (the lesson Epic 5's bulk bar records). The virtual book takes no
-               additions at all (CONTEXT.md §Songbook). -->
           @if (!presenter.isVirtual()) {
-            <div class="add" data-testid="songbook-add">
-              @if (presenter.selectedIds().size > 0) {
-                <span class="add-count" data-testid="songbook-add-count">
-                  {{ selectionLabel() }}
-                </span>
-              }
-
-              @for (option of addOptions; track option.where) {
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  [disabled]="!hasSelection()"
-                  [attr.aria-label]="option.label"
-                  [appTooltip]="option.label"
-                  [attr.data-testid]="'add-' + option.where"
-                  (click)="presenter.addSelected(option.where)"
-                >
-                  {{ option.short }}
-                </button>
-              }
-
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="!hasSelection()"
-                [attr.aria-label]="clearSelectionLabel"
-                [appTooltip]="clearSelectionLabel"
-                data-testid="songbook-add-clear"
-                (click)="presenter.clearSelection()"
-              >
-                <app-icon name="close" />
-              </button>
-
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="settings"
-                [isIconOnly]="true"
-                [class.is-active]="presenter.isSettingsOpen()"
-                [attr.aria-pressed]="presenter.isSettingsOpen()"
-                [attr.aria-label]="settingsLabel"
-                [appTooltip]="settingsLabel"
-                data-testid="songbook-settings"
-                (click)="presenter.toggleSettings()"
-              >
-                <app-icon name="settings" />
-              </button>
-            </div>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [class.is-active]="presenter.isSettingsOpen()"
+              [attr.aria-pressed]="presenter.isSettingsOpen()"
+              [attr.aria-label]="settingsLabel"
+              [appTooltip]="settingsLabel"
+              data-testid="songbook-settings"
+              (click)="presenter.toggleSettings()"
+            >
+              <app-icon name="settings" />
+            </button>
           }
         </app-action-bar>
 
@@ -177,23 +143,79 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           </app-dialog>
         }
 
-        <app-song-explorer
-          class="explorer"
-          [rows]="presenter.rows()"
-          [capabilities]="capabilities"
-          [query]="query()"
-          [sort]="sortKey()"
-          [dir]="presenter.effectiveDir(sortKey(), sortDir())"
-          [selectedIds]="presenter.selectedIds()"
-          [currentId]="presenter.currentId()"
-          [emptyText]="emptyText()"
-          (queryChange)="presenter.setQuery($event)"
-          (sortChange)="presenter.setSort($event)"
-          (loadMore)="presenter.loadMore()"
-          (activated)="presenter.activate($event)"
-          (selectToggled)="presenter.toggleSelect($event)"
-          (favorited)="presenter.toggleFavorite($event)"
-        />
+        <!-- The library and, hard against the divider, the column that moves
+             rows across it. The transfer buttons sit BETWEEN the two lists —
+             they belong to neither, they are the crossing itself. -->
+        <div class="body">
+          <app-song-explorer
+            class="explorer"
+            [rows]="presenter.rows()"
+            [capabilities]="capabilities"
+            [query]="query()"
+            [sort]="sortKey()"
+            [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+            [selectedIds]="presenter.selectedIds()"
+            [currentId]="presenter.currentId()"
+            [emptyText]="emptyText()"
+            (queryChange)="presenter.setQuery($event)"
+            (sortChange)="presenter.setSort($event)"
+            (loadMore)="presenter.loadMore()"
+            (activated)="presenter.activate($event)"
+            (selectToggled)="presenter.toggleSelect($event)"
+            (favorited)="presenter.toggleFavorite($event)"
+          />
+
+          @if (!presenter.isVirtual()) {
+            <div
+              class="transfer"
+              role="toolbar"
+              aria-orientation="vertical"
+              [attr.aria-label]="addGroupLabel"
+              data-testid="songbook-add"
+            >
+              @for (option of addOptions; track option.where) {
+                <!-- Hover or focus previews the landing position: the entry
+                     list draws a line there, so "above" stops being a word you
+                     have to take on trust. -->
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [disabled]="!hasSelection()"
+                  [attr.aria-label]="addLabel(option)"
+                  [appTooltip]="addLabel(option)"
+                  [attr.data-testid]="'add-' + option.where"
+                  (pointerenter)="preview.set(option.where)"
+                  (pointerleave)="preview.set(null)"
+                  (focus)="preview.set(option.where)"
+                  (blur)="preview.set(null)"
+                  (click)="presenter.addSelected(option.where)"
+                >
+                  <app-icon [name]="option.icon" />
+                </button>
+              }
+
+              <!-- A text button, not another X: the bar above already spends an
+                   X on "back to songbooks", and two of them a few pixels apart
+                   meaning different things is worse than either. It also
+                   carries the count, so the number is next to what acts on it. -->
+              @if (hasSelection()) {
+                <button
+                  appButton
+                  type="button"
+                  variant="ghost"
+                  class="clear"
+                  [attr.aria-label]="clearSelectionLabel"
+                  data-testid="songbook-add-clear"
+                  (click)="presenter.clearSelection()"
+                >
+                  {{ clearLabel() }}
+                </button>
+              }
+            </div>
+          }
+        </div>
       </div>
 
       <div pane-b class="pane">
@@ -207,8 +229,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             [attr.aria-label]="reorderGroupLabel"
             data-testid="entry-tools"
           >
-            <span class="entry-count">{{ slotSelectionLabel() }}</span>
-
             @for (option of moveOptions; track option.where) {
               <button
                 appButton
@@ -239,18 +259,22 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               <app-icon name="delete" />
             </button>
 
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!hasSlotSelection()"
-              [attr.aria-label]="clearSlotsLabel"
-              [appTooltip]="clearSlotsLabel"
-              data-testid="entry-clear"
-              (click)="presenter.clearSlotSelection()"
-            >
-              <app-icon name="close" />
-            </button>
+            <!-- Right of the group it undoes, as text with the count in it —
+                 the same shape as the library side's, for the same reason. -->
+            <span class="entry-hint">{{ slotSelectionLabel() }}</span>
+            @if (hasSlotSelection()) {
+              <button
+                appButton
+                type="button"
+                variant="ghost"
+                class="clear"
+                [attr.aria-label]="clearSlotsLabel"
+                data-testid="entry-clear"
+                (click)="presenter.clearSlotSelection()"
+              >
+                {{ clearSlotsShort }}
+              </button>
+            }
           </div>
         }
 
@@ -261,6 +285,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           [selected]="presenter.selectedSlots()"
           [isReadOnly]="presenter.isVirtual()"
           [currentSongId]="presenter.currentId()"
+          [insertAt]="previewIndex()"
           [emptyText]="entriesEmptyText()"
           (selectToggled)="presenter.toggleSelectSlot($event)"
           (activated)="presenter.activate($event)"
@@ -282,24 +307,42 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       min-block-size: 0;
     }
 
-    .explorer,
+    /* The library and the transfer column, side by side under the bar. */
+    .body {
+      flex: 1;
+      min-block-size: 0;
+      display: flex;
+      min-inline-size: 0;
+    }
+
+    .explorer {
+      flex: 1;
+      min-inline-size: 0;
+    }
+
     .entries {
       flex: 1;
       min-block-size: 0;
     }
 
-    /* Pushed to the far end of the action row, away from the back link: these
-       act on what you have already picked. */
-    .add {
+    /* Between the two lists, hard against the divider — the buttons belong to
+       neither pane, they are the crossing. Padded down so they start level with
+       the first row rather than with the explorer's search box. */
+    .transfer {
+      flex: none;
       display: flex;
-      align-items: center;
-      gap: 2px;
-      margin-inline-start: auto;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+      padding: var(--space-2);
+      padding-block-start: 60px;
+      border-inline-start: 1px solid var(--border);
+      background: var(--surface-raised);
     }
 
-    .add-count {
-      margin-inline-end: var(--space-1);
-      font-size: var(--text-sm);
+    .clear {
+      padding-inline: var(--space-1);
+      font-size: var(--text-xs);
       color: var(--brand);
       white-space: nowrap;
     }
@@ -346,10 +389,13 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     }
 
     /* Says what the buttons beside it need before they do anything, so a row of
-       disabled icons is not a puzzle. */
-    .entry-count {
+       disabled icons is not a puzzle. After them, not before: the controls sit
+       at the start of the strip (where a search box would be), and the sentence
+       explains them from the right. */
+    .entry-hint {
       flex: 1;
       min-inline-size: 0;
+      margin-inline-start: var(--space-2);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -427,55 +473,81 @@ export class SongbookDetailPage {
     () => this.presenter.selectedIds().size > 0,
   );
 
-  protected readonly selectionLabel = computed(
+  protected readonly clearSelectionLabel = $localize`:@@songbooks.clearSelection:Clear the selection`;
+  protected readonly addGroupLabel = $localize`:@@songbooks.addGroup:Add to the songbook`;
+
+  /** "Clear (2)" — the count rides the button that undoes it. */
+  protected readonly clearLabel = computed(
     () =>
-      $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
+      $localize`:@@explorer.clearCount:Clear (${this.presenter.selectedIds().size}:count:)`,
   );
 
-  protected readonly clearSelectionLabel = $localize`:@@songbooks.clearSelection:Clear the selection`;
+  /**
+   * Which Add button the pointer or focus is on, so the entry list can show
+   * where its songs would land. Null when nothing is hovered.
+   */
+  protected readonly preview = signal<InsertPosition | null>(null);
+
+  protected readonly previewIndex = computed(() => {
+    const where = this.preview();
+    return where === null ? null : this.presenter.insertAt(where);
+  });
 
   /**
-   * Four places to put them, named as the answer rather than the act: the verb
-   * ("Add") is the same for all four and is already carried by the group.
-   * `above`/`below` are relative to the slots ticked on the right, and fall back
-   * to the end when nothing is (see `insertionIndex`).
+   * The four places to put them — **icons, sharing the reorder set**: both
+   * groups answer "where in this list", and the arrows-into-a-line already read
+   * as the ends. Words in a vertical strip only repeated what the glyph said.
+   *
+   * The label names the **resolved** position, not the rule: "Add above slot 3"
+   * rather than "add above the selection", because the whole complaint was that
+   * you could not tell where they were going to land.
    */
-  protected readonly addOptions = [
-    {
-      where: 'start' as const,
-      short: $localize`:@@songbooks.addStart.short:Start`,
-      label: $localize`:@@songbooks.addStart:Add the selected songs to the start`,
-    },
-    {
-      where: 'above' as const,
-      short: $localize`:@@songbooks.addAbove.short:Above`,
-      label: $localize`:@@songbooks.addAbove:Add the selected songs above the selected slot`,
-    },
-    {
-      where: 'below' as const,
-      short: $localize`:@@songbooks.addBelow.short:Below`,
-      label: $localize`:@@songbooks.addBelow:Add the selected songs below the selected slot`,
-    },
-    {
-      where: 'end' as const,
-      short: $localize`:@@songbooks.addEnd.short:End`,
-      label: $localize`:@@songbooks.addEnd:Add the selected songs to the end`,
-    },
+  protected readonly addOptions: readonly {
+    where: InsertPosition;
+    icon: IconName;
+  }[] = [
+    { where: 'start', icon: 'moveStart' },
+    { where: 'above', icon: 'moveUp' },
+    { where: 'below', icon: 'moveDown' },
+    { where: 'end', icon: 'moveEnd' },
   ];
+
+  protected addLabel(option: { where: InsertPosition }): string {
+    const at = this.presenter.insertAt(option.where);
+    const base =
+      option.where === 'start'
+        ? $localize`:@@songbooks.addStart:Add to the start`
+        : option.where === 'end'
+          ? $localize`:@@songbooks.addEnd:Add to the end`
+          : option.where === 'above'
+            ? $localize`:@@songbooks.addAbove:Add above the selected slot`
+            : $localize`:@@songbooks.addBelow:Add below the selected slot`;
+    // The position is only knowable while something is selected; without one
+    // the button does nothing and there is nothing honest to promise.
+    return at === null
+      ? base
+      : $localize`:@@songbooks.addAt:${base}:action: — lands at ${at + 1}:position:`;
+  }
 
   protected readonly hasSlotSelection = computed(
     () => this.presenter.selectedSlots().size > 0,
   );
 
+  /**
+   * What the strip needs said. With no slots ticked it explains what the greyed
+   * buttons want; with some, it says how many — and adds the fact the Add
+   * buttons depend on, since "above" is meaningless without an anchor.
+   */
   protected readonly slotSelectionLabel = computed(() => {
     const count = this.presenter.selectedSlots().size;
     return count === 0
-      ? $localize`:@@entries.pick:Pick slots to reorder`
+      ? $localize`:@@entries.pick:Pick slots to reorder, or to aim Add above/below`
       : $localize`:@@entries.selected:${count}:count: selected`;
   });
 
   protected readonly reorderGroupLabel = $localize`:@@entries.reorder:Reorder`;
   protected readonly clearSlotsLabel = $localize`:@@entries.clearSelection:Clear the slot selection`;
+  protected readonly clearSlotsShort = $localize`:@@entries.clearShort:Clear`;
   /** "From this songbook" is the load-bearing half of the sentence. */
   protected readonly removeSlotsLabel = $localize`:@@entries.removeSelected:Remove the selected songs from this songbook`;
 

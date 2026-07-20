@@ -58,7 +58,12 @@ async function createSongbook(page: Page, name: string): Promise<void> {
   await expect(title).toHaveValue(name);
 }
 
-/** Tick songs in the left explorer and add them at `where`. */
+/**
+ * Tick songs in the left explorer and add them at `where`.
+ *
+ * The checkbox is the multi-select gesture; a click on the row body would
+ * replace the whole selection with that one row.
+ */
 async function addSongs(
   page: Page,
   names: string[],
@@ -73,12 +78,8 @@ async function addSongs(
   const add = page.getByTestId(`add-${where}`);
   await expect(add).toBeEnabled();
   await add.click();
-
-  // Clear before the next call, or a second add would carry the first
-  // selection with it.
-  const clear = page.getByTestId('songbook-add-clear');
-  await clear.click();
-  await expect(clear).toBeDisabled();
+  // Adding clears the library selection, so the next add starts clean.
+  await expect(add).toBeDisabled();
 }
 
 test.describe('songbooks', () => {
@@ -161,6 +162,67 @@ test.describe('songbooks', () => {
 
     await page.reload();
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
+  });
+
+  // The gesture that used to do nothing: clicking a song, then pressing Add.
+  test('clicking a row selects it, so Add works without the checkbox', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await createSongbook(page, 'Campfire');
+
+    const row = page.getByTestId('song-row').first();
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`open-${id}`).click();
+
+    const add = page.getByTestId('add-end');
+    await expect(add).toBeEnabled();
+    await add.click();
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+  });
+
+  // The row is "only this one"; the checkbox is "this one as well".
+  test('a row click replaces the selection, a checkbox extends it', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+
+    const ids = await page
+      .getByTestId('song-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getAttribute('data-song-id')),
+      );
+
+    await page.getByTestId(`select-${ids[0]}`).check();
+    await page.getByTestId(`select-${ids[1]}`).check();
+    await expect(page.getByTestId('songbook-add-clear')).toContainText('2');
+
+    // Clicking a row throws the pair away and keeps just that row.
+    await page.getByTestId(`open-${ids[1]}`).click();
+    await expect(page.getByTestId('songbook-add-clear')).toContainText('1');
+    await expect(page.getByTestId(`select-${ids[0]}`)).not.toBeChecked();
+    await expect(page.getByTestId(`select-${ids[1]}`)).toBeChecked();
+  });
+
+  // Nothing is shared between the modules: a selection is a fact about one list
+  // on one screen.
+  test('a library selection does not follow you into a songbook', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songs');
+    const id = await page
+      .getByTestId('song-row')
+      .first()
+      .getAttribute('data-song-id');
+    await page.getByTestId(`select-${id}`).check();
+    await expect(page.getByTestId('explorer-bulk-clear')).toBeEnabled();
+
+    await createSongbook(page, 'Campfire');
+    await expect(page.getByTestId(`select-${id}`)).not.toBeChecked();
+    await expect(page.getByTestId('add-end')).toBeDisabled();
   });
 
   test('adds to the start, and above a selected slot', async ({ page }) => {

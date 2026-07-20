@@ -13,11 +13,12 @@ import {
   SongbookStore,
 } from '@achordeon/shared/data-access';
 import { resolveSettings, type Song } from '@achordeon/shared/domain';
-import type {
-  ExplorerSort,
-  ExplorerSortDir,
-  SongRow,
-  SortChange,
+import {
+  RowSelection,
+  type ExplorerSort,
+  type ExplorerSortDir,
+  type SongRow,
+  type SortChange,
 } from '../shared/song-explorer';
 import { TUTORIAL_CONTENT } from './new-song';
 
@@ -79,13 +80,16 @@ export class SongsPresenter {
     })),
   );
 
-  readonly selectedIds = this.session.selectedIds;
+  /** This screen's selection, and only this screen's (see `RowSelection`). */
+  private readonly selection = new RowSelection();
+
+  readonly selectedIds = this.selection.ids;
   readonly currentId = this.session.currentSongId;
   readonly isLoaded = this.store.loaded;
 
   /** What the bulk star would do — so the button can say so before it is pressed. */
   readonly isSelectionAllFavorite = computed(() => {
-    const songs = [...this.session.selectedIds()]
+    const songs = [...this.selection.ids()]
       .map((id) => this.find(id))
       .filter((song): song is Song => song !== undefined);
     return songs.length > 0 && songs.every((song) => song.favorite);
@@ -194,7 +198,13 @@ export class SongsPresenter {
     this.navigate({ sort: change.key, dir: change.dir ?? null });
   }
 
+  /**
+   * A click on the row body: this song becomes the current one **and the whole
+   * selection** (see `RowSelection`). Looking at a song and acting on it are the
+   * same gesture everywhere else in the app; the checkbox is what builds a set.
+   */
   activate(id: string): void {
+    this.selection.selectOnly(id);
     this.session.setCurrentSong(id);
   }
 
@@ -203,11 +213,11 @@ export class SongsPresenter {
   }
 
   toggleSelect(id: string): void {
-    this.session.toggle(id);
+    this.selection.toggle(id);
   }
 
   clearSelection(): void {
-    this.session.clearSelection();
+    this.selection.clear();
   }
 
   async create(): Promise<void> {
@@ -339,7 +349,7 @@ export class SongsPresenter {
     for (const id of pending.ids) {
       await this.songbooks.removeSongEverywhere(id);
       await this.store.remove(id);
-      this.session.deselect(id);
+      this.selection.deselect(id);
     }
     await this.store.refresh();
 

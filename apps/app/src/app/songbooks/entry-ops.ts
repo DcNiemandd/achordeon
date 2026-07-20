@@ -13,9 +13,11 @@ export type InsertPosition = 'start' | 'end' | 'above' | 'below';
 /**
  * The index the incoming songs are spliced at.
  *
- * With nothing selected, `above`/`below` have no anchor to be relative to, so
- * they fall back to the end — the answer to "add these" when you have not said
- * where, and the one that never silently reorders what is already there.
+ * With no slot selected there is no anchor, so each button falls back to **its
+ * own end of the list**: `above` behaves like "to the start", `below` like "to
+ * the end". Both used to fall back to the end, which made a button labelled
+ * "above" silently append — the position it lands at is now always the one its
+ * own direction implies.
  *
  * A multi-slot selection is bracketed rather than iterated: `above` means above
  * *all* of it, `below` below all of it. Inserting into the middle of a selection
@@ -33,7 +35,7 @@ export function insertionIndex(
     case 'end':
       return length;
     case 'above':
-      return indexes.length ? Math.min(...indexes) : length;
+      return indexes.length ? Math.min(...indexes) : 0;
     case 'below':
       return indexes.length ? Math.max(...indexes) + 1 : length;
   }

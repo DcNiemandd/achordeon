@@ -86,13 +86,18 @@ const ICONS = {
   sortAsc: 'arrow-up-narrow-wide',
   sortDesc: 'arrow-down-narrow-wide',
   warning: 'triangle-alert',
-  // songbook entry reordering (Epic 6). Chevrons, not the transpose arrows:
-  // those are already spoken for by a musical act, and one chevron vs two says
-  // "one step" vs "all the way" without a word.
+  // songbook entry reordering AND adding (Epic 6). One family for both, because
+  // both answer the same question — *where in the list* — and a user who has
+  // learnt "arrow into a line = the end" should not learn it twice.
+  //
+  // Chevrons for one step, not the transpose arrows: those are spoken for by a
+  // musical act. An arrow meeting a LINE for the ends, not a double chevron:
+  // the line is the end of the list, which is the thing being pointed at; two
+  // chevrons only say "more of the same direction".
   moveUp: 'chevron-up',
   moveDown: 'chevron-down',
-  moveStart: 'chevrons-up',
-  moveEnd: 'chevrons-down',
+  moveStart: 'arrow-up-to-line',
+  moveEnd: 'arrow-down-to-line',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */
