@@ -65,8 +65,18 @@ export class SongbookDetailPresenter {
   private readonly _isFound = signal(false);
   readonly isFound = this._isFound.asReadonly();
 
-  readonly name = computed(
-    () => this._book()?.name ?? $localize`:@@songbooks.allSongs:All songs`,
+  /**
+   * The book's name — and **empty, not "All songs", while a real one loads**.
+   *
+   * The fallback used to be the virtual name for any null book, which is a lie
+   * for the two ticks a deep link takes to read its record. It is also load
+   * bearing: the action bar's heading is a rename field bound to this, so a
+   * value that arrives late overwrites what the user has already typed into it.
+   */
+  readonly name = computed(() =>
+    this.isVirtual()
+      ? $localize`:@@songbooks.allSongs:All songs`
+      : (this._book()?.name ?? ''),
   );
 
   // --- Pane A: the library, in reduced-capability form. -------------------
