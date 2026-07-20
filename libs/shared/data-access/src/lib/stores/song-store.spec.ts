@@ -224,6 +224,21 @@ describe('SongStore', () => {
     expect((await store.lastChanged())?.id).toBe('a');
   });
 
+  it('answers the whole live library, past the window, for All songs', async () => {
+    const seed = Array.from({ length: PAGE_LIMIT + 5 }, (_, i) =>
+      song(`s${String(i).padStart(3, '0')}`),
+    );
+    const store = storeWith(seed);
+    await store.load();
+    await store.remove('s000');
+
+    // The window holds one page; the virtual songbook is the whole library.
+    expect(store.entities()).toHaveLength(PAGE_LIMIT);
+    const all = await store.allLive();
+    expect(all).toHaveLength(PAGE_LIMIT + 4);
+    expect(all.some((s) => s.id === 's000')).toBe(false);
+  });
+
   it('appends the next page into the growing window', async () => {
     const seed = Array.from({ length: PAGE_LIMIT + 5 }, (_, i) =>
       song(`s${String(i).padStart(3, '0')}`),

@@ -192,6 +192,23 @@ export const SongStore = signalStore(
       },
 
       /**
+       * Every live Song, name-sorted — the entry list of the virtual **All
+       * songs** songbook (CONTEXT.md §Songbook).
+       *
+       * Past the window on purpose, like `lastChanged`: "All songs" means the
+       * whole library, not the page of it the explorer has scrolled to. The
+       * result is a snapshot for one screen, never written into the window — it
+       * answers a different query from the one the list is showing.
+       */
+      async allLive(): Promise<Song[]> {
+        const page = await repo.page({
+          limit: Number.MAX_SAFE_INTEGER,
+          sort: 'name',
+        });
+        return page.rows;
+      },
+
+      /**
        * One song by id, from the repository — for `/songs/:id/edit`, which is a
        * deep link and cannot assume the window has ever held the row. Not put
        * into the window: opening a song is not a claim that it belongs in the

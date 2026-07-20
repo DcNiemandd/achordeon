@@ -88,6 +88,40 @@ export const SongbookStore = signalStore(
         });
       },
 
+      /**
+       * Re-run the current query over the window's current extent — the same
+       * contract as `SongStore.refresh`, and needed for the same reason: `upsert`
+       * reflects a write into the entity map but cannot place it, so a renamed or
+       * newly created songbook holds the slot insertion order gave it until the
+       * query is asked again. Tombstones stay in the map for sync.
+       */
+      async refresh(): Promise<void> {
+        if (!store.loaded()) {
+          return;
+        }
+        const page = await repo.page({
+          limit: Math.max(PAGE_LIMIT, store.live().length),
+          sort: store.sort(),
+          dir: store.dir(),
+          query: store.query(),
+        });
+        const tombstones = store
+          .entities()
+          .filter((book) => book.deletedAt !== null);
+        patchState(store, setAllEntities([...page.rows, ...tombstones]), {
+          nextCursor: page.nextCursor,
+        });
+      },
+
+      /**
+       * One songbook by id, from the repository — `/songbooks/:id` is a deep link
+       * and cannot assume the window has ever held the row. Not put into the
+       * window: opening a songbook is not a claim about the list behind it.
+       */
+      byId(id: Uuid): Promise<Songbook | undefined> {
+        return repo.get(id);
+      },
+
       async setSort(sort: SortKey, dir?: SortDir): Promise<void> {
         patchState(store, { sort, dir });
         await reload();
