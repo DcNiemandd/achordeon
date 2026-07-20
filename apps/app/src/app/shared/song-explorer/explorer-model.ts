@@ -30,6 +30,16 @@ export interface SongRow {
    * viewport, which renders only a window of the rows.
    */
   readonly position: number;
+  /**
+   * This row has no record behind it to rename or destroy — the virtual **All
+   * songs** songbook is the case (CONTEXT.md §Songbook).
+   *
+   * A per-*row* exception to the per-*mount* capability rule, and the only one:
+   * capabilities answer "what may be done on this screen", which a row cannot
+   * know, while this answers "what is this row made of", which nothing else
+   * can. Opening still works — there is something to open.
+   */
+  readonly isReadOnly?: boolean;
 }
 
 /**
@@ -172,6 +182,26 @@ export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSelect: false,
   canRemove: false,
   canReorder: false,
+};
+
+/**
+ * The songbook list (Epic 6): the same component a fourth time.
+ *
+ * No checkboxes — nothing acts on several songbooks at once yet — and no
+ * search: a library holds hundreds of songs and a handful of books. A click
+ * selects (pane B previews its title page), a double click opens it.
+ */
+export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
+  canSearch: false,
+  hasOrdinals: false,
+  canSelect: false,
+  canFavorite: false,
+  canRemove: false,
+  canReorder: false,
+  canEdit: true,
+  canRename: true,
+  canDuplicate: false,
+  canDelete: true,
 };
 
 /** Where a per-row move sends that one row. Same vocabulary as the toolbar's,

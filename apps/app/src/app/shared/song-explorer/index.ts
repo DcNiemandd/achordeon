@@ -6,6 +6,7 @@ export {
   FULL_CAPABILITIES,
   READONLY_ENTRY_CAPABILITIES,
   REDUCED_CAPABILITIES,
+  SONGBOOK_LIST_CAPABILITIES,
   toExplorerSort,
   toExplorerSortDir,
 } from './explorer-model';

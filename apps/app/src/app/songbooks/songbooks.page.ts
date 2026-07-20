@@ -1,134 +1,109 @@
 // Songbooks page — Epic 6 ▸ subtask 1
-// Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §4 (`/songbooks` is single-pane)
+// Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §4
+//
+// **Split, like the songs list** [corrected: §4's table says single pane]. The two
+// screens are the same shape — a list of things on the left, the thing you have
+// picked on the right — so they behave the same way: a click selects and
+// previews, a double click opens. A songbook's preview is its title page.
 
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
-  signal,
 } from '@angular/core';
+import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import {
-  Autofocus,
-  Button,
-  Dialog,
-  EmptyState,
-  Field,
-  Icon,
-  Tooltip,
-} from '../primitives';
-import { ActionBar } from '../shared/layout';
+  ActionBar,
+  BlankPage,
+  SplitPane,
+  UiStore,
+  Viewport,
+} from '../shared/layout';
+import {
+  SONGBOOK_LIST_CAPABILITIES,
+  SongExplorer,
+} from '../shared/song-explorer';
+import { TitlePage } from './title-page';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
-  type SongbookRow,
 } from './songbooks.presenter';
 
-/**
- * The songbook list: **All songs**, then the books you made.
- *
- * Single pane (§4) — a songbook has nothing to preview until you are inside it,
- * and the builder is `/songbooks/:id`. The list is short by nature (a library has
- * hundreds of songs and a handful of books), so it is not virtualised and offers
- * no search: both would be chrome around six rows.
- */
 @Component({
   selector: 'app-songbooks-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SongbooksPresenter],
   imports: [
     ActionBar,
-    Autofocus,
+    BlankPage,
+    SplitPane,
+    SongExplorer,
+    TitlePage,
     Button,
     Dialog,
-    EmptyState,
-    Field,
     Icon,
     Tooltip,
   ],
   template: `
-    <app-action-bar [title]="title">
-      <button
-        appButton
-        variant="primary"
-        [attr.aria-label]="addLabel"
-        [appTooltip]="addLabel"
-        data-testid="songbooks-add"
-        (click)="presenter.create()"
-      >
-        <app-icon name="add" />
-        {{ addLabel }}
-      </button>
-    </app-action-bar>
+    <app-split-pane
+      [ratio]="ui.splitRatio()"
+      [hasTwoPanes]="!viewport.isCompact()"
+      (ratioChange)="ui.setSplitRatio($event)"
+    >
+      <div pane-a class="pane">
+        <app-action-bar [title]="title">
+          <button
+            appButton
+            variant="primary"
+            [attr.aria-label]="addLabel"
+            [appTooltip]="addLabel"
+            data-testid="songbooks-add"
+            (click)="presenter.create()"
+          >
+            <app-icon name="add" />
+            {{ addLabel }}
+          </button>
+        </app-action-bar>
 
-    <div class="list" data-testid="songbook-list">
-      @for (row of presenter.rows(); track row.id) {
-        <div
-          class="row"
-          [class.is-virtual]="row.isVirtual"
-          data-testid="songbook-row"
-          [attr.data-songbook-id]="row.id"
-        >
-          @if (renamingId() === row.id) {
-            <input
-              appField
-              class="rename"
-              [value]="row.name"
-              [attr.aria-label]="renameRowLabel(row)"
-              [attr.data-testid]="'songbook-rename-input-' + row.id"
-              appAutofocus
-              (keydown.enter)="commitRename(row, $event)"
-              (keydown.escape)="cancelRename()"
-              (blur)="commitRename(row, $event)"
-            />
-          } @else {
-            <button
-              type="button"
-              class="open"
-              [attr.data-testid]="'songbook-open-' + row.id"
-              (click)="presenter.open(row.id)"
-            >
-              <span class="name">{{ row.name }}</span>
-              <span class="count">{{ countLabel(row) }}</span>
-            </button>
-          }
+        <!-- The same list component again, a fourth capability set: no
+             checkboxes (nothing acts on several songbooks at once yet), no
+             search (a library has hundreds of songs and a handful of books),
+             rename and delete on the row. -->
+        <app-song-explorer
+          class="list"
+          rowTestid="songbook-row"
+          [rows]="presenter.rows()"
+          [capabilities]="capabilities"
+          [currentId]="presenter.currentId()"
+          [emptyText]="emptyText"
+          (activated)="presenter.select($event)"
+          (opened)="presenter.open($event)"
+          (renamed)="presenter.rename($event.id, $event.name)"
+          (deleted)="presenter.requestDelete($event[0])"
+        />
 
-          <!-- The virtual row has no record behind it: nothing to rename and
-               nothing to delete (CONTEXT.md §Songbook). -->
-          @if (!row.isVirtual) {
-            <div class="row-actions">
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="renameRowLabel(row)"
-                [appTooltip]="renameRowLabel(row)"
-                [attr.data-testid]="'songbook-rename-' + row.id"
-                (click)="startRename(row)"
-              >
-                <app-icon name="rename" />
-              </button>
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="deleteRowLabel(row)"
-                [appTooltip]="deleteRowLabel(row)"
-                [attr.data-testid]="'songbook-delete-' + row.id"
-                (click)="presenter.requestDelete(row.id)"
-              >
-                <app-icon name="delete" />
-              </button>
-            </div>
-          }
-        </div>
-      }
+        <!-- The list is never empty — All songs is always in it — so the
+             "nothing here yet" line is about the books YOU make, and sits under
+             the list rather than replacing it. -->
+        @if (hasOnlyVirtual()) {
+          <p class="hint" data-testid="songbooks-empty">{{ emptyText }}</p>
+        }
+      </div>
 
-      <!-- "No books yet" is about the books you made: All songs is always there,
-           so the list is never actually empty. -->
-      @if (presenter.rows().length === 1) {
-        <app-empty-state [text]="emptyText" data-testid="songbooks-empty" />
-      }
-    </div>
+      <!-- Pane B: the picked songbook's title page. Blank with nothing picked —
+           the shape of what goes there, as the songs list does (§4). -->
+      <app-blank-page pane-b>
+        @if (presenter.currentTitlePage(); as page) {
+          <app-title-page
+            [title]="page.title"
+            [subtitle]="page.subtitle"
+            [author]="page.author"
+            [count]="page.count"
+          />
+        }
+      </app-blank-page>
+    </app-split-pane>
 
     @if (presenter.pendingDelete(); as pending) {
       <app-dialog
@@ -166,6 +141,11 @@ import {
   `,
   styles: `
     :host {
+      display: block;
+      block-size: 100%;
+    }
+
+    .pane {
       display: flex;
       flex-direction: column;
       block-size: 100%;
@@ -174,79 +154,14 @@ import {
     .list {
       flex: 1;
       min-block-size: 0;
-      overflow: auto;
     }
 
-    .row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-      block-size: 52px;
-      padding-inline: var(--space-3);
-      border-block-end: 1px solid var(--border);
-    }
-
-    .row:hover {
-      background: var(--surface-raised);
-    }
-
-    /* The library itself, not one of your books — marked, not separated: it is
-       still a songbook everywhere else in the app. */
-    .row.is-virtual .name {
-      color: var(--text-muted);
-      font-style: italic;
-    }
-
-    .open {
-      flex: 1;
-      min-inline-size: 0;
-      display: flex;
-      align-items: baseline;
-      gap: var(--space-2);
-      padding: 0;
-      border: 0;
-      background: none;
-      text-align: start;
-      cursor: pointer;
-      block-size: 100%;
-    }
-
-    .name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .hint {
+      margin: 0;
+      padding: var(--space-3);
+      border-block-start: 1px solid var(--border);
       font-size: var(--text-sm);
-      color: var(--text);
-    }
-
-    .count {
-      flex: none;
-      font-size: var(--text-xs);
       color: var(--text-faint);
-    }
-
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      flex: none;
-      opacity: 0;
-    }
-
-    .row:hover .row-actions,
-    .row:focus-within .row-actions {
-      opacity: 1;
-    }
-
-    @media (hover: none) {
-      .row-actions {
-        opacity: 1;
-      }
-    }
-
-    .rename {
-      flex: 1;
-      min-inline-size: 0;
     }
 
     .warn {
@@ -259,10 +174,11 @@ import {
   `,
 })
 export class SongbooksPage {
+  protected readonly ui = inject(UiStore);
+  protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbooksPresenter);
 
-  /** The only state this page owns: which row is mid-rename. */
-  protected readonly renamingId = signal<string | null>(null);
+  protected readonly capabilities = SONGBOOK_LIST_CAPABILITIES;
 
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
   protected readonly addLabel = $localize`:@@songbooks.add:New songbook`;
@@ -272,47 +188,20 @@ export class SongbooksPage {
   protected readonly cancelLabel = $localize`:@@songbooks.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songbooks.deleteAction:Delete`;
 
-  protected countLabel(row: SongbookRow): string {
-    return $localize`:@@songbooks.count:${row.count}:count: songs`;
-  }
-
-  protected renameRowLabel(row: SongbookRow): string {
-    return $localize`:@@songbooks.renameRow:Rename ${row.name}:name:`;
-  }
-
-  protected deleteRowLabel(row: SongbookRow): string {
-    return $localize`:@@songbooks.deleteRow:Delete ${row.name}:name:`;
-  }
-
   protected deleteQuestion(pending: PendingSongbookDelete): string {
     return $localize`:@@songbooks.delete.question:“${pending.name}:name:” and its ${pending.count}:count: entries will be removed.`;
   }
 
-  protected startRename(row: SongbookRow): void {
-    this.renamingId.set(row.id);
-  }
-
-  protected cancelRename(): void {
-    this.renamingId.set(null);
-  }
-
-  /** Enter and blur commit, Esc backs out — the same contract as renaming a song,
-   * because it is the same act. */
-  protected commitRename(row: SongbookRow, event: Event): void {
-    if (this.renamingId() !== row.id) {
-      return;
-    }
-    const name = (event.target as HTMLInputElement).value.trim();
-    this.renamingId.set(null);
-    if (name && name !== row.name) {
-      void this.presenter.rename(row.id, name);
-    }
-  }
+  /** The list is never empty — All songs is always in it — so "no songbooks
+   * yet" is about the ones you make. */
+  protected readonly hasOnlyVirtual = computed(
+    () => this.presenter.rows().length === 1,
+  );
 
   constructor() {
-    // Once, on entry. Not an `effect`: nothing about this list depends on a
-    // signal changing — it is the initial fetch, and re-running it on every
-    // store write would re-read the whole library to recount one row.
+    // Once, on entry. Not an `effect`: nothing here depends on a signal
+    // changing — it is the initial fetch, and re-running it on every store
+    // write would re-read the whole library to recount one row.
     void this.presenter.load();
   }
 }

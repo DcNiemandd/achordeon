@@ -244,7 +244,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 <app-icon name="edit" />
               </button>
             }
-            @if (capabilities().canRename) {
+            @if (capabilities().canRename && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
@@ -257,7 +257,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 <app-icon name="rename" />
               </button>
             }
-            @if (capabilities().canDuplicate) {
+            @if (capabilities().canDuplicate && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
@@ -291,7 +291,7 @@ const SEARCH_DEBOUNCE_MS = 200;
               }
             }
 
-            @if (capabilities().canRemove) {
+            @if (capabilities().canRemove && !row.isReadOnly) {
               <!-- An X, not a bin: this drops a slot and destroys nothing. The
                    bin is the library's, and it means the song itself
                    (CONTEXT.md §Delete vs Remove). -->
@@ -307,7 +307,7 @@ const SEARCH_DEBOUNCE_MS = 200;
                 <app-icon name="close" />
               </button>
             }
-            @if (capabilities().canDelete) {
+            @if (capabilities().canDelete && !row.isReadOnly) {
               <button
                 appButton
                 type="button"

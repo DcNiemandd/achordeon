@@ -5,25 +5,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SongStore, SongbookStore } from '@achordeon/shared/data-access';
 import { ALL_SONGS_ID, type Songbook } from '@achordeon/shared/domain';
+import type { SongRow } from '../shared/song-explorer';
 
 /** The name a songbook is born with, before the user has said what it is. */
 const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
 
 /** The virtual songbook's display name — it has no record to carry one. */
 const ALL_SONGS_NAME = $localize`:@@songbooks.allSongs:All songs`;
-
-/** One row of the songbook list, in the shape the list draws. */
-export interface SongbookRow {
-  readonly id: string;
-  readonly name: string;
-  /** Slots, not distinct songs: the same song may fill several (CONTEXT.md). */
-  readonly count: number;
-  /**
-   * The **All songs** row. It opens like any other and can do nothing else —
-   * there is no record behind it to rename, delete or restyle.
-   */
-  readonly isVirtual: boolean;
-}
 
 /** A songbook delete the user has asked for and not yet confirmed. */
 export interface PendingSongbookDelete {
@@ -58,22 +46,77 @@ export class SongbooksPresenter {
 
   readonly isLoaded = this.store.loaded;
 
-  readonly rows = computed<SongbookRow[]>(() => [
+  /**
+   * The list, in the **same row shape the song lists use** — it is the same
+   * component (PRD-UI-SHELL.md §3), so a songbook row answers a click exactly
+   * as a song row does. `title` carries the count, which is what a songbook has
+   * to say about itself in a list.
+   */
+  readonly rows = computed<SongRow[]>(() => [
     // Always present, always first: it is the library itself, and a list of
     // custom books that does not offer the whole library is missing its default.
     {
       id: ALL_SONGS_ID,
+      position: 0,
       name: ALL_SONGS_NAME,
-      count: this._librarySize(),
-      isVirtual: true,
+      title: this.countLabel(this._librarySize()),
+      subtitle: '',
+      isFavorite: false,
+      // No record behind it: nothing to rename, nothing to delete.
+      isReadOnly: true,
     },
-    ...this.store.live().map((book) => ({
+    ...this.store.live().map((book, index) => ({
       id: book.id,
+      position: index + 1,
       name: book.name,
-      count: book.entries.length,
-      isVirtual: false,
+      title: this.countLabel(book.entries.length),
+      subtitle: '',
+      isFavorite: false,
     })),
   ]);
+
+  private countLabel(count: number): string {
+    return $localize`:@@songbooks.count:${count}:count: songs`;
+  }
+
+  /**
+   * The songbook pane B is previewing — the Songs module's shape of screen, and
+   * so its behaviour: **a click selects and previews, a double click opens**.
+   * Selecting is not opening; you look before you go in.
+   */
+  private readonly _currentId = signal<string | null>(null);
+  readonly currentId = this._currentId.asReadonly();
+
+  /** The current row's title page, or null when nothing is picked. */
+  readonly currentTitlePage = computed(() => {
+    const id = this._currentId();
+    if (id === null) {
+      return null;
+    }
+    const book = this.find(id);
+    if (!book) {
+      // The virtual book has no record and no title page of its own — it is the
+      // library, so all it can honestly show is what it holds.
+      return id === ALL_SONGS_ID
+        ? {
+            title: ALL_SONGS_NAME,
+            subtitle: '',
+            author: '',
+            count: this._librarySize(),
+          }
+        : null;
+    }
+    return {
+      title: book.title || book.name,
+      subtitle: book.subtitle,
+      author: book.author,
+      count: book.entries.length,
+    };
+  });
+
+  select(id: string): void {
+    this._currentId.set(id);
+  }
 
   async load(): Promise<void> {
     if (!this.store.loaded()) {
@@ -103,6 +146,7 @@ export class SongbooksPresenter {
     };
     await this.store.upsert(book);
     await this.store.refresh();
+    this._currentId.set(book.id);
     this.open(book.id);
   }
 
@@ -141,6 +185,9 @@ export class SongbooksPresenter {
     this._pendingDelete.set(null);
     await this.store.remove(pending.id);
     await this.store.refresh();
+    if (this._currentId() === pending.id) {
+      this._currentId.set(null);
+    }
   }
 
   private find(id: string): Songbook | undefined {

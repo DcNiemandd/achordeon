@@ -56,6 +56,9 @@ async function createSongbook(page: Page, name: string): Promise<void> {
   await title.fill(name);
   await title.press('Enter');
   await expect(title).toHaveValue(name);
+  // The rename is a write to IndexedDB, and `page.goto` is a full browser
+  // navigation that can outrun it — the same reason `createSong` waits.
+  await page.waitForTimeout(300);
 }
 
 /**
@@ -95,9 +98,11 @@ test.describe('songbooks', () => {
     await page.goto('songbooks');
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
-    await expect(page.getByTestId('songbook-open-all-songs')).toBeVisible();
-    await expect(page.getByTestId('songbook-rename-all-songs')).toHaveCount(0);
-    await expect(page.getByTestId('songbook-delete-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('open-all-songs')).toBeVisible();
+    // It has no record behind it, so it wears no identity actions.
+    await page.getByTestId('songbook-row').hover();
+    await expect(page.getByTestId('rename-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('delete-all-songs')).toHaveCount(0);
     // "No songbooks yet" is about the ones you make — All songs is not one.
     await expect(page.getByTestId('songbooks-empty')).toBeVisible();
   });
@@ -107,7 +112,7 @@ test.describe('songbooks', () => {
     await createSong(page, 'Yesterday');
 
     await page.goto('songbooks');
-    await page.getByTestId('songbook-open-all-songs').click();
+    await page.getByTestId('open-all-songs').dblclick();
 
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
     // No reorder strip, no per-row remove, nothing to add with.
@@ -331,7 +336,7 @@ test.describe('songbooks', () => {
 
     await page.getByTestId('songbook-detail').click();
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId('songbook-list')).toBeVisible();
+    await expect(page.getByTestId('songbook-row').first()).toBeVisible();
   });
 
   test('songbook settings and title-page fields persist', async ({ page }) => {
@@ -356,6 +361,45 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('songbook-author')).toHaveValue('The Band');
   });
 
+  // The songs module's shape of screen, so its behaviour: a click picks and
+  // previews, a double click goes in.
+  test('a click previews the title page, a double click opens the songbook', async ({
+    page,
+  }) => {
+    await createSongbook(page, 'Campfire');
+    await page.goto('songbooks');
+
+    const row = page.getByTestId('songbook-row').filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`open-${id}`).click();
+
+    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
+    await expect(page.getByTestId('title-page')).toContainText('Campfire');
+
+    await page.getByTestId(`open-${id}`).dblclick();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+  });
+
+  // The title page shows the songbook's own fields, not any song's.
+  test('the previewed title page shows the songbook title-page fields', async ({
+    page,
+  }) => {
+    await createSongbook(page, 'Campfire');
+    await page.getByTestId('songbook-settings').click();
+    await page.getByTestId('songbook-title').fill('Campfire Classics');
+    await page.getByTestId('songbook-author').fill('The Band');
+    await page.getByTestId('songbook-author').blur();
+
+    await page.goto('songbooks');
+    const row = page.getByTestId('songbook-row').filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`open-${id}`).click();
+
+    const titlePage = page.getByTestId('title-page');
+    await expect(titlePage).toContainText('Campfire Classics');
+    await expect(titlePage).toContainText('The Band');
+  });
+
   test('deletes a songbook without touching its songs', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
@@ -365,9 +409,9 @@ test.describe('songbooks', () => {
     const row = page
       .getByTestId('songbook-row')
       .filter({ hasText: 'Campfire' });
-    const id = await row.getAttribute('data-songbook-id');
+    const id = await row.getAttribute('data-song-id');
     await row.hover();
-    await page.getByTestId(`songbook-delete-${id}`).click();
+    await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
