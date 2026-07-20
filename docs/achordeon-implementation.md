@@ -349,6 +349,24 @@ Corrections the build forced, recorded so they aren't re-litigated:
   had typed. Now empty while a real book loads.
 - **Songbook settings open as a modal**, unlike the editor's container dialog:
   there is no live render behind it worth keeping visible.
+- **The row and the checkbox are two different gestures** — the row means "only
+  this one", the checkbox "this one as well". Before, the row body did not
+  select at all, so clicking a song and pressing Add put nothing anywhere and
+  the checkbox was a door you had to already know about. Applies to the Songs
+  module too; it is one component.
+- **A selection belongs to the list it was made in, not to the app.** It moved
+  out of `SessionStore` (which keeps only `currentSongId`) into the presenter
+  that mounts the list — one app-wide set meant songs ticked in the library
+  arrived in the songbook builder pre-armed against a different set of buttons.
+- **`above` with nothing selected falls back to the _start_**, not the end: a
+  button that says above must never append. Hovering an Add button draws the
+  insertion line in the entry list, because a position you cannot see is a
+  promise the user has to take on trust.
+- **Add and reorder share one icon family** (arrow-into-a-line for the ends,
+  chevrons for one step): both answer "where in this list", and that is learnt
+  once. Layout follows the transfer-list handoff — add buttons in a column
+  _between_ the two lists, move buttons at the left of pane B's toolbar,
+  "Clear (N)" as text rather than a second X beside "back to songbooks".
 
 **Still open:** drag & drop between the panes (`songbooks/index.mdx` marks it
 FUTURE and the page carries the admonition); it wants the CDK's `cdkDropList`
