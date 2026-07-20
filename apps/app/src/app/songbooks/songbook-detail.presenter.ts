@@ -115,6 +115,7 @@ export class SongbookDetailPresenter {
   async load(id: string): Promise<void> {
     this._id.set(id);
     this.slotSelection.clear();
+    this._currentSlotKey.set(null);
     if (isAllSongs(id)) {
       this._book.set(null);
       this._isFound.set(true);
@@ -304,16 +305,33 @@ export class SongbookDetailPresenter {
     });
   });
 
+  /** The slot the user last clicked, which is not derivable from the song. */
+  private readonly _currentSlotKey = signal<string | null>(null);
+
   /**
    * The slot the rest of the app is pointing at, or null.
    *
    * Rows are keyed by slot, so "the current song" has to be translated into one
-   * of them — the first, when a song fills several: a mark on every copy would
-   * say "these are the same row", which is the one thing a slot is not.
+   * of them — and **the one you clicked**, not merely the first that holds that
+   * song [corrected]. With a song in three slots, clicking the second lit the
+   * first: the mark went to a twin, and two rows appeared active at once.
+   *
+   * The remembered slot is only honoured while it still holds the current song.
+   * When the song was made current from somewhere else — Epic 5's in-use warning
+   * links here with a song already selected — there is no clicked slot to
+   * honour, and the first one holding it is the honest answer.
    */
   readonly currentSlot = computed(() => {
     const current = this.session.currentSongId();
-    const at = this.entryIds().findIndex((songId) => songId === current);
+    if (current === null) {
+      return null;
+    }
+    const ids = this.entryIds();
+    const clicked = this._currentSlotKey();
+    if (clicked !== null && ids[Number(clicked)] === current) {
+      return clicked;
+    }
+    const at = ids.findIndex((songId) => songId === current);
     return at === -1 ? null : String(at);
   });
 
@@ -326,6 +344,7 @@ export class SongbookDetailPresenter {
     this.slotSelection.selectOnly(key);
     const songId = this.entryIds()[Number(key)];
     if (songId !== undefined) {
+      this._currentSlotKey.set(key);
       this.session.setCurrentSong(songId);
     }
   }

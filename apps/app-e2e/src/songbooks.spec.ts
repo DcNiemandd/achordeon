@@ -352,6 +352,33 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('remove-0')).toHaveCount(0);
   });
 
+  // A song in three slots is three rows, not one row drawn three times.
+  test('clicking one slot of a repeated song marks only that slot', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall'], 'end');
+
+    await page.getByTestId('open-1').click();
+    await expect(page.getByTestId('entry-row').nth(1)).toHaveClass(/is-current/);
+    await expect(page.getByTestId('entry-row').first()).not.toHaveClass(
+      /is-current/,
+    );
+    await expect(page.getByTestId('entry-row').nth(2)).not.toHaveClass(
+      /is-current/,
+    );
+
+    // ...and the mark moves to the slot you click next, not back to the first.
+    await page.getByTestId('open-2').click();
+    await expect(page.getByTestId('entry-row').nth(2)).toHaveClass(/is-current/);
+    await expect(page.getByTestId('entry-row').nth(1)).not.toHaveClass(
+      /is-current/,
+    );
+  });
+
   // A transfer list that hides one of its two lists behind a tab is a transfer
   // list you cannot transfer across — and, once drag & drop lands, cannot drag
   // across either.
