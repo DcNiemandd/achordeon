@@ -554,6 +554,50 @@ Corrections the build forced, recorded so they aren't re-litigated:
 — `FontLoader` fetches the body face at boot and every title face on first use.
 Epic 11 writes that down; nothing about it needs revisiting.
 
+### Landed — a second pass, from using it
+
+Corrections from actually printing a songbook and moving songs around:
+
+- **Front matter is not numbered; the first song is page 1.** Numbering the
+  title page and summary made the summary point at "page 3" for the first song —
+  a number the reader can only use by counting past two sheets that also claim
+  numbers. The printed number and the physical sheet now differ by the
+  front-matter count, and the summary's links convert.
+- **The summary links, whole-line.** A page number is a two-character target and
+  the title is what a reader points at, so both go to the page (`textWithLink`).
+- **The summary is set in the bundled body face, not jsPDF's Helvetica.**
+  Helvetica is WinAnsi and has no `ě ř ů`, so every Czech title in the contents
+  came out with holes while the song two pages on was perfect. `FontLoader.book`
+  hands the PDF its own faces for text that is not a render.
+- **The title page is centred.** It is a page of the book, not a song, and three
+  lines in a sheet's top-left read as a mistake — so `fitContent` grew an `align`
+  option (`top-left` stays the song default, §4.5) and the title page asks for
+  `center`. The `/songbooks` preview centres too, since it _is_ that page.
+- **All songs gets a generated title page** — its name and its count, no author,
+  because it is the library and nobody wrote it. A blank sheet where every other
+  book shows a title page read as a bug.
+- **`saveFile` offers the OS save dialog** (`showSaveFilePicker`) where the
+  browser has one, so a "choose the folder" preference is honoured instead of
+  everything landing in Downloads. Firefox/Safari fall back to the anchor; a
+  dismissed picker cancels rather than downloading anyway.
+- **Row actions fold into a `⋯` menu** (a new CDK-Overlay primitive — Aria v21
+  still ships no menu-button). Edit and rename stay direct; duplicate, download,
+  export and delete pocket behind the menu. Download and export became per-row
+  capabilities, so a song and a songbook are each acted on from their own row
+  rather than a shared toolbar; the songbooks-list top-bar transfer buttons are
+  gone. All songs, read-only, gets no menu at all.
+- **Clicking a selected row again clears the selection.** There was no way back
+  to nothing-selected once a row was clicked, and the songbook list has no
+  checkboxes to escape through. It clears the _selection_, not "which song is
+  current" — different facts, different marks.
+- **The cross-list drag ghost is hidden in the receiving list.** The CDK parks
+  its placeholder wherever the pointer is, so a drag out of the library planted a
+  row-shaped gap at the foot of the songbook that never tracked the insertion
+  line. It stays where it means something — the origin, in the list left behind.
+- **The delete dialog lists the songs** rather than joining them into a sentence;
+  the download dialog's radios became buttons that download; checkboxes and
+  radios take the brand colour from one `accent-color` rule.
+
 ---
 
 ## Epic 8: Stage (performing)
