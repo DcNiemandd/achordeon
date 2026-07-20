@@ -315,8 +315,9 @@ plus the songbook-scope settings that re-theme every song performed in it.
       add-to-songbook on; delete/rename/duplicate/edit off).
 - [x] Add songs to a songbook (to start / end / above / below selected); allow the
       same song in multiple slots.
-- [x] Reorder entries (move one over / to start / to end). _(Drag & drop is
-      marked future — track separately.)_
+- [x] Reorder entries (move one over / to start / to end), by selection from the
+      strip and per row from the row's own buttons. _(Drag & drop is **Epic
+      14**, which depends on this epic.)_
 - [x] Remove-from-songbook (slot removal, song stays in library).
 - [x] Songbook-scope settings (chord color/size; font is future) + title-page
       fields (title/subtitle/author).
@@ -376,6 +377,20 @@ Corrections the build forced, recorded so they aren't re-litigated:
   and nothing else — a "3 selected" label beside a "Clear (3)" button is the
   same number twice. Text and not an X, because the bar already spends an X on
   "back to songbooks".
+- **`/songbooks` is split, not single-pane** [corrects PRD-UI-SHELL.md §4's
+  table]. It is the same shape of screen as `/songs` — a list on the left, the
+  thing you picked on the right — so it answers the same gestures: a click
+  selects and previews, a double click opens. The preview is the songbook's
+  **title page**, standing in as plain text until Epic 7 renders the real one.
+- **A dialog's Escape stops at the dialog** (`stopPropagation`). Screens that
+  open one also bind Escape on `document` to mean "leave this screen", and a
+  press from inside the dialog ran both: it closed, then the screen's handler
+  found nothing open and walked out too. The element that consumed the key is
+  the one that has to say so — a guard on the other side is too late.
+- **Reordering is per row as well as per selection.** The row's own buttons act
+  on the row you are pointing at, because ticking it first and unticking it
+  after is a step the pointer has already made. The ticks ride along untouched:
+  they belong to the strip's gesture, not to this one.
 - **Pane B is the _same list component_ as pane A** (`ENTRY_CAPABILITIES`:
   numbered, removable, no search or sort). Two lists side by side that answered
   the same click differently was the defect; one component cannot drift from
@@ -384,10 +399,10 @@ Corrections the build forced, recorded so they aren't re-litigated:
   in a songbook, which is why removing one slot never takes its twins.
   `SongbookEntries` is deleted.
 
-**Still open:** drag & drop between the panes (`songbooks/index.mdx` marks it
-FUTURE and the page carries the admonition); it wants the CDK's `cdkDropList`
-and the narrowest layout in the app, so it is its own piece of work. The songbook
-**download** options (title page / summary / print) are Epic 7's, not this one's.
+**Still open:** drag & drop is **Epic 14**, which depends on this epic. The
+songbook **download** options (title page / summary / print) are Epic 7's, not
+this one's — including the real title-page render, which `<app-title-page>`
+stands in for as plain text until then.
 
 ---
 
@@ -416,6 +431,9 @@ songbook output.
 - [ ] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
 - [ ] Songbook PDF: title page / summary / page-number toggles + position, page
       size, outer fit per page (songs keep aspect ratio, scaled to slot).
+      **Replaces `<app-title-page>`**, the plain-text stand-in Epic 6 mounts in
+      `/songbooks` pane B: the real title page is a rendered page, and its
+      layout is decided by these options rather than by the preview.
 - [ ] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
       the real pipeline.
 - [ ] **Real font bytes, for N faces.** `FontBook` carries none today, so the
@@ -510,6 +528,49 @@ propagation, tier flag, and the load-bearing unsynced-leave warning.
 - [ ] Auto-sync user toggle (enabled by `pro`, switchable off ≠ logged out).
 - [ ] Warn-before-leaving when local changes haven't reached the cloud
       (`beforeunload` + in-app route guard).
+
+---
+
+## Epic 14: Drag & drop
+
+**User stories**: drag songs from the library into a songbook and drop them
+where they go; drag a songbook entry to reorder it.
+**Depends on**: **Epic 6** — it drags between that module's two panes, onto the
+order that module owns.
+
+### What to build
+
+The pointer half of the songbook builder. Epic 6 landed every one of these acts
+as a button (add at four positions, move a row or a selection, remove a slot);
+this adds the direct-manipulation path to the same commands, so the two can
+never disagree about what happens — a drop calls `addSelected`/`moveSlot`, it
+does not re-implement them.
+
+`songbooks/index.mdx` carries a `:::danger[FUTURE]` admonition saying drag &
+drop is not implemented. **Removing that admonition is this epic's last
+subtask**, and the honest signal that it is done.
+
+### Subtasks
+
+- [ ] `cdkDropList` on both panes of `/songbooks/:id`, with a drop indicator
+      that reuses Epic 6's insertion line (the same mark the Add buttons
+      preview) rather than inventing a second one.
+- [ ] Drag from the library into the songbook: dropping inserts at the indicator,
+      carrying the **whole selection** when the dragged row is part of it — the
+      Add buttons' rule, so a drag and a button press behave alike.
+- [ ] Drag within the songbook to reorder, including a multi-slot selection as a
+      block (`moveEntries` already answers this; the drop supplies the index).
+- [ ] A drag handle per row, and **not the whole row**: the row is already a
+      click target that selects, and a list where pressing a row might drag it
+      is a list you cannot click confidently on touch.
+- [ ] Auto-scroll at the edges of a virtualised viewport, and prove a drop lands
+      correctly when the source and target rows were never rendered together.
+- [ ] Keyboard parity is **already met** by Epic 6's buttons — confirm it stays
+      met (WCAG 2.1.1: dragging must not be the only way to reorder), and do not
+      add a keyboard drag mode that duplicates them.
+- [ ] Touch: a long-press to start a drag, without stealing the tap that selects
+      or the swipe that scrolls.
+- [ ] Remove the FUTURE admonition from `songbooks/index.mdx`.
 
 ---
 
@@ -719,3 +780,6 @@ cascade), plus the manual export/import entry points.
 5. Epics 6 → 7 → 8 build on 5.
 6. Epic 10 (auth/sync) before Epic 9 (hosting is tier-gated).
 7. Epic 12 last — it surfaces state the others own.
+8. Epic 14 (drag & drop) any time after 6, and deliberately **not before** 7 or
+   8: every act it offers already has a working button, so it is polish on a
+   solved problem while whole features are still missing.
