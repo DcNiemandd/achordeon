@@ -337,7 +337,12 @@ const SEARCH_DEBOUNCE_MS = 200;
               }
             }
 
-            @if (capabilities().canRemove && !row.isReadOnly) {
+            <!-- Stands down with the move buttons while a block is ticked: the
+                 strip above removes the block, and a row button would take one
+                 row out of the set you just built. -->
+            @if (
+              capabilities().canRemove && !row.isReadOnly && !hasBlockSelection()
+            ) {
               <!-- The left arrow the transfer column uses, not a bin and no
                    longer an X: this sends the row back across to the library,
                    which is where the column's own remove button points. A bin

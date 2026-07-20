@@ -25,8 +25,19 @@ const RESET_RATIO = 0.5;
 const KEY_STEP = 0.02;
 
 /**
- * Two panes with a draggable divider, collapsing to one pane below the compact
- * breakpoint.
+ * Two panes with a draggable divider.
+ *
+ * What happens when there is not enough width is the **feature's** call, and
+ * there are two answers (`narrow`):
+ *
+ * - `switch` — one pane at a time below the compact breakpoint, with the shell's
+ *   bottom bar offering the switcher. Right where the panes are alternatives:
+ *   you write the song, then you look at the render.
+ * - `stack` — both panes, one above the other, below the much narrower stack
+ *   breakpoint. Right where the panes are a **pair**: the songbook builder moves
+ *   rows from one list to the other, and a tab that hides the destination is a
+ *   transfer list you cannot transfer across (and, once Epic 14 lands, cannot
+ *   drag across either).
  *
  * Hand-rolled: no ARIA pattern covers it (it is layout, not semantics), and
  * `angular-split` is stale against Angular 21. ~60 lines is the right price.
@@ -38,7 +49,8 @@ const KEY_STEP = 0.02;
   selector: 'app-split-pane',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[class.is-compact]': 'viewport.isCompact()',
+    '[class.is-compact]': 'isSwitching()',
+    '[class.is-stacked]': 'isStacked()',
     '[style.--split]': 'ratio()',
   },
   template: `
@@ -51,7 +63,7 @@ const KEY_STEP = 0.02;
       <ng-content select="[pane-a]" />
     </div>
 
-    @if (!viewport.isCompact() && hasTwoPanes()) {
+    @if (isResizable()) {
       <div
         class="resizer"
         role="separator"
@@ -86,6 +98,15 @@ const KEY_STEP = 0.02;
       min-height: 0;
       min-width: 0;
       block-size: 100%;
+    }
+
+    /* Stacked: both panes, one above the other, each keeping its own scroll.
+       Rows rather than a share of the height — a transfer list is read top to
+       bottom, and pane A's search box plus a few rows is what you need to see of
+       it while you work in pane B. */
+    :host(.is-stacked) {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     }
 
     /* Compact: one column, and the two panes STACK in the single cell rather
@@ -130,6 +151,12 @@ const KEY_STEP = 0.02;
       z-index: 1;
     }
 
+    /* The seam between stacked panes: a rule, not a grab target — there is no
+       ratio to drag when the panes are rows. */
+    :host(.is-stacked) .pane:last-child {
+      border-block-start: 1px solid var(--border);
+    }
+
     .resizer {
       /* An 8px grab target over a 1px rule: the hit area is not the hairline. */
       inline-size: 8px;
@@ -171,7 +198,7 @@ export class SplitPane {
     // fact that has to cross (see Panes).
     effect(() =>
       this.panes.report(
-        this.hasTwoPanes() && this.viewport.isCompact(),
+        this.isSwitching() && this.hasTwoPanes(),
         this.activePane(),
       ),
     );
@@ -184,10 +211,30 @@ export class SplitPane {
   readonly activePane = input<'a' | 'b'>('a');
   /** Single-pane modules still use this component for the pane-A frame. */
   readonly hasTwoPanes = input(true);
+  /** What too little width means here — see the class comment. */
+  readonly narrow = input<'switch' | 'stack'>('switch');
   readonly resizerLabel = input($localize`:@@splitPane.resizer:Resize panels`);
 
   /** Emitted on pointer-up / keyboard commit — never mid-drag. */
   readonly ratioChange = output<number>();
+
+  /** Showing one pane at a time, with a switcher in the shell's bottom bar. */
+  protected readonly isSwitching = computed(
+    () => this.narrow() === 'switch' && this.viewport.isCompact(),
+  );
+
+  /** Both panes, one above the other. */
+  protected readonly isStacked = computed(
+    () =>
+      this.narrow() === 'stack' &&
+      this.hasTwoPanes() &&
+      this.viewport.isStacked(),
+  );
+
+  /** The divider exists only while the panes actually sit side by side. */
+  protected readonly isResizable = computed(
+    () => this.hasTwoPanes() && !this.isSwitching() && !this.isStacked(),
+  );
 
   protected readonly KEY_STEP = KEY_STEP;
   protected readonly RESET_RATIO = RESET_RATIO;
@@ -201,9 +248,7 @@ export class SplitPane {
   /** The inactive tab of a compact split — kept in the DOM, stacked underneath. */
   protected isCovered(pane: 'a' | 'b'): boolean {
     return (
-      this.hasTwoPanes() &&
-      this.viewport.isCompact() &&
-      this.activePane() !== pane
+      this.isSwitching() && this.hasTwoPanes() && this.activePane() !== pane
     );
   }
 

@@ -14,6 +14,7 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import {
   Button,
@@ -23,7 +24,7 @@ import {
   Tooltip,
   type IconName,
 } from '../primitives';
-import { ActionBar, SplitPane, UiStore } from '../shared/layout';
+import { ActionBar, SplitPane, UiStore, Viewport } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
   ENTRY_CAPABILITIES,
@@ -53,6 +54,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
   providers: [SongbookDetailPresenter],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     ActionBar,
     SplitPane,
@@ -66,9 +68,14 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     Tooltip,
   ],
   template: `
+    <!-- **Never a tab switcher**: the two panes are a pair, not alternatives —
+         you move rows from one to the other, and a tab that hides the
+         destination is a transfer list you cannot transfer across. So they sit
+         side by side until there is genuinely no room, and then stack. -->
     <app-split-pane
+      narrow="stack"
       [ratio]="ui.splitRatio('songbooks')"
-      [activePane]="activePane()"
+      [hasTwoPanes]="hasTwoPanes()"
       (ratioChange)="ui.setSplitRatio('songbooks', $event)"
     >
       <div pane-a class="pane">
@@ -158,150 +165,169 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
 
         <!-- The library and, hard against the divider, the column that moves
              rows across it. The transfer buttons sit BETWEEN the two lists —
-             they belong to neither, they are the crossing itself. -->
-        <div class="body">
-          <app-song-explorer
-            class="explorer"
-            [rows]="presenter.rows()"
-            [capabilities]="capabilities"
-            [query]="query()"
-            [sort]="sortKey()"
-            [dir]="presenter.effectiveDir(sortKey(), sortDir())"
-            [isFavoritesFirst]="isFavoritesFirst()"
-            [selectedIds]="presenter.selectedIds()"
-            [currentId]="presenter.currentId()"
-            [emptyText]="emptyText()"
-            (queryChange)="presenter.setQuery($event)"
-            (sortChange)="presenter.setSort($event)"
-            (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
-            (loadMore)="presenter.loadMore()"
-            (activated)="presenter.activate($event)"
-            (selectToggled)="presenter.toggleSelect($event)"
-            (favorited)="presenter.toggleFavorite($event)"
-          />
+             they belong to neither, they are the crossing itself.
 
-          @if (!presenter.isVirtual()) {
-            <div
-              class="transfer"
-              role="toolbar"
-              aria-orientation="vertical"
-              [attr.aria-label]="addGroupLabel"
-              data-testid="songbook-add"
-            >
-              @for (option of addOptions; track option.where) {
-                <!-- Hover or focus previews the landing position: the entry
+             Gone entirely when the entry list has taken this pane over (see
+             hasTwoPanes): picking songs to add is pointless with nothing to
+             add them to. -->
+        @if (hasTwoPanes()) {
+          <div class="body">
+            <app-song-explorer
+              class="explorer"
+              [rows]="presenter.rows()"
+              [capabilities]="capabilities"
+              [query]="query()"
+              [sort]="sortKey()"
+              [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+              [isFavoritesFirst]="isFavoritesFirst()"
+              [selectedIds]="presenter.selectedIds()"
+              [currentId]="presenter.currentId()"
+              [emptyText]="emptyText()"
+              (queryChange)="presenter.setQuery($event)"
+              (sortChange)="presenter.setSort($event)"
+              (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
+              (loadMore)="presenter.loadMore()"
+              (activated)="presenter.activate($event)"
+              (selectToggled)="presenter.toggleSelect($event)"
+              (favorited)="presenter.toggleFavorite($event)"
+            />
+
+            @if (!presenter.isVirtual()) {
+              <div
+                class="transfer"
+                role="toolbar"
+                aria-orientation="vertical"
+                [attr.aria-label]="addGroupLabel"
+                data-testid="songbook-add"
+              >
+                @for (option of addOptions; track option.where) {
+                  <!-- Hover or focus previews the landing position: the entry
                      list draws a line there, so "above" stops being a word you
                      have to take on trust. -->
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    class="cross"
+                    [isIconOnly]="true"
+                    [disabled]="!hasSelection()"
+                    [attr.aria-label]="addLabel(option)"
+                    [appTooltip]="addLabel(option)"
+                    [attr.data-testid]="'add-' + option.where"
+                    (pointerenter)="preview.set(option.where)"
+                    (pointerleave)="preview.set(null)"
+                    (focus)="preview.set(option.where)"
+                    (blur)="preview.set(null)"
+                    (click)="presenter.addSelected(option.where)"
+                  >
+                    <app-icon [name]="option.icon" />
+                  </button>
+                }
+
+                <!-- Set apart, and pointing the other way: it crosses the same
+                   gap in the opposite direction, and it answers pane B's
+                   selection rather than pane A's. -->
                 <button
                   appButton
                   type="button"
                   variant="secondary"
-                  class="cross"
+                  class="cross out"
                   [isIconOnly]="true"
-                  [disabled]="!hasSelection()"
-                  [attr.aria-label]="addLabel(option)"
-                  [appTooltip]="addLabel(option)"
-                  [attr.data-testid]="'add-' + option.where"
-                  (pointerenter)="preview.set(option.where)"
-                  (pointerleave)="preview.set(null)"
-                  (focus)="preview.set(option.where)"
-                  (blur)="preview.set(null)"
-                  (click)="presenter.addSelected(option.where)"
+                  [disabled]="!hasSlotSelection()"
+                  [attr.aria-label]="removeSlotsLabel"
+                  [appTooltip]="removeSlotsLabel"
+                  data-testid="entry-remove-selected"
+                  (click)="
+                    presenter.removeSlots([...presenter.selectedSlots()])
+                  "
+                >
+                  <app-icon name="transferOut" />
+                </button>
+              </div>
+            }
+          </div>
+        } @else {
+          <ng-container [ngTemplateOutlet]="entryList" />
+        }
+      </div>
+
+      <div pane-b class="pane">
+        <!-- Nothing at all when pane A has taken the entry list over: the pane
+             is hidden either way, but an unguarded outlet would mount a SECOND
+             copy of the list — two of everything, including every testid. -->
+        @if (hasTwoPanes()) {
+          <!-- Pane B's own strip, not the action bar: the action bar is pane A's
+             (§4), and these act on the slots ticked HERE. The virtual book has
+             a read-only order, so it gets no strip at all. -->
+          @if (!presenter.isVirtual()) {
+            <div
+              class="entry-tools"
+              role="toolbar"
+              [attr.aria-label]="reorderGroupLabel"
+              data-testid="entry-tools"
+            >
+              @for (option of moveOptions; track option.where) {
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  [isIconOnly]="true"
+                  [disabled]="!hasSlotSelection()"
+                  [attr.aria-label]="option.label"
+                  [appTooltip]="option.label"
+                  [attr.data-testid]="'move-' + option.where"
+                  (click)="presenter.moveSelected(option.where)"
                 >
                   <app-icon [name]="option.icon" />
                 </button>
               }
 
-              <!-- Set apart, and pointing the other way: it crosses the same
-                   gap in the opposite direction, and it answers pane B's
-                   selection rather than pane A's. -->
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="cross out"
-                [isIconOnly]="true"
-                [disabled]="!hasSlotSelection()"
-                [attr.aria-label]="removeSlotsLabel"
-                [appTooltip]="removeSlotsLabel"
-                data-testid="entry-remove-selected"
-                (click)="presenter.removeSlots([...presenter.selectedSlots()])"
-              >
-                <app-icon name="transferOut" />
-              </button>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div pane-b class="pane">
-        <!-- Pane B's own strip, not the action bar: the action bar is pane A's
-             (§4), and these act on the slots ticked HERE. The virtual book has
-             a read-only order, so it gets no strip at all. -->
-        @if (!presenter.isVirtual()) {
-          <div
-            class="entry-tools"
-            role="toolbar"
-            [attr.aria-label]="reorderGroupLabel"
-            data-testid="entry-tools"
-          >
-            @for (option of moveOptions; track option.where) {
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                [isIconOnly]="true"
-                [disabled]="!hasSlotSelection()"
-                [attr.aria-label]="option.label"
-                [appTooltip]="option.label"
-                [attr.data-testid]="'move-' + option.where"
-                (click)="presenter.moveSelected(option.where)"
-              >
-                <app-icon [name]="option.icon" />
-              </button>
-            }
-
-            <!-- The hint explains the greyed buttons, so it goes when they
+              <!-- The hint explains the greyed buttons, so it goes when they
                  come alive; the Clear that replaces it carries the count. Same
                  control, same words as the library side. -->
-            @if (hasSlotSelection()) {
-              <app-selection-status
-                class="entry-clear"
-                [count]="presenter.selectedSlots().size"
-                (cleared)="presenter.clearSlotSelection()"
-              />
-            } @else {
-              <span class="entry-hint">{{ slotSelectionLabel }}</span>
-            }
-          </div>
-        }
+              @if (hasSlotSelection()) {
+                <app-selection-status
+                  class="entry-clear"
+                  [count]="presenter.selectedSlots().size"
+                  (cleared)="presenter.clearSlotSelection()"
+                />
+              } @else {
+                <span class="entry-hint">{{ slotSelectionLabel }}</span>
+              }
+            </div>
+          }
 
-        <!-- **The same list component as pane A**, a third capability set:
-             numbered, removable, no search or sort (the order IS the content).
-             Two lists side by side that answered the same click differently was
-             the bug; one component cannot drift from itself. -->
-        <app-song-explorer
-          class="entries"
-          data-testid="songbook-detail"
-          rowTestid="entry-row"
-          [rows]="presenter.entries()"
-          [capabilities]="entryCapabilities()"
-          [selectedIds]="presenter.selectedSlots()"
-          [currentId]="presenter.currentSlot()"
-          [insertAt]="previewIndex()"
-          [emptyText]="entriesEmptyText()"
-          [sort]="presenter.entrySort()"
-          [dir]="presenter.entryDir()"
-          [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
-          (sortChange)="presenter.setEntrySort($event)"
-          (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
-          (selectToggled)="presenter.toggleSelectSlot($event)"
-          (activated)="presenter.activateSlot($event)"
-          (removed)="presenter.removeSlots($event)"
-          (moved)="presenter.moveSlot($event.id, $event.where)"
-        />
+          <ng-container [ngTemplateOutlet]="entryList" />
+        }
       </div>
     </app-split-pane>
+
+    <!-- **The same list component as pane A**, a third capability set:
+         numbered, removable, no search or sort (a stored book's order IS the
+         content; the virtual one may only be sorted). Written once because it
+         has two homes: pane B normally, pane A when the library pane is gone. -->
+    <ng-template #entryList>
+      <app-song-explorer
+        class="entries"
+        data-testid="songbook-detail"
+        rowTestid="entry-row"
+        [rows]="presenter.entries()"
+        [capabilities]="entryCapabilities()"
+        [selectedIds]="presenter.selectedSlots()"
+        [currentId]="presenter.currentSlot()"
+        [insertAt]="previewIndex()"
+        [emptyText]="entriesEmptyText()"
+        [sort]="presenter.entrySort()"
+        [dir]="presenter.entryDir()"
+        [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
+        (sortChange)="presenter.setEntrySort($event)"
+        (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
+        (selectToggled)="presenter.toggleSelectSlot($event)"
+        (activated)="presenter.activateSlot($event)"
+        (removed)="presenter.removeSlots($event)"
+        (moved)="presenter.moveSlot($event.id, $event.where)"
+      />
+    </ng-template>
   `,
   styles: `
     :host {
@@ -435,6 +461,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
 })
 export class SongbookDetailPage {
   protected readonly ui = inject(UiStore);
+  protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbookDetailPresenter);
   private readonly router = inject(Router);
 
@@ -472,7 +499,8 @@ export class SongbookDetailPage {
   readonly id = input.required<string>();
 
   /**
-   * `?q=` / `?sort=` / `?dir=` / `?pane=`, from the URL. Raw strings in and
+   * `?q=` / `?sort=` / `?dir=` / `?fav=`, from the URL. No `?pane=`: this
+   * screen never hides a pane behind a switcher, so there is none to name. Raw strings in and
    * narrowed here: router input binding sets every declared input on each
    * navigation, so an absent param arrives as an explicit `undefined` that would
    * overwrite an `input()` default (see the songs page for the trap).
@@ -481,7 +509,6 @@ export class SongbookDetailPage {
   readonly sort = input<string | undefined>();
   readonly dir = input<string | undefined>();
   readonly fav = input<string | undefined>();
-  readonly pane = input<string | undefined>();
 
   protected readonly query = computed(() => this.q() ?? '');
   protected readonly sortKey = computed<ExplorerSort>(
@@ -489,8 +516,19 @@ export class SongbookDetailPage {
   );
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
   protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
-  protected readonly activePane = computed<'a' | 'b'>(() =>
-    this.pane() === 'render' ? 'b' : 'a',
+  /**
+   * **All songs loses its library pane when the screen is narrow.**
+   *
+   * That pane exists to pick songs to add, and there is nothing to add them to:
+   * the virtual book takes no entries (CONTEXT.md §Songbook). On a wide screen
+   * it still earns its place as the library beside the list; on a phone it is
+   * half the screen spent on a pane whose every button is off.
+   *
+   * Pane A is the one that goes, and `<app-split-pane>` drops pane B — so the
+   * entries are mounted as pane A when this is the case. See the template.
+   */
+  protected readonly hasTwoPanes = computed(
+    () => !(this.presenter.isVirtual() && this.viewport.isStacked()),
   );
 
   /** The Songbooks panel's capability set: identity/destructive actions off. */

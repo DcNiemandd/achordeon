@@ -377,6 +377,18 @@ Corrections the build forced, recorded so they aren't re-litigated:
   and nothing else — a "3 selected" label beside a "Clear (3)" button is the
   same number twice. Text and not an X, because the bar already spends an X on
   "back to songbooks".
+- **The builder never becomes a tab switcher**, and that needed a second
+  breakpoint: `$bp-stack: 500px` beside `$bp-compact: 1200px`. They ask
+  different questions — "is the shell compact" versus "can two lists sit beside
+  each other" — so `<app-split-pane>` takes a `narrow` input: `switch` (one pane
+  plus the shell's switcher, right where the panes are alternatives: write, then
+  look) or `stack` (both panes, one above the other, right where they are a
+  **pair**). A transfer list that hides its destination behind a tab is one you
+  cannot transfer across, and Epic 14 could not drag across it either.
+- **All songs drops its library pane below the stack breakpoint.** That pane
+  exists to pick songs to add, and the virtual book takes none; on a phone it is
+  half the screen spent on a pane whose every button is off. The entry list is
+  one `ng-template` with two homes, so pane A can host it when pane B is gone.
 - **`/songbooks` is split, not single-pane** [corrects PRD-UI-SHELL.md §4's
   table]. It is the same shape of screen as `/songs` — a list on the left, the
   thing you picked on the right — so it answers the same gestures: a click

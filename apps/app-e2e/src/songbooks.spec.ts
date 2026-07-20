@@ -7,6 +7,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const ROOMY = { width: 1440, height: 900 };
+/** Below the compact breakpoint but above the stack one: the builder must still
+ * show both panes side by side rather than hide one behind a tab. */
+const NARROW = { width: 800, height: 900 };
+/** Below the stack breakpoint. */
+const PHONE = { width: 390, height: 844 };
 
 async function freshLibrary(page: Page): Promise<void> {
   await page.goto('songs');
@@ -343,6 +348,49 @@ test.describe('songbooks', () => {
     await page.getByTestId('select-1').check();
     await page.getByTestId('entry-row').first().hover();
     await expect(page.getByTestId('row-up-0')).toHaveCount(0);
+    // The row's remove stands down with them: the strip removes the block.
+    await expect(page.getByTestId('remove-0')).toHaveCount(0);
+  });
+
+  // A transfer list that hides one of its two lists behind a tab is a transfer
+  // list you cannot transfer across — and, once drag & drop lands, cannot drag
+  // across either.
+  test('the builder never becomes a tab switcher', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await createSongbook(page, 'Campfire');
+
+    await page.setViewportSize(NARROW);
+    await expect(page.getByTestId('pane-a')).toBeVisible();
+    await expect(page.getByTestId('pane-b')).toBeVisible();
+    await expect(page.getByTestId('pane-switcher')).toHaveCount(0);
+    // Side by side: pane B starts to the right of pane A.
+    const a = await page.getByTestId('pane-a').boundingBox();
+    const b = await page.getByTestId('pane-b').boundingBox();
+    expect(b?.x).toBeGreaterThan(a?.x ?? 0);
+
+    await page.setViewportSize(PHONE);
+    await expect(page.getByTestId('pane-a')).toBeVisible();
+    await expect(page.getByTestId('pane-b')).toBeVisible();
+    await expect(page.getByTestId('pane-switcher')).toHaveCount(0);
+    // Stacked: pane B is below pane A, and the divider is gone.
+    const stackedA = await page.getByTestId('pane-a').boundingBox();
+    const stackedB = await page.getByTestId('pane-b').boundingBox();
+    expect(stackedB?.y).toBeGreaterThan(stackedA?.y ?? 0);
+    await expect(page.getByTestId('split-resizer')).toHaveCount(0);
+  });
+
+  // Half a phone screen spent on a pane whose every button is off.
+  test('All songs drops its library pane on a phone', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songbooks');
+    await page.getByTestId('open-all-songs').dblclick();
+
+    await page.setViewportSize(PHONE);
+    await expect(page.getByTestId('songbook-detail')).toBeVisible();
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+    // The library list and everything that fed it are gone.
+    await expect(page.getByTestId('song-row')).toHaveCount(0);
+    await expect(page.getByTestId('pane-b')).toBeHidden();
   });
 
   // Remove is not delete: the song stays in the library (CONTEXT.md).
