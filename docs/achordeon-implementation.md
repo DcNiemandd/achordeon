@@ -390,7 +390,26 @@ Corrections the build forced, recorded so they aren't re-litigated:
 - **Reordering is per row as well as per selection.** The row's own buttons act
   on the row you are pointing at, because ticking it first and unticking it
   after is a step the pointer has already made. The ticks ride along untouched:
-  they belong to the strip's gesture, not to this one.
+  they belong to the strip's gesture, not to this one. They **stand down once
+  several rows are ticked** — the strip already moves a block, and two
+  affordances that disagree about what they act on are worse than one that steps
+  aside. A pointer click also blurs the button, or `:focus-within` leaves the
+  strip hanging over a row nobody is pointing at (keyboard activation keeps
+  focus: `event.detail === 0`).
+- **`favorite` is not a sort axis; `favoritesFirst` is a flag** [corrects Epic
+  1's registry and CONTEXT.md §Song explorer's list]. Sorting _by_ favourite
+  answers "which are starred" and leaves everything else in tiebreak order,
+  which is a list nobody asked for. What people mean is "my starred songs at the
+  top of the list I am already reading", so it now floats them above any axis
+  (`?fav=1`). `PagingConfig` gained `isFavorite`, absent for entities with no
+  such flag — a songbook has none, and the request is then a no-op.
+- **All songs says what it is** (a `(?)` note on its row), and its entry pane
+  offers the one thing a read-only order can be told: **how it is sorted**. That
+  is why `canSearch` and `canSort` are separate capabilities.
+- **Split size is a preference, not a constant.** `UiStore.isSplitShared`
+  (default on) links every module's splitter; off, each remembers its own.
+  Linking adopts the ratio you are looking at rather than resurrecting an older
+  shared value — the pane you are sizing must not jump out from under you.
 - **Pane B is the _same list component_ as pane A** (`ENTRY_CAPABILITIES`:
   numbered, removable, no search or sort). Two lists side by side that answered
   the same click differently was the defect; one component cannot drift from
