@@ -10,7 +10,7 @@ import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import type { RenderPlan, RenderOpts, TextItem } from './render-plan';
 import type { TextMeasurer } from './text-measurer';
 import { resolveTuning, type RenderTuning, type DeepPartial } from './tuning';
-import { EMPTY_FONT_BOOK, type FontBook } from './fonts';
+import { EMPTY_FONT_BOOK, buildFontBook, type FontResolver } from './fonts';
 import { createContext } from './context';
 import { layoutTitle } from './title-layout';
 import { layoutColumns } from './column-layout';
@@ -20,7 +20,12 @@ import { fitContent } from './fit';
 /** Platform dependencies bound once (§5): the measurer, embedded fonts, tuning. */
 export interface LayoutConfig {
   tuning?: DeepPartial<RenderTuning>;
-  fonts?: FontBook;
+  /**
+   * Bytes per face, asked for only once the styles are resolved — a song's
+   * `titleFont` decides which faces this render needs, so the platform injects a
+   * lookup rather than a fixed book (see `fonts.ts`).
+   */
+  fonts?: FontResolver;
 }
 
 /**
@@ -94,7 +99,9 @@ export function layoutCore(
     origin,
     items,
     styles: ctx.styles,
-    fonts: config.fonts ?? EMPTY_FONT_BOOK,
+    fonts: config.fonts
+      ? buildFontBook(ctx.styles, config.fonts)
+      : EMPTY_FONT_BOOK,
   };
 }
 

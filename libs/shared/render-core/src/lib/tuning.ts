@@ -111,7 +111,13 @@ export const DEFAULT_TUNING: RenderTuning = {
   // This name must match a face the platform has really loaded. It previously
   // read 'Achordeon', which is nothing: every measurement and every glyph
   // silently fell through to the system sans.
-  fontFamily: 'Roboto Mono Variable',
+  // The STATIC Roboto Mono, not the variable webfont the app chrome is set in
+  // (`Roboto Mono Variable`). Epic 7 needs the same bytes in the PDF as on the
+  // screen, and jsPDF `addFont` takes a static TTF — a variable face would be
+  // one the render measured and the export could not embed. The platform loads
+  // this family from `public/fonts` and registers it, so the name below is a
+  // face the browser really has.
+  fontFamily: 'Roboto Mono',
   fallbackStack: "ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace",
   textColor: '#000000',
   typography: {

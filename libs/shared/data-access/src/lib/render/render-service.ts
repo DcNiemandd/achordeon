@@ -1,16 +1,20 @@
 // RenderService — Epic 5 ▸ subtask 6
 // Spec: PRD-RENDERING §1 (portability), §2 (screen vs export), §5 (the `layout` call)
 
-import { Injectable, signal, type Signal } from '@angular/core';
+import { Injectable, inject, signal, type Signal } from '@angular/core';
 import {
+  DEFAULT_TUNING,
   createCanvasMeasurer,
   createLayout,
   emit,
+  resolveFontChoice,
+  type FontChoiceName,
   type Layout,
   type RenderOpts,
   type RenderPlan,
 } from '@achordeon/shared/render-core';
 import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
+import { BODY_FAMILY, FontLoader } from './font-loader';
 
 /**
  * AST + resolved settings → SVG (PRD-RENDERING §2). Screen, PNG and PDF all come
@@ -28,6 +32,15 @@ import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
  * value and never re-runs it, and never parses settings out of content
  * (ADR-0001).
  */
+/** The families one render draws with: the body face, plus its title choice. */
+function familiesFor(settings: GlobalSettings): string[] {
+  const title = resolveFontChoice(
+    settings.titleFont as FontChoiceName,
+    DEFAULT_TUNING,
+  );
+  return [BODY_FAMILY, title.family];
+}
+
 @Injectable({ providedIn: 'root' })
 export class RenderService {
   /**
@@ -36,7 +49,17 @@ export class RenderService {
    * every batch export.
    */
   private readonly measurer = createCanvasMeasurer();
-  private readonly layoutWith: Layout = createLayout(this.measurer);
+
+  /**
+   * The bundled faces (§4.10). Every render asks it for the faces its own
+   * settings named, so a plan carries the bytes for the title font *this song*
+   * chose and no others.
+   */
+  private readonly fontLoader = inject(FontLoader);
+
+  private readonly layoutWith: Layout = createLayout(this.measurer, {
+    fonts: this.fontLoader.resolver,
+  });
 
   /**
    * Flips once the page's web fonts have settled.
@@ -74,7 +97,23 @@ export class RenderService {
     opts?: RenderOpts,
   ): RenderPlan {
     this.fontEpoch(); // re-render when the real font arrives (see `fontEpoch`)
+    this.fontLoader.epoch(); // …and again for each bundled face that lands
+    // A title face is fetched on first use (Epic 11's precache split), so the
+    // first render of a serif-titled song legitimately has no bytes for it. Ask
+    // now, re-render when it lands — which the epoch above makes automatic.
+    void this.fontLoader.ensure(familiesFor(settings));
     return this.layoutWith(ast, settings, opts);
+  }
+
+  /**
+   * Every face these settings will draw with, really loaded.
+   *
+   * The screen may render a frame in a fallback and correct itself; a downloaded
+   * file cannot, and a PDF has no fallback at all (§3). So every export path
+   * awaits this before it lays anything out.
+   */
+  async ensureFonts(settings: readonly GlobalSettings[]): Promise<void> {
+    await this.fontLoader.ensure(settings.flatMap(familiesFor));
   }
 
   /**

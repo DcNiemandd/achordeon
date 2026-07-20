@@ -6,17 +6,23 @@
 // fallback stack that `measure` and `emit` both name — and those two must always
 // agree, or the geometry describes a font the browser never draws with.
 //
-// **Today every choice resolves to a CSS generic**, which needs no bundled bytes
-// and renders on any platform. That is deliberately an interim: a generic is
-// whatever the *viewer's* machine calls "a serif", so two people see different
-// pages and an exported PDF cannot embed it at all. Epic 7 replaces the right-
-// hand side of this map with real bundled TTFs; nothing above it changes, because
-// a caller only ever names a choice.
+// **Every choice now resolves to a bundled TTF** (Epic 7). It used to resolve to
+// a CSS generic, which was honest about needing no bytes and dishonest about
+// everything else: a generic is whatever the *viewer's* machine calls "a serif",
+// so two people saw different pages and an exported PDF could embed nothing.
+// Nothing above the catalog changed, because a caller only ever names a choice.
+//
+// The three title families are §4.10's recommended set — a serif, a
+// condensed/display and a script — chosen because they are the ones that look
+// unlike Roboto Mono at title size. The CSS fallback after each is kept for the
+// frame or two before the face has loaded (the bytes are fetched on first use,
+// not precached); the PDF has no fallback at all, which is why the family a plan
+// names and the bytes it carries have to come from this one map.
 
 import type { RenderTuning } from './tuning';
 
 /** The `titleFont` setting's values. One name per entry in `resolveFontChoice`. */
-export type FontChoiceName = 'body' | 'serif' | 'sans';
+export type FontChoiceName = 'body' | 'serif' | 'display' | 'script';
 
 export interface ResolvedFont {
   family: string;
@@ -37,14 +43,28 @@ export function resolveFontChoice(
 ): ResolvedFont {
   switch (name) {
     case 'serif':
-      return { family: 'ui-serif', fallback: 'Georgia, Cambria, serif' };
-    case 'sans':
+      return { family: 'Crimson Text', fallback: 'Georgia, Cambria, serif' };
+    case 'display':
       return {
-        family: 'ui-sans-serif',
-        fallback: 'system-ui, Segoe UI, Helvetica, Arial, sans-serif',
+        family: 'Oswald',
+        fallback: "'Arial Narrow', system-ui, sans-serif",
       };
+    case 'script':
+      return { family: 'Caveat', fallback: 'cursive' };
     case 'body':
     default:
+      // Also where a *retired* choice lands. `titleFont` briefly offered
+      // `'sans'`, which resolved to a CSS generic and so could never be
+      // embedded; a song still carrying it now reads as body, which is the
+      // setting's own default and the one answer that is never wrong.
       return { family: tuning.fontFamily, fallback: tuning.fallbackStack };
   }
 }
+
+/** The choices a settings GUI offers, in the order it offers them. */
+export const FONT_CHOICES: readonly FontChoiceName[] = [
+  'body',
+  'serif',
+  'display',
+  'script',
+];

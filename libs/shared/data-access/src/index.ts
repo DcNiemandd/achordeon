@@ -1,6 +1,7 @@
 export * from './lib/shared-data-access/shared-data-access';
 export * from './lib/tonal-chord-theory/tonal-chord-theory';
 export * from './lib/parser/parser-service';
+export * from './lib/render/font-loader';
 export * from './lib/render/render-service';
 export * from './lib/providers';
 export * from './lib/persistence/db';

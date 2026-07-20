@@ -37,8 +37,11 @@
     "@tonaljs/note": "^4.12.1",
     "dexie": "^4.4.4",
     "dexie-export-import": "^4.4.0",
+    "fflate": "0.8.3",
+    "jspdf": "4.2.1",
     "lucide-static": "1.24.0",
-    "rxjs": "~7.8.0"
+    "rxjs": "~7.8.0",
+    "svg2pdf.js": "2.7.0"
   },
   "devDependencies": {
     "@angular-devkit/core": "21.2.7",

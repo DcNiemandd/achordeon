@@ -148,10 +148,15 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     label: $localize`:@@setting.titleFont:Font`,
     help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,
     group: 'title',
-    // A dropdown, not a segmented row: the catalog grows (Epic 7 adds the
-    // bundled faces) and three side-by-side buttons already overflowed the
-    // song-settings dialog. A closed list, so no free-text escape hatch — a
-    // typed family name is not something the renderer could honour.
+    // A dropdown, not a segmented row: four side-by-side buttons would overflow
+    // the song-settings dialog. A closed list, so no free-text escape hatch — a
+    // typed family name is not something the renderer could honour, and every
+    // name here is a face the app really carries and can embed in a PDF.
+    //
+    // The labels name the *look*, not the family: a user picking a title face is
+    // choosing between a serif and a handwritten one, and "Crimson Text" tells
+    // them nothing they can act on. The family behind each is the render's
+    // business (`resolveFontChoice`).
     control: {
       kind: 'select',
       options: [
@@ -160,7 +165,8 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
           label: $localize`:@@titleFont.body:Same as song`,
         },
         { value: 'serif', label: $localize`:@@titleFont.serif:Serif` },
-        { value: 'sans', label: $localize`:@@titleFont.sans:Sans` },
+        { value: 'display', label: $localize`:@@titleFont.display:Condensed` },
+        { value: 'script', label: $localize`:@@titleFont.script:Handwritten` },
       ],
     },
   },
