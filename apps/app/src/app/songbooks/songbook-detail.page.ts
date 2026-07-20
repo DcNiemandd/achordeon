@@ -38,6 +38,7 @@ import {
   type ExplorerSort,
   type RowDrop,
 } from '../shared/song-explorer';
+import { SongbookDownloadDialog } from '../shared/transfer';
 import type { InsertPosition } from './entry-ops';
 import { SongbookDetailPresenter } from './songbook-detail.presenter';
 
@@ -64,6 +65,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     SongExplorer,
     SelectionStatus,
     SettingsPanel,
+    SongbookDownloadDialog,
     Button,
     Dialog,
     Field,
@@ -118,6 +120,35 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                 (cleared)="presenter.clearSelection()"
               />
 
+              <!-- Download and Export, on the book you are already in — the
+                   same pair the songbook list offers on the one you have
+                   picked. -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [disabled]="presenter.isBusy()"
+                [attr.aria-label]="downloadLabel"
+                [appTooltip]="downloadLabel"
+                data-testid="songbook-detail-download"
+                (click)="presenter.openDownload()"
+              >
+                <app-icon name="download" />
+              </button>
+
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [disabled]="presenter.isBusy()"
+                [attr.aria-label]="exportLabel"
+                [appTooltip]="exportLabel"
+                data-testid="songbook-detail-export"
+                (click)="presenter.exportBook()"
+              >
+                <app-icon name="export" />
+              </button>
+
               <button
                 appButton
                 type="button"
@@ -134,6 +165,14 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               </button>
             }
           </app-action-bar>
+
+          @if (presenter.isDownloadOpen()) {
+            <app-songbook-download-dialog
+              [name]="presenter.name()"
+              (chosen)="presenter.download($event)"
+              (closed)="presenter.cancelDownload()"
+            />
+          }
 
           <!-- The songbook's own scope of the cascade, plus the title-page fields
              that only a songbook has. A modal, unlike the editor's: there is no
@@ -562,6 +601,8 @@ export class SongbookDetailPage {
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
   protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
   protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
+  protected readonly downloadLabel = $localize`:@@songbooks.download:Download this songbook as a PDF`;
+  protected readonly exportLabel = $localize`:@@songbooks.export:Export this songbook to a file`;
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
 

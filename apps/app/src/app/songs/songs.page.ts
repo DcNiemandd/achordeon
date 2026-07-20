@@ -25,8 +25,10 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
+import { DownloadDialog, ImportDialog } from '../shared/transfer';
 import {
   SongsPresenter,
+  type ImportFailure,
   type PendingDelete,
   type SongUse,
 } from './songs.presenter';
@@ -54,6 +56,8 @@ import {
     SongExplorer,
     SelectionStatus,
     SongRender,
+    DownloadDialog,
+    ImportDialog,
     Button,
     Dialog,
     Icon,
@@ -111,6 +115,63 @@ import {
               />
             </button>
 
+            <!-- Download and Export sit with the bulk actions because they act
+                 on the same subject: the ticked rows, or the song you are
+                 looking at. They are enabled where the delete is not, because
+                 there is always something to download once a song is focused. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasTransferTarget() || presenter.isBusy()"
+              [attr.aria-label]="downloadLabel()"
+              [appTooltip]="downloadLabel()"
+              data-testid="songs-download"
+              (click)="presenter.openDownload()"
+            >
+              <app-icon name="download" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasTransferTarget() || presenter.isBusy()"
+              [attr.aria-label]="exportLabel()"
+              [appTooltip]="exportLabel()"
+              data-testid="songs-export"
+              (click)="presenter.exportSelection()"
+            >
+              <app-icon name="export" />
+            </button>
+
+            <!-- Import takes no selection, so it is the one transfer control
+                 that is never disabled. The file input is the real control; the
+                 button is a label for it: a bare file input cannot be styled
+                 and cannot carry a tooltip. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="presenter.isBusy()"
+              [attr.aria-label]="importLabel"
+              [appTooltip]="importLabel"
+              data-testid="songs-import"
+              (click)="fileInput.click()"
+            >
+              <app-icon name="import" />
+            </button>
+            <input
+              #fileInput
+              class="file"
+              type="file"
+              accept="application/json,.json,image/png,.png"
+              tabindex="-1"
+              aria-hidden="true"
+              data-testid="songs-import-input"
+              (change)="onFilePicked($event)"
+            />
+
             <button
               appButton
               type="button"
@@ -159,6 +220,42 @@ import {
         }
       </app-blank-page>
     </app-split-pane>
+
+    @if (presenter.isDownloadOpen()) {
+      <app-download-dialog
+        [count]="presenter.transferIds().length"
+        (chosen)="presenter.download($event)"
+        (closed)="presenter.cancelDownload()"
+      />
+    }
+
+    @if (presenter.importPreview(); as preview) {
+      <app-import-dialog
+        [preview]="preview"
+        (confirmed)="presenter.confirmImport($event)"
+        (closed)="presenter.cancelImport()"
+      />
+    }
+
+    @if (presenter.importError(); as failure) {
+      <app-dialog
+        [title]="importFailedTitle"
+        data-testid="import-error-dialog"
+        (closed)="presenter.cancelImport()"
+      >
+        <p class="warn">{{ importFailedText(failure) }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="import-error-close"
+          (click)="presenter.cancelImport()"
+        >
+          {{ okLabel }}
+        </button>
+      </app-dialog>
+    }
 
     @if (presenter.pendingDelete(); as pending) {
       <app-dialog
@@ -248,6 +345,16 @@ import {
       margin-inline-end: var(--space-1);
     }
 
+    /* The real control behind the Import button. Not display:none, which
+       makes it unfocusable and, in some engines, unclickable from script. */
+    .file {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .warn {
       margin: 0 0 var(--space-2);
     }
@@ -310,6 +417,50 @@ export class SongsPage {
   protected readonly hasSelection = computed(
     () => this.presenter.selectedIds().size > 0,
   );
+
+  /** Download and Export answer the selection, or — with none — the song in
+   * pane B. So they are live whenever there is anything to look at. */
+  protected readonly hasTransferTarget = computed(
+    () => this.presenter.transferIds().length > 0,
+  );
+
+  /** The label says what will be acted on, because "Download" beside a list of
+   * ticked rows and a rendered song is otherwise ambiguous. */
+  protected readonly downloadLabel = computed(() =>
+    this.hasSelection()
+      ? $localize`:@@songs.downloadSelected:Download the selected songs`
+      : $localize`:@@songs.downloadOne:Download this song`,
+  );
+
+  protected readonly exportLabel = computed(() =>
+    this.hasSelection()
+      ? $localize`:@@songs.exportSelected:Export the selected songs to a file`
+      : $localize`:@@songs.exportOne:Export this song to a file`,
+  );
+
+  protected readonly importLabel = $localize`:@@songs.import:Import songs from a file`;
+  protected readonly importFailedTitle = $localize`:@@songs.importFailed:That file could not be imported`;
+  protected readonly okLabel = $localize`:@@songs.ok:OK`;
+
+  protected importFailedText(failure: ImportFailure): string {
+    return failure === 'refused'
+      ? $localize`:@@songs.importRefused:It was made by a newer version of Achordeon. Update the app, then try again.`
+      : $localize`:@@songs.importUnreadable:It is not an Achordeon export. Pick a JSON file exported from Achordeon, or a PNG downloaded from it.`;
+  }
+
+  /**
+   * A picked file, and then the input is cleared.
+   *
+   * Without the reset, picking the same file twice in a row fires no `change`
+   * the second time — the value has not changed — and the user is left pressing
+   * a button that does nothing after cancelling out of the dialog once.
+   */
+  protected onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) void this.presenter.readImport(file);
+  }
 
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;

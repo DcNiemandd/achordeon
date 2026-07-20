@@ -3,9 +3,15 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { SongStore, SongbookStore } from '@achordeon/shared/data-access';
+import {
+  DownloadService,
+  ExportService,
+  SongStore,
+  SongbookStore,
+} from '@achordeon/shared/data-access';
 import { ALL_SONGS_ID, type Songbook } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
+import type { SongbookPdfChoice } from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
 const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
@@ -38,6 +44,8 @@ export interface PendingSongbookDelete {
 export class SongbooksPresenter {
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
+  private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
   private readonly router = inject(Router);
 
   /**
@@ -195,6 +203,63 @@ export class SongbooksPresenter {
     await this.store.refresh();
     if (this._currentId() === pending.id) {
       this._currentId.set(null);
+    }
+  }
+
+  // --- Transfer (Epic 7) -----------------------------------------------
+
+  private readonly _isDownloadOpen = signal(false);
+  private readonly _isBusy = signal(false);
+  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  readonly isBusy = this._isBusy.asReadonly();
+
+  /**
+   * A songbook can be downloaded; **the virtual All songs cannot**.
+   *
+   * It has no record, so it has no title page, no author and no order of its
+   * own — the three things a songbook PDF is made of. What it holds is the
+   * library, and downloading that is the Songs module's business.
+   */
+  readonly isTransferable = computed(() => {
+    const id = this._currentId();
+    return id !== null && id !== ALL_SONGS_ID;
+  });
+
+  /** The picked book's name, for the download dialog's title. */
+  readonly currentName = computed(() => {
+    const id = this._currentId();
+    return (id === null ? undefined : this.find(id)?.name) ?? '';
+  });
+
+  openDownload(): void {
+    if (this.isTransferable()) this._isDownloadOpen.set(true);
+  }
+
+  cancelDownload(): void {
+    this._isDownloadOpen.set(false);
+  }
+
+  async download(choice: SongbookPdfChoice): Promise<void> {
+    const id = this._currentId();
+    this._isDownloadOpen.set(false);
+    if (!id || !this.isTransferable()) return;
+    await this.busy(() => this.downloads.downloadSongbook(id, choice));
+  }
+
+  /** The whole book as JSON — **with its songs**, which `ExportService` adds:
+   * a book of references imports as a book of nothing without them. */
+  async exportBook(): Promise<void> {
+    const id = this._currentId();
+    if (!id || !this.isTransferable()) return;
+    await this.busy(() => this.exporter.export({ songbookIds: [id] }));
+  }
+
+  private async busy(job: () => Promise<unknown>): Promise<void> {
+    this._isBusy.set(true);
+    try {
+      await job();
+    } finally {
+      this._isBusy.set(false);
     }
   }
 

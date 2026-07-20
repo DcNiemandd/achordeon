@@ -5,6 +5,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
+  DownloadService,
+  ExportService,
   SessionStore,
   SettingsStore,
   SongStore,
@@ -24,6 +26,7 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
+import type { SongbookPdfChoice } from '../shared/transfer';
 import {
   insertEntries,
   insertionIndex,
@@ -50,6 +53,8 @@ export class SongbookDetailPresenter {
   private readonly songs = inject(SongStore);
   private readonly session = inject(SessionStore);
   private readonly settings = inject(SettingsStore);
+  private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -657,6 +662,49 @@ export class SongbookDetailPresenter {
       }
     }
     this._songsById.set(next);
+  }
+
+  // --- Transfer (Epic 7) -----------------------------------------------
+  //
+  // The same two acts the songbook list offers, on the book that is already
+  // open. **Off for the virtual All songs**, which has no record and therefore
+  // no title page, author or order of its own to print.
+
+  private readonly _isDownloadOpen = signal(false);
+  private readonly _isBusy = signal(false);
+  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  readonly isBusy = this._isBusy.asReadonly();
+
+  readonly isTransferable = computed(
+    () => !this.isVirtual() && this._book() !== null,
+  );
+
+  openDownload(): void {
+    if (this.isTransferable()) this._isDownloadOpen.set(true);
+  }
+
+  cancelDownload(): void {
+    this._isDownloadOpen.set(false);
+  }
+
+  async download(choice: SongbookPdfChoice): Promise<void> {
+    this._isDownloadOpen.set(false);
+    if (!this.isTransferable()) return;
+    await this.busy(() => this.downloads.downloadSongbook(this._id(), choice));
+  }
+
+  async exportBook(): Promise<void> {
+    if (!this.isTransferable()) return;
+    await this.busy(() => this.exporter.export({ songbookIds: [this._id()] }));
+  }
+
+  private async busy(job: () => Promise<unknown>): Promise<void> {
+    this._isBusy.set(true);
+    try {
+      await job();
+    } finally {
+      this._isBusy.set(false);
+    }
   }
 
   private navigate(queryParams: Record<string, string | null>): void {
