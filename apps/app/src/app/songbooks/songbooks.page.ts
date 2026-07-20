@@ -66,37 +66,6 @@ import {
             <app-icon name="add" />
             {{ addLabel }}
           </button>
-
-          <!-- Both act on the songbook pane B is previewing, which is the one
-               you are looking at. Off for All songs: it has no title page, no
-               author and no order of its own to print. -->
-          <div class="transfer">
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!presenter.isTransferable() || presenter.isBusy()"
-              [attr.aria-label]="downloadLabel"
-              [appTooltip]="downloadLabel"
-              data-testid="songbooks-download"
-              (click)="presenter.openDownload()"
-            >
-              <app-icon name="download" />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!presenter.isTransferable() || presenter.isBusy()"
-              [attr.aria-label]="exportLabel"
-              [appTooltip]="exportLabel"
-              data-testid="songbooks-export"
-              (click)="presenter.exportBook()"
-            >
-              <app-icon name="export" />
-            </button>
-          </div>
         </app-action-bar>
 
         <!-- The same list component again, a fourth capability set: no
@@ -113,6 +82,8 @@ import {
           (activated)="presenter.select($event)"
           (opened)="presenter.open($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
+          (downloaded)="presenter.openDownloadRow($event)"
+          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event[0])"
         />
 
@@ -143,7 +114,7 @@ import {
 
     @if (presenter.isDownloadOpen()) {
       <app-songbook-download-dialog
-        [name]="presenter.currentName()"
+        [name]="presenter.downloadName()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
@@ -200,15 +171,6 @@ import {
       min-block-size: 0;
     }
 
-    /* Pushed to the far end of the row, away from "New songbook": these act on
-       what you already have, that one makes something new. */
-    .transfer {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      margin-inline-start: auto;
-    }
-
     .title-page {
       block-size: 100%;
     }
@@ -239,8 +201,6 @@ export class SongbooksPage {
 
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
   protected readonly addLabel = $localize`:@@songbooks.add:New songbook`;
-  protected readonly downloadLabel = $localize`:@@songbooks.download:Download this songbook as a PDF`;
-  protected readonly exportLabel = $localize`:@@songbooks.export:Export this songbook to a file`;
   protected readonly emptyText = $localize`:@@songbooks.empty:No songbooks yet. Create one to group songs for a set.`;
   protected readonly deleteTitle = $localize`:@@songbooks.delete.title:Delete this songbook?`;
   protected readonly keepsSongsText = $localize`:@@songbooks.delete.keeps:The songs themselves stay in your library.`;

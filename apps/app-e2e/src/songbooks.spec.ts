@@ -185,8 +185,9 @@ test.describe('songbooks', () => {
 
     await expect(page.getByTestId(`edit-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
+    // No ⋯ menu either — that is where duplicate, delete, download and export
+    // now live, and the picking pane has none of them.
+    await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
     // What stays: search, sort, select and favorite.
     await expect(page.getByTestId('explorer-search')).toBeVisible();
     await expect(page.getByTestId(`favorite-${id}`)).toBeVisible();
@@ -549,6 +550,8 @@ test.describe('songbooks', () => {
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
     await row.hover();
+    // Delete moved onto the row's ⋯ menu (Epic 7), with download and export.
+    await page.getByTestId(`more-${id}`).click();
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
 

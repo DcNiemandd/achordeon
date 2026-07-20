@@ -29,6 +29,8 @@ import {
   EmptyState,
   Field,
   Icon,
+  Menu,
+  MenuItem,
   Tooltip,
   type IconName,
 } from '../../primitives';
@@ -105,6 +107,8 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
     EmptyState,
     Field,
     Icon,
+    Menu,
+    MenuItem,
     Tooltip,
   ],
   template: `
@@ -373,19 +377,6 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                 <app-icon name="rename" />
               </button>
             }
-            @if (capabilities().canDuplicate && !row.isReadOnly) {
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="duplicateRowLabel(row)"
-                [appTooltip]="DUPLICATE"
-                [attr.data-testid]="'duplicate-' + row.id"
-                (click)="duplicated.emit(row.id)"
-              >
-                <app-icon name="duplicate" />
-              </button>
-            }
             <!-- Reorder is per ROW here, not per selection: you are already
                  pointing at the thing you want moved, and having to tick it
                  first (and untick it after) is a step the pointer just made.
@@ -437,18 +428,56 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                 <app-icon name="transferOut" />
               </button>
             }
-            @if (capabilities().canDelete && !row.isReadOnly) {
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="deleteRowLabel(row)"
-                [appTooltip]="DELETE"
-                [attr.data-testid]="'delete-' + row.id"
-                (click)="deleted.emit([row.id])"
-              >
-                <app-icon name="delete" />
-              </button>
+            <!-- Edit and rename are the everyday two, so they stay in reach.
+                 The rest — duplicate, the two file exports, delete — fold behind
+                 one "⋯": six targets on a hover strip is a row you have to aim
+                 at, and past two the honest move is to keep only the ones you
+                 reach for and pocket the others. Built only where the row has at
+                 least one, so an entry-list slot grows no empty menu. -->
+            @if (hasRowMenu(row)) {
+              <app-menu [label]="moreRowLabel(row)" [testid]="'more-' + row.id">
+                @if (capabilities().canDownload && !row.isReadOnly) {
+                  <button
+                    appMenuItem
+                    [attr.data-testid]="'download-' + row.id"
+                    (chosen)="downloaded.emit(row.id)"
+                  >
+                    <app-icon name="download" />
+                    {{ DOWNLOAD }}
+                  </button>
+                }
+                @if (capabilities().canExport && !row.isReadOnly) {
+                  <button
+                    appMenuItem
+                    [attr.data-testid]="'export-' + row.id"
+                    (chosen)="exported.emit(row.id)"
+                  >
+                    <app-icon name="export" />
+                    {{ EXPORT }}
+                  </button>
+                }
+                @if (capabilities().canDuplicate && !row.isReadOnly) {
+                  <button
+                    appMenuItem
+                    [attr.data-testid]="'duplicate-' + row.id"
+                    (chosen)="duplicated.emit(row.id)"
+                  >
+                    <app-icon name="duplicate" />
+                    {{ DUPLICATE }}
+                  </button>
+                }
+                @if (capabilities().canDelete && !row.isReadOnly) {
+                  <button
+                    appMenuItem
+                    class="is-danger"
+                    [attr.data-testid]="'delete-' + row.id"
+                    (chosen)="deleted.emit([row.id])"
+                  >
+                    <app-icon name="delete" />
+                    {{ DELETE }}
+                  </button>
+                }
+              </app-menu>
             }
           </div>
         </div>
@@ -807,6 +836,10 @@ export class SongExplorer {
    * never a library row. A different act from `deleted`, which destroys.
    */
   readonly removed = output<string[]>();
+  /** Download / export this one row (Epic 7). A picture for a player, a file
+   * for a computer — the page decides which service answers. */
+  readonly downloaded = output<string>();
+  readonly exported = output<string>();
   /** Move **one row**, named by id — never the selection (see the template). */
   readonly moved = output<RowMoveRequest>();
   /** A row was dropped **onto this list** — from it or from the other one. */
@@ -908,6 +941,9 @@ export class SongExplorer {
   protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
   protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
   protected readonly DELETE = $localize`:@@explorer.delete:Delete`;
+  protected readonly DOWNLOAD = $localize`:@@explorer.download:Download`;
+  protected readonly EXPORT = $localize`:@@explorer.export:Export`;
+  protected readonly MORE = $localize`:@@explorer.more:More actions`;
 
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
@@ -1110,6 +1146,21 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  protected moreRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.moreRow:More actions for ${row.name}:name:`;
+  }
+
+  /** Does this row have anything to put behind the `⋯`? The menu is not built
+   * otherwise — an empty popover is worse than no button. A read-only row keeps
+   * download/export (it has something to hand out) but loses duplicate/delete. */
+  protected hasRowMenu(row: SongRow): boolean {
+    if (row.isReadOnly) return false; // the virtual All songs row: nothing to offer
+    const caps = this.capabilities();
+    return (
+      caps.canDownload || caps.canExport || caps.canDuplicate || caps.canDelete
+    );
   }
 
   /** The accessible name: the act **and** the row it would act on. */

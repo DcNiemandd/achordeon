@@ -437,20 +437,46 @@ export class SongsPresenter {
   // acts on "the whole library" from a button; that is Export's own screen
   // (Epic 12) and a deliberate second thought.
 
-  /** What a transfer button acts on: the ticked rows, else the focused one. */
-  readonly transferIds = computed<string[]>(() => {
+  /** What a bulk-bar transfer acts on: the ticked rows, else the focused one. */
+  private readonly barIds = computed<string[]>(() => {
     const selected = [...this.selection.ids()];
     if (selected.length > 0) return selected;
     const current = this.session.currentSongId();
     return current === null ? [] : [current];
   });
 
+  /**
+   * One row's menu names **that row**, and only that row. Set while its download
+   * dialog is open; null the rest of the time, which is when the bar's own
+   * subject (selection-or-current) answers instead.
+   */
+  private readonly _rowTarget = signal<string | null>(null);
+
+  /** The subject of a download in flight — a row if the menu opened it, else
+   * the bar's. */
+  readonly downloadIds = computed<string[]>(() => {
+    const row = this._rowTarget();
+    return row === null ? this.barIds() : [row];
+  });
+
+  /** Live for the bulk bar's Download button. */
+  readonly hasBarTransfer = computed(() => this.barIds().length > 0);
+
+  /** The bulk bar's Download: acts on the selection-or-current. */
   openDownload(): void {
-    if (this.transferIds().length > 0) this._isDownloadOpen.set(true);
+    this._rowTarget.set(null);
+    if (this.barIds().length > 0) this._isDownloadOpen.set(true);
+  }
+
+  /** A row's menu Download: acts on that one row. */
+  openDownloadRow(id: string): void {
+    this._rowTarget.set(id);
+    this._isDownloadOpen.set(true);
   }
 
   cancelDownload(): void {
     this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
   }
 
   /**
@@ -459,8 +485,9 @@ export class SongsPresenter {
    * two branches here can trust what they are given.
    */
   async download(format: DownloadFormat): Promise<void> {
-    const ids = this.transferIds();
+    const ids = this.downloadIds();
     this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
     if (ids.length === 0) return;
     await this.busy(async () => {
       if (ids.length === 1) {
@@ -471,11 +498,20 @@ export class SongsPresenter {
     });
   }
 
-  /** The computer format: no dialog, because there is nothing to choose. */
+  /** The bulk bar's Export: the selection-or-current, no dialog (nothing to
+   * choose — Export has one format). */
   async exportSelection(): Promise<void> {
-    const songIds = this.transferIds();
+    await this.exportIds(this.barIds());
+  }
+
+  /** A row's menu Export: that one row. */
+  async exportRow(id: string): Promise<void> {
+    await this.exportIds([id]);
+  }
+
+  private async exportIds(songIds: readonly string[]): Promise<void> {
     if (songIds.length === 0) return;
-    await this.busy(() => this.exporter.export({ songIds }));
+    await this.busy(() => this.exporter.export({ songIds: [...songIds] }));
   }
 
   /**

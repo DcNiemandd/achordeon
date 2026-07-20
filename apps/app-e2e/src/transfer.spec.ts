@@ -79,6 +79,15 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
 }
 
 test.beforeEach(async ({ page }) => {
+  // Force the anchor download, not the OS save picker. `showSaveFilePicker` is
+  // native UI Playwright cannot drive — left in place it opens and blocks, and
+  // no `download` event ever fires. Deleting it makes `saveFile` take its
+  // fallback, which is the path that produces a file a test can read. The picker
+  // itself is a browser-behaviour concern, not ours to test here.
+  await page.addInitScript(() => {
+    // @ts-expect-error deleting an optional platform API for the test
+    delete window.showSaveFilePicker;
+  });
   await page.setViewportSize(ROOMY);
   await freshLibrary(page);
 });
@@ -200,6 +209,43 @@ test.describe('export & import', () => {
     await expect(
       page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
     ).toHaveCount(1);
+  });
+});
+
+test.describe('a row acts on itself', () => {
+  test('a row exports just that song from its menu', async ({ page }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Beta');
+
+    const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`more-${id}`).click();
+
+    const file = await download(page, () =>
+      page.getByTestId(`export-${id}`).click(),
+    );
+    const names = JSON.parse(file.toString('utf8')).data.songs.map(
+      (song: { name: string }) => song.name,
+    );
+    // Only the row's own song, not the selection and not the whole library.
+    expect(names).toEqual(['Alpha']);
+  });
+
+  test('a row downloads just that song from its menu', async ({ page }) => {
+    await createSong(page, 'Alpha');
+    const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`more-${id}`).click();
+    await page.getByTestId(`download-${id}`).click();
+
+    // The row's menu opens the same format dialog the bulk button does.
+    await expect(page.getByTestId('download-dialog')).toBeVisible();
+    const file = await download(page, () =>
+      page.getByTestId('download-pdf').click(),
+    );
+    expect(file.toString('latin1').startsWith('%PDF-')).toBe(true);
   });
 });
 
@@ -353,16 +399,70 @@ test.describe('download a songbook', () => {
     expect(countPages(file.toString('latin1'))).toBe(1);
   });
 
-  test('All songs cannot be downloaded as a songbook', async ({ page }) => {
+  test('the summary is typeset in an embedded face and links to the songs', async ({
+    page,
+  }) => {
+    // A Czech name, because that is the failure this guards: jsPDF's built-in
+    // Helvetica is WinAnsi and has no `ě ř ů`, so a summary drawn in it comes
+    // out with holes while the songs beside it are perfect.
+    // jsPDF does not throw when `setFont` names a face it cannot find — it logs
+    // and quietly falls back to Helvetica, which is the exact failure this test
+    // exists to catch. So the log is part of the assertion.
+    const complaints: string[] = [];
+    page.on('console', (message) => {
+      if (/font/i.test(message.text())) complaints.push(message.text());
+    });
+
+    await createSong(page, 'Řeka ěščř');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Řeka' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('pdf-summary').check();
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    const raw = file.toString('latin1');
+    // Title page + summary + the song.
+    expect(countPages(raw)).toBe(3);
+    // The body face is embedded — which is what the summary is set in. (jsPDF
+    // always lists Helvetica in its catalog whether or not anything uses it, so
+    // the absence of a fallback cannot be asserted; the presence of the real
+    // face can.)
+    expect(raw).toContain('/FontFile2');
+    // The contents list is clickable: an internal link annotation per entry.
+    expect(raw).toContain('/Link');
+    expect(complaints).toEqual([]);
+  });
+
+  test('All songs offers no download or export — it has no ⋯ menu at all', async ({
+    page,
+  }) => {
     await createSong(page, 'Alpha');
     await page.goto('songbooks');
-    await page
+    const all = page
       .getByTestId('songbook-row')
-      .filter({ hasText: 'All songs' })
-      .click();
-    // It has no record, so no title page, no author and no order of its own.
-    await expect(page.getByTestId('songbooks-download')).toBeDisabled();
-    await expect(page.getByTestId('songbooks-export')).toBeDisabled();
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+    // The read-only virtual book has no record, so no title page, author or
+    // order to print — and the row menu (where download and export live) is not
+    // built for it.
+    await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
+
+    // A real songbook does have it.
+    await page.getByTestId('songbooks-add').click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    await page.goto('songbooks');
+    const real = page.getByTestId('songbook-row').filter({
+      hasText: 'New songbook',
+    });
+    const realId = await real.getAttribute('data-song-id');
+    await real.hover();
+    await expect(page.getByTestId(`more-${realId}`)).toBeVisible();
   });
 });
 

@@ -118,19 +118,40 @@ export class SongbooksPresenter {
    * be kept in step with it. `titlePageAst` is the one definition of what a
    * title page is made of; this and `DownloadService` both draw from it.
    *
-   * Empty for All songs, which has no record and therefore no title page: the
-   * pane shows the blank paper, which is the honest picture of "nothing to
-   * print here".
+   * **All songs gets one too**, generated. It has no record to carry authored
+   * fields, but it is not nothing either — it is the library, and a blank sheet
+   * where every other book shows its title page reads as a bug. So it prints its
+   * name and what it holds. No author, because nobody wrote it.
    */
   private readonly titlePlan = computed(() => {
     const id = this._currentId();
-    const book = id === null ? undefined : this.find(id);
+    if (id === null) return undefined;
+    const book = this.find(id) ?? (id === ALL_SONGS_ID ? this.virtual() : null);
     if (!book) return undefined;
     return this.renderer.layout(
       titlePageAst(book),
       resolveSettings(this.settings.global(), book.settings),
+      // Centred, like the printed page — this preview IS that page (§4.5 hugs
+      // the corner for songs, which a title page is not).
+      { align: 'center' },
     );
   });
+
+  /** The virtual book as a record, for the one thing that needs it to be one. */
+  private virtual(): Songbook {
+    return {
+      id: ALL_SONGS_ID,
+      createdAt: 0,
+      updatedAt: 0,
+      deletedAt: null,
+      name: ALL_SONGS_NAME,
+      title: ALL_SONGS_NAME,
+      subtitle: this.countLabel(this._librarySize()),
+      author: '',
+      settings: {},
+      entries: [],
+    };
+  }
 
   readonly titlePageSvg = computed(() => {
     const plan = this.titlePlan();
@@ -220,50 +241,55 @@ export class SongbooksPresenter {
   }
 
   // --- Transfer (Epic 7) -----------------------------------------------
+  //
+  // Download and Export live on the **row's own menu** (Epic 7 follow-up), with
+  // the other row actions, so acting on a songbook is one gesture from the list
+  // rather than "select, then reach for the toolbar". Each act names the row it
+  // came from — never `currentId`, which is what pane B is previewing and may be
+  // a different book entirely.
 
-  private readonly _isDownloadOpen = signal(false);
+  /** The book whose download dialog is open, or null. */
+  private readonly _downloadId = signal<string | null>(null);
   private readonly _isBusy = signal(false);
-  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  readonly isDownloadOpen = computed(() => this._downloadId() !== null);
   readonly isBusy = this._isBusy.asReadonly();
 
-  /**
-   * A songbook can be downloaded; **the virtual All songs cannot**.
-   *
-   * It has no record, so it has no title page, no author and no order of its
-   * own — the three things a songbook PDF is made of. What it holds is the
-   * library, and downloading that is the Songs module's business.
-   */
-  readonly isTransferable = computed(() => {
-    const id = this._currentId();
-    return id !== null && id !== ALL_SONGS_ID;
-  });
-
-  /** The picked book's name, for the download dialog's title. */
-  readonly currentName = computed(() => {
-    const id = this._currentId();
+  /** The name in the open dialog's title. */
+  readonly downloadName = computed(() => {
+    const id = this._downloadId();
     return (id === null ? undefined : this.find(id)?.name) ?? '';
   });
 
-  openDownload(): void {
-    if (this.isTransferable()) this._isDownloadOpen.set(true);
+  /**
+   * A real songbook can be downloaded; **the virtual All songs cannot**. It has
+   * no record — no title page, no author, no order of its own — which are the
+   * three things a songbook PDF is made of. The row menu is off for it entirely
+   * (`SONGBOOK_LIST_CAPABILITIES` gives it no menu once its read-only row drops
+   * duplicate and delete), so this only guards the stray call.
+   */
+  private isTransferable(id: string): boolean {
+    return id !== ALL_SONGS_ID && this.find(id) !== undefined;
+  }
+
+  openDownloadRow(id: string): void {
+    if (this.isTransferable(id)) this._downloadId.set(id);
   }
 
   cancelDownload(): void {
-    this._isDownloadOpen.set(false);
+    this._downloadId.set(null);
   }
 
   async download(choice: SongbookPdfChoice): Promise<void> {
-    const id = this._currentId();
-    this._isDownloadOpen.set(false);
-    if (!id || !this.isTransferable()) return;
+    const id = this._downloadId();
+    this._downloadId.set(null);
+    if (!id || !this.isTransferable(id)) return;
     await this.busy(() => this.downloads.downloadSongbook(id, choice));
   }
 
   /** The whole book as JSON — **with its songs**, which `ExportService` adds:
    * a book of references imports as a book of nothing without them. */
-  async exportBook(): Promise<void> {
-    const id = this._currentId();
-    if (!id || !this.isTransferable()) return;
+  async exportRow(id: string): Promise<void> {
+    if (!this.isTransferable(id)) return;
     await this.busy(() => this.exporter.export({ songbookIds: [id] }));
   }
 

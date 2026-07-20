@@ -136,6 +136,12 @@ export interface ExplorerCapabilities {
   readonly canRename: boolean;
   readonly canDuplicate: boolean;
   readonly canDelete: boolean;
+  /** Download this one row (a picture for a player). Off in the songbook
+   * builder's panes, where a whole book downloads rather than a slot. */
+  readonly canDownload: boolean;
+  /** Export this one row to a library file. Same subject as `canDownload`,
+   * the other format. */
+  readonly canExport: boolean;
 }
 
 /** The Songs module: everything on. */
@@ -153,6 +159,8 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canRename: true,
   canDuplicate: true,
   canDelete: true,
+  canDownload: true,
+  canExport: true,
 };
 
 /**
@@ -174,6 +182,8 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canRename: false,
   canDuplicate: false,
   canDelete: false,
+  canDownload: false,
+  canExport: false,
 };
 
 /**
@@ -198,6 +208,8 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canRename: false,
   canDuplicate: false,
   canDelete: false,
+  canDownload: false,
+  canExport: false,
 };
 
 /** The virtual All songs book: a read-only order, so nothing may be moved out. */
@@ -234,6 +246,8 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canRename: true,
   canDuplicate: false,
   canDelete: true,
+  canDownload: true,
+  canExport: true,
 };
 
 /** Where a per-row move sends that one row. Same vocabulary as the toolbar's,

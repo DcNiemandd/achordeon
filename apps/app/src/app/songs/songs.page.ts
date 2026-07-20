@@ -207,6 +207,8 @@ import {
           (favorited)="presenter.toggleFavorite($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
+          (downloaded)="presenter.openDownloadRow($event)"
+          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event)"
         />
       </div>
@@ -223,7 +225,7 @@ import {
 
     @if (presenter.isDownloadOpen()) {
       <app-download-dialog
-        [count]="presenter.transferIds().length"
+        [count]="presenter.downloadIds().length"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
@@ -436,8 +438,8 @@ export class SongsPage {
 
   /** Download and Export answer the selection, or — with none — the song in
    * pane B. So they are live whenever there is anything to look at. */
-  protected readonly hasTransferTarget = computed(
-    () => this.presenter.transferIds().length > 0,
+  protected readonly hasTransferTarget = computed(() =>
+    this.presenter.hasBarTransfer(),
   );
 
   /** The label says what will be acted on, because "Download" beside a list of
