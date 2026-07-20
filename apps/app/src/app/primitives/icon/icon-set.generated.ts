@@ -57,6 +57,15 @@ export const ICON_SET = {
     '<path d="m3 16 4 4 4-4" /><path d="M7 20V4" /><path d="M11 4h4" /><path d="M11 8h7" /><path d="M11 12h10" />',
   warning:
     '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />',
+  moveUp: '<path d="m18 15-6-6-6 6" />',
+  moveDown: '<path d="m6 9 6 6 6-6" />',
+  moveStart:
+    '<path d="M5 3h14" /><path d="m18 13-6-6-6 6" /><path d="M12 7v14" />',
+  moveEnd:
+    '<path d="M12 17V3" /><path d="m6 11 6 6 6-6" /><path d="M19 21H5" />',
+  transferIn: '<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />',
+  transferOut: '<path d="m12 19-7-7 7-7" /><path d="M19 12H5" />',
+  drag: '<circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" />',
 } as const;
 
 export type IconName = keyof typeof ICON_SET;

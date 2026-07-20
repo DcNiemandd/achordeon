@@ -28,6 +28,8 @@ import { PAGE_LIMIT, SONG_REPOSITORY } from './repositories';
 interface SongQueryState {
   sort: SortKey;
   dir: SortDir | undefined; // undefined = the sort key's natural default
+  /** Float starred songs above the rest, within whatever sort is showing. */
+  favoritesFirst: boolean;
   query: string;
   loading: boolean;
   nextCursor: Cursor | null;
@@ -37,6 +39,7 @@ interface SongQueryState {
 const initialState: SongQueryState = {
   sort: 'name',
   dir: undefined,
+  favoritesFirst: false,
   query: '',
   loading: false,
   nextCursor: null,
@@ -82,6 +85,7 @@ export const SongStore = signalStore(
         limit: PAGE_LIMIT,
         sort: store.sort(),
         dir: store.dir(),
+        favoritesFirst: store.favoritesFirst(),
         query: store.query(),
       });
       if (isStale(seq)) {
@@ -111,6 +115,7 @@ export const SongStore = signalStore(
           limit: PAGE_LIMIT,
           sort: store.sort(),
           dir: store.dir(),
+          favoritesFirst: store.favoritesFirst(),
           query: store.query(),
           cursor: store.nextCursor(),
         });
@@ -147,6 +152,7 @@ export const SongStore = signalStore(
           limit: Math.max(PAGE_LIMIT, store.live().length),
           sort: store.sort(),
           dir: store.dir(),
+          favoritesFirst: store.favoritesFirst(),
           query: store.query(),
         });
         if (isStale(seq)) {
@@ -163,6 +169,12 @@ export const SongStore = signalStore(
       /** Change the sort axis (and optional direction) — resets and refetches. */
       async setSort(sort: SortKey, dir?: SortDir): Promise<void> {
         patchState(store, { sort, dir });
+        await reload();
+      },
+
+      /** Float favourites to the top (or stop) — resets and refetches. */
+      async setFavoritesFirst(favoritesFirst: boolean): Promise<void> {
+        patchState(store, { favoritesFirst });
         await reload();
       },
 
@@ -189,6 +201,29 @@ export const SongStore = signalStore(
           dir: 'desc',
         });
         return page.rows[0];
+      },
+
+      /**
+       * Every live Song, name-sorted — the entry list of the virtual **All
+       * songs** songbook (CONTEXT.md §Songbook).
+       *
+       * Past the window on purpose, like `lastChanged`: "All songs" means the
+       * whole library, not the page of it the explorer has scrolled to. The
+       * result is a snapshot for one screen, never written into the window — it
+       * answers a different query from the one the list is showing.
+       */
+      async allLive(order?: {
+        sort?: SortKey;
+        dir?: SortDir;
+        favoritesFirst?: boolean;
+      }): Promise<Song[]> {
+        const page = await repo.page({
+          limit: Number.MAX_SAFE_INTEGER,
+          sort: order?.sort ?? 'name',
+          dir: order?.dir,
+          favoritesFirst: order?.favoritesFirst,
+        });
+        return page.rows;
       },
 
       /**

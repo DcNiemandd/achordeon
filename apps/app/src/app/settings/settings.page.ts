@@ -39,6 +39,26 @@ import { SettingsPresenter } from './settings.presenter';
       </section>
 
       <section class="section">
+        <h2 class="heading">{{ panelsHeading }}</h2>
+        <!-- A checkbox, not a segmented pair: it is one fact that is either
+             true or false, and "Linked / Not linked" would be two words for
+             the same switch. -->
+        <label class="check-row">
+          <input
+            type="checkbox"
+            class="check"
+            [checked]="presenter.isSplitShared()"
+            data-testid="split-shared"
+            (change)="onSplitShared($event)"
+          />
+          <span>
+            <span class="check-label">{{ splitSharedLabel }}</span>
+            <span class="check-help">{{ splitSharedHelp }}</span>
+          </span>
+        </label>
+      </section>
+
+      <section class="section">
         <h2 class="heading">{{ renderHeading }}</h2>
         <!-- Global scope: the base of the cascade. The SAME component is mounted
              by songbooks (songbook scope) and the song editor (song scope). -->
@@ -89,6 +109,36 @@ import { SettingsPresenter } from './settings.presenter';
       display: flex;
       gap: var(--space-1);
     }
+
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      cursor: pointer;
+    }
+
+    .check {
+      accent-color: var(--brand);
+      inline-size: 16px;
+      block-size: 16px;
+      margin-block-start: 2px;
+      flex: none;
+    }
+
+    .check-label,
+    .check-help {
+      display: block;
+    }
+
+    .check-label {
+      font-size: var(--text-sm);
+      color: var(--text);
+    }
+
+    .check-help {
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
   `,
 })
 export class SettingsPage {
@@ -129,6 +179,13 @@ export class SettingsPage {
   protected readonly appHeading = $localize`:@@settings.app:Application`;
   protected readonly themeHeading = $localize`:@@settings.theme:Theme`;
   protected readonly renderHeading = $localize`:@@settings.rendering:Rendering`;
+  protected readonly panelsHeading = $localize`:@@settings.panels:Panels`;
+  protected readonly splitSharedLabel = $localize`:@@settings.splitShared:One panel size everywhere`;
+  protected readonly splitSharedHelp = $localize`:@@settings.splitShared.help:Off: each module remembers how you sized its panels.`;
+
+  protected onSplitShared(event: Event): void {
+    this.presenter.setSplitShared((event.target as HTMLInputElement).checked);
+  }
   protected readonly syncHeading = $localize`:@@settings.sync:Sync`;
   protected readonly autoSyncLabel = $localize`:@@settings.autoSync:Automatic sync`;
 

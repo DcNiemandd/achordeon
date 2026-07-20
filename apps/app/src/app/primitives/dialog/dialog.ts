@@ -43,7 +43,7 @@ import { Icon } from '../icon/icon';
   host: {
     '[class]': '"mode-" + mode()',
     // Esc closes from anywhere inside, including the scrim.
-    '(keydown.escape)': 'closed.emit()',
+    '(keydown.escape)': 'onEscape($event)',
   },
   template: `
     @if (isModal()) {
@@ -177,4 +177,23 @@ export class Dialog {
 
   protected readonly isModal = computed(() => this.mode() === 'viewport');
   protected readonly closeLabel = $localize`:@@dialog.close:Close`;
+
+  /**
+   * Close, and **stop the key there** [trap].
+   *
+   * Screens that open a dialog also bind Escape on `document` to mean "leave
+   * this screen", and a keypress from inside the dialog bubbles all the way up
+   * to it. Both handlers then ran on one press: this one closed the dialog, and
+   * the screen's — finding the dialog already shut — walked out of the screen as
+   * well. Pressing Escape over the songbook's settings threw you back to the
+   * list.
+   *
+   * A guard on the other side cannot fix it, because by the time the outer
+   * handler runs the dialog is gone and there is nothing left to see. The
+   * element that consumed the key is the one that has to say so.
+   */
+  protected onEscape(event: Event): void {
+    event.stopPropagation();
+    this.closed.emit();
+  }
 }

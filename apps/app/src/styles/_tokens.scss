@@ -125,6 +125,7 @@
 
   // --- the breakpoint, for the Viewport service to read back (§6) -------------
   --bp-compact: #{breakpoints.$bp-compact};
+  --bp-stack: #{breakpoints.$bp-stack};
 }
 
 // Theme 'system' resolves through the media query...

@@ -309,17 +309,131 @@ plus the songbook-scope settings that re-theme every song performed in it.
 
 ### Subtasks
 
-- [ ] Songbook list/CRUD; the always-present virtual **All songs** view
+- [x] Songbook list/CRUD; the always-present virtual **All songs** view
       (read-only order, no removal).
-- [ ] Reduced-capability explorer in the left panel (search/sort/select/favorite/
+- [x] Reduced-capability explorer in the left panel (search/sort/select/favorite/
       add-to-songbook on; delete/rename/duplicate/edit off).
-- [ ] Add songs to a songbook (to start / end / above / below selected); allow the
+- [x] Add songs to a songbook (to start / end / above / below selected); allow the
       same song in multiple slots.
-- [ ] Reorder entries (move one over / to start / to end). _(Drag & drop is
-      marked future — track separately.)_
-- [ ] Remove-from-songbook (slot removal, song stays in library).
-- [ ] Songbook-scope settings (chord color/size; font is future) + title-page
+- [x] Reorder entries (move one over / to start / to end), by selection from the
+      strip and per row from the row's own buttons. _(Drag & drop is **Epic
+      14**, which depends on this epic.)_
+- [x] Remove-from-songbook (slot removal, song stays in library).
+- [x] Songbook-scope settings (chord color/size; font is future) + title-page
       fields (title/subtitle/author).
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **`ALL_SONGS_ID` is a domain constant, not a route special case.** It is an id
+  `crypto.randomUUID()` cannot produce, so `/songbooks/:id` carries the real and
+  the virtual book without a second route — and every write path asks
+  `isVirtual` once, in the presenter, rather than each button remembering.
+- **A row in pane B is a _slot_, keyed by index, never by song id.** The same
+  song may fill several, so ordering, selection and removal are all
+  index-shaped. Reorder therefore has to return the **new selection** as well as
+  the new order: without it the ticks stay on indexes that now hold other songs,
+  and pressing "up" twice moves two different songs.
+- **Entry songs are hydrated by id from the repository**, not read out of the
+  explorer's window — a slot must not render blank because of what is typed in
+  the search box.
+- **Remove-from-songbook gets no confirmation**, deliberately: nothing is
+  destroyed, and a dialog here would train the user to click through the one
+  guarding a real delete. The row mark is an X, not the bin.
+- **`chordSize` was song-scoped only** (Epic 1's registry), so a songbook could
+  re-colour its chords but not resize them — half a theme against CONTEXT.md
+  §Songbook. Fixed in the registry, which is all a data-driven cascade needs.
+- **A presenter's fallback name must not be another object's name.** `name()`
+  returned "All songs" for _any_ unloaded book; the action-bar heading is a
+  rename field bound to it, so the value arriving late overwrote what the user
+  had typed. Now empty while a real book loads.
+- **Songbook settings open as a modal**, unlike the editor's container dialog:
+  there is no live render behind it worth keeping visible.
+- **The row and the checkbox are two different gestures** — the row means "only
+  this one", the checkbox "this one as well". Before, the row body did not
+  select at all, so clicking a song and pressing Add put nothing anywhere and
+  the checkbox was a door you had to already know about. Applies to the Songs
+  module too; it is one component.
+- **A selection belongs to the list it was made in, not to the app.** It moved
+  out of `SessionStore` (which keeps only `currentSongId`) into the presenter
+  that mounts the list — one app-wide set meant songs ticked in the library
+  arrived in the songbook builder pre-armed against a different set of buttons.
+- **`above` with nothing selected falls back to the _start_**, not the end: a
+  button that says above must never append. Hovering an Add button draws the
+  insertion line in the entry list, because a position you cannot see is a
+  promise the user has to take on trust.
+- **Add and reorder share one icon family** (arrow-into-a-line for the ends,
+  chevrons for one step): both answer "where in this list", and that is learnt
+  once. Layout follows the transfer-list handoff — the transfer buttons in a
+  column _between_ the two lists, move buttons at the left of pane B's toolbar.
+- **The Add buttons wear the reorder set's own glyphs.** They briefly carried a
+  right arrow with the position badged onto it, to say "across into the book";
+  the direction is already obvious from which pane you are looking at, and the
+  badge cost the position mark its legibility. Remove is still a left arrow,
+  set apart below the four, and answers pane B's selection rather than pane A's.
+- **`<app-selection-status>` is one control, mounted three times**: the Songs
+  action bar, the songbook action bar, and the entry strip. It is "Clear (N)"
+  and nothing else — a "3 selected" label beside a "Clear (3)" button is the
+  same number twice. Text and not an X, because the bar already spends an X on
+  "back to songbooks".
+- **The builder never becomes a tab switcher**, and that needed a second
+  breakpoint: `$bp-stack: 500px` beside `$bp-compact: 1200px`. They ask
+  different questions — "is the shell compact" versus "can two lists sit beside
+  each other" — so `<app-split-pane>` takes a `narrow` input: `switch` (one pane
+  plus the shell's switcher, right where the panes are alternatives: write, then
+  look) or `stack` (both panes, one above the other, right where they are a
+  **pair**). A transfer list that hides its destination behind a tab is one you
+  cannot transfer across, and Epic 14 could not drag across it either.
+- **All songs drops its library pane below the stack breakpoint.** That pane
+  exists to pick songs to add, and the virtual book takes none; on a phone it is
+  half the screen spent on a pane whose every button is off. The entry list is
+  one `ng-template` with two homes, so pane A can host it when pane B is gone.
+- **`/songbooks` is split, not single-pane** [corrects PRD-UI-SHELL.md §4's
+  table]. It is the same shape of screen as `/songs` — a list on the left, the
+  thing you picked on the right — so it answers the same gestures: a click
+  selects and previews, a double click opens. The preview is the songbook's
+  **title page**, standing in as plain text until Epic 7 renders the real one.
+- **A dialog's Escape stops at the dialog** (`stopPropagation`). Screens that
+  open one also bind Escape on `document` to mean "leave this screen", and a
+  press from inside the dialog ran both: it closed, then the screen's handler
+  found nothing open and walked out too. The element that consumed the key is
+  the one that has to say so — a guard on the other side is too late.
+- **Reordering is per row as well as per selection.** The row's own buttons act
+  on the row you are pointing at, because ticking it first and unticking it
+  after is a step the pointer has already made. The ticks ride along untouched:
+  they belong to the strip's gesture, not to this one. They **stand down once
+  several rows are ticked** — the strip already moves a block, and two
+  affordances that disagree about what they act on are worse than one that steps
+  aside. A pointer click also blurs the button, or `:focus-within` leaves the
+  strip hanging over a row nobody is pointing at (keyboard activation keeps
+  focus: `event.detail === 0`).
+- **`favorite` is not a sort axis; `favoritesFirst` is a flag** [corrects Epic
+  1's registry and CONTEXT.md §Song explorer's list]. Sorting _by_ favourite
+  answers "which are starred" and leaves everything else in tiebreak order,
+  which is a list nobody asked for. What people mean is "my starred songs at the
+  top of the list I am already reading", so it now floats them above any axis
+  (`?fav=1`). `PagingConfig` gained `isFavorite`, absent for entities with no
+  such flag — a songbook has none, and the request is then a no-op.
+- **All songs says what it is** (a `(?)` note on its row), and its entry pane
+  offers the one thing a read-only order can be told: **how it is sorted**. That
+  is why `canSearch` and `canSort` are separate capabilities.
+- **Split size is a preference, not a constant.** `UiStore.isSplitShared`
+  (default on) links every module's splitter; off, each remembers its own.
+  Linking adopts the ratio you are looking at rather than resurrecting an older
+  shared value — the pane you are sizing must not jump out from under you.
+- **Pane B is the _same list component_ as pane A** (`ENTRY_CAPABILITIES`:
+  numbered, removable, no search or sort). Two lists side by side that answered
+  the same click differently was the defect; one component cannot drift from
+  itself. `SongRow` grew `position` (its index in the list as drawn) and its
+  `id` is documented as "what this row IS" — a Song in the library, a **slot**
+  in a songbook, which is why removing one slot never takes its twins.
+  `SongbookEntries` is deleted.
+
+**Still open:** drag & drop is **Epic 14**, which depends on this epic. The
+songbook **download** options (title page / summary / print) are Epic 7's, not
+this one's — including the real title-page render, which `<app-title-page>`
+stands in for as plain text until then.
 
 ---
 
@@ -348,6 +462,9 @@ songbook output.
 - [ ] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
 - [ ] Songbook PDF: title page / summary / page-number toggles + position, page
       size, outer fit per page (songs keep aspect ratio, scaled to slot).
+      **Replaces `<app-title-page>`**, the plain-text stand-in Epic 6 mounts in
+      `/songbooks` pane B: the real title page is a rendered page, and its
+      layout is decided by these options rather than by the preview.
 - [ ] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
       the real pipeline.
 - [ ] **Real font bytes, for N faces.** `FontBook` carries none today, so the
@@ -442,6 +559,88 @@ propagation, tier flag, and the load-bearing unsynced-leave warning.
 - [ ] Auto-sync user toggle (enabled by `pro`, switchable off ≠ logged out).
 - [ ] Warn-before-leaving when local changes haven't reached the cloud
       (`beforeunload` + in-app route guard).
+
+---
+
+## Epic 14: Drag & drop
+
+**User stories**: drag songs from the library into a songbook and drop them
+where they go; drag a songbook entry to reorder it.
+**Depends on**: **Epic 6** — it drags between that module's two panes, onto the
+order that module owns.
+
+### What to build
+
+The pointer half of the songbook builder. Epic 6 landed every one of these acts
+as a button (add at four positions, move a row or a selection, remove a slot);
+this adds the direct-manipulation path to the same commands, so the two can
+never disagree about what happens — a drop calls `addSelected`/`moveSlot`, it
+does not re-implement them.
+
+`songbooks/index.mdx` carries a `:::danger[FUTURE]` admonition saying drag &
+drop is not implemented. **Removing that admonition is this epic's last
+subtask**, and the honest signal that it is done.
+
+### Subtasks
+
+- [x] `cdkDropList` on both panes of `/songbooks/:id`, with a drop indicator
+      that reuses Epic 6's insertion line (the same mark the Add buttons
+      preview) rather than inventing a second one.
+- [x] Drag from the library into the songbook: dropping inserts at the indicator,
+      carrying the **whole selection** when the dragged row is part of it — the
+      Add buttons' rule, so a drag and a button press behave alike.
+- [x] Drag within the songbook to reorder, including a multi-slot selection as a
+      block (`moveEntries` already answers this; the drop supplies the index).
+- [x] A drag handle per row, and **not the whole row**: the row is already a
+      click target that selects, and a list where pressing a row might drag it
+      is a list you cannot click confidently on touch.
+- [x] Auto-scroll at the edges of a virtualised viewport, and prove a drop lands
+      correctly when the source and target rows were never rendered together.
+- [x] Keyboard parity is **already met** by Epic 6's buttons — confirm it stays
+      met (WCAG 2.1.1: dragging must not be the only way to reorder), and do not
+      add a keyboard drag mode that duplicates them.
+- [x] Touch: a long-press to start a drag, without stealing the tap that selects
+      or the swipe that scrolls.
+- [x] Remove the FUTURE admonition from `songbooks/index.mdx`.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The CDK's own sorting is off** (`cdkDropListSortingDisabled`), and the drop
+  index is arithmetic over the scroll offset instead. Its sorting reads the DOM,
+  and a virtualised list has only a window of it — a drop past the rendered rows
+  had nothing to sort against. Rows are a fixed height (the viewport requires
+  it), so the boundary is `round((pointerY - listTop + scrollOffset) /
+ROW_HEIGHT)` and works for a row that was never on screen.
+- **The pointer is tracked on `document`, not from `cdkDragMoved`.** A drag that
+  starts in the library is reported by the _library's_ component, and the only
+  thing that can turn a position into an index is the list it is over.
+- **`cdkDragEnded` fires immediately BEFORE the drop** (`_cleanupDragArtifacts`
+  emits `ended`, then `dropped`), so clearing the tracked boundary there ate
+  every drop. Cleanup belongs in the drop handler and in `cdkDropListExited`.
+- **`cdkDropListEntered` never fires for a reorder within one list** — the item
+  was already in the container. `cdkDragStarted` is that missing edge.
+- **`cdkDropListGroup` has to enclose the `<ng-template>`, not just the panes.**
+  The CDK finds the group by injector, and a template's injector follows where it
+  is _declared_, not where it is rendered — the entry list is declared outside
+  the split pane, so the group sitting on the pane was invisible to it and the
+  two lists were never siblings. Silent: no error, drops simply did nothing.
+- **An empty list is still a destination.** The viewport is `@else`'d away when
+  there are no rows, taking the drop list with it, so an empty songbook — the one
+  most likely to be dragged into — accepted nothing. The empty state carries
+  `cdkDropList` in its place; the only boundary it can name is 0.
+- **`insertionIndex` could not answer a drop**: it resolves four _named_
+  positions, and a drop supplies a number. `moveEntriesTo` is the addition, and
+  the boundary it takes is not a splice index — lifting the selection out first
+  shifts every boundary above it down by however many were below.
+- **Drag carries the selection only when the dragged row is in it.** The Add
+  buttons' rule, and the honest reading of the gesture: a drag of an unselected
+  row named its own subject.
+
+**Not built, on purpose:** a keyboard drag mode. Epic 6's move buttons are the
+non-pointer path (WCAG 2.1.1) and the handle is `aria-hidden` because it offers
+a screen-reader user nothing the buttons do not already do, better.
 
 ---
 
@@ -651,3 +850,6 @@ cascade), plus the manual export/import entry points.
 5. Epics 6 → 7 → 8 build on 5.
 6. Epic 10 (auth/sync) before Epic 9 (hosting is tier-gated).
 7. Epic 12 last — it surfaces state the others own.
+8. Epic 14 (drag & drop) any time after 6, and deliberately **not before** 7 or
+   8: every act it offers already has a working button, so it is polish on a
+   solved problem while whole features are still missing.

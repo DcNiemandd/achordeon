@@ -13,11 +13,12 @@ import {
   SongbookStore,
 } from '@achordeon/shared/data-access';
 import { resolveSettings, type Song } from '@achordeon/shared/domain';
-import type {
-  ExplorerSort,
-  ExplorerSortDir,
-  SongRow,
-  SortChange,
+import {
+  RowSelection,
+  type ExplorerSort,
+  type ExplorerSortDir,
+  type SongRow,
+  type SortChange,
 } from '../shared/song-explorer';
 import { TUTORIAL_CONTENT } from './new-song';
 
@@ -68,8 +69,12 @@ export class SongsPresenter {
   readonly pendingDelete = this._pendingDelete.asReadonly();
 
   readonly rows = computed<SongRow[]>(() =>
-    this.store.live().map((song) => ({
+    this.store.live().map((song, index) => ({
       id: song.id,
+      // Its place in the list as shown. The library never displays it — the
+      // ordinal is a songbook's affordance — but the insertion preview and the
+      // row contract are one shape for both mounts.
+      position: index,
       name: song.name,
       // The parser cache, not a re-parse: it is stored derived state precisely so
       // that listing 500 songs costs no parsing (PRD-DOMAIN-MODEL §Song).
@@ -79,13 +84,16 @@ export class SongsPresenter {
     })),
   );
 
-  readonly selectedIds = this.session.selectedIds;
+  /** This screen's selection, and only this screen's (see `RowSelection`). */
+  private readonly selection = new RowSelection();
+
+  readonly selectedIds = this.selection.ids;
   readonly currentId = this.session.currentSongId;
   readonly isLoaded = this.store.loaded;
 
   /** What the bulk star would do — so the button can say so before it is pressed. */
   readonly isSelectionAllFavorite = computed(() => {
-    const songs = [...this.session.selectedIds()]
+    const songs = [...this.selection.ids()]
       .map((id) => this.find(id))
       .filter((song): song is Song => song !== undefined);
     return songs.length > 0 && songs.every((song) => song.favorite);
@@ -148,18 +156,29 @@ export class SongsPresenter {
     query: string;
     sort: ExplorerSort;
     dir?: ExplorerSortDir;
+    isFavoritesFirst: boolean;
   }): Promise<void> {
     const isSortStale =
       params.sort !== this.store.sort() || params.dir !== this.store.dir();
     const isQueryStale = params.query !== this.store.query();
+    const isFavoriteStale =
+      params.isFavoritesFirst !== this.store.favoritesFirst();
 
     if (isSortStale) {
       await this.store.setSort(params.sort, params.dir);
     }
+    if (isFavoriteStale) {
+      await this.store.setFavoritesFirst(params.isFavoritesFirst);
+    }
     if (isQueryStale) {
       await this.store.setSearch(params.query);
     }
-    if (!isSortStale && !isQueryStale && !this.store.loaded()) {
+    if (
+      !isSortStale &&
+      !isQueryStale &&
+      !isFavoriteStale &&
+      !this.store.loaded()
+    ) {
       await this.store.load();
     }
   }
@@ -194,7 +213,19 @@ export class SongsPresenter {
     this.navigate({ sort: change.key, dir: change.dir ?? null });
   }
 
+  /** `?fav=1` rides in the URL like the sort, so a reload and a shared link
+   * land on the list you were actually looking at (§7). */
+  setFavoritesFirst(isFirst: boolean): void {
+    this.navigate({ fav: isFirst ? '1' : null });
+  }
+
+  /**
+   * A click on the row body: this song becomes the current one **and the whole
+   * selection** (see `RowSelection`). Looking at a song and acting on it are the
+   * same gesture everywhere else in the app; the checkbox is what builds a set.
+   */
   activate(id: string): void {
+    this.selection.selectOnly(id);
     this.session.setCurrentSong(id);
   }
 
@@ -203,11 +234,11 @@ export class SongsPresenter {
   }
 
   toggleSelect(id: string): void {
-    this.session.toggle(id);
+    this.selection.toggle(id);
   }
 
   clearSelection(): void {
-    this.session.clearSelection();
+    this.selection.clear();
   }
 
   async create(): Promise<void> {
@@ -339,7 +370,7 @@ export class SongsPresenter {
     for (const id of pending.ids) {
       await this.songbooks.removeSongEverywhere(id);
       await this.store.remove(id);
-      this.session.deselect(id);
+      this.selection.deselect(id);
     }
     await this.store.refresh();
 

@@ -53,6 +53,21 @@ export interface Song extends BaseRecord {
 }
 
 /**
+ * The virtual **All songs** songbook (CONTEXT.md §Songbook).
+ *
+ * Always present, never stored: a read-only-order view of the whole library that
+ * cannot be reordered and from which songs cannot be removed. It is an id
+ * `crypto.randomUUID()` cannot produce, so a real songbook can never collide with
+ * it — which is what lets `/songbooks/:id` carry both without a second route.
+ */
+export const ALL_SONGS_ID = 'all-songs';
+
+/** True for the virtual songbook — the one every write path must refuse. */
+export function isAllSongs(id: Uuid): boolean {
+  return id === ALL_SONGS_ID;
+}
+
+/**
  * A songbook record. PRD-DOMAIN-MODEL.md §Songbook.
  */
 export interface Songbook extends BaseRecord {

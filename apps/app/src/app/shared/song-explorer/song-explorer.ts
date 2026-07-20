@@ -5,12 +5,23 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   input,
   linkedSignal,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import {
+  CdkDrag,
+  CdkDragHandle,
+  CdkDropList,
+  type CdkDragDrop,
+} from '@angular/cdk/drag-drop';
+import {
+  CdkVirtualScrollViewport,
+  ScrollingModule,
+} from '@angular/cdk/scrolling';
 import {
   Autofocus,
   Button,
@@ -18,13 +29,17 @@ import {
   Field,
   Icon,
   Tooltip,
+  type IconName,
 } from '../../primitives';
 import {
   FULL_CAPABILITIES,
   type ExplorerCapabilities,
+  type RowMove,
+  type RowMoveRequest,
   type ExplorerSort,
   type ExplorerSortDir,
   type RenameChange,
+  type RowDrop,
   type SongRow,
   type SortChange,
 } from './explorer-model';
@@ -40,6 +55,15 @@ const PREFETCH_ROWS = 10;
 /** Search debounce. Each settled edit is a store refetch AND a router
  * navigation, so this is not the parser's ~80ms — it is "stopped typing". */
 const SEARCH_DEBOUNCE_MS = 200;
+
+/**
+ * How long a **touch** must rest on the handle before it becomes a drag.
+ *
+ * Zero for the mouse, where press-and-move is unambiguous. On touch the same
+ * gesture is also a tap and the start of a scroll, so the delay is what keeps
+ * all three usable from one finger: under it the touch is still the list's.
+ */
+const DRAG_START_DELAY = { touch: 250, mouse: 0 };
 
 /**
  * The rich Song list: search, sort, multi-select, row actions
@@ -66,8 +90,15 @@ const SEARCH_DEBOUNCE_MS = 200;
 @Component({
   selector: 'app-song-explorer',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // On the document, because a drag over this list may have started in the
+  // other one — see `onPointerMove`. The first line of the handler is the guard
+  // that makes this free while nothing is being dragged.
+  host: { '(document:pointermove)': 'onPointerMove($event)' },
   imports: [
     ScrollingModule,
+    CdkDrag,
+    CdkDragHandle,
+    CdkDropList,
     Autofocus,
     Button,
     EmptyState,
@@ -76,82 +107,156 @@ const SEARCH_DEBOUNCE_MS = 200;
     Tooltip,
   ],
   template: `
-    <div class="tools">
-      <div class="search">
-        <app-icon name="search" class="search-icon" />
-        <input
-          #searchInput
-          appField
-          type="search"
-          class="search-field"
-          [class.has-value]="hasQuery()"
-          [value]="query()"
-          [attr.aria-label]="searchLabel"
-          [attr.placeholder]="searchLabel"
-          data-testid="explorer-search"
-          (input)="onSearchInput($event)"
-        />
-        <!-- Only while there is something to clear. Unlike the row actions this
-             button is not a shortcut for anything reachable another way — with an
-             empty list and a stale query, it is the way back. -->
-        @if (hasQuery()) {
+    <!-- A stored songbook's entry list has nothing to search or sort: its order
+         is the content. The two halves are separate capabilities because the
+         virtual All songs book wants one and not the other. -->
+    @if (capabilities().canSearch || capabilities().canSort) {
+      <div class="tools">
+        @if (capabilities().canSearch) {
+          <div class="search">
+            <app-icon name="search" class="search-icon" />
+            <input
+              #searchInput
+              appField
+              type="search"
+              class="search-field"
+              [class.has-value]="hasQuery()"
+              [value]="query()"
+              [attr.aria-label]="searchLabel"
+              [attr.placeholder]="searchLabel"
+              data-testid="explorer-search"
+              (input)="onSearchInput($event)"
+            />
+            <!-- Only while there is something to clear. Unlike the row actions this
+               button is not a shortcut for anything reachable another way — with an
+               empty list and a stale query, it is the way back. -->
+            @if (hasQuery()) {
+              <button
+                appButton
+                type="button"
+                class="search-clear"
+                [isIconOnly]="true"
+                [attr.aria-label]="clearSearchLabel"
+                [appTooltip]="clearSearchLabel"
+                data-testid="explorer-search-clear"
+                (click)="clearQuery(searchInput)"
+              >
+                <app-icon name="close" />
+              </button>
+            }
+          </div>
+        }
+
+        @if (capabilities().canSort) {
+          <select
+            class="sort"
+            [value]="sort()"
+            [attr.aria-label]="sortLabel"
+            data-testid="explorer-sort"
+            (change)="onSortPick($event)"
+          >
+            @for (option of sortOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+
           <button
             appButton
             type="button"
-            class="search-clear"
             [isIconOnly]="true"
-            [attr.aria-label]="clearSearchLabel"
-            [appTooltip]="clearSearchLabel"
-            data-testid="explorer-search-clear"
-            (click)="clearQuery(searchInput)"
+            [attr.aria-label]="dirLabel()"
+            [appTooltip]="dirLabel()"
+            data-testid="explorer-sort-dir"
+            (click)="toggleDir()"
           >
-            <app-icon name="close" />
+            <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
+          </button>
+
+          <!-- A flag over the sort, not a sort of its own: "my starred songs at
+               the top of the list I am already reading". Sorting BY favourite
+               left everything else in tiebreak order, which is a list nobody
+               asked for. -->
+          <button
+            appButton
+            type="button"
+            class="star"
+            [isIconOnly]="true"
+            [class.is-favorite]="isFavoritesFirst()"
+            [attr.aria-pressed]="isFavoritesFirst()"
+            [attr.aria-label]="favoritesFirstLabel"
+            [appTooltip]="favoritesFirstLabel"
+            data-testid="explorer-favorites-first"
+            (click)="favoritesFirstChange.emit(!isFavoritesFirst())"
+          >
+            <app-icon name="favorite" [isFilled]="isFavoritesFirst()" />
           </button>
         }
       </div>
-
-      <select
-        class="sort"
-        [value]="sort()"
-        [attr.aria-label]="sortLabel"
-        data-testid="explorer-sort"
-        (change)="onSortPick($event)"
-      >
-        @for (option of sortOptions; track option.value) {
-          <option [value]="option.value">{{ option.label }}</option>
-        }
-      </select>
-
-      <button
-        appButton
-        type="button"
-        [isIconOnly]="true"
-        [attr.aria-label]="dirLabel()"
-        [appTooltip]="dirLabel()"
-        data-testid="explorer-sort-dir"
-        (click)="toggleDir()"
-      >
-        <app-icon [name]="dir() === 'asc' ? 'sortAsc' : 'sortDesc'" />
-      </button>
-    </div>
+    }
 
     @if (rows().length === 0) {
-      <app-empty-state [text]="emptyText()" data-testid="explorer-empty" />
+      <!-- **An empty list is still a destination.** The viewport is gone with
+           its rows, and with it the drop list — so an empty songbook could not
+           be dragged into at all, which is precisely the songbook most likely
+           to be. The empty state takes the job over: same handlers, and the
+           only boundary it can name is 0. -->
+      <app-empty-state
+        #dropArea
+        class="list empty"
+        cdkDropList
+        [text]="emptyText()"
+        [cdkDropListEnterPredicate]="acceptsDrop"
+        [class.is-drop-target]="isDragOver()"
+        data-testid="explorer-empty"
+        (cdkDropListEntered)="onEnterEmpty()"
+        (cdkDropListExited)="onDragLeave()"
+        (cdkDropListDropped)="onDropped($event)"
+      />
     } @else {
       <cdk-virtual-scroll-viewport
+        #dropArea
         class="list"
+        cdkDropList
         [itemSize]="ROW_HEIGHT"
+        [cdkDropListSortingDisabled]="true"
+        [cdkDropListEnterPredicate]="acceptsDrop"
+        [class.is-drop-target]="isDragOver()"
         data-testid="explorer-list"
         (scrolledIndexChange)="onScrolledIndex($event)"
+        (cdkDropListEntered)="isDragOver.set(true)"
+        (cdkDropListExited)="onDragLeave()"
+        (cdkDropListDropped)="onDropped($event)"
       >
         <div
           *cdkVirtualFor="let row of rows(); trackBy: trackById"
           class="row"
+          cdkDrag
+          [cdkDragData]="row.id"
+          [cdkDragDisabled]="!capabilities().canDrag"
+          [cdkDragStartDelay]="DRAG_START_DELAY"
           [class.is-current]="row.id === currentId()"
           [class.is-selected]="selectedIds().has(row.id)"
-          [attr.data-testid]="'song-row'"
+          [class.is-insert-before]="activeInsertAt() === row.position"
+          [class.is-insert-after]="isLastAndInsertAtEnd(row)"
+          [attr.data-testid]="rowTestid()"
           [attr.data-song-id]="row.id"
+          (cdkDragStarted)="onDragStarted()"
         >
+          <!-- **Before the checkbox, and the only draggable part of the row.**
+               First in the reading order because it is what the row IS about to
+               do, and separate from the tick because dragging and selecting are
+               different gestures that must not be reachable from one press. -->
+          @if (capabilities().canDrag) {
+            <span
+              class="grip"
+              cdkDragHandle
+              aria-hidden="true"
+              [attr.data-testid]="'drag-' + row.id"
+            >
+              <app-icon name="drag" />
+            </span>
+          }
+
           @if (capabilities().canSelect) {
             <input
               type="checkbox"
@@ -163,6 +268,15 @@ const SEARCH_DEBOUNCE_MS = 200;
             />
           }
 
+          <!-- The slot number: what repeats and reorders, and what a performer
+               is counting down when they read a set list. Only where position
+               IS the content — a library sorted by name has no "number 4". -->
+          @if (capabilities().hasOrdinals) {
+            <span class="ordinal" aria-hidden="true">{{
+              row.position + 1
+            }}</span>
+          }
+
           @if (capabilities().canFavorite) {
             <button
               appButton
@@ -172,11 +286,28 @@ const SEARCH_DEBOUNCE_MS = 200;
               [class.is-favorite]="row.isFavorite"
               [attr.aria-pressed]="row.isFavorite"
               [attr.aria-label]="favoriteRowLabel(row)"
-              [appTooltip]="favoriteRowLabel(row)"
+              [appTooltip]="row.isFavorite ? UNFAVORITE : FAVORITE"
               [attr.data-testid]="'favorite-' + row.id"
               (click)="favorited.emit(row.id)"
             >
               <app-icon name="favorite" [isFilled]="row.isFavorite" />
+            </button>
+          }
+
+          @if (row.hint) {
+            <!-- Click, not hover: touch has no hover, and this is the one row
+                 on the screen that is not what it appears to be. -->
+            <button
+              appButton
+              type="button"
+              class="hint"
+              [isIconOnly]="true"
+              [appTooltip]="row.hint"
+              appTooltipTrigger="click"
+              [attr.aria-label]="hintLabel(row)"
+              [attr.data-testid]="'hint-' + row.id"
+            >
+              <app-icon name="help" />
             </button>
           }
 
@@ -219,46 +350,97 @@ const SEARCH_DEBOUNCE_MS = 200;
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="editRowLabel(row)"
-                [appTooltip]="editRowLabel(row)"
+                [appTooltip]="EDIT"
                 [attr.data-testid]="'edit-' + row.id"
                 (click)="opened.emit(row.id)"
               >
                 <app-icon name="edit" />
               </button>
             }
-            @if (capabilities().canRename) {
+            @if (capabilities().canRename && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="renameRowLabel(row)"
-                [appTooltip]="renameRowLabel(row)"
+                [appTooltip]="RENAME"
                 [attr.data-testid]="'rename-' + row.id"
                 (click)="startRename(row)"
               >
                 <app-icon name="rename" />
               </button>
             }
-            @if (capabilities().canDuplicate) {
+            @if (capabilities().canDuplicate && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="duplicateRowLabel(row)"
-                [appTooltip]="duplicateRowLabel(row)"
+                [appTooltip]="DUPLICATE"
                 [attr.data-testid]="'duplicate-' + row.id"
                 (click)="duplicated.emit(row.id)"
               >
                 <app-icon name="duplicate" />
               </button>
             }
-            @if (capabilities().canDelete) {
+            <!-- Reorder is per ROW here, not per selection: you are already
+                 pointing at the thing you want moved, and having to tick it
+                 first (and untick it after) is a step the pointer just made.
+                 The strip above still moves a whole selection as a block.
+
+                 Gone once **several** rows are ticked, because then the two
+                 affordances disagree: the strip moves the block, these would
+                 move one row out of it. Same act, same screen, two answers —
+                 so the block's tool wins while a block exists. -->
+            @if (capabilities().canReorder && !hasBlockSelection()) {
+              @for (move of ROW_MOVES; track move.where) {
+                <button
+                  appButton
+                  type="button"
+                  class="move"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="moveRowLabel(row, move.where)"
+                  [appTooltip]="move.label"
+                  [attr.data-testid]="'row-' + move.where + '-' + row.id"
+                  (click)="onRowMove($event, row, move.where)"
+                >
+                  <app-icon [name]="move.icon" />
+                </button>
+              }
+            }
+
+            <!-- Stands down with the move buttons while a block is ticked: the
+                 strip above removes the block, and a row button would take one
+                 row out of the set you just built. -->
+            @if (
+              capabilities().canRemove &&
+              !row.isReadOnly &&
+              !hasBlockSelection()
+            ) {
+              <!-- The left arrow the transfer column uses, not a bin and no
+                   longer an X: this sends the row back across to the library,
+                   which is where the column's own remove button points. A bin
+                   would mean the song itself (CONTEXT.md §Delete vs Remove),
+                   and an X read as "dismiss" rather than "put back". -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="removeRowLabel(row)"
+                [appTooltip]="REMOVE"
+                [attr.data-testid]="'remove-' + row.id"
+                (click)="removed.emit([row.id])"
+              >
+                <app-icon name="transferOut" />
+              </button>
+            }
+            @if (capabilities().canDelete && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
                 [isIconOnly]="true"
                 [attr.aria-label]="deleteRowLabel(row)"
-                [appTooltip]="deleteRowLabel(row)"
+                [appTooltip]="DELETE"
                 [attr.data-testid]="'delete-' + row.id"
                 (click)="deleted.emit([row.id])"
               >
@@ -364,6 +546,100 @@ const SEARCH_DEBOUNCE_MS = 200;
       box-shadow: inset 3px 0 0 var(--brand);
     }
 
+    /* Where an add would land, while its button is hovered or focused — the
+       answer to "above what, exactly?". An inset shadow rather than a border,
+       so the row keeps its height and the list does not twitch as the pointer
+       moves between the buttons. */
+    .row.is-insert-before {
+      box-shadow: inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-insert-after {
+      box-shadow: inset 0 -3px 0 var(--brand);
+    }
+
+    /* Both marks can be true at once, and the later rule would drop one. */
+    .row.is-current.is-insert-before {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 3px 0 var(--brand);
+    }
+
+    .row.is-current.is-insert-after {
+      box-shadow:
+        inset 3px 0 0 var(--brand),
+        inset 0 -3px 0 var(--brand);
+    }
+
+    .ordinal {
+      flex: none;
+      min-inline-size: 2ch;
+      text-align: end;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+      /* Lining figures, so a column of numbers stays a column. */
+      font-variant-numeric: tabular-nums;
+    }
+
+    .grip {
+      --icon-size: 16px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      padding-inline: 2px;
+      color: var(--text-faint);
+      cursor: grab;
+      /* The browser's own touch gestures must not claim the press before the
+         long-press does — without this, a drag off the handle scrolls the list. */
+      touch-action: none;
+    }
+
+    .grip:active {
+      cursor: grabbing;
+    }
+
+    /* The row travelling with the pointer. It is a clone lifted out of the
+       viewport, so it carries none of the list's own layout and needs its own. */
+    .row.cdk-drag-preview {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      box-sizing: border-box;
+      padding-inline: var(--space-2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface-overlay);
+      box-shadow: var(--shadow-2);
+      opacity: 0.95;
+    }
+
+    /* Nothing on a preview is clickable, and the actions it drew mid-hover would
+       ride along under the pointer. */
+    .row.cdk-drag-preview .row-actions {
+      display: none;
+    }
+
+    /* Where the row came from, while it is away. Sorting is off inside a
+       virtualised list, so this stays put and reads as the origin. */
+    .row.cdk-drag-placeholder {
+      opacity: 0.4;
+    }
+
+    /* The empty state stands in for the viewport as the drop target, so it has
+       to occupy the same space — a message the height of one line is a target
+       you have to aim at. */
+    .list.empty {
+      flex: 1;
+      min-block-size: 0;
+    }
+
+    /* The list currently under the pointer. Deliberately quiet — the insertion
+       line is the message; this only says which of the two lists is listening. */
+    .list.is-drop-target {
+      background: var(--brand-subtle);
+    }
+
     .check {
       accent-color: var(--brand);
       inline-size: 16px;
@@ -372,6 +648,14 @@ const SEARCH_DEBOUNCE_MS = 200;
     }
 
     .star {
+      color: var(--text-faint);
+    }
+
+    .hint {
+      --icon-size: 14px;
+      block-size: 24px;
+      min-inline-size: 24px;
+      flex: none;
       color: var(--text-faint);
     }
 
@@ -426,6 +710,13 @@ const SEARCH_DEBOUNCE_MS = 200;
       min-inline-size: 0;
     }
 
+    /* Five icons on a hovered row is a lot, so the moves are tighter than the
+       actions beside them and lean on their shared shape to read as one group. */
+    .move {
+      --icon-size: 15px;
+      min-inline-size: 24px;
+    }
+
     .row-actions {
       display: flex;
       align-items: center;
@@ -464,9 +755,25 @@ export class SongExplorer {
   /** The row pane B is rendering (`SessionStore.currentSongId`). */
   readonly currentId = input<string | null>(null);
   readonly emptyText = input($localize`:@@explorer.empty:No songs yet.`);
+  /** Float starred rows to the top, whatever the sort axis is. */
+  readonly isFavoritesFirst = input(false);
+
+  /**
+   * Where an add would land, drawn as a line between rows. `null` while nothing
+   * is being previewed; `rows().length` means "after the last row".
+   */
+  readonly insertAt = input<number | null>(null);
+
+  /**
+   * The `data-testid` each row carries. Two mounts of this list can appear on
+   * one screen (the library and a songbook's entries), and a suite that selects
+   * `song-row` must be able to say which one it means.
+   */
+  readonly rowTestid = input('song-row');
 
   readonly queryChange = output<string>();
   readonly sortChange = output<SortChange>();
+  readonly favoritesFirstChange = output<boolean>();
   /** The window is within a page of its end — grow it (PRD-INFRA §3). */
   readonly loadMore = output<void>();
   /** A row was clicked: make it the current song. Does not open the editor. */
@@ -483,8 +790,100 @@ export class SongExplorer {
   readonly deleted = output<string[]>();
   readonly renamed = output<RenameChange>();
   readonly duplicated = output<string>();
+  /**
+   * Take these rows out of THIS list, leaving the songs alone — a songbook slot,
+   * never a library row. A different act from `deleted`, which destroys.
+   */
+  readonly removed = output<string[]>();
+  /** Move **one row**, named by id — never the selection (see the template). */
+  readonly moved = output<RowMoveRequest>();
+  /** A row was dropped **onto this list** — from it or from the other one. */
+  readonly dropped = output<RowDrop>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
+  protected readonly DRAG_START_DELAY = DRAG_START_DELAY;
+
+  private readonly viewport = viewChild(CdkVirtualScrollViewport);
+  /** Whatever is carrying `cdkDropList` — the viewport, or the empty state that
+   * stands in for it. The geometry a drop is measured against. */
+  private readonly dropArea = viewChild('dropArea', { read: ElementRef });
+
+  /** A drag is over this list right now — see `onPointerMove`. */
+  protected readonly isDragOver = signal(false);
+
+  /**
+   * The boundary the pointer is currently naming, while a drag is over this
+   * list. Null otherwise, which is what hands the insertion line back to the
+   * Add buttons' preview.
+   */
+  private readonly dragAt = signal<number | null>(null);
+
+  /**
+   * **One insertion line, two things that can aim it** — Epic 14's rule.
+   *
+   * The Add buttons preview a landing position on hover (`insertAt`); a drag
+   * names one with the pointer. They are the same mark and the same promise, so
+   * they are the same signal, and a drag simply outranks a hover — the pointer
+   * is busy doing the thing the hover was only describing.
+   */
+  protected readonly activeInsertAt = computed(
+    () => this.dragAt() ?? this.insertAt(),
+  );
+
+  /**
+   * Whether this list will take the drop.
+   *
+   * A bound arrow, not a method: the CDK stores the predicate once, so a
+   * prototype method would be called with the wrong `this`. The library list
+   * refuses everything — its order is a sort, and there is no "here" in it.
+   */
+  protected readonly acceptsDrop = (): boolean => this.capabilities().canDrop;
+
+  /** The four row moves, in list order: to the top, one up, one down, to the
+   * bottom — the same glyphs the strip above uses, because it is the same act. */
+  protected readonly ROW_MOVES: readonly {
+    where: RowMove;
+    icon: IconName;
+    label: string;
+  }[] = [
+    {
+      where: 'start',
+      icon: 'moveStart',
+      label: $localize`:@@explorer.moveStart:Move to the start`,
+    },
+    {
+      where: 'up',
+      icon: 'moveUp',
+      label: $localize`:@@explorer.moveUp:Move up one`,
+    },
+    {
+      where: 'down',
+      icon: 'moveDown',
+      label: $localize`:@@explorer.moveDown:Move down one`,
+    },
+    {
+      where: 'end',
+      icon: 'moveEnd',
+      label: $localize`:@@explorer.moveEnd:Move to the end`,
+    },
+  ];
+
+  /**
+   * What the **tooltips** say: the act, and nothing else.
+   *
+   * The `aria-label`s still name the row ("Rename Wonderwall"), and that is not
+   * a contradiction — a pointer user reads the tooltip beside the row it belongs
+   * to, while a screen-reader user meets the button out of that context and gets
+   * nothing from "Rename" heard fifty times. WCAG 2.5.3 asks that the visible
+   * label be contained in the accessible name, which it is.
+   */
+  protected readonly FAVORITE = $localize`:@@explorer.favorite:Add to favorites`;
+  protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
+  protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
+  protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
+  protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
+  protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
+  protected readonly DELETE = $localize`:@@explorer.delete:Delete`;
 
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
@@ -516,8 +915,9 @@ export class SongExplorer {
     { value: 'name', label: $localize`:@@explorer.sort.name:Name` },
     { value: 'created', label: $localize`:@@explorer.sort.created:Created` },
     { value: 'changed', label: $localize`:@@explorer.sort.changed:Changed` },
-    { value: 'favorite', label: $localize`:@@explorer.sort.favorite:Favorite` },
   ];
+
+  protected readonly favoritesFirstLabel = $localize`:@@explorer.favoritesFirst:Show favorites first`;
 
   protected readonly dirLabel = computed(() =>
     this.dir() === 'asc'
@@ -529,9 +929,132 @@ export class SongExplorer {
     return row.id;
   }
 
+  /** More than one row ticked — see the row-move buttons in the template. */
+  protected readonly hasBlockSelection = computed(
+    () => this.selectedIds().size > 1,
+  );
+
+  /**
+   * Move one row, and **let go of the button afterwards** when it was clicked
+   * [trap].
+   *
+   * The row actions are revealed by `:hover` *and* `:focus-within`, so a clicked
+   * button kept its row's actions on screen after the pointer left — and after a
+   * move the row under that index holds a different song, so the strip of
+   * buttons was left hanging over a row nobody was pointing at.
+   *
+   * Only for pointer clicks: `detail` is 0 when a button is activated from the
+   * keyboard, where blurring would throw the user's place away. There, focus
+   * staying put is the whole point.
+   */
+  protected onRowMove(event: MouseEvent, row: SongRow, where: RowMove): void {
+    this.moved.emit({ id: row.id, where });
+    if (event.detail > 0) {
+      (event.currentTarget as HTMLElement | null)?.blur();
+    }
+  }
+
+  /** "After the end" has no row of its own, so the last row wears the line. */
+  protected isLastAndInsertAtEnd(row: SongRow): boolean {
+    const at = this.activeInsertAt();
+    return at !== null && at === this.rows().length && row.position === at - 1;
+  }
+
+  /**
+   * Where the pointer is, in **boundaries between rows**.
+   *
+   * Tracked on the document rather than from the dragged row's own
+   * `cdkDragMoved`, because the two are not the same component: a drag that
+   * starts in the library is reported by the library's list, and the only thing
+   * that can turn a pointer position into an index is the list it is over.
+   *
+   * Rows are a fixed height (the virtual viewport requires it), so this is
+   * arithmetic rather than measurement — and it works for a row that has never
+   * been rendered, which is the whole reason a virtualised list cannot lean on
+   * the CDK's own DOM-order sorting.
+   */
+  protected onPointerMove(event: PointerEvent): void {
+    if (!this.isDragOver()) {
+      return;
+    }
+    const area = this.dropArea();
+    if (!area) {
+      return;
+    }
+    const box = (area.nativeElement as HTMLElement).getBoundingClientRect();
+    // Off the list entirely — including over the *other* pane, which the CDK
+    // leaves in this container's charge because it refuses the drop. Forgetting
+    // the boundary is what makes letting go out there mean nothing, rather than
+    // a reorder at whatever number the pointer last passed over.
+    if (
+      event.clientX < box.left ||
+      event.clientX > box.right ||
+      event.clientY < box.top ||
+      event.clientY > box.bottom
+    ) {
+      this.dragAt.set(null);
+      return;
+    }
+    const viewport = this.viewport();
+    const y = event.clientY - box.top + (viewport?.measureScrollOffset() ?? 0);
+    const at = Math.round(y / ROW_HEIGHT);
+    this.dragAt.set(Math.min(Math.max(at, 0), this.rows().length));
+  }
+
+  /** An empty list has one boundary, and no pointer position can change it. */
+  protected onEnterEmpty(): void {
+    this.isDragOver.set(true);
+    this.dragAt.set(0);
+  }
+
+  /**
+   * A row of **this** list started moving.
+   *
+   * The CDK announces `entered` only when a drag crosses into a container, so a
+   * reorder within one list would never be announced at all — the item was
+   * already there. This is that missing edge.
+   */
+  protected onDragStarted(): void {
+    if (this.capabilities().canDrop) {
+      this.isDragOver.set(true);
+    }
+  }
+
+  /** The drag went elsewhere, or ended. Either way this list is no longer
+   * promising anything, so the line goes back to the Add buttons. */
+  protected onDragLeave(): void {
+    this.isDragOver.set(false);
+    this.dragAt.set(null);
+  }
+
+  /**
+   * Report the drop and **let the presenter act** — a drop is a request, exactly
+   * as a row's move button is. It resolves to the same commands the buttons
+   * call, so a drag and a press can never disagree about what happened.
+   *
+   * Dropped with no tracked boundary (a press that never moved) is not a move,
+   * and silently landing it at 0 would reorder the list for a mis-click.
+   */
+  protected onDropped(event: CdkDragDrop<unknown>): void {
+    const at = this.dragAt();
+    this.onDragLeave();
+    if (at === null) {
+      return;
+    }
+    this.dropped.emit({
+      id: event.item.data as string,
+      isSameList: event.previousContainer === event.container,
+      at,
+    });
+  }
+
   // Every row action names its row. "Rename" repeated down a list of 50 rows
   // tells a screen-reader user which button they are on and nothing about which
   // song it would rename (PRD-UI-SHELL.md §5.2).
+  protected hintLabel(row: SongRow): string {
+    return $localize`:@@explorer.about:About ${row.name}:name:`;
+  }
+
   protected selectRowLabel(row: SongRow): string {
     return $localize`:@@explorer.selectRow:Select ${row.name}:name:`;
   }
@@ -556,6 +1079,22 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  /** The accessible name: the act **and** the row it would act on. */
+  protected moveRowLabel(row: SongRow, where: RowMove): string {
+    return where === 'start'
+      ? $localize`:@@explorer.moveRowStart:Move ${row.name}:name: to the start`
+      : where === 'up'
+        ? $localize`:@@explorer.moveRowUp:Move ${row.name}:name: up one`
+        : where === 'down'
+          ? $localize`:@@explorer.moveRowDown:Move ${row.name}:name: down one`
+          : $localize`:@@explorer.moveRowEnd:Move ${row.name}:name: to the end`;
+  }
+
+  /** Names where it is removed FROM — the load-bearing half of the sentence. */
+  protected removeRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.removeRow:Remove ${row.name}:name: from this songbook`;
   }
 
   protected onSearchInput(event: Event): void {

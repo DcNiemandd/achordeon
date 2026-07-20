@@ -19,6 +19,7 @@ import {
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import {
+  SelectionStatus,
   SongExplorer,
   toExplorerSort,
   toExplorerSortDir,
@@ -51,6 +52,7 @@ import {
     BlankPage,
     SplitPane,
     SongExplorer,
+    SelectionStatus,
     SongRender,
     Button,
     Dialog,
@@ -59,9 +61,9 @@ import {
   ],
   template: `
     <app-split-pane
-      [ratio]="ui.splitRatio()"
+      [ratio]="ui.splitRatio('songs')"
       [hasTwoPanes]="!viewport.isCompact()"
-      (ratioChange)="ui.setSplitRatio($event)"
+      (ratioChange)="ui.setSplitRatio('songs', $event)"
     >
       <div pane-a class="pane">
         <app-action-bar [title]="title">
@@ -85,11 +87,13 @@ import {
                disabled icons costs a little clarity and buys back a stable list,
                which is the better trade while you are picking rows. -->
           <div class="bulk" data-testid="explorer-bulk">
-            @if (presenter.selectedIds().size > 0) {
-              <span class="bulk-count" data-testid="explorer-bulk-count">
-                {{ selectionLabel() }}
-              </span>
-            }
+            <!-- The same control the songbook builder mounts, in the same place
+                 (the end of the action row): both lists carry a selection, so
+                 both say so identically. -->
+            <app-selection-status
+              [count]="presenter.selectedIds().size"
+              (cleared)="presenter.clearSelection()"
+            />
 
             <button
               appButton
@@ -119,19 +123,6 @@ import {
             >
               <app-icon name="delete" />
             </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!hasSelection()"
-              [attr.aria-label]="bulkClearLabel"
-              [appTooltip]="bulkClearLabel"
-              data-testid="explorer-bulk-clear"
-              (click)="presenter.clearSelection()"
-            >
-              <app-icon name="close" />
-            </button>
           </div>
         </app-action-bar>
 
@@ -141,11 +132,13 @@ import {
           [query]="query()"
           [sort]="sortKey()"
           [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+          [isFavoritesFirst]="isFavoritesFirst()"
           [selectedIds]="presenter.selectedIds()"
           [currentId]="presenter.currentId()"
           [emptyText]="emptyText()"
           (queryChange)="presenter.setQuery($event)"
           (sortChange)="presenter.setSort($event)"
+          (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
           (loadMore)="presenter.loadMore()"
           (activated)="presenter.activate($event)"
           (opened)="presenter.open($event)"
@@ -249,11 +242,10 @@ import {
       margin-inline-start: auto;
     }
 
-    .bulk-count {
+    /* Ahead of the icon buttons, so the count reads before the actions it
+       describes. It renders nothing at all when the selection is empty. */
+    .bulk app-selection-status {
       margin-inline-end: var(--space-1);
-      font-size: var(--text-sm);
-      color: var(--brand);
-      white-space: nowrap;
     }
 
     .warn {
@@ -305,6 +297,7 @@ export class SongsPage {
   readonly q = input<string | undefined>();
   readonly sort = input<string | undefined>();
   readonly dir = input<string | undefined>();
+  readonly fav = input<string | undefined>();
 
   /** The params as the rest of the page may believe them: narrowed, defaulted. */
   protected readonly query = computed(() => this.q() ?? '');
@@ -312,14 +305,10 @@ export class SongsPage {
     () => toExplorerSort(this.sort()) ?? 'name',
   );
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
+  protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
 
   protected readonly hasSelection = computed(
     () => this.presenter.selectedIds().size > 0,
-  );
-
-  protected readonly selectionLabel = computed(
-    () =>
-      $localize`:@@explorer.selected:${this.presenter.selectedIds().size}:count: selected`,
   );
 
   protected readonly title = $localize`:@@songs.title:Songs`;
@@ -331,7 +320,6 @@ export class SongsPage {
       : $localize`:@@songs.bulkFavorite:Favorite the selected songs`,
   );
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
-  protected readonly bulkClearLabel = $localize`:@@songs.bulkClear:Clear the selection`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
   protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
@@ -372,6 +360,7 @@ export class SongsPage {
         query: this.query(),
         sort: this.sortKey(),
         dir: this.sortDir(),
+        isFavoritesFirst: this.isFavoritesFirst(),
       });
     });
 

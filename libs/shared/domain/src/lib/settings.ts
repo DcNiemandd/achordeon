@@ -50,8 +50,10 @@ export const SETTINGS = {
   },
   chordSize: {
     default: 1 as number,
-    scopes: ['song'],
-  },
+    scopes: ['songbook', 'song'],
+  }, // songbook scope alongside chordColor: CONTEXT.md §Songbook says a book
+  // "can restyle the chords of all its songs — chord color, chord size and font".
+  // A book that could re-colour chords but not resize them was half a theme.
   // font: {
   //   default: 'serif' as string,
   //   scopes: ['songbook', 'song'],

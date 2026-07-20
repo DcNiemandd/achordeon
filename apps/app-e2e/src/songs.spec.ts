@@ -286,6 +286,31 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row').first()).toContainText('Zeta');
   });
 
+  // A flag over the sort, not a sort of its own: sorting BY favourite left
+  // everything else in tiebreak order, which is a list nobody asked for.
+  test('favorites first floats starred songs without changing the sort', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Yesterday');
+    await createSong(page, 'Zeta');
+    const rows = page.getByTestId('song-row');
+    const last = await rows.last().getAttribute('data-song-id');
+
+    await page.getByTestId(`favorite-${last}`).click();
+    await page.getByTestId('explorer-favorites-first').click();
+
+    await expect(rows.first()).toContainText('Zeta');
+    // The rest keep the name order they had.
+    await expect(rows.nth(1)).toContainText('Alpha');
+    await expect(rows.nth(2)).toContainText('Yesterday');
+
+    // It rides in the URL, so a reload lands on the same list.
+    await expect(page).toHaveURL(/[?&]fav=1/);
+    await page.reload();
+    await expect(rows.first()).toContainText('Zeta');
+  });
+
   // The bulk actions are always mounted and always in the same place — that is
   // the point of them being on the action row rather than in a bar that appears.
   // What a selection changes is whether they are enabled, not whether they exist.
@@ -297,18 +322,23 @@ test.describe('song explorer', () => {
     const rows = page.getByTestId('song-row');
     const first = await rows.first().getAttribute('data-song-id');
 
-    const clear = page.getByTestId('explorer-bulk-clear');
-    await expect(clear).toBeDisabled();
+    const del = page.getByTestId('explorer-bulk-delete');
+    const clear = page.getByTestId('selection-clear');
+    await expect(del).toBeDisabled();
+    // The count and its Clear are not there at all until something is picked.
+    await expect(clear).toHaveCount(0);
     const before = await rows.first().boundingBox();
 
     await page.getByTestId(`select-${first}`).check();
-    await expect(clear).toBeEnabled();
-    await expect(page.getByTestId('explorer-bulk-count')).toContainText('1');
+    await expect(del).toBeEnabled();
+    // The count rides the Clear button — one control, not a label beside it.
+    await expect(clear).toContainText('1');
     // The row did not budge when the checkbox was ticked.
     expect((await rows.first().boundingBox())?.y).toBe(before?.y);
 
     await clear.click();
-    await expect(clear).toBeDisabled();
+    await expect(del).toBeDisabled();
+    await expect(clear).toHaveCount(0);
   });
 
   test('bulk favorite sets, never toggles', async ({ page }) => {

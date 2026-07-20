@@ -21,13 +21,8 @@ function song(id: string, over: Partial<Song> = {}): Song {
 const config: PagingConfig<Song> = {
   searchTiers: (s) => [`${s.cache.title} ${s.cache.subtitle}`, s.content],
   sortValue: (s, key: SortKey) =>
-    key === 'name'
-      ? s.name
-      : key === 'created'
-        ? s.createdAt
-        : key === 'changed'
-          ? s.updatedAt
-          : s.favorite,
+    key === 'name' ? s.name : key === 'created' ? s.createdAt : s.updatedAt,
+  isFavorite: (s) => s.favorite,
 };
 
 describe('pageRecords', () => {
@@ -60,15 +55,51 @@ describe('pageRecords', () => {
     ).toEqual(['b', 'a', 'c']);
   });
 
-  it('sorts favorites first by default', () => {
+  // A flag OVER the sort, not an axis: both groups keep the chosen order.
+  it('floats favorites above the sort without disturbing it', () => {
     const rows = [
-      song('a', { favorite: false }),
-      song('b', { favorite: true }),
-      song('c', { favorite: false }),
+      song('a', { name: 'Alpha', favorite: false }),
+      song('b', { name: 'Bravo', favorite: true }),
+      song('c', { name: 'Charlie', favorite: false }),
+      song('d', { name: 'Delta', favorite: true }),
+    ];
+    const page = pageRecords(
+      rows,
+      { limit: 10, sort: 'name', favoritesFirst: true },
+      config,
+    );
+    expect(page.rows.map((s) => s.id)).toEqual(['b', 'd', 'a', 'c']);
+  });
+
+  it('leaves the order alone when favorites-first is off', () => {
+    const rows = [
+      song('a', { name: 'Alpha', favorite: false }),
+      song('b', { name: 'Bravo', favorite: true }),
     ];
     expect(
-      pageRecords(rows, { limit: 10, sort: 'favorite' }, config).rows[0].id,
-    ).toBe('b');
+      pageRecords(rows, { limit: 10, sort: 'name' }, config).rows.map(
+        (s) => s.id,
+      ),
+    ).toEqual(['a', 'b']);
+  });
+
+  // A songbook has no favourite flag, so the request is simply not answerable.
+  it('ignores favorites-first for an entity that has no favorites', () => {
+    const plain: PagingConfig<Song> = {
+      searchTiers: config.searchTiers,
+      sortValue: config.sortValue,
+    };
+    const rows = [
+      song('a', { name: 'Alpha', favorite: false }),
+      song('b', { name: 'Bravo', favorite: true }),
+    ];
+    expect(
+      pageRecords(
+        rows,
+        { limit: 10, sort: 'name', favoritesFirst: true },
+        plain,
+      ).rows.map((s) => s.id),
+    ).toEqual(['a', 'b']);
   });
 
   it('honours an explicit direction override', () => {

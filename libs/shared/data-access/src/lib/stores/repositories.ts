@@ -29,13 +29,8 @@ export const songPagingConfig: PagingConfig<Song> = {
     s.content,
   ],
   sortValue: (s, key: SortKey) =>
-    key === 'name'
-      ? s.name
-      : key === 'created'
-        ? s.createdAt
-        : key === 'changed'
-          ? s.updatedAt
-          : s.favorite,
+    key === 'name' ? s.name : key === 'created' ? s.createdAt : s.updatedAt,
+  isFavorite: (s) => s.favorite,
 };
 
 /** Songbook search: metadata only (name + title-page fields); no lyric tier. */

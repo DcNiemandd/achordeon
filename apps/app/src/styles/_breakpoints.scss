@@ -2,11 +2,17 @@
 // Spec: PRD-UI-SHELL.md §6 (single-sourced breakpoint)
 //
 // This file is the ONE declaration. It drives the media-query mixins below AND
-// the `--bp-compact` custom property emitted in `_tokens.scss`, which the
-// Viewport service reads back off `:root`. Change $bp-compact here and CSS + TS
-// move together — there is no second place to forget.
+// the `--bp-*` custom properties emitted in `_tokens.scss`, which the Viewport
+// service reads back off `:root`. Change a value here and CSS + TS move
+// together — there is no second place to forget.
 
 $bp-compact: 1200px;
+
+/// Below this, a two-pane module stacks its panes vertically instead of putting
+/// them side by side. Not the same question as `$bp-compact`, which asks whether
+/// the SHELL is compact (hamburger, bottom bar); this asks whether two lists can
+/// sit beside each other and still be usable.
+$bp-stack: 500px;
 
 /// Below the breakpoint: hamburger + tabs, one pane at a time.
 @mixin compact {
@@ -18,6 +24,13 @@ $bp-compact: 1200px;
 /// At or above the breakpoint: rail + split.
 @mixin roomy {
   @media (min-width: $bp-compact) {
+    @content;
+  }
+}
+
+/// Too narrow for two panes side by side: stack them.
+@mixin stacked {
+  @media (max-width: #{$bp-stack - 0.02px}) {
     @content;
   }
 }

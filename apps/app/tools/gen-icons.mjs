@@ -86,6 +86,28 @@ const ICONS = {
   sortAsc: 'arrow-up-narrow-wide',
   sortDesc: 'arrow-down-narrow-wide',
   warning: 'triangle-alert',
+  // songbook entry reordering AND adding (Epic 6). One family for both, because
+  // both answer the same question — *where in the list* — and a user who has
+  // learnt "arrow into a line = the end" should not learn it twice.
+  //
+  // Chevrons for one step, not the transpose arrows: those are spoken for by a
+  // musical act. An arrow meeting a LINE for the ends, not a double chevron:
+  // the line is the end of the list, which is the thing being pointed at; two
+  // chevrons only say "more of the same direction".
+  moveUp: 'chevron-up',
+  moveDown: 'chevron-down',
+  moveStart: 'arrow-up-to-line',
+  moveEnd: 'arrow-down-to-line',
+  // The crossing itself: right is into the songbook, left is back out of it.
+  // The Add buttons carry one of these with the position mark badged onto it,
+  // the same composition the editor's transpose buttons use — direction first,
+  // then which end of the list.
+  transferIn: 'arrow-right',
+  transferOut: 'arrow-left',
+  // The drag handle (Epic 14). A grip, not a move-cross: the cross says "this
+  // whole thing is draggable", which is exactly what we are not saying — the row
+  // is a click target, and only this one strip of it starts a drag.
+  drag: 'grip-vertical',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */
