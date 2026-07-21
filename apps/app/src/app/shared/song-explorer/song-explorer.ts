@@ -365,12 +365,6 @@ const ARM_MOVE_TOLERANCE = 8;
               @if (row.title) {
                 <span class="title">{{ row.title }}</span>
               }
-              <!-- The subtitle sits under the title, the same order they carry
-                   on the page. Only when there is one — a song without a
-                   subtitle stays a two-line row. -->
-              @if (row.subtitle) {
-                <span class="subtitle">{{ row.subtitle }}</span>
-              }
             </button>
           }
 
@@ -724,7 +718,7 @@ const ARM_MOVE_TOLERANCE = 8;
     /* The CDK content wrapper is position:absolute, so at width:auto it
        shrink-wraps to the widest row's max-content — the list then scrolls
        sideways and a row's actions slide off a narrow screen. Capping it at the
-       viewport width makes rows shrink to fit instead, so name/title/subtitle
+       viewport width makes rows shrink to fit instead, so the name and title
        truncate (below) rather than pushing the row wide. This app must never
        overflow horizontally (asserted in the e2e overflow suite). */
     :host ::ng-deep .cdk-virtual-scroll-content-wrapper {
@@ -951,8 +945,7 @@ const ARM_MOVE_TOLERANCE = 8;
     }
 
     .name,
-    .title,
-    .subtitle {
+    .title {
       max-inline-size: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -963,14 +956,6 @@ const ARM_MOVE_TOLERANCE = 8;
       font-size: var(--text-sm);
       color: var(--text);
     }
-    /* Under the title, and italic so the two faint sub-lines are told apart at
-       a glance rather than reading as one wrapped string. */
-    .subtitle {
-      font-size: var(--text-xs);
-      font-style: italic;
-      color: var(--text-faint);
-    }
-
     .title {
       font-size: var(--text-xs);
       color: var(--text-faint);
