@@ -31,26 +31,30 @@ interface FormatOption {
       data-testid="download-dialog"
       (closed)="closed.emit()"
     >
-      <!-- **Each option is its own button, and pressing it downloads.** A radio
-           list plus a Download button asks for two clicks to express one
-           decision, and puts the answer ("PDF") in one place and the verb
-           ("Download") in another. There is nothing to confirm here: the formats
-           are alternatives, not settings. -->
+      <!-- Each format is a row: **its description on the left, its Download
+           button on the right.** The formats are alternatives, not settings, so
+           there is nothing to confirm — the button that downloads sits beside
+           the text that explains it, and the choice is one click. -->
       <div class="options">
         @for (option of options(); track option.value) {
-          <button
-            appButton
-            type="button"
-            class="option"
-            [attr.data-testid]="'download-' + option.value"
-            (click)="chosen.emit(option.value)"
-          >
-            <app-icon name="download" class="mark" />
-            <span class="label">
+          <div class="option">
+            <div class="text">
               <span class="name">{{ option.label }}</span>
               <span class="hint">{{ option.hint }}</span>
-            </span>
-          </button>
+            </div>
+            <button
+              appButton
+              type="button"
+              variant="primary"
+              class="go"
+              [attr.aria-label]="downloadOptionLabel(option)"
+              [attr.data-testid]="'download-' + option.value"
+              (click)="chosen.emit(option.value)"
+            >
+              <app-icon name="download" />
+              {{ downloadLabel }}
+            </button>
+          </div>
         }
       </div>
 
@@ -72,38 +76,37 @@ interface FormatOption {
     .options {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
     }
 
-    /* Full width and left-aligned: these are choices in a list, not a row of
-       equal actions, and the hint under each has to be readable as prose. */
+    /* Two columns: the text takes the room (flex: 1), the button sits at the
+       end. Top-aligned, so a two-line hint does not shove the button down. */
     .option {
       display: flex;
       align-items: flex-start;
-      gap: var(--space-2);
-      inline-size: 100%;
-      padding: var(--space-2);
-      text-align: start;
+      gap: var(--space-3);
     }
 
-    .mark {
-      --icon-size: 18px;
-      flex: none;
-      margin-block-start: 2px;
-      color: var(--brand);
-    }
-
-    .label {
+    .text {
+      flex: 1;
+      min-inline-size: 0;
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
+    .name {
+      font-weight: 500;
+    }
+
     .hint {
       color: var(--text-muted);
       font-size: var(--text-xs);
-      font-weight: 400;
       white-space: normal;
+    }
+
+    .go {
+      flex: none;
     }
   `,
 })
@@ -159,4 +162,11 @@ export class DownloadDialog {
   );
 
   protected readonly cancelLabel = $localize`:@@download.cancel:Cancel`;
+  protected readonly downloadLabel = $localize`:@@download.go:Download`;
+
+  /** The button repeats "Download" for every row, so its accessible name says
+   * which format — the visible word alone would read "Download" five times. */
+  protected downloadOptionLabel(option: FormatOption): string {
+    return $localize`:@@download.optionLabel:Download as ${option.label}:format:`;
+  }
 }

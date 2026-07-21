@@ -169,6 +169,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           @if (presenter.isDownloadOpen()) {
             <app-songbook-download-dialog
               [name]="presenter.name()"
+              [initial]="presenter.printOptions()"
               (chosen)="presenter.download($event)"
               (closed)="presenter.cancelDownload()"
             />

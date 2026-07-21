@@ -19,6 +19,7 @@ export * from './lib/transfer/file-io';
 export * from './lib/transfer/embedded-metadata';
 export * from './lib/transfer/export-service';
 export * from './lib/transfer/import-service';
+export * from './lib/transfer/backup-service';
 export * from './lib/stores/repositories';
 export * from './lib/stores/song-store';
 export * from './lib/stores/songbook-store';

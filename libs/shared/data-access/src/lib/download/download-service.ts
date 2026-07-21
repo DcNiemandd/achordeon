@@ -48,8 +48,15 @@ export type MultiFormat = 'zip-png' | 'zip-pdf' | 'pdf';
 export type PageNumberPosition =
   | 'bottom-center'
   | 'bottom-right'
+  | 'bottom-left'
   | 'top-center'
-  | 'top-right';
+  | 'top-right'
+  | 'top-left';
+
+/** The title-page layouts. Only `classic` is drawn today (the render centres a
+ * title block on the page); the others are named so the dialog can offer them
+ * and are honoured as `classic` until each lands. */
+export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 export interface SongbookPdfOptions {
   readonly pageSize?: PageSizeName;
@@ -58,6 +65,7 @@ export interface SongbookPdfOptions {
    * replacing it — the padding is inside the page the user shaped (§4.11). */
   readonly marginMm?: number;
   readonly hasTitlePage?: boolean;
+  readonly titlePageVariant?: TitlePageVariant;
   readonly hasSummary?: boolean;
   readonly hasPageNumbers?: boolean;
   readonly pageNumberPosition?: PageNumberPosition;
@@ -68,6 +76,7 @@ const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
   isLandscape: false,
   marginMm: 10,
   hasTitlePage: true,
+  titlePageVariant: 'classic',
   hasSummary: false,
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
@@ -398,17 +407,17 @@ export class DownloadService {
   ): void {
     const total = doc.getNumberOfPages();
     const isTop = position.startsWith('top');
+    const isLeft = position.endsWith('left');
     const isRight = position.endsWith('right');
     const y = isTop ? margin : page.height - margin / 2;
-    const x = isRight ? page.width - margin : page.width / 2;
+    const x = isLeft ? margin : isRight ? page.width - margin : page.width / 2;
+    const align = isLeft ? 'left' : isRight ? 'right' : 'center';
 
     doc.setFont(BODY_FAMILY, 'normal');
     for (let sheet = frontMatter + 1; sheet <= total; sheet++) {
       doc.setPage(sheet);
       doc.setFontSize(9);
-      doc.text(String(sheet - frontMatter), x, y, {
-        align: isRight ? 'right' : 'center',
-      });
+      doc.text(String(sheet - frontMatter), x, y, { align });
     }
   }
 }

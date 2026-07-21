@@ -18,7 +18,7 @@ import {
   type Songbook,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
-import type { SongbookPdfChoice } from '../shared/transfer';
+import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
 const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
@@ -54,6 +54,10 @@ export class SongbooksPresenter {
   private readonly downloads = inject(DownloadService);
   private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
+  private readonly print = inject(PrintOptionsStore);
+
+  /** The last-used print options, for the download dialog to open on (#3). */
+  readonly printOptions = this.print.options;
   private readonly exporter = inject(ExportService);
   private readonly router = inject(Router);
 
@@ -283,6 +287,7 @@ export class SongbooksPresenter {
     const id = this._downloadId();
     this._downloadId.set(null);
     if (!id || !this.isTransferable(id)) return;
+    this.print.save(choice); // remember it for next time (#3)
     await this.busy(() => this.downloads.downloadSongbook(id, choice));
   }
 

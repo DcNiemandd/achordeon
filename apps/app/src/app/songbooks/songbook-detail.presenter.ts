@@ -26,7 +26,7 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
-import type { SongbookPdfChoice } from '../shared/transfer';
+import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
 import {
   insertEntries,
   insertionIndex,
@@ -55,7 +55,11 @@ export class SongbookDetailPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
+
+  /** The last-used print options, for the download dialog to open on (#3). */
+  readonly printOptions = this.print.options;
   private readonly route = inject(ActivatedRoute);
 
   /** The book being built, or null for the virtual one (and while loading). */
@@ -690,6 +694,7 @@ export class SongbookDetailPresenter {
   async download(choice: SongbookPdfChoice): Promise<void> {
     this._isDownloadOpen.set(false);
     if (!this.isTransferable()) return;
+    this.print.save(choice); // remember it for next time (#3)
     await this.busy(() => this.downloads.downloadSongbook(this._id(), choice));
   }
 

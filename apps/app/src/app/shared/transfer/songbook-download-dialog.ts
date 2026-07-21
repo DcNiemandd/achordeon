@@ -11,25 +11,26 @@ import {
   Component,
   computed,
   input,
+  linkedSignal,
   output,
-  signal,
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
 import type {
   PageNumberPlace,
   PageSizeChoice,
   SongbookPdfChoice,
+  TitlePageVariant,
 } from './transfer-model';
+import { DEFAULT_PRINT_OPTIONS } from './print-options-store';
 
-const DEFAULTS: SongbookPdfChoice = {
-  pageSize: 'A4',
-  isLandscape: false,
-  marginMm: 10,
-  hasTitlePage: true,
-  hasSummary: false,
-  hasPageNumbers: true,
-  pageNumberPosition: 'bottom-center',
-};
+/** The title-page layouts the dialog offers. Only `classic` renders today; the
+ * rest are declared so the choice is real and land later — marked below so the
+ * user is not misled into thinking a stub already works. */
+interface VariantOption {
+  readonly value: TitlePageVariant;
+  readonly label: string;
+  readonly isReady: boolean;
+}
 
 @Component({
   selector: 'app-songbook-download-dialog',
@@ -93,6 +94,26 @@ const DEFAULTS: SongbookPdfChoice = {
           <span class="name">{{ titlePageLabel }}</span>
         </label>
 
+        <!-- The layout only matters while there is a title page. A stub for now:
+             only "Classic" renders, the rest say so and land later. -->
+        @if (choice().hasTitlePage) {
+          <label class="row">
+            <span class="name">{{ variantLabel }}</span>
+            <select
+              class="control"
+              [value]="choice().titlePageVariant"
+              data-testid="pdf-title-variant"
+              (change)="patch({ titlePageVariant: variant($event) })"
+            >
+              @for (option of variants; track option.value) {
+                <option [value]="option.value" [disabled]="!option.isReady">
+                  {{ option.label }}
+                </option>
+              }
+            </select>
+          </label>
+        }
+
         <label class="row is-toggle">
           <input
             type="checkbox"
@@ -125,8 +146,10 @@ const DEFAULTS: SongbookPdfChoice = {
               (change)="patch({ pageNumberPosition: place($event) })"
             >
               <option value="bottom-center">{{ bottomCenterLabel }}</option>
+              <option value="bottom-left">{{ bottomLeftLabel }}</option>
               <option value="bottom-right">{{ bottomRightLabel }}</option>
               <option value="top-center">{{ topCenterLabel }}</option>
+              <option value="top-left">{{ topLeftLabel }}</option>
               <option value="top-right">{{ topRightLabel }}</option>
             </select>
           </label>
@@ -195,11 +218,17 @@ const DEFAULTS: SongbookPdfChoice = {
 })
 export class SongbookDownloadDialog {
   readonly name = input.required<string>();
+  /** The options the dialog opens on — the last-used set, so a person's usual
+   * paper is not re-chosen every time (persisted by `PrintOptionsStore`). */
+  readonly initial = input<SongbookPdfChoice>(DEFAULT_PRINT_OPTIONS);
 
   readonly chosen = output<SongbookPdfChoice>();
   readonly closed = output<void>();
 
-  protected readonly choice = signal<SongbookPdfChoice>(DEFAULTS);
+  // linkedSignal, not a plain signal seeded once: `initial` may arrive after
+  // construction (the store hydrates async-ish), and the dialog should reflect
+  // it. Local edits win until `initial` itself changes.
+  protected readonly choice = linkedSignal(() => this.initial());
 
   protected readonly title = computed(
     () => $localize`:@@songbookDownload.title:Download “${this.name()}:name:”`,
@@ -223,11 +252,17 @@ export class SongbookDownloadDialog {
     return this.value(event) as PageNumberPlace;
   }
 
+  protected variant(event: Event): TitlePageVariant {
+    return this.value(event) as TitlePageVariant;
+  }
+
   protected number(event: Event): number {
     const raw = Number((event.target as HTMLInputElement).value);
     // A margin is a length, and a negative one is not a smaller page — it is a
     // song printed off the edge of the paper.
-    return Number.isFinite(raw) ? Math.max(raw, 0) : DEFAULTS.marginMm;
+    return Number.isFinite(raw)
+      ? Math.max(raw, 0)
+      : DEFAULT_PRINT_OPTIONS.marginMm;
   }
 
   protected checked(event: Event): boolean {
@@ -240,13 +275,43 @@ export class SongbookDownloadDialog {
   protected readonly landscapeLabel = $localize`:@@songbookDownload.landscape:Landscape`;
   protected readonly marginLabel = $localize`:@@songbookDownload.margin:Margin (mm)`;
   protected readonly titlePageLabel = $localize`:@@songbookDownload.titlePage:Title page`;
+  protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
   protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
   protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
   protected readonly positionLabel = $localize`:@@songbookDownload.position:Number position`;
   protected readonly bottomCenterLabel = $localize`:@@songbookDownload.bottomCenter:Bottom, centred`;
+  protected readonly bottomLeftLabel = $localize`:@@songbookDownload.bottomLeft:Bottom left`;
   protected readonly bottomRightLabel = $localize`:@@songbookDownload.bottomRight:Bottom right`;
   protected readonly topCenterLabel = $localize`:@@songbookDownload.topCenter:Top, centred`;
+  protected readonly topLeftLabel = $localize`:@@songbookDownload.topLeft:Top left`;
   protected readonly topRightLabel = $localize`:@@songbookDownload.topRight:Top right`;
+
+  // Only `classic` renders today; the rest are named so the choice is real and
+  // land later. The "(soon)" is on the label so a screen-reader user hears it,
+  // and the option is disabled so it cannot be picked meanwhile.
+  private readonly soon = $localize`:@@songbookDownload.soon:(soon)`;
+  protected readonly variants: readonly VariantOption[] = [
+    {
+      value: 'classic',
+      label: $localize`:@@songbookDownload.variant.classic:Classic`,
+      isReady: true,
+    },
+    {
+      value: 'centered',
+      label: `${$localize`:@@songbookDownload.variant.centered:Centered`} ${this.soon}`,
+      isReady: false,
+    },
+    {
+      value: 'banner',
+      label: `${$localize`:@@songbookDownload.variant.banner:Banner`} ${this.soon}`,
+      isReady: false,
+    },
+    {
+      value: 'minimal',
+      label: `${$localize`:@@songbookDownload.variant.minimal:Minimal`} ${this.soon}`,
+      isReady: false,
+    },
+  ];
   protected readonly fitNote = $localize`:@@songbookDownload.fitNote:Each song keeps its own shape and is scaled to fit the page.`;
   protected readonly cancelLabel = $localize`:@@songbookDownload.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@songbookDownload.confirm:Download`;

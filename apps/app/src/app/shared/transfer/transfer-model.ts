@@ -21,8 +21,14 @@ export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
 export type PageNumberPlace =
   | 'bottom-center'
   | 'bottom-right'
+  | 'bottom-left'
   | 'top-center'
-  | 'top-right';
+  | 'top-right'
+  | 'top-left';
+
+/** A title-page layout. Only `classic` renders today; the rest are declared so
+ * the dialog can offer them, and land later (Epic 7 follow-up stub). */
+export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 /** Everything the songbook PDF dialog decides. */
 export interface SongbookPdfChoice {
@@ -30,6 +36,8 @@ export interface SongbookPdfChoice {
   readonly isLandscape: boolean;
   readonly marginMm: number;
   readonly hasTitlePage: boolean;
+  /** Which title-page layout. A stub beyond `classic` for now. */
+  readonly titlePageVariant: TitlePageVariant;
   readonly hasSummary: boolean;
   readonly hasPageNumbers: boolean;
   readonly pageNumberPosition: PageNumberPlace;

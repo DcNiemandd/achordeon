@@ -115,6 +115,7 @@ import {
     @if (presenter.isDownloadOpen()) {
       <app-songbook-download-dialog
         [name]="presenter.downloadName()"
+        [initial]="presenter.printOptions()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />

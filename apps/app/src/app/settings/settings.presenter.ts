@@ -1,9 +1,16 @@
 // Settings presenter — Epic 13
 // Spec: PRD-UI-SHELL.md §3 (the seam)
 
-import { Injectable, computed, inject } from '@angular/core';
-import { SettingsStore, type ThemeChoice } from '@achordeon/shared/data-access';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import {
+  BackupService,
+  SettingsStore,
+  type ThemeChoice,
+} from '@achordeon/shared/data-access';
 import { UiStore } from '../shared/layout';
+
+/** How a restore ended, for the page to say so. */
+export type RestoreOutcome = 'done' | 'failed';
 
 /**
  * The only thing in this feature that knows the business layer exists.
@@ -21,10 +28,18 @@ export class SettingsPresenter {
    * the seam the presenter exists to hide.
    */
   private readonly ui = inject(UiStore);
+  private readonly backups = inject(BackupService);
 
   readonly theme = this.store.theme;
   readonly language = this.store.language;
   readonly isSplitShared = this.ui.isSplitShared;
+
+  private readonly _isBusy = signal(false);
+  private readonly _restore = signal<RestoreOutcome | null>(null);
+  /** A backup or restore is running — the buttons say so and stand down. */
+  readonly isBusy = this._isBusy.asReadonly();
+  /** The last restore's outcome, for the page's confirmation/error line. */
+  readonly restoreOutcome = this._restore.asReadonly();
 
   /** Global is the base of the cascade, so it inherits from nothing (ADR-0006). */
   readonly globalValues = computed(
@@ -39,6 +54,42 @@ export class SettingsPresenter {
     // No current scope: the settings page has no splitter of its own to adopt a
     // ratio from, so linking falls back to the shared value already stored.
     this.ui.setSplitShared(isShared);
+  }
+
+  /** Dump the whole library to a file (#11). */
+  async backup(): Promise<void> {
+    this._isBusy.set(true);
+    try {
+      await this.backups.backup();
+    } finally {
+      this._isBusy.set(false);
+    }
+  }
+
+  /**
+   * Replace the whole library from a backup file, then reload.
+   *
+   * A full restore throws away what is here now, so the page confirms first —
+   * this only runs once the user has said yes. The reload is deliberate: the
+   * stores hold a window of the *old* data, and booting fresh against the
+   * restored tables is cleaner than re-querying every one of them.
+   */
+  async restore(file: File): Promise<void> {
+    this._isBusy.set(true);
+    this._restore.set(null);
+    try {
+      await this.backups.restore(file);
+      this._restore.set('done');
+      location.reload();
+    } catch {
+      this._restore.set('failed');
+    } finally {
+      this._isBusy.set(false);
+    }
+  }
+
+  dismissRestore(): void {
+    this._restore.set(null);
   }
 
   patchGlobal(patch: Record<string, unknown>): void {
