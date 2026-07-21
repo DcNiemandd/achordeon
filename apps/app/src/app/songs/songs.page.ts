@@ -9,7 +9,7 @@ import {
   inject,
   input,
 } from '@angular/core';
-import { Button, Dialog, Icon, Menu, MenuItem, Tooltip } from '../primitives';
+import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
@@ -61,8 +61,6 @@ import {
     Button,
     Dialog,
     Icon,
-    Menu,
-    MenuItem,
     Tooltip,
   ],
   template: `
@@ -76,206 +74,117 @@ import {
           <button
             appButton
             variant="primary"
-            class="add"
             [attr.aria-label]="addLabel"
             [appTooltip]="addLabel"
             data-testid="songs-add"
             (click)="presenter.create()"
           >
             <app-icon name="add" />
-            <!-- The label drops on the narrowest phones, where the row needs the
-                 room for the primary and the ⋯ menu; the icon and aria-label
-                 carry it there. -->
-            <span class="add-text">{{ addLabel }}</span>
+            {{ addLabel }}
           </button>
 
-          <!-- The real file input behind Import, hoisted out of both layouts so
-               the toolbar button and the overflow menu item can each open it.
-               Not display:none, which makes it unfocusable and, in some engines,
-               unclickable from script. -->
-          <input
-            #fileInput
-            class="file"
-            type="file"
-            accept="application/json,.json,image/png,.png"
-            tabindex="-1"
-            aria-hidden="true"
-            data-testid="songs-import-input"
-            (change)="onFilePicked($event)"
-          />
+          <!-- Bulk actions ride the same row as "New song" and are ALWAYS
+               mounted, disabled until a selection exists. They used to be a bar
+               that appeared between the toolbar and the list, which meant ticking
+               the first checkbox shoved every row down by 34px — the list moved
+               under the pointer that was still aiming at it. A fixed row of
+               disabled icons costs a little clarity and buys back a stable list,
+               which is the better trade while you are picking rows. -->
+          <div class="bulk" data-testid="explorer-bulk">
+            <!-- The same control the songbook builder mounts, in the same place
+                 (the end of the action row): both lists carry a selection, so
+                 both say so identically. -->
+            <app-selection-status
+              [count]="presenter.selectedIds().size"
+              (cleared)="presenter.clearSelection()"
+            />
 
-          <!-- On a phone the six-wide bulk strip cannot fit beside "New song",
-               so it folds into the ⋯ menu — every action still one press away,
-               nothing spilling off the edge. The count stays outside it, because
-               it is a status, not an action. Above the phone breakpoint the
-               strip lays the actions out in full (below). -->
-          @if (viewport.isStacked()) {
-            <div class="bulk" data-testid="explorer-bulk">
-              <app-selection-status
-                [count]="presenter.selectedIds().size"
-                (cleared)="presenter.clearSelection()"
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSelection()"
+              [attr.aria-label]="bulkFavoriteLabel()"
+              [appTooltip]="bulkFavoriteLabel()"
+              data-testid="explorer-bulk-favorite"
+              (click)="presenter.favoriteMany([...presenter.selectedIds()])"
+            >
+              <app-icon
+                name="favorite"
+                [isFilled]="presenter.isSelectionAllFavorite()"
               />
+            </button>
 
-              <app-menu [label]="moreLabel" testid="songs-more">
-                <button
-                  appMenuItem
-                  [disabled]="!hasSelection()"
-                  [attr.aria-label]="bulkFavoriteLabel()"
-                  data-testid="explorer-bulk-favorite"
-                  (chosen)="
-                    presenter.favoriteMany([...presenter.selectedIds()])
-                  "
-                >
-                  <app-icon
-                    name="favorite"
-                    [isFilled]="presenter.isSelectionAllFavorite()"
-                  />
-                  {{ menuFavoriteLabel() }}
-                </button>
+            <!-- Download and Export sit with the bulk actions because they act
+                 on the same subject: the ticked rows, or the song you are
+                 looking at. They are enabled where the delete is not, because
+                 there is always something to download once a song is focused. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasTransferTarget() || presenter.isBusy()"
+              [attr.aria-label]="downloadLabel()"
+              [appTooltip]="downloadLabel()"
+              data-testid="songs-download"
+              (click)="presenter.openDownload()"
+            >
+              <app-icon name="download" />
+            </button>
 
-                <button
-                  appMenuItem
-                  [disabled]="!hasTransferTarget() || presenter.isBusy()"
-                  [attr.aria-label]="downloadLabel()"
-                  data-testid="songs-download"
-                  (chosen)="presenter.openDownload()"
-                >
-                  <app-icon name="download" />
-                  {{ menuDownload }}
-                </button>
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasTransferTarget() || presenter.isBusy()"
+              [attr.aria-label]="exportLabel()"
+              [appTooltip]="exportLabel()"
+              data-testid="songs-export"
+              (click)="presenter.exportSelection()"
+            >
+              <app-icon name="export" />
+            </button>
 
-                <button
-                  appMenuItem
-                  [disabled]="!hasTransferTarget() || presenter.isBusy()"
-                  [attr.aria-label]="exportLabel()"
-                  data-testid="songs-export"
-                  (chosen)="presenter.exportSelection()"
-                >
-                  <app-icon name="export" />
-                  {{ menuExport }}
-                </button>
+            <!-- Import takes no selection, so it is the one transfer control
+                 that is never disabled. The file input is the real control; the
+                 button is a label for it: a bare file input cannot be styled
+                 and cannot carry a tooltip. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="presenter.isBusy()"
+              [attr.aria-label]="importLabel"
+              [appTooltip]="importLabel"
+              data-testid="songs-import"
+              (click)="fileInput.click()"
+            >
+              <app-icon name="import" />
+            </button>
+            <input
+              #fileInput
+              class="file"
+              type="file"
+              accept="application/json,.json,image/png,.png"
+              tabindex="-1"
+              aria-hidden="true"
+              data-testid="songs-import-input"
+              (change)="onFilePicked($event)"
+            />
 
-                <button
-                  appMenuItem
-                  [disabled]="presenter.isBusy()"
-                  [attr.aria-label]="importLabel"
-                  data-testid="songs-import"
-                  (chosen)="fileInput.click()"
-                >
-                  <app-icon name="import" />
-                  {{ menuImport }}
-                </button>
-
-                <button
-                  appMenuItem
-                  class="is-danger"
-                  [disabled]="!hasSelection()"
-                  [attr.aria-label]="bulkDeleteLabel"
-                  data-testid="explorer-bulk-delete"
-                  (chosen)="
-                    presenter.requestDelete([...presenter.selectedIds()])
-                  "
-                >
-                  <app-icon name="delete" />
-                  {{ menuDelete }}
-                </button>
-              </app-menu>
-            </div>
-          } @else {
-            <!-- Bulk actions ride the same row as "New song" and are ALWAYS
-                 mounted, disabled until a selection exists. They used to be a bar
-                 that appeared between the toolbar and the list, which meant
-                 ticking the first checkbox shoved every row down by 34px — the
-                 list moved under the pointer that was still aiming at it. A fixed
-                 row of disabled icons costs a little clarity and buys back a
-                 stable list, which is the better trade while you are picking
-                 rows. -->
-            <div class="bulk" data-testid="explorer-bulk">
-              <!-- The same control the songbook builder mounts, in the same place
-                   (the end of the action row): both lists carry a selection, so
-                   both say so identically. -->
-              <app-selection-status
-                [count]="presenter.selectedIds().size"
-                (cleared)="presenter.clearSelection()"
-              />
-
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="!hasSelection()"
-                [attr.aria-label]="bulkFavoriteLabel()"
-                [appTooltip]="bulkFavoriteLabel()"
-                data-testid="explorer-bulk-favorite"
-                (click)="presenter.favoriteMany([...presenter.selectedIds()])"
-              >
-                <app-icon
-                  name="favorite"
-                  [isFilled]="presenter.isSelectionAllFavorite()"
-                />
-              </button>
-
-              <!-- Download and Export sit with the bulk actions because they act
-                   on the same subject: the ticked rows, or the song you are
-                   looking at. They are enabled where the delete is not, because
-                   there is always something to download once a song is focused. -->
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="!hasTransferTarget() || presenter.isBusy()"
-                [attr.aria-label]="downloadLabel()"
-                [appTooltip]="downloadLabel()"
-                data-testid="songs-download"
-                (click)="presenter.openDownload()"
-              >
-                <app-icon name="download" />
-              </button>
-
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="!hasTransferTarget() || presenter.isBusy()"
-                [attr.aria-label]="exportLabel()"
-                [appTooltip]="exportLabel()"
-                data-testid="songs-export"
-                (click)="presenter.exportSelection()"
-              >
-                <app-icon name="export" />
-              </button>
-
-              <!-- Import takes no selection, so it is the one transfer control
-                   that is never disabled. The button is a label for the hoisted
-                   file input above: a bare file input cannot be styled and cannot
-                   carry a tooltip. -->
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="presenter.isBusy()"
-                [attr.aria-label]="importLabel"
-                [appTooltip]="importLabel"
-                data-testid="songs-import"
-                (click)="fileInput.click()"
-              >
-                <app-icon name="import" />
-              </button>
-
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [disabled]="!hasSelection()"
-                [attr.aria-label]="bulkDeleteLabel"
-                [appTooltip]="bulkDeleteLabel"
-                data-testid="explorer-bulk-delete"
-                (click)="presenter.requestDelete([...presenter.selectedIds()])"
-              >
-                <app-icon name="delete" />
-              </button>
-            </div>
-          }
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasSelection()"
+              [attr.aria-label]="bulkDeleteLabel"
+              [appTooltip]="bulkDeleteLabel"
+              data-testid="explorer-bulk-delete"
+              (click)="presenter.requestDelete([...presenter.selectedIds()])"
+            >
+              <app-icon name="delete" />
+            </button>
+          </div>
         </app-action-bar>
 
         <app-song-explorer
@@ -433,27 +342,6 @@ import {
       min-block-size: 0;
     }
 
-    /* The primary may shrink so the row keeps the bulk strip (or the ⋯ menu)
-       beside it rather than pushing it off the edge; its label truncates before
-       the button does. */
-    .add {
-      min-inline-size: 0;
-    }
-
-    .add-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* On the narrowest phones the label goes entirely, leaving the add glyph —
-       the aria-label and tooltip still name it. */
-    @media (max-width: 380px) {
-      .add-text {
-        display: none;
-      }
-    }
-
     /* Pushed to the far end of the action row, away from "New song": these act on
        what you already have, that one makes something new. */
     .bulk {
@@ -602,22 +490,6 @@ export class SongsPage {
       : $localize`:@@songs.bulkFavorite:Favorite the selected songs`,
   );
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
-
-  /** The ⋯ overflow that holds the bulk actions on a phone. Its full sentence
-   * lives on each item's `aria-label`; these are the short words the menu shows,
-   * the same way the row menu labels its items. */
-  protected readonly moreLabel = $localize`:@@songs.more:More actions`;
-  protected readonly menuDownload = $localize`:@@songs.menu.download:Download`;
-  protected readonly menuExport = $localize`:@@songs.menu.export:Export`;
-  protected readonly menuImport = $localize`:@@songs.menu.import:Import`;
-  protected readonly menuDelete = $localize`:@@songs.menu.delete:Delete`;
-  /** Names the act, like the icon-only version — the item toggles favorite. */
-  protected readonly menuFavoriteLabel = computed(() =>
-    this.presenter.isSelectionAllFavorite()
-      ? $localize`:@@songs.menu.unfavorite:Unfavorite`
-      : $localize`:@@songs.menu.favorite:Favorite`,
-  );
-
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
   protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
