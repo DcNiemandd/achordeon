@@ -374,7 +374,9 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                 <app-icon name="edit" />
               </button>
             }
-            @if (capabilities().canRename && !row.isReadOnly) {
+            @if (
+              capabilities().canRename && !row.isReadOnly && !isRenameInMenu()
+            ) {
               <button
                 appButton
                 type="button"
@@ -459,6 +461,23 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                   [testid]="'more-' + row.id"
                   (openChange)="onMenuOpen(row.id, $event)"
                 >
+                  <!-- Rename folds in here on a phone (isRenameInMenu), where the
+                       inline strip has no room for it; on a wider screen it is a
+                       direct row button and never appears twice. -->
+                  @if (
+                    isRenameInMenu() &&
+                    capabilities().canRename &&
+                    !row.isReadOnly
+                  ) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'rename-' + row.id"
+                      (chosen)="startRename(row)"
+                    >
+                      <app-icon name="rename" />
+                      {{ RENAME }}
+                    </button>
+                  }
                   <!-- Download and export are NOT gated on isReadOnly: the
                        virtual All songs book is read-only (nothing to rename,
                        duplicate or delete) yet very much downloadable — it is
@@ -680,6 +699,16 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
     .list {
       flex: 1;
       min-block-size: 0;
+    }
+
+    /* The CDK content wrapper is position:absolute, so at width:auto it
+       shrink-wraps to the widest row's max-content — the list then scrolls
+       sideways and a row's actions slide off a narrow screen. Capping it at the
+       viewport width makes rows shrink to fit instead, so name/title/subtitle
+       truncate (below) rather than pushing the row wide. This app must never
+       overflow horizontally (asserted in the e2e overflow suite). */
+    :host ::ng-deep .cdk-virtual-scroll-content-wrapper {
+      max-inline-size: 100%;
     }
 
     .row {
@@ -938,6 +967,20 @@ export class SongExplorer {
   readonly emptyText = input($localize`:@@explorer.empty:No songs yet.`);
   /** Float starred rows to the top, whatever the sort axis is. */
   readonly isFavoritesFirst = input(false);
+
+  /**
+   * The page is on a phone. Passed in rather than injected, so the list stays a
+   * controlled component (rows in, intents out): on a narrow screen a menu-mount
+   * (the Songs module) also folds **rename** behind the `⋯`, keeping the row to
+   * one inline action plus the menu instead of a strip that runs off the edge.
+   */
+  readonly isCompact = input(false);
+
+  /** Rename lives in the `⋯` menu on a phone, where an inline strip does not fit
+   * — only where the row already has a menu (`usesRowMenu`). */
+  protected readonly isRenameInMenu = computed(
+    () => this.isCompact() && this.capabilities().usesRowMenu,
+  );
 
   /**
    * Where an add would land, drawn as a line between rows. `null` while nothing
@@ -1347,7 +1390,13 @@ export class SongExplorer {
     // something out.
     if (row.isReadOnly) return caps.canDownload || caps.canExport;
     return (
-      caps.canDownload || caps.canExport || caps.canDuplicate || caps.canDelete
+      caps.canDownload ||
+      caps.canExport ||
+      caps.canDuplicate ||
+      caps.canDelete ||
+      // On a phone the menu also carries rename, so it exists even for a mount
+      // whose only other action is renaming.
+      (this.isRenameInMenu() && caps.canRename)
     );
   }
 

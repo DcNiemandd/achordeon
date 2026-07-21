@@ -158,6 +158,18 @@ export class MenuItem {
       outline: none;
     }
 
+    /* An item that cannot act right now (nothing selected, a transfer already
+       running) — dimmed and inert, never washing on hover. */
+    ::ng-deep .app-menu-item:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    ::ng-deep .app-menu-item:disabled:hover,
+    ::ng-deep .app-menu-item:disabled:focus-visible {
+      background: none;
+    }
+
     ::ng-deep .app-menu-item.is-danger,
     ::ng-deep .app-menu-item.is-danger app-icon {
       color: var(--danger, #c0362c);

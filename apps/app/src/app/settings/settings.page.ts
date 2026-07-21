@@ -345,6 +345,7 @@ import { SettingsPresenter } from './settings.presenter';
 
     .backup-actions {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
     }
 
