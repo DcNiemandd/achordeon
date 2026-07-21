@@ -642,6 +642,21 @@ Corrections from actually printing a songbook and moving songs around:
 - **The settings scroll is full-width**, scrollbar at the page's right edge, with
   the content centred and capped in a column rather than shoved left.
 
+### Landed — a fifth pass (the All songs order)
+
+- **The All songs print order is chosen in the download dialog**, not hardcoded.
+  An axis (title / name / created / changed), a direction, and a favorites-first
+  toggle, shown **only for All songs** — a real songbook's order is its content.
+  `librarySongOrder` took the parameters; `title` stays the default (the fix from
+  the fourth pass). Persisted with the other print options. Decided over a
+  settings-module home because the order's one effect is the download, so the
+  control belongs next to it.
+- **All songs no longer opens into a detail view.** Its order lives at download
+  and the library is browsed in the Songs module, so the read-only entry view was
+  redundant: the edit button and double-click are gone for the read-only row, and
+  a direct link to `/songbooks/all-songs` redirects back to the list. The virtual
+  book's detail machinery stays in the presenter, now simply unreached.
+
 ---
 
 ## Epic 8: Stage (performing)
