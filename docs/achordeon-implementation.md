@@ -598,6 +598,35 @@ Corrections from actually printing a songbook and moving songs around:
   the download dialog's radios became buttons that download; checkboxes and
   radios take the brand colour from one `accent-color` rule.
 
+### Landed — a third pass, and two things Epic 4 / the parser plan deferred
+
+- **Songbook row actions are laid out, not pocketed** (`usesRowMenu`, false for
+  the songbook list, true for the Songs module). A songbook row carries a
+  handful and reads better as buttons; a library row carries many and folds the
+  secondary ones behind a `⋯`.
+- **A row's actions stay up while its own menu is open.** The menu is a CDK
+  overlay outside the row, so `:focus-within` released the instant it opened —
+  `Menu` now emits `openChange` and the row holds them. And a `MenuItem` closes
+  its menu by injecting it: projected through an `ngTemplateOutlet` its injector
+  followed the _declaration_ site, not the menu, so `close()` never ran and the
+  backdrop ate the next click. The menu items are inlined.
+- **Drag a slot onto the library to remove it** (`canDropRemove` + `droppedOut`).
+  The library pane shows a "drop to remove" zone, not an insertion line — there
+  is no position, only out — and the song stays in the library.
+- **Print options persist** (`PrintOptionsStore`, localStorage): the songbook
+  download dialog opens on the last-used paper. It also grew a title-page style
+  **stub** (only `classic` renders; the rest say "(soon)" and are disabled) and
+  **left** page-number positions. The song download dialog is now two columns —
+  the format's description, then its own Download button.
+- **Whole-database backup lands its UI** (`BackupService`, over Epic 4's
+  `dexie-export-import` blob). Settings can save the entire library to a file and
+  restore one — a full replace, so it confirms first and reloads. Distinct from
+  Export, which selects and merges.
+- **Two settings stubs** (notation, font library) sit in Settings, disabled and
+  marked, because each is its own work: what an existing chord symbol _means_
+  (`PARSER-GRAMMAR.md` §Notation), and embedding uploaded font bytes. Shown so
+  the app's shape is honest, wired to nothing.
+
 ---
 
 ## Epic 8: Stage (performing)
