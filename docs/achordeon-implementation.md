@@ -627,6 +627,21 @@ Corrections from actually printing a songbook and moving songs around:
   (`PARSER-GRAMMAR.md` §Notation), and embedding uploaded font bytes. Shown so
   the app's shape is honest, wired to nothing.
 
+### Landed — a fourth pass
+
+- **All songs is downloadable and exportable** (reversing the third pass's "no
+  transfer" call — the user asked for it back). It is read-only, so no rename,
+  duplicate or delete, but it is the whole library: `DownloadService` synthesises
+  a book of every live song in name order under an "All songs" title page, and
+  `ExportService` emits every song and no songbook record. Download/export
+  stopped being gated on `isReadOnly`; only duplicate and delete still are.
+- **Songbooks duplicate** (`canDuplicate` on the list): a copy is a new record
+  with its own id and a fresh `entries` array, same order/settings/title fields.
+  Free, because a book holds references — the songs are untouched. Off for All
+  songs, which is read-only.
+- **The settings scroll is full-width**, scrollbar at the page's right edge, with
+  the content centred and capped in a column rather than shoved left.
+
 ---
 
 ## Epic 8: Stage (performing)
