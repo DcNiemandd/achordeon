@@ -82,6 +82,10 @@ export interface DownloadProgress {
   readonly total: number;
 }
 
+/** Why a picked file could not be imported — the two the user can act on: it is
+ * not one of ours, or it is from a build this one cannot read. */
+export type ImportFailure = 'unreadable' | 'refused';
+
 /** What to do about the songs a file brings that the library already has. */
 export type ImportResolutionChoice = 'replace' | 'ignore' | 'new';
 

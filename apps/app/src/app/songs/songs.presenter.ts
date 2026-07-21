@@ -33,6 +33,7 @@ import type {
   DownloadFormat,
   DownloadProgress,
   ImportChoice,
+  ImportFailure,
   ImportPreview,
 } from '../shared/transfer';
 import { TUTORIAL_CONTENT } from './new-song';
@@ -48,10 +49,6 @@ export interface SongUse {
   readonly songId: string;
   readonly songName: string;
 }
-
-/** Why a picked file could not be imported — the two the user can act on:
- * it is not one of ours, or it is from a build this one cannot read. */
-export type ImportFailure = 'unreadable' | 'refused';
 
 /** A delete the user has asked for and not yet confirmed. */
 export interface PendingDelete {
@@ -577,6 +574,10 @@ export class SongsPresenter {
       // The window is a query result, and the import just changed what that
       // query answers — several times over, at ids the window never held.
       await this.store.refresh();
+      // A file can bring songbooks too, and the Songbooks module reads the same
+      // singleton store — so refresh it here, or a book imported from this
+      // screen stays invisible over there until a reload.
+      await this.songbooks.refresh();
     });
   }
 

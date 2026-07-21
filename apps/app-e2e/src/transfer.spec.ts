@@ -269,6 +269,99 @@ test.describe('export & import', () => {
   });
 });
 
+// Import reaches — and refreshes — every module (the file holds songs and
+// songbooks alike). In-app navigation (the rail), never `page.goto`, which would
+// reload the whole app and hide a stale-store bug behind a fresh boot.
+test.describe('import across modules', () => {
+  /** Build a one-song songbook, export it, and hand back the file. Leaves the
+   * song and the book in the library. */
+  async function makeBookFile(
+    page: Page,
+    bookName: string,
+    songName: string,
+  ): Promise<Buffer> {
+    await createSong(page, songName);
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    const title = page.getByTestId('module-title-input');
+    await expect(title).toHaveValue('New songbook');
+    await title.fill(bookName);
+    await title.press('Enter');
+    await page.waitForTimeout(300);
+    await page.getByTestId('song-row').filter({ hasText: songName }).click();
+    await page.getByTestId('add-end').click();
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+
+    await page.goto('songbooks');
+    const row = page.getByTestId('songbook-row').filter({ hasText: bookName });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    return download(page, () => page.getByTestId(`export-${id}`).click());
+  }
+
+  test('a songbook imported in Songs appears in Songbooks without a reload', async ({
+    page,
+  }) => {
+    const file = await makeBookFile(page, 'Campfire', 'Alpha');
+
+    // Delete the book so re-importing genuinely adds it back.
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('songbook-delete-confirm').click();
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(0);
+
+    // Import from the Songs module — the song already exists, so its conflict
+    // resolves to the default (replace).
+    await page.getByTestId('rail-songs').click();
+    await expect(page).toHaveURL(/\/songs(\?|$)/);
+    await page.getByTestId('songs-import-input').setInputFiles({
+      name: 'campfire.json',
+      mimeType: 'application/json',
+      buffer: file,
+    });
+    await page.getByTestId('import-confirm').click();
+
+    // Back to Songbooks by the rail — not a reload. The book is there, because
+    // the import refreshed the shared songbook store (the bug: it did not).
+    await page.getByTestId('rail-songbooks').click();
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(1);
+  });
+
+  test('a file can be imported from the Songbooks module', async ({ page }) => {
+    const file = await makeBookFile(page, 'Campfire', 'Alpha');
+
+    await freshLibrary(page);
+    await page.goto('songbooks');
+    // The Songbooks module has its own Import.
+    await expect(page.getByTestId('songbooks-import')).toBeVisible();
+    await page.getByTestId('songbooks-import-input').setInputFiles({
+      name: 'campfire.json',
+      mimeType: 'application/json',
+      buffer: file,
+    });
+    await page.getByTestId('import-confirm').click();
+
+    // The book lands in this list right away…
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(1);
+    // …and the song it holds is in the library.
+    await page.getByTestId('rail-songs').click();
+    await expect(
+      page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
+    ).toHaveCount(1);
+  });
+});
+
 test.describe('a row acts on itself', () => {
   test('a row exports just that song from its menu', async ({ page }) => {
     await createSong(page, 'Alpha');
