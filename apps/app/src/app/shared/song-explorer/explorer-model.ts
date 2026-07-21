@@ -265,7 +265,7 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDrop: false,
   canEdit: true,
   canRename: true,
-  canDuplicate: false,
+  canDuplicate: true,
   canDelete: true,
   canDownload: true,
   canExport: true,

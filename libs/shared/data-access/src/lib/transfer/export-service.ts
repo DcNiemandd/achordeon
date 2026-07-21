@@ -10,6 +10,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  ALL_SONGS_ID,
   SCHEMA_VERSION,
   type Song,
   type Songbook,
@@ -43,12 +44,22 @@ export class ExportService {
    * picked by hand are not duplicated; ids are a set.
    */
   async snapshot(selection: ExportSelection): Promise<SnapshotEnvelope> {
-    const books = await this.pick(this.songbooks, selection.songbookIds);
+    // The virtual **All songs** is not a record — exporting it means "the whole
+    // library", so it contributes every song and no songbook. The real ids in
+    // the same selection still resolve as usual.
+    const isAllSongs = (selection.songbookIds ?? []).includes(ALL_SONGS_ID);
+    const realBookIds = (selection.songbookIds ?? []).filter(
+      (id) => id !== ALL_SONGS_ID,
+    );
+
+    const books = await this.pick(this.songbooks, realBookIds);
     const wanted = new Set<Uuid>(selection.songIds ?? []);
     for (const book of books) {
       for (const entry of book.entries) wanted.add(entry);
     }
-    const songs = await this.pick(this.songs, [...wanted]);
+    const songs = isAllSongs
+      ? (await this.songs.all()).filter((song) => song.deletedAt === null)
+      : await this.pick(this.songs, [...wanted]);
 
     return {
       schemaVersion: SCHEMA_VERSION,

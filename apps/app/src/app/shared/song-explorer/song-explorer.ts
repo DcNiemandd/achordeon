@@ -456,7 +456,12 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                   [testid]="'more-' + row.id"
                   (openChange)="onMenuOpen(row.id, $event)"
                 >
-                  @if (capabilities().canDownload && !row.isReadOnly) {
+                  <!-- Download and export are NOT gated on isReadOnly: the
+                       virtual All songs book is read-only (nothing to rename,
+                       duplicate or delete) yet very much downloadable — it is
+                       the whole library, and a PDF or an export of everything is
+                       a thing a person wants. -->
+                  @if (capabilities().canDownload) {
                     <button
                       appMenuItem
                       [attr.data-testid]="'download-' + row.id"
@@ -466,7 +471,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                       {{ DOWNLOAD }}
                     </button>
                   }
-                  @if (capabilities().canExport && !row.isReadOnly) {
+                  @if (capabilities().canExport) {
                     <button
                       appMenuItem
                       [attr.data-testid]="'export-' + row.id"
@@ -526,7 +531,9 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
          above, for the DI reason noted there); this is the version for a mount
          that has room to show them. -->
     <ng-template #directActions let-row="row">
-      @if (capabilities().canDownload && !row.isReadOnly) {
+      <!-- Download/export are ungated on isReadOnly (see the menu copy): All
+           songs is read-only but downloadable. -->
+      @if (capabilities().canDownload) {
         <button
           appButton
           type="button"
@@ -539,7 +546,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
           <app-icon name="download" />
         </button>
       }
-      @if (capabilities().canExport && !row.isReadOnly) {
+      @if (capabilities().canExport) {
         <button
           appButton
           type="button"
@@ -1331,8 +1338,11 @@ export class SongExplorer {
    * otherwise — an empty popover is worse than no button. A read-only row keeps
    * download/export (it has something to hand out) but loses duplicate/delete. */
   protected hasRowMenu(row: SongRow): boolean {
-    if (row.isReadOnly) return false; // the virtual All songs row: nothing to offer
     const caps = this.capabilities();
+    // Download and export apply to a read-only row too (All songs); duplicate
+    // and delete do not. So a read-only row still has actions iff it can hand
+    // something out.
+    if (row.isReadOnly) return caps.canDownload || caps.canExport;
     return (
       caps.canDownload || caps.canExport || caps.canDuplicate || caps.canDelete
     );

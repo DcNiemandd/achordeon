@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import type { Song, Songbook } from '@achordeon/shared/domain';
-import { SCHEMA_VERSION } from '@achordeon/shared/domain';
+import { ALL_SONGS_ID, SCHEMA_VERSION } from '@achordeon/shared/domain';
 import { MemoryEntitySource } from '../persistence/memory-entity-source';
 import { PagedRepository } from '../persistence/paged-repository';
 import {
@@ -87,6 +87,17 @@ describe('ExportService', () => {
     const snapshot = await exporter.snapshot({ songbookIds: ['set'] });
     expect(snapshot.data.songs.map((s) => s.id).sort()).toEqual(['a', 'b']);
     expect(snapshot.data.songbooks[0].entries).toEqual(['a', 'a', 'b']);
+  });
+
+  it('exports the whole library for the virtual All songs, as songs and no book', async () => {
+    const { exporter } = setup(
+      [song('a'), song('b'), song('c', { deletedAt: 5 })],
+      [book('set', { entries: ['a'] })],
+    );
+    const snapshot = await exporter.snapshot({ songbookIds: [ALL_SONGS_ID] });
+    // Every live song, and no songbook record — All songs is not one.
+    expect(snapshot.data.songs.map((s) => s.id).sort()).toEqual(['a', 'b']);
+    expect(snapshot.data.songbooks).toEqual([]);
   });
 
   it('carries no user row — a file must not re-base someone’s global defaults', async () => {

@@ -24,153 +24,163 @@ import { SettingsPresenter } from './settings.presenter';
   template: `
     <app-action-bar [title]="title" />
 
+    <!-- The scroll lives on the full-width body, so the scrollbar sits at the
+         right edge of the page; the content inside it is centred and capped, so
+         the settings read as a column in the middle rather than a block shoved
+         against the left. -->
     <div class="body">
-      <section class="section">
-        <h2 class="heading">{{ appHeading }}</h2>
-        <div class="choices" role="group" [attr.aria-label]="themeHeading">
-          @for (option of themes; track option.value) {
-            <button
-              appButton
-              variant="ghost"
-              [class.is-active]="presenter.theme() === option.value"
-              [attr.aria-pressed]="presenter.theme() === option.value"
-              [attr.data-testid]="'theme-' + option.value"
-              (click)="presenter.setTheme(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          }
-        </div>
-      </section>
+      <div class="content">
+        <section class="section">
+          <h2 class="heading">{{ appHeading }}</h2>
+          <div class="choices" role="group" [attr.aria-label]="themeHeading">
+            @for (option of themes; track option.value) {
+              <button
+                appButton
+                variant="ghost"
+                [class.is-active]="presenter.theme() === option.value"
+                [attr.aria-pressed]="presenter.theme() === option.value"
+                [attr.data-testid]="'theme-' + option.value"
+                (click)="presenter.setTheme(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </section>
 
-      <section class="section">
-        <h2 class="heading">{{ panelsHeading }}</h2>
-        <!-- A checkbox, not a segmented pair: it is one fact that is either
+        <section class="section">
+          <h2 class="heading">{{ panelsHeading }}</h2>
+          <!-- A checkbox, not a segmented pair: it is one fact that is either
              true or false, and "Linked / Not linked" would be two words for
              the same switch. -->
-        <label class="check-row">
-          <input
-            type="checkbox"
-            class="check"
-            [checked]="presenter.isSplitShared()"
-            data-testid="split-shared"
-            (change)="onSplitShared($event)"
-          />
-          <span>
-            <span class="check-label">{{ splitSharedLabel }}</span>
-            <span class="check-help">{{ splitSharedHelp }}</span>
-          </span>
-        </label>
-      </section>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              class="check"
+              [checked]="presenter.isSplitShared()"
+              data-testid="split-shared"
+              (change)="onSplitShared($event)"
+            />
+            <span>
+              <span class="check-label">{{ splitSharedLabel }}</span>
+              <span class="check-help">{{ splitSharedHelp }}</span>
+            </span>
+          </label>
+        </section>
 
-      <section class="section">
-        <h2 class="heading">{{ renderHeading }}</h2>
-        <!-- Global scope: the base of the cascade. The SAME component is mounted
+        <section class="section">
+          <h2 class="heading">{{ renderHeading }}</h2>
+          <!-- Global scope: the base of the cascade. The SAME component is mounted
              by songbooks (songbook scope) and the song editor (song scope). -->
-        <app-settings-panel
-          scope="global"
-          [values]="presenter.globalValues()"
-          (changed)="presenter.patchGlobal($event)"
-        />
-      </section>
+          <app-settings-panel
+            scope="global"
+            [values]="presenter.globalValues()"
+            (changed)="presenter.patchGlobal($event)"
+          />
+        </section>
 
-      <!-- Stubs for what is coming, shown so the shape of the app is honest but
+        <!-- Stubs for what is coming, shown so the shape of the app is honest but
            marked and disabled so nothing pretends to work (#1). They are UI-only
            placeholders — not wired to the settings cascade — because turning them
            into live settings means changing what existing chord symbols mean and
            embedding uploaded font bytes, both their own pieces of work. -->
-      <section class="section">
-        <h2 class="heading">{{ comingHeading }}</h2>
-        <div class="stubs">
-          <div class="stub">
-            <span>
-              <span class="stub-label">{{ notationLabel }}</span>
-              <span class="stub-help">{{ notationHelp }}</span>
-            </span>
-            <div class="choices" role="group" [attr.aria-label]="notationLabel">
-              @for (option of notations; track option.value) {
-                <button
-                  appButton
-                  variant="ghost"
-                  disabled
-                  [class.is-active]="option.value === 'english'"
-                  [attr.data-testid]="'notation-' + option.value"
-                >
-                  {{ option.label }}
-                </button>
-              }
+        <section class="section">
+          <h2 class="heading">{{ comingHeading }}</h2>
+          <div class="stubs">
+            <div class="stub">
+              <span>
+                <span class="stub-label">{{ notationLabel }}</span>
+                <span class="stub-help">{{ notationHelp }}</span>
+              </span>
+              <div
+                class="choices"
+                role="group"
+                [attr.aria-label]="notationLabel"
+              >
+                @for (option of notations; track option.value) {
+                  <button
+                    appButton
+                    variant="ghost"
+                    disabled
+                    [class.is-active]="option.value === 'english'"
+                    [attr.data-testid]="'notation-' + option.value"
+                  >
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
             </div>
-          </div>
 
-          <div class="stub">
-            <span>
-              <span class="stub-label">{{ fontLibraryLabel }}</span>
-              <span class="stub-help">{{ fontLibraryHelp }}</span>
-            </span>
+            <div class="stub">
+              <span>
+                <span class="stub-label">{{ fontLibraryLabel }}</span>
+                <span class="stub-help">{{ fontLibraryHelp }}</span>
+              </span>
+              <button
+                appButton
+                variant="secondary"
+                disabled
+                data-testid="font-library"
+              >
+                {{ fontLibraryButton }}
+              </button>
+            </div>
+
+            <p class="coming-note">{{ comingNote }}</p>
+          </div>
+        </section>
+
+        <!-- Whole-database backup (#11 — the UI Epic 4 left unbuilt). Distinct
+           from Export: this is the entire library, verbatim, and Restore
+           REPLACES everything. So Restore confirms first. -->
+        <section class="section">
+          <h2 class="heading">{{ backupHeading }}</h2>
+          <p class="backup-help">{{ backupHelp }}</p>
+          <div class="backup-actions">
             <button
               appButton
               variant="secondary"
-              disabled
-              data-testid="font-library"
+              [disabled]="presenter.isBusy()"
+              data-testid="backup"
+              (click)="presenter.backup()"
             >
-              {{ fontLibraryButton }}
+              <app-icon name="download" />
+              {{ backupButton }}
             </button>
+            <button
+              appButton
+              variant="secondary"
+              [disabled]="presenter.isBusy()"
+              data-testid="restore"
+              (click)="restoreInput.click()"
+            >
+              <app-icon name="import" />
+              {{ restoreButton }}
+            </button>
+            <input
+              #restoreInput
+              class="file"
+              type="file"
+              accept="application/json,.json"
+              tabindex="-1"
+              aria-hidden="true"
+              data-testid="restore-input"
+              (change)="onRestoreFilePicked($event)"
+            />
           </div>
+        </section>
 
-          <p class="coming-note">{{ comingNote }}</p>
-        </div>
-      </section>
-
-      <!-- Whole-database backup (#11 — the UI Epic 4 left unbuilt). Distinct
-           from Export: this is the entire library, verbatim, and Restore
-           REPLACES everything. So Restore confirms first. -->
-      <section class="section">
-        <h2 class="heading">{{ backupHeading }}</h2>
-        <p class="backup-help">{{ backupHelp }}</p>
-        <div class="backup-actions">
-          <button
-            appButton
-            variant="secondary"
-            [disabled]="presenter.isBusy()"
-            data-testid="backup"
-            (click)="presenter.backup()"
-          >
-            <app-icon name="download" />
-            {{ backupButton }}
-          </button>
-          <button
-            appButton
-            variant="secondary"
-            [disabled]="presenter.isBusy()"
-            data-testid="restore"
-            (click)="restoreInput.click()"
-          >
-            <app-icon name="import" />
-            {{ restoreButton }}
-          </button>
-          <input
-            #restoreInput
-            class="file"
-            type="file"
-            accept="application/json,.json"
-            tabindex="-1"
-            aria-hidden="true"
-            data-testid="restore-input"
-            (change)="onRestoreFilePicked($event)"
-          />
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="heading">{{ syncHeading }}</h2>
-        <!-- Decoration over a WORKING control, never a disabled one: tierGuard is
+        <section class="section">
+          <h2 class="heading">{{ syncHeading }}</h2>
+          <!-- Decoration over a WORKING control, never a disabled one: tierGuard is
              highlight-and-tooltip during testing, not a hard block. -->
-        <app-premium [label]="autoSyncLabel">
-          <button appButton variant="secondary" data-testid="auto-sync">
-            {{ autoSyncLabel }}
-          </button>
-        </app-premium>
-      </section>
+          <app-premium [label]="autoSyncLabel">
+            <button appButton variant="secondary" data-testid="auto-sync">
+              {{ autoSyncLabel }}
+            </button>
+          </app-premium>
+        </section>
+      </div>
     </div>
 
     @if (pendingRestore(); as file) {
@@ -230,13 +240,22 @@ import { SettingsPresenter } from './settings.presenter';
       block-size: 100%;
     }
 
+    /* Full width, so its scrollbar is at the page's right edge. */
     .body {
+      flex: 1;
+      min-block-size: 0;
+      overflow: auto;
+    }
+
+    /* The readable column: centred and capped, so the settings sit in the
+       middle of the page rather than hard against the left. */
+    .content {
       display: flex;
       flex-direction: column;
       gap: var(--space-6);
       padding: var(--space-4);
-      overflow: auto;
       max-inline-size: 640px;
+      margin-inline: auto;
     }
 
     .heading {

@@ -213,6 +213,30 @@ export class SongbooksPresenter {
   }
 
   /**
+   * A copy of a songbook: a new record with its own id, the same order,
+   * settings and title-page fields (#12). It carries the **same slots** — a
+   * songbook holds references, so duplicating one is free and the songs it
+   * points at are untouched. The virtual All songs is read-only and never
+   * reaches here (its row has no duplicate action).
+   */
+  async duplicate(id: string): Promise<void> {
+    const book = this.find(id);
+    if (!book) return;
+    const now = Date.now();
+    await this.store.upsert({
+      ...book,
+      id: crypto.randomUUID(),
+      name: $localize`:@@songbooks.copyName:${book.name}:name: (copy)`,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      // A fresh array, not a shared reference — the copy's order is its own.
+      entries: [...book.entries],
+    });
+    await this.store.refresh();
+  }
+
+  /**
    * Ask to delete. A songbook delete destroys **no songs** — every entry is a
    * reference — so the confirmation says how many slots go, not what is at risk.
    */
@@ -261,18 +285,20 @@ export class SongbooksPresenter {
   /** The name in the open dialog's title. */
   readonly downloadName = computed(() => {
     const id = this._downloadId();
+    if (id === ALL_SONGS_ID) return ALL_SONGS_NAME;
     return (id === null ? undefined : this.find(id)?.name) ?? '';
   });
 
   /**
-   * A real songbook can be downloaded; **the virtual All songs cannot**. It has
-   * no record — no title page, no author, no order of its own — which are the
-   * three things a songbook PDF is made of. The row menu is off for it entirely
-   * (`SONGBOOK_LIST_CAPABILITIES` gives it no menu once its read-only row drops
-   * duplicate and delete), so this only guards the stray call.
+   * Downloadable / exportable: a real songbook, **and** the virtual All songs.
+   *
+   * All songs has no record, but it is the whole library — a PDF of every song
+   * or an export of the lot is exactly what a person wants from it, and the
+   * services below synthesise the book for the virtual id. What it still cannot
+   * do is rename, duplicate or delete, which is the read-only row's business.
    */
   private isTransferable(id: string): boolean {
-    return id !== ALL_SONGS_ID && this.find(id) !== undefined;
+    return id === ALL_SONGS_ID || this.find(id) !== undefined;
   }
 
   openDownloadRow(id: string): void {

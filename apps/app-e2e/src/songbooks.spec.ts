@@ -539,6 +539,44 @@ test.describe('songbooks', () => {
     await expect(titlePage).toContainText('The Band');
   });
 
+  test('duplicates a songbook into an independent copy', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Wonderwall'], 'end');
+
+    await page.goto('songbooks');
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' })
+      .first();
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`duplicate-${id}`).click();
+
+    // A second book named "(copy)", and the original untouched.
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(2);
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: '(copy)' }),
+    ).toHaveCount(1);
+    // It carries the same one song (the count on the row).
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: '(copy)' }),
+    ).toContainText('1');
+  });
+
+  test('All songs cannot be duplicated', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songbooks');
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
+  });
+
   test('deletes a songbook without touching its songs', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
@@ -708,18 +746,26 @@ test.describe('drag & drop', () => {
 
   // The library is a source, never a destination: its order is a sort, so there
   // is no "here" to drop something at.
-  test('the library refuses a drop, and takes nothing out of the songbook', async ({
+  test('a library row dropped back on the library does nothing', async ({
     page,
   }) => {
+    // The library is a sort, not an arrangement, so it has no "here" for one of
+    // its own rows — a same-list drop is a no-op. (Dragging a *songbook* slot
+    // onto the library removes it; that is the other test.)
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
     await addSongs(page, ['Alpha'], 'end');
 
     const library = page.getByTestId('explorer-list').first();
-    await dragTo(page, 'drag-0', library, 4);
+    const songId = await page
+      .getByTestId('song-row')
+      .filter({ hasText: 'Alpha' })
+      .getAttribute('data-song-id');
+    await dragTo(page, `drag-${songId}`, library, 4);
 
-    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+    // Nothing moved: the song stays in the library and in the book.
     await expect(page.getByTestId('song-row')).toHaveCount(1);
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
   });
 
   // Dragging is never the only way to reorder (WCAG 2.1.1) — and where there is

@@ -10,6 +10,8 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  ALL_SONGS_ID,
+  isAllSongs,
   resolveSettings,
   titlePageAst,
   type GlobalSettings,
@@ -171,7 +173,7 @@ export class DownloadService {
     options: SongbookPdfOptions = {},
   ): Promise<void> {
     const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
-    const book = await this.songbooks.get(id);
+    const book = await this.bookFor(id);
     if (!book) return;
 
     const rendered = await this.render(book.entries, book);
@@ -239,6 +241,34 @@ export class DownloadService {
       `${toFileSlug(book.name, 'songbook')}.pdf`,
       'application/pdf',
     );
+  }
+
+  /**
+   * The book behind an id — real, or the **virtual All songs** synthesised on
+   * the spot.
+   *
+   * All songs has no record, so it is the whole library in name order, with a
+   * title page that says what it is (name, no author — nobody wrote it). Built
+   * here rather than passed in so the one entry point (`downloadSongbook(id)`)
+   * works for both, and the id stays the thing the UI hands over.
+   */
+  private async bookFor(id: Uuid): Promise<Songbook | undefined> {
+    if (!isAllSongs(id)) return this.songbooks.get(id);
+    const songs = (await this.songs.all())
+      .filter((song) => song.deletedAt === null)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      id: ALL_SONGS_ID,
+      createdAt: 0,
+      updatedAt: 0,
+      deletedAt: null,
+      name: 'All songs',
+      title: 'All songs',
+      subtitle: '',
+      author: '',
+      settings: {},
+      entries: songs.map((song) => song.id),
+    };
   }
 
   /**

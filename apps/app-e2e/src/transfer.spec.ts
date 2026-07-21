@@ -438,7 +438,7 @@ test.describe('download a songbook', () => {
     expect(complaints).toEqual([]);
   });
 
-  test('All songs offers no download or export, a real book does', async ({
+  test('All songs can be downloaded and exported, but not renamed or deleted', async ({
     page,
   }) => {
     await createSong(page, 'Alpha');
@@ -448,22 +448,54 @@ test.describe('download a songbook', () => {
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
     await all.hover();
-    // The read-only virtual book has no record, so no title page, author or
-    // order to print — and no download or export action either.
-    await expect(page.getByTestId(`download-${id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
+    // It is the whole library, so it hands itself out — but it is read-only,
+    // so it cannot be renamed, duplicated or deleted.
+    await expect(page.getByTestId(`download-${id}`)).toBeVisible();
+    await expect(page.getByTestId(`export-${id}`)).toBeVisible();
+    await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
+    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
+    await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
+  });
 
-    // A real songbook lays them out on the row (the list uses no ⋯ menu).
-    await page.getByTestId('songbooks-add').click();
-    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+  test('downloads All songs as a PDF of the whole library', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Beta');
     await page.goto('songbooks');
-    const real = page.getByTestId('songbook-row').filter({
-      hasText: 'New songbook',
-    });
-    const realId = await real.getAttribute('data-song-id');
-    await real.hover();
-    await expect(page.getByTestId(`download-${realId}`)).toBeVisible();
-    await expect(page.getByTestId(`export-${realId}`)).toBeVisible();
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+    await page.getByTestId(`download-${id}`).click();
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+    const raw = file.toString('latin1');
+    expect(raw.startsWith('%PDF-')).toBe(true);
+    // Title page + the two songs.
+    expect(countPages(raw)).toBe(3);
+  });
+
+  test('exports All songs as the whole library', async ({ page }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Beta');
+    await page.goto('songbooks');
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+    const file = await download(page, () =>
+      page.getByTestId(`export-${id}`).click(),
+    );
+    const snapshot = JSON.parse(file.toString('utf8'));
+    expect(
+      snapshot.data.songs.map((s: { name: string }) => s.name).sort(),
+    ).toEqual(['Alpha', 'Beta']);
+    // Not a book — All songs is the library itself.
+    expect(snapshot.data.songbooks).toEqual([]);
   });
 });
 
