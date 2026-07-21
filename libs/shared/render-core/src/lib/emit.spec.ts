@@ -1,6 +1,6 @@
 import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
-import { createFontBook } from './fonts';
+import { singleFamilyResolver } from './fonts';
 import { layoutCore } from './layout';
 import { emit } from './emit';
 import type { RenderPlan } from './render-plan';
@@ -20,7 +20,7 @@ const settings: GlobalSettings = {
 const measure = createFakeMeasurer();
 const plan = (
   over: Partial<SongAst> = {},
-  fonts = createFontBook('Achordeon', { regular: 'QUJD' }),
+  fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, { normal: 'QUJD' }),
 ): RenderPlan =>
   layoutCore(
     { blocks: [], warnings: [], ...over },

@@ -5,14 +5,23 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
+  DownloadService,
+  ExportService,
+  ImportService,
   ParserService,
   RenderService,
   SessionStore,
   SettingsStore,
   SongStore,
   SongbookStore,
+  type MultiFormat,
+  type SongFormat,
 } from '@achordeon/shared/data-access';
-import { resolveSettings, type Song } from '@achordeon/shared/domain';
+import {
+  resolveSettings,
+  type ImportPlan,
+  type Song,
+} from '@achordeon/shared/domain';
 import {
   RowSelection,
   type ExplorerSort,
@@ -20,6 +29,11 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
+import type {
+  DownloadFormat,
+  ImportChoice,
+  ImportPreview,
+} from '../shared/transfer';
 import { TUTORIAL_CONTENT } from './new-song';
 
 /** The name a song is born with, before the user has said what it is. */
@@ -33,6 +47,10 @@ export interface SongUse {
   readonly songId: string;
   readonly songName: string;
 }
+
+/** Why a picked file could not be imported — the two the user can act on:
+ * it is not one of ours, or it is from a build this one cannot read. */
+export type ImportFailure = 'unreadable' | 'refused';
 
 /** A delete the user has asked for and not yet confirmed. */
 export interface PendingDelete {
@@ -59,14 +77,32 @@ export class SongsPresenter {
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
+  private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
+  private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   private readonly _pendingDelete = signal<PendingDelete | null>(null);
+  private readonly _isDownloadOpen = signal(false);
+  private readonly _isBusy = signal(false);
+  private readonly _importPreview = signal<ImportPreview | null>(null);
+  private readonly _importError = signal<ImportFailure | null>(null);
+  /** The plan behind the preview. Kept out of the view model: the dialog asks a
+   * question about it, it does not need to hold the records. */
+  private importPlan: ImportPlan | null = null;
 
   /** The delete awaiting confirmation, or null. Session-only and the feature's,
    * like any transient dialog state (PRD-UI-SHELL.md §7). */
   readonly pendingDelete = this._pendingDelete.asReadonly();
+
+  /** Transfer state (Epic 7): all session-only and all this screen's (§7). */
+  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  /** A render loop and a PDF are not instant, and a button that looks unpressed
+   * while it works gets pressed again. */
+  readonly isBusy = this._isBusy.asReadonly();
+  readonly importPreview = this._importPreview.asReadonly();
+  readonly importError = this._importError.asReadonly();
 
   readonly rows = computed<SongRow[]>(() =>
     this.store.live().map((song, index) => ({
@@ -392,6 +428,145 @@ export class SongsPresenter {
     this.cancelDelete();
     this.session.setCurrentSong(use.songId);
     void this.router.navigate(['/songbooks', use.bookId]);
+  }
+
+  // --- Transfer (Epic 7) -----------------------------------------------
+  //
+  // Every act here answers **the selection, or the song you are looking at** —
+  // the same rule the delete and favourite buttons follow. Nothing in the app
+  // acts on "the whole library" from a button; that is Export's own screen
+  // (Epic 12) and a deliberate second thought.
+
+  /** What a bulk-bar transfer acts on: the ticked rows, else the focused one. */
+  private readonly barIds = computed<string[]>(() => {
+    const selected = [...this.selection.ids()];
+    if (selected.length > 0) return selected;
+    const current = this.session.currentSongId();
+    return current === null ? [] : [current];
+  });
+
+  /**
+   * One row's menu names **that row**, and only that row. Set while its download
+   * dialog is open; null the rest of the time, which is when the bar's own
+   * subject (selection-or-current) answers instead.
+   */
+  private readonly _rowTarget = signal<string | null>(null);
+
+  /** The subject of a download in flight — a row if the menu opened it, else
+   * the bar's. */
+  readonly downloadIds = computed<string[]>(() => {
+    const row = this._rowTarget();
+    return row === null ? this.barIds() : [row];
+  });
+
+  /** Live for the bulk bar's Download button. */
+  readonly hasBarTransfer = computed(() => this.barIds().length > 0);
+
+  /** The bulk bar's Download: acts on the selection-or-current. */
+  openDownload(): void {
+    this._rowTarget.set(null);
+    if (this.barIds().length > 0) this._isDownloadOpen.set(true);
+  }
+
+  /** A row's menu Download: acts on that one row. */
+  openDownloadRow(id: string): void {
+    this._rowTarget.set(id);
+    this._isDownloadOpen.set(true);
+  }
+
+  cancelDownload(): void {
+    this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
+  }
+
+  /**
+   * Render and save. One id takes the single-song formats, several take the
+   * batch ones — the dialog offers only the set that matches the count, so the
+   * two branches here can trust what they are given.
+   */
+  async download(format: DownloadFormat): Promise<void> {
+    const ids = this.downloadIds();
+    this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
+    if (ids.length === 0) return;
+    await this.busy(async () => {
+      if (ids.length === 1) {
+        await this.downloads.downloadSong(ids[0], format as SongFormat);
+      } else {
+        await this.downloads.downloadSongs(ids, format as MultiFormat);
+      }
+    });
+  }
+
+  /** The bulk bar's Export: the selection-or-current, no dialog (nothing to
+   * choose — Export has one format). */
+  async exportSelection(): Promise<void> {
+    await this.exportIds(this.barIds());
+  }
+
+  /** A row's menu Export: that one row. */
+  async exportRow(id: string): Promise<void> {
+    await this.exportIds([id]);
+  }
+
+  private async exportIds(songIds: readonly string[]): Promise<void> {
+    if (songIds.length === 0) return;
+    await this.busy(() => this.exporter.export({ songIds: [...songIds] }));
+  }
+
+  /**
+   * Read a picked file and work out what it would do. Nothing is written until
+   * `confirmImport`, which is the whole point of the two steps.
+   */
+  async readImport(file: File): Promise<void> {
+    this._importError.set(null);
+    try {
+      const source = await this.importer.read(file);
+      const plan = await this.importer.plan(source.snapshot);
+      this.importPlan = plan;
+      this._importPreview.set({
+        songCount: plan.songs.length,
+        songbookCount: plan.songbooks.length,
+        conflicts: plan.conflicts.map((conflict) => ({ ...conflict })),
+        hasUnknownSettings: source.status === 'warn',
+      });
+    } catch (error) {
+      this.importPlan = null;
+      this._importPreview.set(null);
+      this._importError.set(
+        (error as { reason?: ImportFailure }).reason === 'refused'
+          ? 'refused'
+          : 'unreadable',
+      );
+    }
+  }
+
+  cancelImport(): void {
+    this.importPlan = null;
+    this._importPreview.set(null);
+    this._importError.set(null);
+  }
+
+  async confirmImport(choice: ImportChoice): Promise<void> {
+    const plan = this.importPlan;
+    this.cancelImport();
+    if (!plan) return;
+    await this.busy(async () => {
+      await this.importer.apply(plan, choice);
+      // The window is a query result, and the import just changed what that
+      // query answers — several times over, at ids the window never held.
+      await this.store.refresh();
+    });
+  }
+
+  /** Run a long job with the screen saying so. */
+  private async busy(job: () => Promise<unknown>): Promise<void> {
+    this._isBusy.set(true);
+    try {
+      await job();
+    } finally {
+      this._isBusy.set(false);
+    }
   }
 
   private find(id: string): Song | undefined {

@@ -9,6 +9,16 @@
 
 import type { GlobalSettings } from '@achordeon/shared/domain';
 
+/**
+ * Where the scaled content sits inside the render box.
+ *
+ * `top-left` is the song's own answer (§4.5: the title block hugs the corner) and
+ * the default everywhere. `center` exists for the one page that is not a song —
+ * a songbook's **title page**, which is three lines on a sheet of paper and reads
+ * as a mistake anywhere but the middle of it.
+ */
+export type ContentAlign = 'top-left' | 'center';
+
 export interface FitResult {
   box: { width: number; height: number };
   fit: number;
@@ -43,6 +53,7 @@ export function fitContent(
   ratio: number,
   scale: GlobalSettings['scale'],
   minBox = 0,
+  align: ContentAlign = 'top-left',
 ): FitResult {
   const fit = parseScale(scale);
   const origin = { x: 0, y: 0 }; // hug top-left (§4.5)
@@ -71,6 +82,13 @@ export function fitContent(
       box.width *= grow;
       box.height *= grow;
     }
+  }
+
+  // Centring happens after the floor has grown the box, because the slack it
+  // centres in is exactly what the floor just created.
+  if (align === 'center') {
+    origin.x = (box.width - contentW * fit) / 2;
+    origin.y = (box.height - contentH * fit) / 2;
   }
 
   return { box, fit, origin };

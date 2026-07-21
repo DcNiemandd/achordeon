@@ -179,3 +179,59 @@ test.describe('global render settings', () => {
     await expect(page.getByTestId('reset-aspectRatio')).toHaveCount(0);
   });
 });
+
+test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
+  test.beforeEach(async ({ page }) => {
+    // Force the anchor download, not the native save picker Playwright cannot
+    // drive (see transfer.spec for the full reasoning).
+    await page.addInitScript(() => {
+      // @ts-expect-error deleting an optional platform API for the test
+      delete window.showSaveFilePicker;
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('settings');
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+  });
+
+  test('the coming-soon settings are shown but disabled', async ({ page }) => {
+    // Present, so the shape of the app is honest — but not operable, so nothing
+    // pretends to work.
+    await expect(page.getByTestId('notation-german')).toBeVisible();
+    await expect(page.getByTestId('notation-german')).toBeDisabled();
+    await expect(page.getByTestId('font-library')).toBeVisible();
+    await expect(page.getByTestId('font-library')).toBeDisabled();
+  });
+
+  test('backs the whole library up to a file', async ({ page }) => {
+    const waiting = page.waitForEvent('download', { timeout: 30_000 });
+    await page.getByTestId('backup').click();
+    const download = await waiting;
+    expect(download.suggestedFilename()).toMatch(/^achordeon-backup-.*\.json$/);
+  });
+
+  test('restore asks first — picking a file does not replace anything yet', async ({
+    page,
+  }) => {
+    await page.getByTestId('restore-input').setInputFiles({
+      name: 'backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{}'),
+    });
+    // The confirm stands between the file and the irreversible replace.
+    await expect(page.getByTestId('restore-dialog')).toBeVisible();
+    await page.getByTestId('restore-cancel').click();
+    await expect(page.getByTestId('restore-dialog')).toHaveCount(0);
+  });
+
+  test('a damaged backup file is refused, library untouched', async ({
+    page,
+  }) => {
+    await page.getByTestId('restore-input').setInputFiles({
+      name: 'broken.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('not a database'),
+    });
+    await page.getByTestId('restore-confirm').click();
+    await expect(page.getByTestId('restore-error-dialog')).toBeVisible();
+  });
+});

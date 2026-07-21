@@ -44,9 +44,25 @@ export class RowSelection {
     });
   }
 
-  /** The row: replace the selection with this one row. */
+  /**
+   * The row: replace the selection with this one row — **or clear it, if this
+   * row was already the whole selection.**
+   *
+   * Without the second half there is no way back to *nothing selected* once you
+   * have clicked a row: the checkbox is the only escape, and the songbook list
+   * has no checkboxes at all. A gesture that can only ever be applied is not a
+   * gesture, it is a latch. Clicking the row again is the obvious undo, and it
+   * is the one every file manager already taught.
+   *
+   * It clears the **selection**, not "which song am I looking at" — those are
+   * different facts wearing different marks (see the explorer's `is-selected`
+   * against `is-current`), and the render pane must not blank because you
+   * untinted a row.
+   */
   selectOnly(id: string): void {
-    this._ids.set(new Set([id]));
+    const current = this._ids();
+    const isOnlyThis = current.size === 1 && current.has(id);
+    this._ids.set(isOnlyThis ? new Set() : new Set([id]));
   }
 
   /** Drop a row that no longer exists — a tombstone must not stay selected, or

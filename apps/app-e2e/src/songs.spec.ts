@@ -56,6 +56,20 @@ async function createSong(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Open a row's ⋯ menu — duplicate, download, export and delete moved behind it
+ * (Epic 7). Edit and rename stay direct on the row.
+ */
+async function openRowMenu(page: Page, id: string | null): Promise<void> {
+  await page
+    .getByTestId('song-row')
+    .filter({ has: page.getByTestId(`more-${id}`) })
+    .first()
+    .hover();
+  await page.getByTestId(`more-${id}`).click();
+  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+}
+
+/**
  * Put a songbook holding `songName` into IndexedDB directly.
  *
  * The Songbooks module is Epic 6, so there is no UI to build one with yet — but
@@ -204,7 +218,7 @@ test.describe('song explorer', () => {
     await createSong(page, 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await page.getByTestId('song-row').hover();
+    await openRowMenu(page, id);
     await page.getByTestId(`duplicate-${id}`).click();
 
     await expect(page.getByTestId('song-row')).toHaveCount(2);
@@ -380,7 +394,7 @@ test.describe('song explorer', () => {
     await createSong(page, 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await page.getByTestId('song-row').hover();
+    await openRowMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
     await expect(page.getByTestId('delete-dialog')).toBeVisible();
     // Nothing is in use, so no warning is shown.
@@ -394,7 +408,7 @@ test.describe('song explorer', () => {
     await createSong(page, 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await page.getByTestId('song-row').hover();
+    await openRowMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('delete-confirm').click();
 
@@ -411,7 +425,7 @@ test.describe('song explorer', () => {
     await seedSongbook(page, 'Campfire', 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await page.getByTestId('song-row').hover();
+    await openRowMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
 
     await expect(page.getByTestId('delete-in-use')).toBeVisible();
@@ -430,7 +444,7 @@ test.describe('song explorer', () => {
     await seedSongbook(page, 'Campfire', 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await page.getByTestId('song-row').hover();
+    await openRowMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('delete-confirm').click();
     await expect(page.getByTestId('explorer-empty')).toBeVisible();

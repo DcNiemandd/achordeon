@@ -76,12 +76,21 @@ importers:
       dexie-export-import:
         specifier: ^4.4.0
         version: 4.4.0(dexie@4.4.4)
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+      jspdf:
+        specifier: 4.2.1
+        version: 4.2.1
       lucide-static:
         specifier: 1.24.0
         version: 1.24.0
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
+      svg2pdf.js:
+        specifier: 2.7.0
+        version: 2.7.0(jspdf@4.2.1)
     devDependencies:
       '@angular-devkit/core':
         specifier: 21.2.7
@@ -7080,6 +7089,12 @@ packages:
         integrity: sha512-cuVNgarYWZqxRJDQHEB58GEONhOK79QVR/qYx4S7kcUObQvUwvFnYxJuuHUKm2aieN9X3yZB4LZsuYNU1Qphsw==,
       }
 
+  '@types/pako@2.0.4':
+    resolution:
+      {
+        integrity: sha512-VWDCbrLeVXJM9fihYodcLiIv0ku+AlOa/TQ1SvYOaBuyrSKgEcro95LJyIsJ4vSo6BXIxOKxiJAat04CmST9Fw==,
+      }
+
   '@types/parse-json@4.0.2':
     resolution:
       {
@@ -7096,6 +7111,12 @@ packages:
     resolution:
       {
         integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==,
+      }
+
+  '@types/raf@3.4.3':
+    resolution:
+      {
+        integrity: sha512-c4YAvMedbPZ5tEyxzQdMoOhhJ4RD3rngZIdwC2/qDN3d7JpEhB6fiBRKVY1lg5B7Wk+uPBjn5f39j1/2MY1oOw==,
       }
 
   '@types/range-parser@1.2.7':
@@ -7186,6 +7207,12 @@ packages:
     resolution:
       {
         integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==,
+      }
+
+  '@types/trusted-types@2.0.7':
+    resolution:
+      {
+        integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==,
       }
 
   '@types/unist@2.0.11':
@@ -8196,6 +8223,13 @@ packages:
       }
     engines: { node: 18 || 20 || >=22 }
 
+  base64-arraybuffer@1.0.2:
+    resolution:
+      {
+        integrity: sha512-I3yl4r9QB5ZRY3XuJVEPfc2XhZO6YweFPI+UovAzn+8/hb3oJ6lnysaFcjVpkCPfVWFUDvoZ8kmVDP7WyRtYtQ==,
+      }
+    engines: { node: '>= 0.6.0' }
+
   base64-js@1.5.1:
     resolution:
       {
@@ -8470,6 +8504,13 @@ packages:
       {
         integrity: sha512-iwSsYWaCOoh26cV8NwNRViHlrfUvYsHDfRVcbtmw0Kg6PJIZZXwMkj1442FYLBGkeUf1juAsU3DTfxW579mrPA==,
       }
+
+  canvg@3.0.11:
+    resolution:
+      {
+        integrity: sha512-5ON+q7jCTgMp9cjpu4Jo6XbvfYwSB2Ow3kzHKfIyJfaCAOHLbdKPQqGKgfED/R5B+3TFFfe8pegYA+b423SRyA==,
+      }
+    engines: { node: '>=10.0.0' }
 
   ccount@2.0.1:
     resolution:
@@ -9152,6 +9193,12 @@ packages:
     peerDependencies:
       postcss: ^8.4
 
+  css-line-break@2.1.0:
+    resolution:
+      {
+        integrity: sha512-FHcKFCZcAha3LwfVBhCQbW2nCNbkZXn7KVUJcsT5/P8YmfsVja0FMPJr0B903j/E69HUphKiV9iQArX8SDYA4w==,
+      }
+
   css-loader@6.11.0:
     resolution:
       {
@@ -9725,6 +9772,12 @@ packages:
         integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==,
       }
     engines: { node: '>= 4' }
+
+  dompurify@3.4.12:
+    resolution:
+      {
+        integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==,
+      }
 
   domutils@2.8.0:
     resolution:
@@ -10484,6 +10537,12 @@ packages:
         integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==,
       }
 
+  fast-png@6.4.0:
+    resolution:
+      {
+        integrity: sha512-kAqZq1TlgBjZcLr5mcN6NP5Rv4V2f22z00c3g8vRrwkcqjerx7BEhPbOnWCPqaHUl2XWQBJQvOT/FQhdMT7X/Q==,
+      }
+
   fast-uri@3.1.2:
     resolution:
       {
@@ -10533,6 +10592,12 @@ packages:
         integrity: sha512-u5/sxGfiMfZNtJ3OvQpXcvotFpYkL0n9u9mM2vkui2nGo8b4wvDkJ8gAkYqbA8QpGyFCv3RK0Z+Iv+9veCS9bQ==,
       }
     engines: { node: '>=0.4.0' }
+
+  fflate@0.8.3:
+    resolution:
+      {
+        integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==,
+      }
 
   figures@3.2.0:
     resolution:
@@ -10651,6 +10716,12 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+
+  font-family-papandreou@0.2.0-patch2:
+    resolution:
+      {
+        integrity: sha512-l/YiRdBSH/eWv6OF3sLGkwErL+n0MqCICi9mppTZBOCL5vixWGDqCYvRcuxB2h7RGCTzaTKOHT2caHvCXQPRlw==,
+      }
 
   foreground-child@3.3.1:
     resolution:
@@ -11220,6 +11291,13 @@ packages:
       webpack:
         optional: true
 
+  html2canvas@1.4.1:
+    resolution:
+      {
+        integrity: sha512-fPU6BHNpsyIhr8yyMpTLLxAbkaK8ArIBcmZIRiBLiDhjeqvXolaEmDGmELFuX9I4xDcaKKcJl+TKZLqruBbmWA==,
+      }
+    engines: { node: '>=8.0.0' }
+
   htmlparser2@10.1.0:
     resolution:
       {
@@ -11533,6 +11611,12 @@ packages:
     resolution:
       {
         integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==,
+      }
+
+  iobuffer@5.4.0:
+    resolution:
+      {
+        integrity: sha512-DRebOWuqDvxunfkNJAlc3IzWIPD5xVxwUNbHr7xKB8E6aLJxIPfNX3CoMJghcFjpv6RWQsrcJbghtEwSPoJqMA==,
       }
 
   ip-address@10.2.0:
@@ -12509,6 +12593,12 @@ packages:
         integrity: sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg==,
       }
     engines: { '0': node >= 0.2.0 }
+
+  jspdf@4.2.1:
+    resolution:
+      {
+        integrity: sha512-YyAXyvnmjTbR4bHQRLzex3CuINCDlQnBqoSYyjJwTP2x9jDLuKDzy7aKUl0hgx3uhcl7xzg32agn5vlie6HIlQ==,
+      }
 
   karma-source-map-support@1.4.0:
     resolution:
@@ -14185,6 +14275,12 @@ packages:
     engines: { node: ^20.17.0 || >=22.9.0 }
     hasBin: true
 
+  pako@2.2.0:
+    resolution:
+      {
+        integrity: sha512-zJq6RP/5q+TO2OpFV3FHzlPnFjmkb7Nc99a5SNjJE+uu/PkpChs+NIZSSzbBoD+6kjiISXjfYdwj1ZRQ81dz/w==,
+      }
+
   param-case@3.0.4:
     resolution:
       {
@@ -14364,6 +14460,12 @@ packages:
         integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==,
       }
     engines: { node: '>=8' }
+
+  performance-now@2.1.0:
+    resolution:
+      {
+        integrity: sha512-7EAHlyLHI56VEIdK57uwHdHKIaAGbnXPiw0yWbarQZOKaKpvUIgW0jWRVLiatnM+XXlSwsanIBH/hzGMJulMow==,
+      }
 
   picocolors@1.1.1:
     resolution:
@@ -15562,6 +15664,12 @@ packages:
       }
     engines: { node: '>=10' }
 
+  raf@3.4.1:
+    resolution:
+      {
+        integrity: sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==,
+      }
+
   randombytes@2.1.0:
     resolution:
       {
@@ -15776,6 +15884,12 @@ packages:
     resolution:
       {
         integrity: sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A==,
+      }
+
+  regenerator-runtime@0.13.11:
+    resolution:
+      {
+        integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==,
       }
 
   regex-parser@2.3.1:
@@ -16034,6 +16148,13 @@ packages:
       {
         integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==,
       }
+
+  rgbcolor@1.0.1:
+    resolution:
+      {
+        integrity: sha512-9aZLIrhRaD97sgVhtJOW6ckOEh6/GnvQtdVNfdZ6s67+3/XwLS9lBcQYzEEhYVeUowN7pRzMLsyGhK2i/xvWbw==,
+      }
+    engines: { node: '>= 0.8.15' }
 
   rolldown@1.0.0-rc.4:
     resolution:
@@ -16815,6 +16936,13 @@ packages:
       }
     engines: { node: '>=6.0.0' }
 
+  specificity@0.4.1:
+    resolution:
+      {
+        integrity: sha512-1klA3Gi5PD1Wv9Q0wUoOQN1IWAuPu0D1U03ThXTr0cJ20+/iq2tHSDnK7Kk/0LXJ1ztUB2/1Os0wKmfyNgUQfg==,
+      }
+    hasBin: true
+
   sprintf-js@1.0.3:
     resolution:
       {
@@ -16841,6 +16969,13 @@ packages:
         integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==,
       }
     engines: { node: '>=10' }
+
+  stackblur-canvas@2.7.0:
+    resolution:
+      {
+        integrity: sha512-yf7OENo23AGJhBriGx0QivY5JP6Y1HbrrDI6WLt6C5auYZXlQrheoY8hD4ibekFKz1HOfE48Ww8kMWMnJD/zcQ==,
+      }
+    engines: { node: '>=0.1.14' }
 
   stackframe@1.3.4:
     resolution:
@@ -17070,6 +17205,21 @@ packages:
         integrity: sha512-e4hG1hRwoOdRb37cIMSgzNsxyzKfayW6VOflrwvR+/bzrkyxY/31WkbgnQpgtrNp1SdpJvpUAGTa/ZoiPNDuRQ==,
       }
 
+  svg-pathdata@6.0.3:
+    resolution:
+      {
+        integrity: sha512-qsjeeq5YjBZ5eMdFuUa4ZosMLxgr5RZ+F+Y1OrDhuOCEInRMA3x74XdBtggJcj9kOeInz0WE+LgCPDkZFlBYJw==,
+      }
+    engines: { node: '>=12.0.0' }
+
+  svg2pdf.js@2.7.0:
+    resolution:
+      {
+        integrity: sha512-nXK4Wx28H0KtOktanm5nsphl1KMEoLNMelAT/776qxPAj9DshwYcqgdpKuBnY1nrcYOriQFHVQLE4tIag+aDJA==,
+      }
+    peerDependencies:
+      jspdf: ^4.0.0 || ^3.0.0 || ^2.0.0
+
   svgo@3.3.3:
     resolution:
       {
@@ -17085,6 +17235,12 @@ packages:
       }
     engines: { node: '>=16' }
     hasBin: true
+
+  svgpath@2.6.0:
+    resolution:
+      {
+        integrity: sha512-OIWR6bKzXvdXYyO4DK/UWa1VA1JeKq8E+0ug2DG98Y/vOmMpfZNj+TIG988HjfYSqtcy/hFOtZq/n/j5GSESNg==,
+      }
 
   swc-loader@0.2.7:
     resolution:
@@ -17210,6 +17366,12 @@ packages:
         integrity: sha512-cAGWPIyOHU6zlmg88jwm7VRyXnMN7iV68OGAbYDk/Mh/xC/pzVPlQtY6ngoIH/5/tciuhGfvESU8GrHrcxD56w==,
       }
     engines: { node: '>=8' }
+
+  text-segmentation@1.0.3:
+    resolution:
+      {
+        integrity: sha512-iOiPUo/BGnZ6+54OsWxZidGCsdU8YbE4PSpdPinp7DeMtUJNJBoJ/ouUSTJjHkh1KntHaltHl/gDs2FC4i5+Nw==,
+      }
 
   thingies@2.6.0:
     resolution:
@@ -17799,6 +17961,12 @@ packages:
         integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==,
       }
     engines: { node: '>= 0.4.0' }
+
+  utrie@1.0.2:
+    resolution:
+      {
+        integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==,
+      }
 
   uuid@8.3.2:
     resolution:
@@ -25051,11 +25219,16 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/pako@2.0.4': {}
+
   '@types/parse-json@4.0.2': {}
 
   '@types/prismjs@1.26.6': {}
 
   '@types/qs@6.15.1': {}
+
+  '@types/raf@3.4.3':
+    optional: true
 
   '@types/range-parser@1.2.7': {}
 
@@ -25114,6 +25287,9 @@ snapshots:
   '@types/stack-utils@2.0.3': {}
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/trusted-types@2.0.7':
+    optional: true
 
   '@types/unist@2.0.11': {}
 
@@ -25814,6 +25990,9 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
+  base64-arraybuffer@1.0.2:
+    optional: true
+
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.10.32: {}
@@ -26023,6 +26202,18 @@ snapshots:
       lodash.uniq: 4.5.0
 
   caniuse-lite@1.0.30001793: {}
+
+  canvg@3.0.11:
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@types/raf': 3.4.3
+      core-js: 3.49.0
+      raf: 3.4.1
+      regenerator-runtime: 0.13.11
+      rgbcolor: 1.0.1
+      stackblur-canvas: 2.7.0
+      svg-pathdata: 6.0.3
+    optional: true
 
   ccount@2.0.1: {}
 
@@ -26413,6 +26604,11 @@ snapshots:
       postcss-selector-parser: 7.1.1
       postcss-value-parser: 4.2.0
 
+  css-line-break@2.1.0:
+    dependencies:
+      utrie: 1.0.2
+    optional: true
+
   css-loader@6.11.0(@rspack/core@1.6.8(@swc/helpers@0.5.18))(webpack@5.107.2(@swc/core@1.15.8(@swc/helpers@0.5.18))(esbuild@0.27.7)(lightningcss@1.32.0)(postcss@8.5.15)):
     dependencies:
       icss-utils: 5.1.0(postcss@8.5.15)
@@ -26793,6 +26989,11 @@ snapshots:
   domhandler@5.0.3:
     dependencies:
       domelementtype: 2.3.0
+
+  dompurify@3.4.12:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
+    optional: true
 
   domutils@2.8.0:
     dependencies:
@@ -27345,6 +27546,12 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
+  fast-png@6.4.0:
+    dependencies:
+      '@types/pako': 2.0.4
+      iobuffer: 5.4.0
+      pako: 2.2.0
+
   fast-uri@3.1.2: {}
 
   fastq@1.20.1:
@@ -27370,6 +27577,8 @@ snapshots:
   feed@4.2.2:
     dependencies:
       xml-js: 1.6.11
+
+  fflate@0.8.3: {}
 
   figures@3.2.0:
     dependencies:
@@ -27452,6 +27661,8 @@ snapshots:
   follow-redirects@1.16.0(debug@4.4.3):
     optionalDependencies:
       debug: 4.4.3
+
+  font-family-papandreou@0.2.0-patch2: {}
 
   foreground-child@3.3.1:
     dependencies:
@@ -27895,6 +28106,12 @@ snapshots:
       '@rspack/core': 1.7.11(@swc/helpers@0.5.18)
       webpack: 5.107.2(@swc/core@1.15.8(@swc/helpers@0.5.18))(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.15))(esbuild@0.27.7)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.15)
 
+  html2canvas@1.4.1:
+    dependencies:
+      css-line-break: 2.1.0
+      text-segmentation: 1.0.3
+    optional: true
+
   htmlparser2@10.1.0:
     dependencies:
       domelementtype: 2.3.0
@@ -28105,6 +28322,8 @@ snapshots:
   invariant@2.2.4:
     dependencies:
       loose-envify: 1.4.0
+
+  iobuffer@5.4.0: {}
 
   ip-address@10.2.0: {}
 
@@ -29016,6 +29235,17 @@ snapshots:
       graceful-fs: 4.2.11
 
   jsonparse@1.3.1: {}
+
+  jspdf@4.2.1:
+    dependencies:
+      '@babel/runtime': 7.29.7
+      fast-png: 6.4.0
+      fflate: 0.8.3
+    optionalDependencies:
+      canvg: 3.0.11
+      core-js: 3.49.0
+      dompurify: 3.4.12
+      html2canvas: 1.4.1
 
   karma-source-map-support@1.4.0:
     dependencies:
@@ -30446,6 +30676,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  pako@2.2.0: {}
+
   param-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
@@ -30543,6 +30775,9 @@ snapshots:
   path-to-regexp@8.4.2: {}
 
   path-type@4.0.0: {}
+
+  performance-now@2.1.0:
+    optional: true
 
   picocolors@1.1.1: {}
 
@@ -31349,6 +31584,11 @@ snapshots:
 
   quick-lru@5.1.1: {}
 
+  raf@3.4.1:
+    dependencies:
+      performance-now: 2.1.0
+    optional: true
+
   randombytes@2.1.0:
     dependencies:
       safe-buffer: 5.2.1
@@ -31499,6 +31739,9 @@ snapshots:
       regenerate: 1.4.2
 
   regenerate@1.4.2: {}
+
+  regenerator-runtime@0.13.11:
+    optional: true
 
   regex-parser@2.3.1: {}
 
@@ -31685,6 +31928,9 @@ snapshots:
   reusify@1.1.0: {}
 
   rfdc@1.4.1: {}
+
+  rgbcolor@1.0.1:
+    optional: true
 
   rolldown@1.0.0-rc.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0):
     dependencies:
@@ -32237,6 +32483,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  specificity@0.4.1: {}
+
   sprintf-js@1.0.3: {}
 
   srcset@4.0.0: {}
@@ -32248,6 +32496,9 @@ snapshots:
   stack-utils@2.0.6:
     dependencies:
       escape-string-regexp: 2.0.0
+
+  stackblur-canvas@2.7.0:
+    optional: true
 
   stackframe@1.3.4: {}
 
@@ -32366,6 +32617,17 @@ snapshots:
 
   svg-parser@2.0.4: {}
 
+  svg-pathdata@6.0.3:
+    optional: true
+
+  svg2pdf.js@2.7.0(jspdf@4.2.1):
+    dependencies:
+      cssesc: 3.0.0
+      font-family-papandreou: 0.2.0-patch2
+      jspdf: 4.2.1
+      specificity: 0.4.1
+      svgpath: 2.6.0
+
   svgo@3.3.3:
     dependencies:
       commander: 7.2.0
@@ -32385,6 +32647,8 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
       sax: 1.6.0
+
+  svgpath@2.6.0: {}
 
   swc-loader@0.2.7(@swc/core@1.15.8(@swc/helpers@0.5.18))(webpack@5.107.2(@swc/core@1.15.8(@swc/helpers@0.5.18))(esbuild@0.27.7)(lightningcss@1.32.0)(postcss@8.5.15)):
     dependencies:
@@ -32492,6 +32756,11 @@ snapshots:
       '@istanbuljs/schema': 0.1.6
       glob: 7.2.3
       minimatch: 3.1.5
+
+  text-segmentation@1.0.3:
+    dependencies:
+      utrie: 1.0.2
+    optional: true
 
   thingies@2.6.0(tslib@2.8.1):
     dependencies:
@@ -32850,6 +33119,11 @@ snapshots:
   utility-types@3.11.0: {}
 
   utils-merge@1.0.1: {}
+
+  utrie@1.0.2:
+    dependencies:
+      base64-arraybuffer: 1.0.2
+    optional: true
 
   uuid@8.3.2: {}
 

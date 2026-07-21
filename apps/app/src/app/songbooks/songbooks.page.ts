@@ -24,7 +24,8 @@ import {
   SONGBOOK_LIST_CAPABILITIES,
   SongExplorer,
 } from '../shared/song-explorer';
-import { TitlePage } from './title-page';
+import { SongRender } from '../shared/song-render';
+import { SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
@@ -39,7 +40,8 @@ import {
     BlankPage,
     SplitPane,
     SongExplorer,
-    TitlePage,
+    SongRender,
+    SongbookDownloadDialog,
     Button,
     Dialog,
     Icon,
@@ -80,6 +82,9 @@ import {
           (activated)="presenter.select($event)"
           (opened)="presenter.open($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
+          (duplicated)="presenter.duplicate($event)"
+          (downloaded)="presenter.openDownloadRow($event)"
+          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event[0])"
         />
 
@@ -91,19 +96,32 @@ import {
         }
       </div>
 
-      <!-- Pane B: the picked songbook's title page. Blank with nothing picked —
-           the shape of what goes there, as the songs list does (§4). -->
-      <app-blank-page pane-b>
-        @if (presenter.currentTitlePage(); as page) {
-          <app-title-page
-            [title]="page.title"
-            [subtitle]="page.subtitle"
-            [author]="page.author"
-            [count]="page.count"
-          />
+      <!-- Pane B: the picked songbook's title page, **rendered** — the very
+           page its PDF prints (Epic 7). It used to be a stack of styled text
+           standing in for a render nobody had written yet.
+
+           Blank with nothing picked, and blank for All songs, which has no
+           record and so no title page: the empty paper is the honest picture of
+           "nothing to print here", and the row itself already says what it
+           holds. -->
+      <app-blank-page pane-b [ratio]="presenter.titlePageRatio()">
+        @if (presenter.titlePageSvg(); as svg) {
+          <div class="title-page" data-testid="title-page">
+            <app-song-render [svg]="svg" />
+          </div>
         }
       </app-blank-page>
     </app-split-pane>
+
+    @if (presenter.isDownloadOpen()) {
+      <app-songbook-download-dialog
+        [name]="presenter.downloadName()"
+        [initial]="presenter.printOptions()"
+        [showSongOrder]="presenter.isDownloadAllSongs()"
+        (chosen)="presenter.download($event)"
+        (closed)="presenter.cancelDownload()"
+      />
+    }
 
     @if (presenter.pendingDelete(); as pending) {
       <app-dialog
@@ -154,6 +172,10 @@ import {
     .list {
       flex: 1;
       min-block-size: 0;
+    }
+
+    .title-page {
+      block-size: 100%;
     }
 
     .hint {

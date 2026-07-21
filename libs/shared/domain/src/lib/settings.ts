@@ -25,11 +25,17 @@ export const SETTINGS = {
     scopes: ['song'],
   }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
   titleFont: {
-    default: 'body' as 'body' | 'serif' | 'sans',
+    default: 'body' as 'body' | 'serif' | 'display' | 'script',
     scopes: ['songbook', 'song'],
   }, // the face for Title AND Subtitle together — one title block, one decision.
   // 'body' = whatever the rest of the song is set in. Songbook scope so a book can
   // impose one house style. See PRD-RENDERING §4.10
+  //
+  // Epic 7 swapped 'sans' for 'display' + 'script': every choice now carries
+  // bundled bytes, and a plain sans was the one that looked least unlike the
+  // body mono at title size while costing just as much to bundle. Not a schema
+  // break (ADR-0007) — nothing about the record's *shape* moved, and a song
+  // still holding 'sans' resolves to 'body', which is this setting's own default.
   aspectRatio: {
     default: 'A4' as
       | 'A4'

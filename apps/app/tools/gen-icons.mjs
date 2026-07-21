@@ -44,6 +44,13 @@ const ICONS = {
   plus: 'plus',
   minus: 'minus',
   download: 'download',
+  // Export and import (Epic 7). The *file* marks, deliberately unlike
+  // `download`'s bare arrow: download makes a picture for a player, these two
+  // move the library itself between machines. A page with an arrow leaving it
+  // and a page with an arrow arriving — same object, opposite directions, which
+  // is exactly the relationship the two acts have.
+  export: 'file-output',
+  import: 'file-input',
   // The full circular arrow, which is what an undo arrow is in most people's
   // heads. It used to be `undo-2`/`redo-2` — an arrow that runs left and loops
   // back — which reads as "go left" before it reads as "go back".

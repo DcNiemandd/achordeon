@@ -5,6 +5,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_SORT_DIR,
+  DownloadService,
+  ExportService,
   SessionStore,
   SettingsStore,
   SongStore,
@@ -24,6 +26,7 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
+import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
 import {
   insertEntries,
   insertionIndex,
@@ -50,7 +53,13 @@ export class SongbookDetailPresenter {
   private readonly songs = inject(SongStore);
   private readonly session = inject(SessionStore);
   private readonly settings = inject(SettingsStore);
+  private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
+  private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
+
+  /** The last-used print options, for the download dialog to open on (#3). */
+  readonly printOptions = this.print.options;
   private readonly route = inject(ActivatedRoute);
 
   /** The book being built, or null for the virtual one (and while loading). */
@@ -114,6 +123,14 @@ export class SongbookDetailPresenter {
    * came from may never have been loaded.
    */
   async load(id: string): Promise<void> {
+    // **All songs has no editable detail view.** Its order is chosen at
+    // download, and it is browsed through the Songs module — so a link straight
+    // to it (an old bookmark, a hand-typed URL) bounces back to the list rather
+    // than opening a page the UI no longer offers a way into.
+    if (isAllSongs(id)) {
+      void this.router.navigate(['/songbooks']);
+      return;
+    }
     this._id.set(id);
     this.slotSelection.clear();
     this._currentSlotKey.set(null);
@@ -657,6 +674,50 @@ export class SongbookDetailPresenter {
       }
     }
     this._songsById.set(next);
+  }
+
+  // --- Transfer (Epic 7) -----------------------------------------------
+  //
+  // The same two acts the songbook list offers, on the book that is already
+  // open. **Off for the virtual All songs**, which has no record and therefore
+  // no title page, author or order of its own to print.
+
+  private readonly _isDownloadOpen = signal(false);
+  private readonly _isBusy = signal(false);
+  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  readonly isBusy = this._isBusy.asReadonly();
+
+  readonly isTransferable = computed(
+    () => !this.isVirtual() && this._book() !== null,
+  );
+
+  openDownload(): void {
+    if (this.isTransferable()) this._isDownloadOpen.set(true);
+  }
+
+  cancelDownload(): void {
+    this._isDownloadOpen.set(false);
+  }
+
+  async download(choice: SongbookPdfChoice): Promise<void> {
+    this._isDownloadOpen.set(false);
+    if (!this.isTransferable()) return;
+    this.print.save(choice); // remember it for next time (#3)
+    await this.busy(() => this.downloads.downloadSongbook(this._id(), choice));
+  }
+
+  async exportBook(): Promise<void> {
+    if (!this.isTransferable()) return;
+    await this.busy(() => this.exporter.export({ songbookIds: [this._id()] }));
+  }
+
+  private async busy(job: () => Promise<unknown>): Promise<void> {
+    this._isBusy.set(true);
+    try {
+      await job();
+    } finally {
+      this._isBusy.set(false);
+    }
   }
 
   private navigate(queryParams: Record<string, string | null>): void {

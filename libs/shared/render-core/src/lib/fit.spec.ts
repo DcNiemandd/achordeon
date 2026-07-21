@@ -53,3 +53,33 @@ describe('fitContent — scale-to-fit (§4.1)', () => {
     expect(fitContent(200, 100, 1, -2).fit).toBe(1);
   });
 });
+
+describe('fitContent — alignment (Epic 7: the title page)', () => {
+  it('hugs the top-left corner by default, as a song does', () => {
+    const { origin } = fitContent(100, 100, 1 / 2, 'auto');
+    expect(origin).toEqual({ x: 0, y: 0 });
+  });
+
+  it('centres the content in the slack the ratio created', () => {
+    // A square of content in a box twice as tall: the slack is all vertical.
+    const { box, origin } = fitContent(100, 100, 1 / 2, 'auto', 0, 'center');
+    expect(box).toEqual({ width: 100, height: 200 });
+    expect(origin).toEqual({ x: 0, y: 50 });
+  });
+
+  it('centres in the slack the auto-fit floor created too', () => {
+    // The floor grows the box around content that keeps its size — which is
+    // precisely the case a title page is: three lines on a sheet of paper.
+    const { box, origin } = fitContent(20, 20, 1, 'auto', 200, 'center');
+    expect(box).toEqual({ width: 200, height: 200 });
+    expect(origin).toEqual({ x: 90, y: 90 });
+  });
+
+  it('lets an overflowing manual scale bleed evenly, not off one corner', () => {
+    // A manual scale may overflow (§4.1, no clamp) and the floor does not apply
+    // to it — so the box stays 50×50 around content drawn at 100×100. Centred,
+    // that hangs 25 off each side instead of 50 off the bottom-right.
+    const { origin } = fitContent(50, 50, 1, 2, 200, 'center');
+    expect(origin).toEqual({ x: -25, y: -25 });
+  });
+});

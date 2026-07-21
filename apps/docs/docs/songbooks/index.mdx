@@ -22,16 +22,24 @@ Removing a song from a songbook won't delete the song. The song can be deleted o
 
 A songbook can restyle the chords of all its songs - chord color, chord size and font are songbook-scoped settings.
 
+Each songbook in the list carries its own actions on the row: rename, duplicate, download (as a PDF) and export (to a file), and delete. Duplicating one makes an independent copy with the same songs — the songs are only referenced, so nothing is copied twice.
+
+The **All songs** book can be downloaded (a PDF of your whole library) and exported, but not renamed, duplicated, deleted or opened — it is the library itself, not a book you made. To browse your songs, use the `Songs` module.
+
+Because All songs has no order of its own, its download dialog lets you choose one: by song title, library name, or date (created or changed), in either direction, with an option to put your favorites first. A real songbook keeps the order you arranged, so it has no such choice. Your last choice is remembered.
+
 ## Download
 
 When downloading the songbook, you can set some options, that will affect the exported PDF.
 
-- **Title page**: title, subtitle, author (the songbook's own fields, separate from any song's title and subtitle)
-- **Summary**: show songs summary, show page numbers
-- **Print**: paper size, double-sided
+- **Title page**: title, subtitle, author (the songbook's own fields, separate from any song's title and subtitle). It is a rendered page of the songbook, so it wears the book's own chord colours and fonts — the same page you see previewed in `Songbooks`, centred on the sheet.
+- **Summary**: a contents list of every song against its page number. Each line is a link — tap it to jump to the song. The title page and the summary are not numbered; the first song is page 1.
+- **Print**: paper size (A4, Letter or A5), portrait or landscape, the page margin, and where the page numbers sit (any corner or centred, top or bottom)
+
+Your last print choices are remembered, so the next download opens on the same paper.
 
 :::note[Print]
-Printing settings will not change the aspect ratio of a song. If you don't select paper size, the size will be similar to A4 paper but respecting aspect ratio.
+Printing settings will not change the aspect ratio of a song — every song keeps its own shape and is scaled to fit the page, so a song shaped unlike the paper sits centred with white either side.
 :::
 
 <Image alt="Print dialog" isDesign />

@@ -1,6 +1,6 @@
 import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
-import { createFontBook } from './fonts';
+import { singleFamilyResolver } from './fonts';
 import { createLayout, layoutCore } from './layout';
 import { DEFAULT_TUNING } from './tuning';
 
@@ -149,8 +149,10 @@ describe('layoutCore — assembly (§1, §5)', () => {
     );
   });
 
-  it('threads the injected font book into the plan', () => {
-    const fonts = createFontBook('Achordeon', { regular: 'QUJD' });
+  it('asks the resolver for the faces the styles name', () => {
+    const fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, {
+      normal: 'QUJD',
+    });
     const plan = layoutCore(
       ast({ title: 'T' }),
       settings,
@@ -158,7 +160,16 @@ describe('layoutCore — assembly (§1, §5)', () => {
       {},
       { fonts },
     );
-    expect(plan.fonts).toEqual(fonts);
+    // Only the faces the styles name, and only the ones with bytes: the lyric
+    // face is `normal`, so the bold roles find nothing and are left out.
+    expect(plan.fonts).toEqual([
+      {
+        family: DEFAULT_TUNING.fontFamily,
+        weight: 'normal',
+        style: 'normal',
+        base64: 'QUJD',
+      },
+    ]);
   });
 
   it('honours a tuning override', () => {

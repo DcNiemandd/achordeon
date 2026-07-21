@@ -281,9 +281,9 @@ Corrections the build forced, recorded so they aren't re-litigated:
   `/songbooks/:id` route (the in-use warning links to it) and the shell's pane
   switcher (§4 gave it a slot but no control).
 
-**Still open:** the render names the bundled Roboto Mono and screen is honest, but
-the FontBook carries no bytes — **Epic 7 must embed real ones** or the PDF has
-nothing to register (§3, §4.10).
+**Closed by Epic 7:** the FontBook now carries real bytes. Four bundled TTFs
+(`apps/app/public/fonts`), fetched by `FontLoader`, inlined into the export SVG
+and registered with jsPDF (§3, §4.10).
 
 **Still open — keyboard navigability.** Escape leaves the editor for the library
 (guarded so the settings dialog and the rename field keep their own Escape). That
@@ -430,10 +430,10 @@ Corrections the build forced, recorded so they aren't re-litigated:
   in a songbook, which is why removing one slot never takes its twins.
   `SongbookEntries` is deleted.
 
-**Still open:** drag & drop is **Epic 14**, which depends on this epic. The
-songbook **download** options (title page / summary / print) are Epic 7's, not
-this one's — including the real title-page render, which `<app-title-page>`
-stands in for as plain text until then.
+**Closed since:** drag & drop landed as **Epic 14**. The songbook **download**
+options (title page / summary / print) landed as Epic 7 — including the real
+title-page render, which now draws `/songbooks` pane B as well as the PDF's first
+page. `<app-title-page>`, the plain-text stand-in, is deleted.
 
 ---
 
@@ -452,22 +452,22 @@ songbook output.
 
 ### Subtasks
 
-- [ ] Export selected songs/songbooks to the Snapshot JSON (content + settings).
-- [ ] Import Export JSON (and, nice-to-have, downloaded files with embedded
+- [x] Export selected songs/songbooks to the Snapshot JSON (content + settings).
+- [x] Import Export JSON (and, nice-to-have, downloaded files with embedded
       metadata) through the migration gateway.
-- [ ] Import conflict resolution: songs replace / ignore / create-new (+ import
+- [x] Import conflict resolution: songs replace / ignore / create-new (+ import
       all as new with date prefix); songbooks always create new.
-- [ ] Single-song download: PNG (rasterize SVG cross-browser) and vector PDF
+- [x] Single-song download: PNG (rasterize SVG cross-browser) and vector PDF
       (svg2pdf + jsPDF, selectable text).
-- [ ] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
-- [ ] Songbook PDF: title page / summary / page-number toggles + position, page
+- [x] Multi-song download: ZIP of images / ZIP of PDFs / one multi-page PDF.
+- [x] Songbook PDF: title page / summary / page-number toggles + position, page
       size, outer fit per page (songs keep aspect ratio, scaled to slot).
       **Replaces `<app-title-page>`**, the plain-text stand-in Epic 6 mounts in
       `/songbooks` pane B: the real title page is a rendered page, and its
       layout is decided by these options rather than by the preview.
-- [ ] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
+- [x] Prove the svg2pdf guardrail (chord x-positioning + font embedding) holds in
       the real pipeline.
-- [ ] **Real font bytes, for N faces.** `FontBook` carries none today, so the
+- [x] **Real font bytes, for N faces.** `FontBook` carries none today, so the
       SVG relies on a CSS-loaded face and the PDF has nothing to register. Bundle
       the body TTF **and** the `titleFont` catalog's faces (a serif, a
       condensed/display, a script — PRD-RENDERING §4.10), keyed by family so only
@@ -475,8 +475,187 @@ songbook output.
       resolves to a CSS generic: fine on screen, unembeddable on export. Doing
       this for one font and then again for N would be building the plumbing twice,
       which is why it is one subtask.
-- [ ] Coordinate with Epic 11's precache list: precache the body face only, fetch
+- [x] Coordinate with Epic 11's precache list: precache the body face only, fetch
       a title face on first use. Each TTF is ~100–300 KB.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The `FontBook` could not stay bound once.** `createLayout` took a fixed list
+  of faces, but which faces a render needs is a function of the song's
+  `titleFont` — a _setting_, not a platform fact. `LayoutConfig.fonts` is now a
+  `FontResolver` that `layout` calls with the faces the resolved styles actually
+  name, so a body-font song carries no script face it never draws with.
+- **The faces are assets, not a generated constant** [corrects the shape
+  `fonts.ts` implied]. Base64 in a TS file would be ~1.3× its own weight in the
+  initial bundle, times four families, and Epic 11 wants the opposite split. They
+  live in `apps/app/public/fonts` and `FontLoader` fetches each once, then spends
+  it three ways: registered with `FontFace` (measurer + screen), kept as base64
+  (`emit({inlineFonts})`), and handed to jsPDF. Same bytes, so a PDF cannot
+  disagree with the screen about where a chord sits.
+- **`tuning.fontFamily` is the STATIC Roboto Mono**, not the variable webfont the
+  chrome is set in. `addFont` takes a static TTF; a face the render measures and
+  the export cannot embed is the one failure a document app must not have.
+- **`titleFont` swapped `'sans'` for `'display'` + `'script'`** — §4.10's
+  recommended set, and a plain sans was the choice that looked least unlike the
+  body mono at title size while costing the same to bundle. Not a schema break:
+  nothing about the record's shape moved, and a song still holding `'sans'`
+  resolves to `'body'`, the setting's own default.
+- **jsPDF, svg2pdf and fflate are `import()`ed on the gesture.** Statically
+  imported they broke the app's 1 MB initial budget outright (~500 KB together).
+  The ZIP is stored rather than deflated: every entry is already a compressed
+  stream, so deflating buys a percent and costs a pass over megabytes on the
+  main thread.
+- **An exported songbook drags its songs along.** A book is a list of references,
+  so exporting one without them produces a file that imports an empty songbook on
+  precisely the machine that needed it. Conversely the envelope carries **no
+  `user` row**: that holds the global render defaults, and a file that re-based
+  the receiver's whole library on the sender's would change every song they had.
+- **Import is three calls, not one** (read / plan / apply). "What would this file
+  do to my library" has to be answerable before anything is written. And because
+  songbooks are always created new, their `entries` must be **re-pointed** through
+  the id map — a book that kept the old ids would quietly fill up with the local
+  songs it was never about. A slot neither the file nor the library can fill is
+  dropped rather than left dangling.
+- **Incoming tombstones are dropped, not applied.** A snapshot carries them so a
+  _sync_ can propagate a delete; an import is someone handing you songs, and a
+  file that silently deleted rows on the receiving side would be the least
+  expected thing it could do.
+- **Embedded metadata is PNG-only** [narrows §8's "downloaded files"]. A `tEXt`
+  chunk holds the Export JSON, so one file is both the picture and the song. A
+  PDF could carry the string in its document properties, but reading it back
+  means parsing PDF object streams to recover something already available two
+  other ways — a dependency for one more accepted file type. Not built.
+- **A single song's page IS its render box**, pinned to A4's short side, so an
+  A4-shaped song prints as exactly A4 and any other shape prints as itself. The
+  songbook is the other case and the only one where a single paper size is the
+  point.
+- **The songbook title page is a render**, from `titlePageAst` — one definition of
+  what a title page is made of, drawn by the PDF and previewed in `/songbooks`
+  pane B. `<app-title-page>` is deleted. The summary is the exception and is
+  drawn as PDF text: its page numbers are only knowable once pagination is
+  decided, so it is counted first and drawn second.
+- **"Double-sided" is dropped from the songbook download options** [corrects
+  `songbooks/index.mdx`]. Every song is exactly one page (PRD-RENDERING §4.1), so
+  there is no spread for a sheet turn to break — the option had nothing left to
+  decide. Page margin took its place, which duplex printing actually needs.
+- **All songs cannot be downloaded as a songbook.** It has no record, so no title
+  page, no author and no order of its own — the three things a songbook PDF is
+  made of. The buttons are off rather than pretending.
+- **The guardrail is an e2e that reads the file's bytes**, not a mock: `%PDF`,
+  `/FontFile2`, text operators, and no image XObject. The 2026-06-29 spike proved
+  svg2pdf _could_; this proves the production path still _does_, which is what
+  would catch a face that stopped being registered — a failure that is otherwise
+  silent, coming out as Helvetica with every chord over the wrong character.
+
+**Deferred to Epic 11, by design:** the precache _list_. There is no
+`ngsw-config.json` yet, so the split it will encode is expressed in code instead
+— `FontLoader` fetches the body face at boot and every title face on first use.
+Epic 11 writes that down; nothing about it needs revisiting.
+
+### Landed — a second pass, from using it
+
+Corrections from actually printing a songbook and moving songs around:
+
+- **Front matter is not numbered; the first song is page 1.** Numbering the
+  title page and summary made the summary point at "page 3" for the first song —
+  a number the reader can only use by counting past two sheets that also claim
+  numbers. The printed number and the physical sheet now differ by the
+  front-matter count, and the summary's links convert.
+- **The summary links, whole-line.** A page number is a two-character target and
+  the title is what a reader points at, so both go to the page (`textWithLink`).
+- **The summary is set in the bundled body face, not jsPDF's Helvetica.**
+  Helvetica is WinAnsi and has no `ě ř ů`, so every Czech title in the contents
+  came out with holes while the song two pages on was perfect. `FontLoader.book`
+  hands the PDF its own faces for text that is not a render.
+- **The title page is centred.** It is a page of the book, not a song, and three
+  lines in a sheet's top-left read as a mistake — so `fitContent` grew an `align`
+  option (`top-left` stays the song default, §4.5) and the title page asks for
+  `center`. The `/songbooks` preview centres too, since it _is_ that page.
+- **All songs gets a generated title page** — its name and its count, no author,
+  because it is the library and nobody wrote it. A blank sheet where every other
+  book shows a title page read as a bug.
+- **`saveFile` offers the OS save dialog** (`showSaveFilePicker`) where the
+  browser has one, so a "choose the folder" preference is honoured instead of
+  everything landing in Downloads. Firefox/Safari fall back to the anchor; a
+  dismissed picker cancels rather than downloading anyway.
+- **Row actions fold into a `⋯` menu** (a new CDK-Overlay primitive — Aria v21
+  still ships no menu-button). Edit and rename stay direct; duplicate, download,
+  export and delete pocket behind the menu. Download and export became per-row
+  capabilities, so a song and a songbook are each acted on from their own row
+  rather than a shared toolbar; the songbooks-list top-bar transfer buttons are
+  gone. All songs, read-only, gets no menu at all.
+- **Clicking a selected row again clears the selection.** There was no way back
+  to nothing-selected once a row was clicked, and the songbook list has no
+  checkboxes to escape through. It clears the _selection_, not "which song is
+  current" — different facts, different marks.
+- **The cross-list drag ghost is hidden in the receiving list.** The CDK parks
+  its placeholder wherever the pointer is, so a drag out of the library planted a
+  row-shaped gap at the foot of the songbook that never tracked the insertion
+  line. It stays where it means something — the origin, in the list left behind.
+- **The delete dialog lists the songs** rather than joining them into a sentence;
+  the download dialog's radios became buttons that download; checkboxes and
+  radios take the brand colour from one `accent-color` rule.
+
+### Landed — a third pass, and two things Epic 4 / the parser plan deferred
+
+- **Songbook row actions are laid out, not pocketed** (`usesRowMenu`, false for
+  the songbook list, true for the Songs module). A songbook row carries a
+  handful and reads better as buttons; a library row carries many and folds the
+  secondary ones behind a `⋯`.
+- **A row's actions stay up while its own menu is open.** The menu is a CDK
+  overlay outside the row, so `:focus-within` released the instant it opened —
+  `Menu` now emits `openChange` and the row holds them. And a `MenuItem` closes
+  its menu by injecting it: projected through an `ngTemplateOutlet` its injector
+  followed the _declaration_ site, not the menu, so `close()` never ran and the
+  backdrop ate the next click. The menu items are inlined.
+- **Drag a slot onto the library to remove it** (`canDropRemove` + `droppedOut`).
+  The library pane shows a "drop to remove" zone, not an insertion line — there
+  is no position, only out — and the song stays in the library.
+- **Print options persist** (`PrintOptionsStore`, localStorage): the songbook
+  download dialog opens on the last-used paper. It also grew a title-page style
+  **stub** (only `classic` renders; the rest say "(soon)" and are disabled) and
+  **left** page-number positions. The song download dialog is now two columns —
+  the format's description, then its own Download button.
+- **Whole-database backup lands its UI** (`BackupService`, over Epic 4's
+  `dexie-export-import` blob). Settings can save the entire library to a file and
+  restore one — a full replace, so it confirms first and reloads. Distinct from
+  Export, which selects and merges.
+- **Two settings stubs** (notation, font library) sit in Settings, disabled and
+  marked, because each is its own work: what an existing chord symbol _means_
+  (`PARSER-GRAMMAR.md` §Notation), and embedding uploaded font bytes. Shown so
+  the app's shape is honest, wired to nothing.
+
+### Landed — a fourth pass
+
+- **All songs is downloadable and exportable** (reversing the third pass's "no
+  transfer" call — the user asked for it back). It is read-only, so no rename,
+  duplicate or delete, but it is the whole library: `DownloadService` synthesises
+  a book of every live song in name order under an "All songs" title page, and
+  `ExportService` emits every song and no songbook record. Download/export
+  stopped being gated on `isReadOnly`; only duplicate and delete still are.
+- **Songbooks duplicate** (`canDuplicate` on the list): a copy is a new record
+  with its own id and a fresh `entries` array, same order/settings/title fields.
+  Free, because a book holds references — the songs are untouched. Off for All
+  songs, which is read-only.
+- **The settings scroll is full-width**, scrollbar at the page's right edge, with
+  the content centred and capped in a column rather than shoved left.
+
+### Landed — a fifth pass (the All songs order)
+
+- **The All songs print order is chosen in the download dialog**, not hardcoded.
+  An axis (title / name / created / changed), a direction, and a favorites-first
+  toggle, shown **only for All songs** — a real songbook's order is its content.
+  `librarySongOrder` took the parameters; `title` stays the default (the fix from
+  the fourth pass). Persisted with the other print options. Decided over a
+  settings-module home because the order's one effect is the download, so the
+  control belongs next to it.
+- **All songs no longer opens into a detail view.** Its order lives at download
+  and the library is browsed in the Songs module, so the read-only entry view was
+  redundant: the edit button and double-click are gone for the read-only row, and
+  a direct link to `/songbooks/all-songs` redirects back to the list. The virtual
+  book's detail machinery stays in the presenter, now simply unreached.
 
 ---
 
@@ -803,7 +982,9 @@ the security posture.
       `<app-premium>` marker itself is **Epic 13** — it's a tooltip consumer; this
       subtask is only the guard + deciding which controls wear it.)
 - [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
-      the app shell; Audience + sync stay network paths.
+      the app shell; Audience + sync stay network paths. **Fonts: precache the
+      body face only** (`fonts/RobotoMono-*.ttf`) — Epic 7 already fetches the
+      three title faces on first use, so the config only has to not undo that.
 - [ ] Update strategy: gentle dismissible "update available" affordance (never
       silent reload mid-performance); forced refuse-and-update path for newer
       `schemaVersion`; recovery on unrecoverable SW.

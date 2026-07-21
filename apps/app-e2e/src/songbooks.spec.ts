@@ -113,53 +113,28 @@ test.describe('songbooks', () => {
   });
 
   // It looks like a book you made and is not one, so it says so out loud.
-  test('All songs explains itself, and sorting is all it can be told', async ({
-    page,
-  }) => {
+  test('All songs explains itself, and cannot be opened', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
     await page.getByTestId('hint-all-songs').click();
     await expect(page.getByRole('tooltip')).toContainText('library');
 
+    // It has no editable detail view — its order is chosen at download, and the
+    // library is browsed in the Songs module. A double click does not open it.
     await page.getByTestId('open-all-songs').dblclick();
-    // Pane B: sorting, and nothing that would edit an order it does not own.
-    const entries = page.getByTestId('songbook-detail');
-    await expect(entries.getByTestId('explorer-sort')).toBeVisible();
-    await expect(entries.getByTestId('explorer-favorites-first')).toBeVisible();
-    await expect(entries.getByTestId('explorer-search')).toHaveCount(0);
-    await expect(page.getByTestId('entry-tools')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
+    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
   });
 
-  test('the virtual book sorts its own list without touching the library pane', async ({
+  test('a link straight to All songs bounces back to the list', async ({
     page,
   }) => {
-    await createSong(page, 'Alpha');
-    await createSong(page, 'Zeta');
-    await page.goto('songbooks');
-    await page.getByTestId('open-all-songs').dblclick();
-
-    const entries = page.getByTestId('songbook-detail');
-    await expect(page.getByTestId('entry-row').first()).toContainText('Alpha');
-
-    await entries.getByTestId('explorer-sort-dir').click();
-    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
-    // Pane A is a separate list and keeps its own order.
-    await expect(page.getByTestId('song-row').first()).toContainText('Alpha');
-  });
-
-  test('All songs holds the whole library, read-only', async ({ page }) => {
     await createSong(page, 'Wonderwall');
-    await createSong(page, 'Yesterday');
-
-    await page.goto('songbooks');
-    await page.getByTestId('open-all-songs').dblclick();
-
-    await expect(page.getByTestId('entry-row')).toHaveCount(2);
-    // No reorder strip, no per-row remove, nothing to add with.
-    await expect(page.getByTestId('entry-tools')).toHaveCount(0);
-    await expect(page.getByTestId('songbook-add')).toHaveCount(0);
-    await expect(page.getByTestId('remove-0')).toHaveCount(0);
+    // An old bookmark, a hand-typed URL: there is no page to land on.
+    await page.goto('songbooks/all-songs');
+    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
+    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
   });
 
   test('creates a songbook, names it, and it survives a reload', async ({
@@ -185,8 +160,9 @@ test.describe('songbooks', () => {
 
     await expect(page.getByTestId(`edit-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
+    // No ⋯ menu either — that is where duplicate, delete, download and export
+    // now live, and the picking pane has none of them.
+    await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
     // What stays: search, sort, select and favorite.
     await expect(page.getByTestId('explorer-search')).toBeVisible();
     await expect(page.getByTestId(`favorite-${id}`)).toBeVisible();
@@ -410,20 +386,6 @@ test.describe('songbooks', () => {
     await expect(page.getByTestId('split-resizer')).toHaveCount(0);
   });
 
-  // Half a phone screen spent on a pane whose every button is off.
-  test('All songs drops its library pane on a phone', async ({ page }) => {
-    await createSong(page, 'Wonderwall');
-    await page.goto('songbooks');
-    await page.getByTestId('open-all-songs').dblclick();
-
-    await page.setViewportSize(PHONE);
-    await expect(page.getByTestId('songbook-detail')).toBeVisible();
-    await expect(page.getByTestId('entry-row')).toHaveCount(1);
-    // The library list and everything that fed it are gone.
-    await expect(page.getByTestId('song-row')).toHaveCount(0);
-    await expect(page.getByTestId('pane-b')).toBeHidden();
-  });
-
   // Remove is not delete: the song stays in the library (CONTEXT.md).
   test('removing a slot keeps the song in the library', async ({ page }) => {
     await createSong(page, 'Wonderwall');
@@ -538,6 +500,44 @@ test.describe('songbooks', () => {
     await expect(titlePage).toContainText('The Band');
   });
 
+  test('duplicates a songbook into an independent copy', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Wonderwall'], 'end');
+
+    await page.goto('songbooks');
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' })
+      .first();
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`duplicate-${id}`).click();
+
+    // A second book named "(copy)", and the original untouched.
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(2);
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: '(copy)' }),
+    ).toHaveCount(1);
+    // It carries the same one song (the count on the row).
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: '(copy)' }),
+    ).toContainText('1');
+  });
+
+  test('All songs cannot be duplicated', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songbooks');
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
+  });
+
   test('deletes a songbook without touching its songs', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
@@ -549,6 +549,7 @@ test.describe('songbooks', () => {
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
     await row.hover();
+    // The songbook list lays its actions out (no ⋯ menu), so delete is direct.
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
 
@@ -625,6 +626,28 @@ test.describe('drag & drop', () => {
     await expect(page.getByTestId('entry-row').first()).toContainText('Alpha');
   });
 
+  test('drags a slot out of the songbook onto the library to remove it', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await expect(page.getByTestId('entry-row')).toHaveCount(2);
+
+    // Drag slot 0 (Alpha) from the entry list onto the library pane — the
+    // remove target. `.first()` is pane A's list (the library); the entry list
+    // in pane B carries the same testid. It leaves the book; the song stays.
+    await dragTo(page, 'drag-0', page.getByTestId('explorer-list').first(), 60);
+
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
+    // Still in the library — a remove is not a delete.
+    await expect(
+      page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
+    ).toHaveCount(1);
+  });
+
   // The Add buttons' rule, reached by the other gesture: a dragged row that is
   // part of the selection brings the selection with it.
   test('a drag of a selected row carries the whole selection', async ({
@@ -684,18 +707,26 @@ test.describe('drag & drop', () => {
 
   // The library is a source, never a destination: its order is a sort, so there
   // is no "here" to drop something at.
-  test('the library refuses a drop, and takes nothing out of the songbook', async ({
+  test('a library row dropped back on the library does nothing', async ({
     page,
   }) => {
+    // The library is a sort, not an arrangement, so it has no "here" for one of
+    // its own rows — a same-list drop is a no-op. (Dragging a *songbook* slot
+    // onto the library removes it; that is the other test.)
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
     await addSongs(page, ['Alpha'], 'end');
 
     const library = page.getByTestId('explorer-list').first();
-    await dragTo(page, 'drag-0', library, 4);
+    const songId = await page
+      .getByTestId('song-row')
+      .filter({ hasText: 'Alpha' })
+      .getAttribute('data-song-id');
+    await dragTo(page, `drag-${songId}`, library, 4);
 
-    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+    // Nothing moved: the song stays in the library and in the book.
     await expect(page.getByTestId('song-row')).toHaveCount(1);
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
   });
 
   // Dragging is never the only way to reorder (WCAG 2.1.1) — and where there is
@@ -708,11 +739,6 @@ test.describe('drag & drop', () => {
     const song = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await song.getAttribute('data-song-id');
     await expect(page.getByTestId(`drag-${id}`)).toHaveCount(0);
-
-    // All songs: a read-only order, so its slots stay put.
-    await page.goto('songbooks');
-    await page.getByTestId('open-all-songs').dblclick();
-    await expect(page.getByTestId('drag-0')).toHaveCount(0);
   });
 
   // WCAG 2.1.1: dragging must not be the only way to reorder. Epic 6's buttons
