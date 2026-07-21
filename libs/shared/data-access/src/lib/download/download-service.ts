@@ -41,6 +41,28 @@ import { createPdf, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
 import type { jsPDF } from 'jspdf';
 
+/**
+ * The order the virtual **All songs** prints in: alphabetical by the **title a
+ * reader sees on the page**, then the library name as a tiebreak.
+ *
+ * Sorting by `name` alone was the bug — a song's library name stays "New song"
+ * until it is explicitly renamed, while its title comes from the content, so a
+ * library of written-but-unrenamed songs sorted by an identical name and came
+ * out in insertion order, which reads as no sort at all. The printed heading is
+ * what a reader flips to find, so that is what it is ordered by.
+ *
+ * Pure and exported so the order is testable without the render pipeline.
+ */
+export function librarySongOrder(songs: readonly Song[]): Song[] {
+  const key = (song: Song): string => song.cache.title || song.name;
+  return songs
+    .filter((song) => song.deletedAt === null)
+    .slice()
+    .sort(
+      (a, b) => key(a).localeCompare(key(b)) || a.name.localeCompare(b.name),
+    );
+}
+
 /** What a single song can come out as. */
 export type SongFormat = 'png' | 'pdf';
 
@@ -247,16 +269,15 @@ export class DownloadService {
    * The book behind an id — real, or the **virtual All songs** synthesised on
    * the spot.
    *
-   * All songs has no record, so it is the whole library in name order, with a
-   * title page that says what it is (name, no author — nobody wrote it). Built
-   * here rather than passed in so the one entry point (`downloadSongbook(id)`)
-   * works for both, and the id stays the thing the UI hands over.
+   * All songs has no record, so it is the whole library ordered by title (see
+   * `librarySongOrder`), with a title page that says what it is (no author —
+   * nobody wrote it). Built here rather than passed in so the one entry point
+   * (`downloadSongbook(id)`) works for both, and the id stays the thing the UI
+   * hands over.
    */
   private async bookFor(id: Uuid): Promise<Songbook | undefined> {
     if (!isAllSongs(id)) return this.songbooks.get(id);
-    const songs = (await this.songs.all())
-      .filter((song) => song.deletedAt === null)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const songs = librarySongOrder(await this.songs.all());
     return {
       id: ALL_SONGS_ID,
       createdAt: 0,

@@ -457,6 +457,9 @@ test.describe('download a songbook', () => {
     await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
   });
 
+  // The print ORDER (by title, not library name) is proven in the
+  // `librarySongOrder` unit tests — a PDF's text is glyph-encoded, so its byte
+  // stream cannot be searched for a title. This only proves the pipeline runs.
   test('downloads All songs as a PDF of the whole library', async ({
     page,
   }) => {
