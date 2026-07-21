@@ -29,6 +29,31 @@
       })();
     </script>
     <script>
+      // SPA deep-link restore (PRD-INFRASTRUCTURE deploy note). GitHub Pages has
+      // no per-app 404, so the site's root 404 page redirects an app deep link
+      // like `/achordeon/app/songs` into `/achordeon/app/?/songs`; this turns
+      // that back into the real path before the router — and the locale redirect
+      // below — reads the URL. A normal load has no leading "/" in its query, so
+      // this is a no-op then. (github.com/rafgraph/spa-github-pages)
+      (function () {
+        var l = window.location;
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&');
+            })
+            .join('?');
+          window.history.replaceState(
+            null,
+            '',
+            l.pathname.slice(0, -1) + decoded + l.hash,
+          );
+        }
+      })();
+    </script>
+    <script>
       (function () {
         try {
           var FLAG = 'achordeon-app-locale-init';
