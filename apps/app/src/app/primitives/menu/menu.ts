@@ -17,7 +17,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   Directive,
-  ElementRef,
+  forwardRef,
   inject,
   input,
   output,
@@ -43,12 +43,25 @@ import { Icon } from '../icon/icon';
     type: 'button',
     role: 'menuitem',
     class: 'app-menu-item',
-    '(click)': 'chosen.emit()',
+    '(click)': 'onClick()',
   },
 })
 export class MenuItem {
-  /** Emitted after the click — the menu listens and closes. */
+  /** Emitted on the click — what the caller binds its action to. */
   readonly chosen = output<void>();
+
+  // The enclosing menu, so a chosen item closes it. `forwardRef` because `Menu`
+  // is declared below; optional so the directive is still a plain button if a
+  // test mounts it alone.
+  private readonly menu = inject(
+    forwardRef(() => Menu),
+    { optional: true },
+  );
+
+  protected onClick(): void {
+    this.chosen.emit();
+    this.menu?.close();
+  }
 }
 
 @Component({
@@ -91,8 +104,10 @@ export class MenuItem {
         [cdkTrapFocusAutoCapture]="true"
         [attr.aria-label]="label()"
         [attr.data-testid]="panelTestid()"
-        (click)="close()"
       >
+        <!-- Each item closes the menu itself (see MenuItem) — no click handler
+             on the panel, which would be a non-interactive element pretending to
+             be one. -->
         <ng-content />
       </div>
     </ng-template>
@@ -126,7 +141,6 @@ export class Menu {
   readonly label = input.required<string>();
   readonly testid = input<string | null>(null);
 
-  private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly isOpen = signal(false);
 
   protected readonly panelTestid = () => {
@@ -138,7 +152,8 @@ export class Menu {
     this.isOpen.update((open) => !open);
   }
 
-  protected close(): void {
+  /** Public because a chosen `MenuItem` closes its menu, and Escape does. */
+  close(): void {
     this.isOpen.set(false);
   }
 
