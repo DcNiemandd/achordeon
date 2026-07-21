@@ -351,6 +351,12 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
               @if (row.title) {
                 <span class="title">{{ row.title }}</span>
               }
+              <!-- The subtitle sits under the title, the same order they carry
+                   on the page. Only when there is one — a song without a
+                   subtitle stays a two-line row. -->
+              @if (row.subtitle) {
+                <span class="subtitle">{{ row.subtitle }}</span>
+              }
             </button>
           }
 
@@ -894,7 +900,8 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
     }
 
     .name,
-    .title {
+    .title,
+    .subtitle {
       max-inline-size: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -904,6 +911,13 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
     .name {
       font-size: var(--text-sm);
       color: var(--text);
+    }
+    /* Under the title, and italic so the two faint sub-lines are told apart at
+       a glance rather than reading as one wrapped string. */
+    .subtitle {
+      font-size: var(--text-xs);
+      font-style: italic;
+      color: var(--text-faint);
     }
 
     .title {
