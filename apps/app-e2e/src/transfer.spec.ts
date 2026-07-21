@@ -387,8 +387,10 @@ test.describe('download a song', () => {
 
     expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
     const raw = file.toString('latin1');
-    expect(raw).toContain('Wonderwall-Oasis.pdf');
-    expect(raw).toContain('Yesterday-The-Beatles.pdf');
+    // Numbered in selection order, then title + subtitle — the same
+    // NN-title-subtitle shape a songbook's image ZIP uses.
+    expect(raw).toMatch(/\d\d-Wonderwall-Oasis\.pdf/);
+    expect(raw).toMatch(/\d\d-Yesterday-The-Beatles\.pdf/);
   });
 
   test('the dialog shows a spinner and a count while it renders', async ({

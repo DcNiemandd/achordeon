@@ -218,13 +218,18 @@ export class DownloadService {
     }
 
     const files: Record<string, Uint8Array> = {};
+    // Numbered in selection order, zero-padded so the files hold that order under
+    // a lexical sort — the same `NN-title-subtitle` shape a songbook's image ZIP
+    // uses, and what makes the prefix, not a `-2` suffix, disambiguate two songs
+    // that share a title.
+    const pad = (n: number): string =>
+      String(n).padStart(Math.max(2, String(rendered.length).length), '0');
     for (const [index, one] of rendered.entries()) {
       const blob =
         format === 'zip-png' ? await this.toPng(one) : await this.toPdf([one]);
       const ext = format === 'zip-png' ? 'png' : 'pdf';
-      files[uniqueName(files, songFileSlug(one.song), ext)] = new Uint8Array(
-        await blob.arrayBuffer(),
-      );
+      files[`${pad(index + 1)}-${songFileSlug(one.song)}.${ext}`] =
+        new Uint8Array(await blob.arrayBuffer());
       onProgress?.(index + 1, rendered.length);
       if (index + 1 < rendered.length) await yieldToPaint();
     }
@@ -365,8 +370,8 @@ export class DownloadService {
     let n = 1;
     for (const one of rendered) {
       const png = await this.toPng(one);
-      // The number prefix is already unique, so no `uniqueName` dance — two
-      // songs sharing a name still get `03-` and `04-`.
+      // The number prefix is already unique — two songs sharing a title still
+      // get `03-` and `04-`.
       files[`${pad(n)}-${songFileSlug(one.song)}.png`] = new Uint8Array(
         await png.arrayBuffer(),
       );
@@ -696,16 +701,4 @@ function songFileSlug(song: Song): string {
       : title
     : song.name;
   return toFileSlug(label, 'song');
-}
-
-/** Two songs may share a name; a ZIP entry may not. */
-function uniqueName(
-  taken: Record<string, unknown>,
-  base: string,
-  ext: string,
-): string {
-  let name = `${base}.${ext}`;
-  let n = 2;
-  while (name in taken) name = `${base}-${n++}.${ext}`;
-  return name;
 }
