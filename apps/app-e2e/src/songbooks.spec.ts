@@ -550,8 +550,7 @@ test.describe('songbooks', () => {
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
     await row.hover();
-    // Delete moved onto the row's ⋯ menu (Epic 7), with download and export.
-    await page.getByTestId(`more-${id}`).click();
+    // The songbook list lays its actions out (no ⋯ menu), so delete is direct.
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
 
@@ -626,6 +625,28 @@ test.describe('drag & drop', () => {
 
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
     await expect(page.getByTestId('entry-row').first()).toContainText('Alpha');
+  });
+
+  test('drags a slot out of the songbook onto the library to remove it', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await expect(page.getByTestId('entry-row')).toHaveCount(2);
+
+    // Drag slot 0 (Alpha) from the entry list onto the library pane — the
+    // remove target. `.first()` is pane A's list (the library); the entry list
+    // in pane B carries the same testid. It leaves the book; the song stays.
+    await dragTo(page, 'drag-0', page.getByTestId('explorer-list').first(), 60);
+
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
+    // Still in the library — a remove is not a delete.
+    await expect(
+      page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
+    ).toHaveCount(1);
   });
 
   // The Add buttons' rule, reached by the other gesture: a dragged row that is

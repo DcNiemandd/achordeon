@@ -240,6 +240,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                 (activated)="presenter.activate($event)"
                 (selectToggled)="presenter.toggleSelect($event)"
                 (favorited)="presenter.toggleFavorite($event)"
+                (droppedOut)="presenter.removeSlots([$event])"
               />
 
               @if (!presenter.isVirtual()) {

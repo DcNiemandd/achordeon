@@ -114,25 +114,58 @@ export class MenuItem {
   `,
   styles: `
     .panel {
-      min-inline-size: 12rem;
+      display: flex;
+      flex-direction: column;
+      min-inline-size: 11rem;
       padding: var(--space-1);
       background: var(--surface-overlay);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-2);
     }
 
+    /* The items are projected, so they need ::ng-deep to reach — but they are
+       plain <button>s (no appButton), so every bit of their look is here: a full
+       -width row, icon then label, a hover/focus wash, and the danger tint the
+       delete item asks for. Deliberately NOT icon buttons: in a menu the label
+       is the target and the icon is only a hint. */
     ::ng-deep .app-menu-item {
       display: flex;
       align-items: center;
       gap: var(--space-2);
       inline-size: 100%;
-      justify-content: flex-start;
       padding: var(--space-2) var(--space-3);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: none;
+      color: var(--text);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-align: start;
+      white-space: nowrap;
+      cursor: pointer;
     }
 
-    ::ng-deep .app-menu-item.is-danger {
-      color: var(--danger, #b42318);
+    ::ng-deep .app-menu-item app-icon {
+      --icon-size: 16px;
+      flex: none;
+      color: var(--text-muted);
+    }
+
+    ::ng-deep .app-menu-item:hover,
+    ::ng-deep .app-menu-item:focus-visible {
+      background: var(--surface-sunken);
+      outline: none;
+    }
+
+    ::ng-deep .app-menu-item.is-danger,
+    ::ng-deep .app-menu-item.is-danger app-icon {
+      color: var(--danger, #c0362c);
+    }
+
+    ::ng-deep .app-menu-item.is-danger:hover,
+    ::ng-deep .app-menu-item.is-danger:focus-visible {
+      background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
     }
   `,
 })
@@ -140,6 +173,11 @@ export class Menu {
   /** The trigger's accessible name — it shows only `⋯`, so this is all it says. */
   readonly label = input.required<string>();
   readonly testid = input<string | null>(null);
+
+  /** Open/closed, for a host that must react — the explorer keeps the row's
+   * actions visible while its menu is open, since the overlay is outside the
+   * row and `:focus-within` cannot reach it. */
+  readonly openChange = output<boolean>();
 
   protected readonly isOpen = signal(false);
 
@@ -149,12 +187,18 @@ export class Menu {
   };
 
   protected toggle(): void {
-    this.isOpen.update((open) => !open);
+    this.setOpen(!this.isOpen());
   }
 
   /** Public because a chosen `MenuItem` closes its menu, and Escape does. */
   close(): void {
-    this.isOpen.set(false);
+    this.setOpen(false);
+  }
+
+  private setOpen(open: boolean): void {
+    if (open === this.isOpen()) return;
+    this.isOpen.set(open);
+    this.openChange.emit(open);
   }
 
   /** Below the trigger, right-aligned; flips above when there is no room. The

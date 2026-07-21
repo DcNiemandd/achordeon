@@ -23,6 +23,7 @@ import {
   CdkVirtualScrollViewport,
   ScrollingModule,
 } from '@angular/cdk/scrolling';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Autofocus,
   Button,
@@ -99,6 +100,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
   host: { '(document:pointermove)': 'onPointerMove($event)' },
   imports: [
     ScrollingModule,
+    NgTemplateOutlet,
     CdkDrag,
     CdkDragHandle,
     CdkDropList,
@@ -213,6 +215,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
         [cdkDropListEnterPredicate]="acceptsDrop"
         [class.is-drop-target]="isDragOver()"
         [class.is-foreign-drag]="isForeignDrag()"
+        [class.is-remove-target]="isRemoving()"
         data-testid="explorer-empty"
         (cdkDropListEntered)="onEnterEmpty($event)"
         (cdkDropListExited)="onDragLeave()"
@@ -228,6 +231,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
         [cdkDropListEnterPredicate]="acceptsDrop"
         [class.is-drop-target]="isDragOver()"
         [class.is-foreign-drag]="isForeignDrag()"
+        [class.is-remove-target]="isRemoving()"
         data-testid="explorer-list"
         (scrolledIndexChange)="onScrolledIndex($event)"
         (cdkDropListEntered)="onEntered($event)"
@@ -350,7 +354,10 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
             </button>
           }
 
-          <div class="row-actions">
+          <div
+            class="row-actions"
+            [class.is-menu-open]="openMenuRow() === row.id"
+          >
             @if (capabilities().canEdit) {
               <button
                 appButton
@@ -428,68 +435,178 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                 <app-icon name="transferOut" />
               </button>
             }
-            <!-- Edit and rename are the everyday two, so they stay in reach.
-                 The rest — duplicate, the two file exports, delete — fold behind
-                 one "⋯": six targets on a hover strip is a row you have to aim
-                 at, and past two the honest move is to keep only the ones you
-                 reach for and pocket the others. Built only where the row has at
-                 least one, so an entry-list slot grows no empty menu. -->
+            <!-- The secondary actions — duplicate, the two file exports, delete.
+                 Two ways to wear them, chosen per mount (usesRowMenu):
+
+                 - Menu (the Songs module): edit and rename stay in reach and the
+                   rest fold behind one dots button, because a library row
+                   carries many actions and few are everyday.
+                 - Laid out (the songbook list): a songbook row carries a
+                   handful, and they read better as buttons than pocketed. -->
             @if (hasRowMenu(row)) {
-              <app-menu [label]="moreRowLabel(row)" [testid]="'more-' + row.id">
-                @if (capabilities().canDownload && !row.isReadOnly) {
-                  <button
-                    appMenuItem
-                    [attr.data-testid]="'download-' + row.id"
-                    (chosen)="downloaded.emit(row.id)"
-                  >
-                    <app-icon name="download" />
-                    {{ DOWNLOAD }}
-                  </button>
-                }
-                @if (capabilities().canExport && !row.isReadOnly) {
-                  <button
-                    appMenuItem
-                    [attr.data-testid]="'export-' + row.id"
-                    (chosen)="exported.emit(row.id)"
-                  >
-                    <app-icon name="export" />
-                    {{ EXPORT }}
-                  </button>
-                }
-                @if (capabilities().canDuplicate && !row.isReadOnly) {
-                  <button
-                    appMenuItem
-                    [attr.data-testid]="'duplicate-' + row.id"
-                    (chosen)="duplicated.emit(row.id)"
-                  >
-                    <app-icon name="duplicate" />
-                    {{ DUPLICATE }}
-                  </button>
-                }
-                @if (capabilities().canDelete && !row.isReadOnly) {
-                  <button
-                    appMenuItem
-                    class="is-danger"
-                    [attr.data-testid]="'delete-' + row.id"
-                    (chosen)="deleted.emit([row.id])"
-                  >
-                    <app-icon name="delete" />
-                    {{ DELETE }}
-                  </button>
-                }
-              </app-menu>
+              @if (capabilities().usesRowMenu) {
+                <!-- Inlined, not an ng-template outlet: a MenuItem finds its
+                     enclosing Menu by injector, and an embedded view's injector
+                     follows where the template was *declared* (here), not where
+                     it is rendered (inside the menu). Projected through an outlet
+                     the item cannot see the menu, so it never closes it — and the
+                     open backdrop then eats the next click. -->
+                <app-menu
+                  [label]="moreRowLabel(row)"
+                  [testid]="'more-' + row.id"
+                  (openChange)="onMenuOpen(row.id, $event)"
+                >
+                  @if (capabilities().canDownload && !row.isReadOnly) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'download-' + row.id"
+                      (chosen)="downloaded.emit(row.id)"
+                    >
+                      <app-icon name="download" />
+                      {{ DOWNLOAD }}
+                    </button>
+                  }
+                  @if (capabilities().canExport && !row.isReadOnly) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'export-' + row.id"
+                      (chosen)="exported.emit(row.id)"
+                    >
+                      <app-icon name="export" />
+                      {{ EXPORT }}
+                    </button>
+                  }
+                  @if (capabilities().canDuplicate && !row.isReadOnly) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'duplicate-' + row.id"
+                      (chosen)="duplicated.emit(row.id)"
+                    >
+                      <app-icon name="duplicate" />
+                      {{ DUPLICATE }}
+                    </button>
+                  }
+                  @if (capabilities().canDelete && !row.isReadOnly) {
+                    <button
+                      appMenuItem
+                      class="is-danger"
+                      [attr.data-testid]="'delete-' + row.id"
+                      (chosen)="deleted.emit([row.id])"
+                    >
+                      <app-icon name="delete" />
+                      {{ DELETE }}
+                    </button>
+                  }
+                </app-menu>
+              } @else {
+                <ng-container
+                  [ngTemplateOutlet]="directActions"
+                  [ngTemplateOutletContext]="{ row }"
+                />
+              }
             }
           </div>
         </div>
       </cdk-virtual-scroll-viewport>
     }
+
+    <!-- Drop-to-remove hint, over the list, only while a foreign drag is on a
+         remove target (the builder's library pane). The list already tints; this
+         says out loud what letting go here will do, since a "drop to remove" zone
+         is not a thing a user expects until they are told. -->
+    @if (isRemoving()) {
+      <div class="remove-hint" aria-hidden="true">
+        <app-icon name="transferOut" />
+        {{ REMOVE_DROP }}
+      </div>
+    }
+
+    <!-- The secondary row actions as **laid-out icon buttons** — the songbook
+         list's way. The menu wears the same four as labelled items (inlined
+         above, for the DI reason noted there); this is the version for a mount
+         that has room to show them. -->
+    <ng-template #directActions let-row="row">
+      @if (capabilities().canDownload && !row.isReadOnly) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="downloadRowLabel(row)"
+          [appTooltip]="DOWNLOAD"
+          [attr.data-testid]="'download-' + row.id"
+          (click)="downloaded.emit(row.id)"
+        >
+          <app-icon name="download" />
+        </button>
+      }
+      @if (capabilities().canExport && !row.isReadOnly) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="exportRowLabel(row)"
+          [appTooltip]="EXPORT"
+          [attr.data-testid]="'export-' + row.id"
+          (click)="exported.emit(row.id)"
+        >
+          <app-icon name="export" />
+        </button>
+      }
+      @if (capabilities().canDuplicate && !row.isReadOnly) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="duplicateRowLabel(row)"
+          [appTooltip]="DUPLICATE"
+          [attr.data-testid]="'duplicate-' + row.id"
+          (click)="duplicated.emit(row.id)"
+        >
+          <app-icon name="duplicate" />
+        </button>
+      }
+      @if (capabilities().canDelete && !row.isReadOnly) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="deleteRowLabel(row)"
+          [appTooltip]="DELETE"
+          [attr.data-testid]="'delete-' + row.id"
+          (click)="deleted.emit([row.id])"
+        >
+          <app-icon name="delete" />
+        </button>
+      }
+    </ng-template>
   `,
   styles: `
     :host {
+      position: relative;
       display: flex;
       flex-direction: column;
       min-block-size: 0;
       block-size: 100%;
+    }
+
+    /* The drop-to-remove banner, floated over the list (see .is-remove-target).
+       Pointer-transparent so it never eats the drop it is describing. */
+    .remove-hint {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      pointer-events: none;
+      color: var(--danger, #c0362c);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+
+    .remove-hint app-icon {
+      --icon-size: 20px;
     }
 
     .tools {
@@ -681,6 +798,15 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
       background: var(--brand-subtle);
     }
 
+    /* A remove target (the builder's library pane, dragged into from the book):
+       a different kind of drop, so a different tint and a dashed edge — this is
+       "out", not "here". The .remove-hint names it in words. */
+    .list.is-remove-target {
+      background: color-mix(in srgb, var(--danger, #c0362c) 8%, transparent);
+      outline: 2px dashed var(--danger, #c0362c);
+      outline-offset: -6px;
+    }
+
     .check {
       accent-color: var(--brand);
       inline-size: 16px;
@@ -775,7 +901,11 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
        noise the hover rule exists to prevent. */
     .row:hover .row-actions,
     .row:focus-within .row-actions,
-    .row.is-current .row-actions {
+    .row.is-current .row-actions,
+    /* …and while this row's dots menu is open. The menu lives in an overlay
+       outside the row, so focus-within releases the instant it opens — without
+       this the actions (and the dots that opened them) vanish under it. */
+    .row-actions.is-menu-open {
       opacity: 1;
     }
 
@@ -844,6 +974,9 @@ export class SongExplorer {
   readonly moved = output<RowMoveRequest>();
   /** A row was dropped **onto this list** — from it or from the other one. */
   readonly dropped = output<RowDrop>();
+  /** A row from **another** list was dropped on this remove-target list — take
+   * it out of wherever it came from. Carries the dragged row's id. */
+  readonly droppedOut = output<string>();
 
   protected readonly ROW_HEIGHT = ROW_HEIGHT;
   protected readonly DRAG_START_DELAY = DRAG_START_DELAY;
@@ -891,10 +1024,29 @@ export class SongExplorer {
    * Whether this list will take the drop.
    *
    * A bound arrow, not a method: the CDK stores the predicate once, so a
-   * prototype method would be called with the wrong `this`. The library list
-   * refuses everything — its order is a sort, and there is no "here" in it.
+   * prototype method would be called with the wrong `this`. A list takes a drop
+   * to insert (`canDrop`) or to remove (`canDropRemove`, the builder's library
+   * pane, which pulls a slot back out of the book).
    */
-  protected readonly acceptsDrop = (): boolean => this.capabilities().canDrop;
+  protected readonly acceptsDrop = (): boolean =>
+    this.capabilities().canDrop || this.capabilities().canDropRemove;
+
+  /** A foreign drag is hovering a list that removes on drop — the "out" tint,
+   * and no insertion line, because there is no position, only away. */
+  protected readonly isRemoving = computed(
+    () =>
+      this.isDragOver() &&
+      this.isForeignDrag() &&
+      this.capabilities().canDropRemove,
+  );
+
+  /** Which row's ⋯ menu is open, so its actions stay visible while it is (the
+   * overlay is outside the row, so `:focus-within` can't hold them). */
+  protected readonly openMenuRow = signal<string | null>(null);
+
+  protected onMenuOpen(id: string, isOpen: boolean): void {
+    this.openMenuRow.set(isOpen ? id : null);
+  }
 
   /** The four row moves, in list order: to the top, one up, one down, to the
    * bottom — the same glyphs the strip above uses, because it is the same act. */
@@ -944,6 +1096,7 @@ export class SongExplorer {
   protected readonly DOWNLOAD = $localize`:@@explorer.download:Download`;
   protected readonly EXPORT = $localize`:@@explorer.export:Export`;
   protected readonly MORE = $localize`:@@explorer.more:More actions`;
+  protected readonly REMOVE_DROP = $localize`:@@explorer.removeDrop:Drop to remove from the songbook`;
 
   /** The only state this component owns: which row is mid-rename. */
   protected readonly renamingId = signal<string | null>(null);
@@ -1037,6 +1190,11 @@ export class SongExplorer {
     if (!this.isDragOver()) {
       return;
     }
+    // A remove target names no boundary — the drop takes the row out, it does
+    // not slot it in. So no insertion line, and nothing to track.
+    if (this.capabilities().canDropRemove) {
+      return;
+    }
     const area = this.dropArea();
     if (!area) {
       return;
@@ -1104,15 +1262,24 @@ export class SongExplorer {
    */
   protected onDropped(event: CdkDragDrop<unknown>): void {
     const at = this.dragAt();
+    const isSameList = event.previousContainer === event.container;
+    const id = event.item.data as string;
     this.onDragLeave();
+
+    // A remove target: a row dragged in from the other list leaves the book. A
+    // row of this list dropped back on itself is a no-op — the library has no
+    // order to rearrange.
+    if (this.capabilities().canDropRemove) {
+      if (!isSameList) {
+        this.droppedOut.emit(id);
+      }
+      return;
+    }
+
     if (at === null) {
       return;
     }
-    this.dropped.emit({
-      id: event.item.data as string,
-      isSameList: event.previousContainer === event.container,
-      at,
-    });
+    this.dropped.emit({ id, isSameList, at });
   }
 
   // Every row action names its row. "Rename" repeated down a list of 50 rows
@@ -1146,6 +1313,14 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  protected downloadRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.downloadRow:Download ${row.name}:name:`;
+  }
+
+  protected exportRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.exportRow:Export ${row.name}:name:`;
   }
 
   protected moreRowLabel(row: SongRow): string {

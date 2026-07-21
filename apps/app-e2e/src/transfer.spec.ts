@@ -438,7 +438,7 @@ test.describe('download a songbook', () => {
     expect(complaints).toEqual([]);
   });
 
-  test('All songs offers no download or export — it has no ⋯ menu at all', async ({
+  test('All songs offers no download or export, a real book does', async ({
     page,
   }) => {
     await createSong(page, 'Alpha');
@@ -449,11 +449,11 @@ test.describe('download a songbook', () => {
     const id = await all.getAttribute('data-song-id');
     await all.hover();
     // The read-only virtual book has no record, so no title page, author or
-    // order to print — and the row menu (where download and export live) is not
-    // built for it.
-    await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
+    // order to print — and no download or export action either.
+    await expect(page.getByTestId(`download-${id}`)).toHaveCount(0);
+    await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
 
-    // A real songbook does have it.
+    // A real songbook lays them out on the row (the list uses no ⋯ menu).
     await page.getByTestId('songbooks-add').click();
     await expect(page).toHaveURL(/\/songbooks\/.+$/);
     await page.goto('songbooks');
@@ -462,7 +462,8 @@ test.describe('download a songbook', () => {
     });
     const realId = await real.getAttribute('data-song-id');
     await real.hover();
-    await expect(page.getByTestId(`more-${realId}`)).toBeVisible();
+    await expect(page.getByTestId(`download-${realId}`)).toBeVisible();
+    await expect(page.getByTestId(`export-${realId}`)).toBeVisible();
   });
 });
 

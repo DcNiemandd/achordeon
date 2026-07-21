@@ -131,6 +131,13 @@ export interface ExplorerCapabilities {
    * is a source and never a destination: its order is a sort, not an
    * arrangement, so there is no "here" to drop something at. */
   readonly canDrop: boolean;
+  /**
+   * A row dropped here from **another** list is taken out of that one (Epic 7
+   * follow-up). The songbook builder's library pane: dragging a slot back onto
+   * the library is how you remove it from the book. Distinct from `canDrop`,
+   * which inserts at a position — this has no position, only "out".
+   */
+  readonly canDropRemove: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
   readonly canRename: boolean;
@@ -142,6 +149,14 @@ export interface ExplorerCapabilities {
   /** Export this one row to a library file. Same subject as `canDownload`,
    * the other format. */
   readonly canExport: boolean;
+  /**
+   * Fold the secondary row actions (duplicate, download, export, delete) behind
+   * a `⋯` menu, keeping only edit and rename in reach. True where a row carries
+   * many actions and few of them are everyday — the Songs module. **False for
+   * the songbook list**, where the handful of actions read better laid out than
+   * pocketed.
+   */
+  readonly usesRowMenu: boolean;
 }
 
 /** The Songs module: everything on. */
@@ -161,6 +176,8 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDelete: true,
   canDownload: true,
   canExport: true,
+  canDropRemove: false,
+  usesRowMenu: true,
 };
 
 /**
@@ -184,6 +201,8 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDelete: false,
   canDownload: false,
   canExport: false,
+  canDropRemove: true,
+  usesRowMenu: false,
 };
 
 /**
@@ -210,6 +229,8 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canDelete: false,
   canDownload: false,
   canExport: false,
+  canDropRemove: false,
+  usesRowMenu: false,
 };
 
 /** The virtual All songs book: a read-only order, so nothing may be moved out. */
@@ -248,6 +269,8 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDelete: true,
   canDownload: true,
   canExport: true,
+  canDropRemove: false,
+  usesRowMenu: false,
 };
 
 /** Where a per-row move sends that one row. Same vocabulary as the toolbar's,
