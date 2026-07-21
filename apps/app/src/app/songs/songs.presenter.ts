@@ -31,6 +31,7 @@ import {
 } from '../shared/song-explorer';
 import type {
   DownloadFormat,
+  DownloadProgress,
   ImportChoice,
   ImportPreview,
 } from '../shared/transfer';
@@ -101,6 +102,11 @@ export class SongsPresenter {
   /** A render loop and a PDF are not instant, and a button that looks unpressed
    * while it works gets pressed again. */
   readonly isBusy = this._isBusy.asReadonly();
+  /** How far a running download has generated — the dialog's spinner and count.
+   * Null while nothing is generating, and during the layout pass before the
+   * first song is rendered. */
+  private readonly _progress = signal<DownloadProgress | null>(null);
+  readonly downloadProgress = this._progress.asReadonly();
   readonly importPreview = this._importPreview.asReadonly();
   readonly importError = this._importError.asReadonly();
 
@@ -474,28 +480,43 @@ export class SongsPresenter {
     this._isDownloadOpen.set(true);
   }
 
+  /** Ignored while a download is in flight: there is nothing to cancel back to
+   * once the file is rendering, so the dialog stays put until it is done. */
   cancelDownload(): void {
+    if (this._isBusy()) return;
     this._isDownloadOpen.set(false);
     this._rowTarget.set(null);
+    this._progress.set(null);
   }
 
   /**
    * Render and save. One id takes the single-song formats, several take the
    * batch ones — the dialog offers only the set that matches the count, so the
    * two branches here can trust what they are given.
+   *
+   * The dialog stays open through the render to host the spinner and the count,
+   * and closes when the file is saved — not the instant a format is picked.
    */
   async download(format: DownloadFormat): Promise<void> {
     const ids = this.downloadIds();
-    this._isDownloadOpen.set(false);
-    this._rowTarget.set(null);
-    if (ids.length === 0) return;
+    if (ids.length === 0) {
+      this.cancelDownload();
+      return;
+    }
     await this.busy(async () => {
       if (ids.length === 1) {
         await this.downloads.downloadSong(ids[0], format as SongFormat);
       } else {
-        await this.downloads.downloadSongs(ids, format as MultiFormat);
+        await this.downloads.downloadSongs(
+          ids,
+          format as MultiFormat,
+          (done, total) => this._progress.set({ done, total }),
+        );
       }
     });
+    this._progress.set(null);
+    this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
   }
 
   /** The bulk bar's Export: the selection-or-current, no dialog (nothing to

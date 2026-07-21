@@ -7,6 +7,7 @@ export {
 } from './print-options-store';
 export type {
   DownloadFormat,
+  DownloadProgress,
   ImportChoice,
   ImportConflictRow,
   ImportPreview,

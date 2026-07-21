@@ -227,6 +227,8 @@ import {
     @if (presenter.isDownloadOpen()) {
       <app-download-dialog
         [count]="presenter.downloadIds().length"
+        [busy]="presenter.isBusy()"
+        [progress]="presenter.downloadProgress()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />

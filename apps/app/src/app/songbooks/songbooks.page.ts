@@ -118,6 +118,8 @@ import {
         [name]="presenter.downloadName()"
         [initial]="presenter.printOptions()"
         [showSongOrder]="presenter.isDownloadAllSongs()"
+        [busy]="presenter.isBusy()"
+        [progress]="presenter.downloadProgress()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />

@@ -18,7 +18,11 @@ import {
   type Songbook,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
-import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
+import {
+  PrintOptionsStore,
+  type DownloadProgress,
+  type SongbookPdfChoice,
+} from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
 const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
@@ -279,8 +283,11 @@ export class SongbooksPresenter {
   /** The book whose download dialog is open, or null. */
   private readonly _downloadId = signal<string | null>(null);
   private readonly _isBusy = signal(false);
+  private readonly _progress = signal<DownloadProgress | null>(null);
   readonly isDownloadOpen = computed(() => this._downloadId() !== null);
   readonly isBusy = this._isBusy.asReadonly();
+  /** How far a running download has generated — the dialog's spinner and count. */
+  readonly downloadProgress = this._progress.asReadonly();
 
   /** The name in the open dialog's title. */
   readonly downloadName = computed(() => {
@@ -311,16 +318,29 @@ export class SongbooksPresenter {
     if (this.isTransferable(id)) this._downloadId.set(id);
   }
 
+  /** Ignored mid-render — the dialog hosts the progress until the file is done. */
   cancelDownload(): void {
+    if (this._isBusy()) return;
     this._downloadId.set(null);
+    this._progress.set(null);
   }
 
   async download(choice: SongbookPdfChoice): Promise<void> {
     const id = this._downloadId();
-    this._downloadId.set(null);
-    if (!id || !this.isTransferable(id)) return;
+    if (!id || !this.isTransferable(id)) {
+      this.cancelDownload();
+      return;
+    }
     this.print.save(choice); // remember it for next time (#3)
-    await this.busy(() => this.downloads.downloadSongbook(id, choice));
+    // The dialog stays open through the render for the spinner and count, then
+    // closes when the file is saved.
+    await this.busy(() =>
+      this.downloads.downloadSongbook(id, choice, (done, total) =>
+        this._progress.set({ done, total }),
+      ),
+    );
+    this._progress.set(null);
+    this._downloadId.set(null);
   }
 
   /** The whole book as JSON — **with its songs**, which `ExportService` adds:

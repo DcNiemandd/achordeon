@@ -391,6 +391,33 @@ test.describe('download a song', () => {
     expect(raw).toContain('Yesterday-The-Beatles.pdf');
   });
 
+  test('the dialog shows a spinner and a count while it renders', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Beta');
+    await createSong(page, 'Gamma');
+    await selectRow(page, 'Alpha');
+    await selectRow(page, 'Beta');
+    await selectRow(page, 'Gamma');
+
+    await page.getByTestId('songs-download').click();
+    const waiting = page.waitForEvent('download', { timeout: 30_000 });
+    await page.getByTestId('download-zip-png').click();
+
+    // The formats give way to the progress, and the dialog stays open through
+    // the render (the loop yields, so this is observable rather than a flash).
+    await expect(page.getByTestId('download-generating')).toBeVisible();
+    await expect(page.getByTestId('download-generating')).toContainText(
+      /Generating/,
+    );
+    await expect(page.getByTestId('download-cancel')).toBeDisabled();
+
+    await waiting;
+    // Saved → the dialog closes itself.
+    await expect(page.getByTestId('download-dialog')).toHaveCount(0);
+  });
+
   test('several songs can be one document instead', async ({ page }) => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Beta');

@@ -110,6 +110,10 @@ export type MultiFormat = 'zip-png' | 'zip-pdf' | 'pdf';
  * per song named in book order behind a `00-summary.png` contents page. */
 export type SongbookFormat = 'pdf' | 'zip-png';
 
+/** Reports how far a multi-song download has generated: `done` of `total`. The
+ * UI turns it into a spinner and an "n of N" count. */
+export type DownloadProgress = (done: number, total: number) => void;
+
 export type PageNumberPosition =
   | 'bottom-center'
   | 'bottom-right'
@@ -198,6 +202,7 @@ export class DownloadService {
   async downloadSongs(
     ids: readonly Uuid[],
     format: MultiFormat,
+    onProgress?: DownloadProgress,
   ): Promise<void> {
     const rendered = await this.render(ids);
     if (rendered.length === 0) return;
@@ -205,7 +210,7 @@ export class DownloadService {
 
     if (format === 'pdf') {
       await saveFile(
-        await this.toPdf(rendered),
+        await this.toPdf(rendered, onProgress),
         `achordeon-songs-${stamp}.pdf`,
         'application/pdf',
       );
@@ -213,13 +218,15 @@ export class DownloadService {
     }
 
     const files: Record<string, Uint8Array> = {};
-    for (const one of rendered) {
+    for (const [index, one] of rendered.entries()) {
       const blob =
         format === 'zip-png' ? await this.toPng(one) : await this.toPdf([one]);
       const ext = format === 'zip-png' ? 'png' : 'pdf';
       files[uniqueName(files, songFileSlug(one.song), ext)] = new Uint8Array(
         await blob.arrayBuffer(),
       );
+      onProgress?.(index + 1, rendered.length);
+      if (index + 1 < rendered.length) await yieldToPaint();
     }
     await saveFile(
       new Blob([(await zip(files)) as unknown as BlobPart], {
@@ -242,6 +249,7 @@ export class DownloadService {
   async downloadSongbook(
     id: Uuid,
     options: SongbookPdfOptions = {},
+    onProgress?: DownloadProgress,
   ): Promise<void> {
     const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
     const book = await this.bookFor(id, opts.songOrder);
@@ -252,7 +260,7 @@ export class DownloadService {
     // The other shape a book can take: a folder of pictures instead of a
     // document. Everything below is about paper, which a ZIP has none of.
     if (opts.format === 'zip-png') {
-      await this.songbookImages(book, rendered, opts);
+      await this.songbookImages(book, rendered, opts, onProgress);
       return;
     }
 
@@ -299,10 +307,13 @@ export class DownloadService {
       isFirst = false;
     }
 
+    let drawn = 0;
     for (const one of rendered) {
       if (!isFirst) doc.addPage([page.width, page.height]);
       isFirst = false;
       await drawSvg(doc, one.svg, fitInto(one.plan.box, page, margin));
+      onProgress?.(++drawn, rendered.length);
+      if (drawn < rendered.length) await yieldToPaint();
     }
 
     if (opts.hasPageNumbers) {
@@ -334,6 +345,7 @@ export class DownloadService {
     book: Songbook,
     rendered: readonly RenderedSong[],
     opts: Required<SongbookPdfOptions>,
+    onProgress?: DownloadProgress,
   ): Promise<void> {
     const files: Record<string, Uint8Array> = {};
 
@@ -358,6 +370,8 @@ export class DownloadService {
       files[`${pad(n)}-${songFileSlug(one.song)}.png`] = new Uint8Array(
         await png.arrayBuffer(),
       );
+      onProgress?.(n, rendered.length);
+      if (n < rendered.length) await yieldToPaint();
       n++;
     }
 
@@ -470,7 +484,10 @@ export class DownloadService {
     return embedSnapshot(png, this.exporter.toJson(snapshot));
   }
 
-  private async toPdf(songs: readonly RenderedSong[]): Promise<Blob> {
+  private async toPdf(
+    songs: readonly RenderedSong[],
+    onProgress?: DownloadProgress,
+  ): Promise<Blob> {
     const first = pageForBox(songs[0].plan.box);
     const doc = await createPdf(first);
     for (const one of songs) registerFonts(doc, one.plan.fonts);
@@ -479,6 +496,8 @@ export class DownloadService {
       const page = pageForBox(one.plan.box);
       if (index > 0) doc.addPage([page.width, page.height]);
       await drawSvg(doc, one.svg, { x: 0, y: 0, ...page });
+      onProgress?.(index + 1, songs.length);
+      if (index + 1 < songs.length) await yieldToPaint();
     }
     return doc.output('blob');
   }
@@ -613,6 +632,22 @@ export class DownloadService {
 async function zip(files: Record<string, Uint8Array>): Promise<Uint8Array> {
   const { zipSync } = await import('fflate');
   return zipSync(files, { level: 0 });
+}
+
+/**
+ * Hand the main thread back so the browser can paint between songs.
+ *
+ * The render → raster/PDF/zip work is synchronous, so without a macrotask break
+ * the progress the UI is bound to would land in one jump when the whole job
+ * finishes — the spinner never spins and the count never moves. A `setTimeout(0)`
+ * yield per song is a few milliseconds against work measured in tens, and it is
+ * what keeps the app responsive while a book generates (the generation still runs
+ * on the main thread; a worker is the heavier alternative).
+ */
+function yieldToPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve);
+  });
 }
 
 /**

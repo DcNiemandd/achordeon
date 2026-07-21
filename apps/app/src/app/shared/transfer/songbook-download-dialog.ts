@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
 import type {
+  DownloadProgress,
   PageNumberPlace,
   PageSizeChoice,
   SongbookFormat,
@@ -232,20 +233,30 @@ interface VariantOption {
         appButton
         type="button"
         variant="secondary"
+        [disabled]="busy()"
         data-testid="songbook-download-cancel"
         (click)="closed.emit()"
       >
         {{ cancelLabel }}
       </button>
+      <!-- Confirm doubles as the progress once pressed: a spinner and, for more
+           than one song, an "n of N" count that advances as the book renders.
+           It cannot be pressed again while it works. -->
       <button
         dialog-actions
         appButton
         type="button"
         variant="primary"
+        [disabled]="busy()"
         data-testid="songbook-download-confirm"
         (click)="chosen.emit(choice())"
       >
-        {{ downloadLabel }}
+        @if (busy()) {
+          <span class="spinner" aria-hidden="true"></span>
+          {{ generatingLabel() }}
+        } @else {
+          {{ downloadLabel }}
+        }
       </button>
     </app-dialog>
   `,
@@ -295,6 +306,31 @@ interface VariantOption {
       color: var(--text-muted);
       font-size: var(--text-xs);
     }
+
+    /* Rides inside the confirm button while the book renders. Sized to the
+       button's text and tinted for its surface, since a primary button's face
+       is the brand colour. */
+    .spinner {
+      inline-size: 15px;
+      block-size: 15px;
+      flex: none;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+      border-block-start-color: currentColor;
+      animation: songbook-spin 0.7s linear infinite;
+    }
+
+    @keyframes songbook-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
   `,
 })
 export class SongbookDownloadDialog {
@@ -306,8 +342,23 @@ export class SongbookDownloadDialog {
    * fixed. A real songbook prints in its arranged order, so it hides them. */
   readonly showSongOrder = input(false);
 
+  /** The book is rendering — the confirm button becomes the progress. */
+  readonly busy = input(false);
+  /** How far it has got, or null during the layout pass before the count is
+   * known. */
+  readonly progress = input<DownloadProgress | null>(null);
+
   readonly chosen = output<SongbookPdfChoice>();
   readonly closed = output<void>();
+
+  /** The confirm button's caption while it works: "Generating…" until there is
+   * a count, then "Generating n of N…". */
+  protected readonly generatingLabel = computed(() => {
+    const progress = this.progress();
+    return progress
+      ? $localize`:@@songbookDownload.generating:Generating ${progress.done}:done: of ${progress.total}:total:…`
+      : $localize`:@@songbookDownload.generatingStart:Generating…`;
+  });
 
   // linkedSignal, not a plain signal seeded once: `initial` may arrive after
   // construction (the store hydrates async-ish), and the dialog should reflect

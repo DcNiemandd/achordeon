@@ -75,6 +75,13 @@ export interface SongbookPdfChoice {
   readonly songOrder: SongOrder;
 }
 
+/** How far a download's generation has got, for the dialog to show as a spinner
+ * and an "n of N" count. Mirrors the service's `DownloadProgress` callback. */
+export interface DownloadProgress {
+  readonly done: number;
+  readonly total: number;
+}
+
 /** What to do about the songs a file brings that the library already has. */
 export type ImportResolutionChoice = 'replace' | 'ignore' | 'new';
 
