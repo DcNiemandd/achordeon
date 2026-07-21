@@ -175,7 +175,7 @@ export class DownloadService {
   async downloadSong(id: Uuid, format: SongFormat): Promise<void> {
     const [rendered] = await this.render([id]);
     if (!rendered) return;
-    const base = toFileSlug(rendered.song.name, 'song');
+    const base = songFileSlug(rendered.song);
 
     if (format === 'png') {
       await saveFile(await this.toPng(rendered), `${base}.png`, 'image/png');
@@ -217,8 +217,9 @@ export class DownloadService {
       const blob =
         format === 'zip-png' ? await this.toPng(one) : await this.toPdf([one]);
       const ext = format === 'zip-png' ? 'png' : 'pdf';
-      files[uniqueName(files, toFileSlug(one.song.name, 'song'), ext)] =
-        new Uint8Array(await blob.arrayBuffer());
+      files[uniqueName(files, songFileSlug(one.song), ext)] = new Uint8Array(
+        await blob.arrayBuffer(),
+      );
     }
     await saveFile(
       new Blob([(await zip(files)) as unknown as BlobPart], {
@@ -354,8 +355,9 @@ export class DownloadService {
       const png = await this.toPng(one);
       // The number prefix is already unique, so no `uniqueName` dance — two
       // songs sharing a name still get `03-` and `04-`.
-      files[`${pad(n)}-${toFileSlug(one.song.name, 'song')}.png`] =
-        new Uint8Array(await png.arrayBuffer());
+      files[`${pad(n)}-${songFileSlug(one.song)}.png`] = new Uint8Array(
+        await png.arrayBuffer(),
+      );
       n++;
     }
 
@@ -638,6 +640,27 @@ function contentsAst(book: Songbook, titles: readonly string[]): SongAst {
     ],
     warnings: [],
   };
+}
+
+/**
+ * A song's download file name (before the extension): its **title, then its
+ * subtitle** where there is one, slugified.
+ *
+ * The picture is named for what it *is* — "Wonderwall-Oasis" — rather than the
+ * library filing name, which may still be the untouched "New song". Falls back to
+ * the title alone, then to the library name when there is no title yet. The slug
+ * is the same safe form every other download name takes (`toFileSlug`), so the
+ * separators collapse to hyphens.
+ */
+function songFileSlug(song: Song): string {
+  const title = song.cache.title.trim();
+  const subtitle = song.cache.subtitle.trim();
+  const label = title
+    ? subtitle
+      ? `${title} - ${subtitle}`
+      : title
+    : song.name;
+  return toFileSlug(label, 'song');
 }
 
 /** Two songs may share a name; a ZIP entry may not. */

@@ -53,6 +53,44 @@ async function createSong(page: Page, name: string): Promise<void> {
   ).toHaveCount(1);
 }
 
+/**
+ * Create a song with a real **content title and subtitle**, filed under library
+ * name `name`.
+ *
+ * Download file names are built from title + subtitle (not the library name), so
+ * a song made with `createSong` — which leaves the tutorial title in place —
+ * cannot tell two files apart. This sets distinct content so the names below are
+ * predictable.
+ */
+async function createTitledSong(
+  page: Page,
+  name: string,
+  title: string,
+  subtitle: string,
+): Promise<void> {
+  await page.getByTestId('songs-add').click();
+  await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+
+  await page.getByTestId('editor').locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.insertText(`* ${title}\n** ${subtitle}\n\nA [C]line.`);
+  // Autosave is keystroke-debounced; let it land before navigating away.
+  await page.waitForTimeout(700);
+  await page.goBack();
+
+  const row = page.getByTestId('song-row').filter({ hasText: title }).first();
+  await expect(row).toBeVisible();
+  const id = await row.getAttribute('data-song-id');
+  await row.hover();
+  await page.getByTestId(`rename-${id}`).click();
+  await page.getByTestId(`rename-input-${id}`).fill(name);
+  await page.getByTestId(`rename-input-${id}`).press('Enter');
+  await expect(
+    page.getByTestId('song-row').filter({ hasText: name }),
+  ).toHaveCount(1);
+}
+
 async function selectRow(page: Page, name: string): Promise<void> {
   const row = page.getByTestId('song-row').filter({ hasText: name }).first();
   const id = await row.getAttribute('data-song-id');
@@ -336,8 +374,9 @@ test.describe('download a song', () => {
   });
 
   test('several songs pack into one ZIP', async ({ page }) => {
-    await createSong(page, 'Alpha');
-    await createSong(page, 'Beta');
+    // Titled, because the file names come from title + subtitle.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createTitledSong(page, 'Beta', 'Yesterday', 'The Beatles');
     await selectRow(page, 'Alpha');
     await selectRow(page, 'Beta');
 
@@ -348,8 +387,8 @@ test.describe('download a song', () => {
 
     expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
     const raw = file.toString('latin1');
-    expect(raw).toContain('Alpha.pdf');
-    expect(raw).toContain('Beta.pdf');
+    expect(raw).toContain('Wonderwall-Oasis.pdf');
+    expect(raw).toContain('Yesterday-The-Beatles.pdf');
   });
 
   test('several songs can be one document instead', async ({ page }) => {
@@ -405,8 +444,9 @@ test.describe('download a songbook', () => {
   test('downloads as a ZIP of images numbered in book order, summary first', async ({
     page,
   }) => {
-    await createSong(page, 'Alpha');
-    await createSong(page, 'Beta');
+    // Titled, so the ZIP entry names are the songs' titles + subtitles.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createTitledSong(page, 'Beta', 'Yesterday', 'The Beatles');
 
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
@@ -434,22 +474,22 @@ test.describe('download a songbook', () => {
     expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
     const raw = file.toString('latin1');
     // Stored (not deflated), so the entry names are readable in the raw bytes.
-    // `00-summary.png` sorts ahead of the songs; each song is one PNG, numbered
-    // in the order it was added.
+    // `00-summary.png` sorts ahead of the songs; each is one PNG named for its
+    // title + subtitle, numbered in the order it was added.
     expect(raw).toContain('00-summary.png');
-    expect(raw).toContain('01-Alpha.png');
-    expect(raw).toContain('02-Beta.png');
-    // The order is the arrangement, not the alphabet: Alpha's entry precedes
-    // Beta's in the archive.
-    expect(raw.indexOf('01-Alpha.png')).toBeLessThan(
-      raw.indexOf('02-Beta.png'),
+    expect(raw).toContain('01-Wonderwall-Oasis.png');
+    expect(raw).toContain('02-Yesterday-The-Beatles.png');
+    // The order is the arrangement, not the alphabet: the first-added song's
+    // image precedes the second's in the archive.
+    expect(raw.indexOf('01-Wonderwall-Oasis.png')).toBeLessThan(
+      raw.indexOf('02-Yesterday-The-Beatles.png'),
     );
   });
 
   test('the image ZIP drops the summary when it is switched off', async ({
     page,
   }) => {
-    await createSong(page, 'Alpha');
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
 
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
@@ -467,7 +507,7 @@ test.describe('download a songbook', () => {
     const raw = file.toString('latin1');
     // No contents page, just the one song.
     expect(raw).not.toContain('summary.png');
-    expect(raw).toContain('01-Alpha.png');
+    expect(raw).toContain('01-Wonderwall-Oasis.png');
   });
 
   test('a downloaded image from the ZIP imports back as its song', async ({
