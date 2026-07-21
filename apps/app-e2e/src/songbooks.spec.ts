@@ -610,6 +610,30 @@ test.describe('drag & drop', () => {
     await expect(page.getByTestId('entry-row').last()).toContainText('Alpha');
   });
 
+  test('holding a grip arms the drag in place before it moves', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha'], 'end');
+
+    const row = page.getByTestId('entry-row').first();
+    const handle = page.getByTestId('drag-0');
+    const box = await handle.boundingBox();
+    if (!box) throw new Error('the grip is not on screen');
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    // The hold has to outlast the long-press delay before the row lifts — the
+    // in-place cue the touch reorder was missing (a mouse runs the same clock).
+    // `toHaveClass` retries, so it waits the delay out.
+    await expect(row).toHaveClass(/is-armed/);
+
+    await page.mouse.up();
+    // Letting go without dragging drops the arm again.
+    await expect(row).not.toHaveClass(/is-armed/);
+  });
+
   test('drags a song out of the library and into the songbook', async ({
     page,
   }) => {
