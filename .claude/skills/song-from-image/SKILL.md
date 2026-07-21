@@ -1,17 +1,20 @@
 ---
 name: song-from-image
-description: Transcribe a song from an image (photo or scan of a chord sheet / lyrics-with-chords) into Achordeon markup, validate it against the real parser, then print it or save it to a file. Use when the user hands over a picture of a song, a screenshot of chords, or a scanned sheet and wants it as Achordeon song content.
+description: Transcribe a song (or a whole folder of songs) from images — photos or scans of chord sheets / lyrics-with-chords — into Achordeon markup, syntax-check it against the real parser, and hand it back as printed content, a text file, or an Achordeon import JSON (a single song, or a whole folder as one songbook). Use when the user gives a picture of a song, a screenshot of chords, a scan, or a folder of them.
 ---
 
 # Song from image
 
-Turn a picture of a song into **Achordeon content markup**, validate it with the
-repo's actual parser, and hand it back the way the user wants (printed in chat, or
-written to a file).
+Turn a picture of a song — or a folder full of them — into **Achordeon content
+markup**, syntax-check it with the repo's actual parser, and hand it back the way
+the user wants: printed in chat, a plain text file, or an **import JSON** they can
+drop straight on Achordeon's Import button (optionally a whole folder wrapped into
+one songbook named after the folder).
 
 Achordeon content is the source text of a Song: lyrics + chords + title/subtitle,
-using the markup below. Render settings (scale, columns, aspect ratio, colors) are
-**never** part of this text — they live in GUI metadata. Only produce content.
+using the markup below. Render **settings** (scale, columns, aspect ratio, colours)
+are never encoded in that text — they live as structured metadata. This skill still
+sets them, but in the **import JSON**, not in the content string (see step 5).
 
 The full author-facing docs are `apps/docs/docs/songs/syntax.mdx`; the exact
 implementer grammar is `docs/PARSER-GRAMMAR.md`. This skill is self-contained — you
@@ -90,75 +93,156 @@ directive.
 
 ## Workflow
 
-### 1. Load the image
+Two modes, same steps:
 
-Read the image the user provided with the Read tool (it accepts PNG/JPG). If they
-referenced a file path or pasted an image, read it. If no image is actually
-available, ask for it (or ask whether they instead want to type/paste the song).
+- **One song** → one image (or a few images of the same song).
+- **A folder of songs** → many images, each its own song, wrapped into **one
+  songbook named after the folder** (see step 6).
 
-### 2. Find the lyrics and the chords
+### 1. Load the image(s)
 
-From the image, extract:
+Read each image with the Read tool (it accepts PNG/JPG). For folder mode, glob the
+folder for image files and read them all. If no image is actually available, ask
+for it (or whether the user would rather type/paste the song).
 
-- **Title / author** if shown → `* Title` / `** Author`.
-- **Section labels** (Verse 1, Chorus, Bridge, "R:", numbers) → block labels.
-- **Lyrics**, line by line, preserving line breaks and blocks (blank line between
-  sections).
-- **Chords** and, critically, **which syllable/character each chord sits over**.
-  Chord sheets print chords on a line _above_ the lyric; place each `[chord]` right
-  **before the character it sits above** in the lyric line. Chord-only rows (intros,
-  solos, turnarounds) become a bracket line like `[Em G D]`.
+### 2. Read everything on the image — and get it right
 
-Be faithful to the source. Don't correct the songwriter's chords or spelling.
-If the image is blurry or a spot is unreadable, transcribe what you can and flag
-the uncertain spots to the user rather than guessing silently.
+**Transcribe all of it.** Chord sheets carry more than lyrics: a capo note, a key,
+a tuning, repeat counts (`2×`), section markers, performance notes ("Sólo = Sloka",
+"pomalu", "koda"), a `–` before a refrain line. **Usually all of it is needed** —
+capture it, don't quietly drop the handwriting in the margin. Put such notes where
+they belong: a section note becomes a **label** (`Sólo:`), an inline annotation
+becomes a verbatim bracket (`[2×]`, `[N.C.]`), a standalone remark becomes its own
+lyric line. Only genuinely omit a note if it is purely about the paper (a page
+number, a hole-punch).
+
+**Correct what is clearly wrong.** You are transcribing a song, not photographing a
+typo. Fix obvious misspellings, missing diacritics (Czech/other), OCR-style
+letter swaps, and broken words so the result reads as the song actually goes. Keep
+deliberate stylings, dialect, and the songwriter's actual word choices. When a
+correction is a judgement call (a possibly-wrong chord, an ambiguous word), make
+the sensible fix **and tell the user** what you changed rather than guessing
+silently. If a spot is truly unreadable, say so instead of inventing.
+
+Extract, per song:
+
+- **Title / author** → `* Title` / `** Author`.
+- **Section labels** (Verse 1, Chorus, Bridge, "R:", numbers, "Sólo") → block
+  labels (`Label:`).
+- **Lyrics**, line by line, blocks separated by a blank line.
+- **Chords**, and critically **which character each sits over**. Sheets print
+  chords on a line _above_ the lyric; place each `[chord]` immediately **before the
+  character under it**. Chord-only rows (intros, solos, turnarounds) become a
+  bracket line like `[Em G D]`.
 
 ### 3. Produce the song content
 
-Assemble the markup per the syntax above. Keep one song = one screen in mind, but
-that's a render concern — your job is faithful, valid content.
+Assemble the markup per the syntax above.
 
-### 4. Validate it
+### 4. Syntax-check it
 
-Run the bundled validator, which parses the content with the **real Achordeon
-parser** (same grammar the app ships) and reports title/subtitle, block count,
-warnings, and every bracket that will render verbatim:
+Run the checker. It parses the content with the **real Achordeon parser** (the same
+grammar the app ships). **This is a _syntax_ check, not a chord check** — it
+confirms the markup parses and reports the structure the parser saw; it does **not**
+verify that the chords are musically correct or that they match the image. That
+faithfulness is on you (step 2).
 
 ```bash
-# from the repo root; pass a file, or pipe content on stdin with -
+# from the repo root; a file, or content on stdin with -
 node .claude/skills/song-from-image/scripts/validate.mjs path/to/song.txt
-# or:
 printf '%s' "$CONTENT" | node .claude/skills/song-from-image/scripts/validate.mjs -
 ```
 
 Read the output:
 
-- **Warnings** (e.g. `SHADOWED_TITLE`) → a duplicated title/subtitle; fix unless
+- **Warnings** (e.g. `SHADOWED_TITLE`) → duplicated title/subtitle; fix unless
   intended.
-- **Brackets rendered verbatim** → confirm each is meant to be a non-chord
-  annotation (`[N.C.]`, `[x2]`) and not a chord you mistyped (`[Cmaj7]` typo'd as
-  `[Cmajj7]` would show up here).
-- **No title** note → add `* Title` unless the user wants it omitted.
+- **Brackets that render verbatim** → the parser didn't recognise them as chords,
+  so they render literally. Fine for `[N.C.]`, `[2×]`, repeat signs. If a real
+  chord shows up here (e.g. `[Cmajj7]`), that's a **syntax** typo in the symbol —
+  fix it. (This flags unrecognised _symbols_, not wrong-but-valid chords.)
+- **No title** → add `* Title` unless intentionally omitted.
 
-Fix any real problems and re-run until the report is clean (or every remaining flag
-is intentional).
+Fix real problems and re-run until clean (or every remaining flag is intentional).
 
-### 5. Deliver
+### 5. Choose settings to match the original (for JSON output)
 
-Ask (or follow what the user already said) how they want it:
+When you build an import JSON (step 6), set per-song **settings** so the render
+resembles the source sheet. Set only what the image clearly shows; leave the rest
+to defaults. Settings go in the JSON's `settings` object, never in the content
+text. Song-scope settings and how to read them off an image:
 
-- **Print in chat** → show the final content in a fenced code block.
-- **Save to a file** → write it where they ask; a plain `.txt` (or `.song`) holding
-  the raw content is fine. This is song _content_, not the JSON export/`.svg`
-  download — don't wrap it in JSON unless asked.
+| Setting         | Value                               | Read from the image                                                                                                                                                     |
+| --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                     |
+| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                            |
+| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                  |
+| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                           |
+| `chordColor`    | `"#rrggbb"`                         | the **ink colour of the printed chords**, if distinct. Highlighter over black text ≠ chord colour — that's still black (`"#000000"`). Omit to keep the app default red. |
+| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                              |
+| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                     |
+| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                      |
 
-Default to printing in chat if they didn't say.
+Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
+default unless the image is clearly styled. Unknown/out-of-scope keys are dropped by
+the builder with a warning, so a typo is loud.
+
+### 6. Deliver
+
+Follow what the user asked; if they didn't say, ask (default: print in chat).
+
+- **Print in chat** → the final content in a fenced code block.
+- **Text file** → write the raw content to a `.txt`. Content only, no JSON wrapper.
+- **Import JSON (one or more songs)** → build a `manifest.json` and run the builder.
+  The builder computes the derived cache with the real parser, generates
+  ids/timestamps, stamps `schemaVersion`, and validates settings. The result is a
+  `SnapshotEnvelope` the user drops on Achordeon's **Import** button.
+
+  ```bash
+  node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json -o import.json
+  ```
+
+  Manifest for a single song:
+
+  ```json
+  {
+    "songs": [
+      {
+        "name": "Vizovice",
+        "content": "* Vizovice\n** Fleret\n\n[G]Když se s vínem [D]probouzí [G]den\n...",
+        "settings": { "aspectRatio": "A4", "columns": 1 }
+      }
+    ]
+  }
+  ```
+
+- **A whole folder as a songbook** → one manifest, a `songbook` key set to the
+  **folder name**, and one entry in `songs[]` per image. The builder wraps them into
+  a songbook (entries in manifest order) plus the songs themselves — importing the
+  file adds the songbook _and_ its songs in one go.
+
+  ```json
+  {
+    "songbook": "Fleret",
+    "songs": [
+      { "name": "Vizovice", "content": "* Vizovice\n...", "settings": { "aspectRatio": "A4" } },
+      { "name": "Zafíráček", "content": "* Zafíráček\n...", "settings": { "aspectRatio": "A4" } }
+    ]
+  }
+  ```
+
+  (`"songbook"` may also be an object: `{ "name", "title", "subtitle", "author",
+"settings" }` for songbook-scope overrides like `chordColor`/`chordSize`.)
+
+  Write the manifest to a scratch file, run the builder, and give the user the
+  resulting `import.json` (or its path). The builder prints a per-song summary to
+  stderr — check it before handing over.
 
 ---
 
 ## Example
 
-Input (a chord sheet photo of the intro + first line):
+Input (a chord-sheet photo of the intro + first line):
 
 ```
 * Wish You Were Here
@@ -169,5 +253,7 @@ Input (a chord sheet photo of the intro + first line):
 2.: And did they get you to [C]trade your heroes for[D] ghosts,
 ```
 
-`validate.mjs` on that reports: Title `Wish You Were Here`, Subtitle `Pink Floyd`,
-2 blocks (one chord-only bridge block), all chords valid, no warnings.
+`validate.mjs` reports: Title `Wish You Were Here`, Subtitle `Pink Floyd`, 2 blocks
+(one chord-only bridge block), no warnings. Wrapped in a manifest and run through
+`build-import.mjs`, it becomes an import JSON carrying that one song, settings and
+all.
