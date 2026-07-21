@@ -31,6 +31,15 @@ export type PageNumberPlace =
 export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 /**
+ * What shape a songbook comes out as: one printable `pdf`, or a `zip-png` — a
+ * folder of one PNG per song, named in book order (`01-…`, `02-…`) after a
+ * `00-summary.png` contents page. The paper options (size, margins, page
+ * numbers) belong only to the PDF; the summary and, for All songs, the order
+ * apply to both.
+ */
+export type SongbookFormat = 'pdf' | 'zip-png';
+
+/**
  * The axis the **All songs** book is ordered by when it prints.
  *
  * Only All songs uses it — a real songbook's order *is* its content, so it is
@@ -47,8 +56,11 @@ export interface SongOrder {
   readonly favoritesFirst: boolean;
 }
 
-/** Everything the songbook PDF dialog decides. */
+/** Everything the songbook download dialog decides. */
 export interface SongbookPdfChoice {
+  /** Printable PDF, or a ZIP of per-song images. Chooses which of the fields
+   * below matter — the paper options are the PDF's alone. */
+  readonly format: SongbookFormat;
   readonly pageSize: PageSizeChoice;
   readonly isLandscape: boolean;
   readonly marginMm: number;

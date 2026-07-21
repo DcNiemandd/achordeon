@@ -16,6 +16,7 @@ import {
   titlePageAst,
   type GlobalSettings,
   type Song,
+  type SongAst,
   type Songbook,
   type Uuid,
 } from '@achordeon/shared/domain';
@@ -105,6 +106,10 @@ export type SongFormat = 'png' | 'pdf';
 /** …and what a handful of them can (§8). */
 export type MultiFormat = 'zip-png' | 'zip-pdf' | 'pdf';
 
+/** What a **songbook** can come out as: one printable PDF, or a ZIP of one PNG
+ * per song named in book order behind a `00-summary.png` contents page. */
+export type SongbookFormat = 'pdf' | 'zip-png';
+
 export type PageNumberPosition =
   | 'bottom-center'
   | 'bottom-right'
@@ -119,6 +124,9 @@ export type PageNumberPosition =
 export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 export interface SongbookPdfOptions {
+  /** PDF (the paper options below apply) or a ZIP of per-song images (they do
+   * not — only the summary and, for All songs, the order carry over). */
+  readonly format?: SongbookFormat;
   readonly pageSize?: PageSizeName;
   readonly isLandscape?: boolean;
   /** Page margin in **millimetres**. Added to the song's own `padding`, never
@@ -134,6 +142,7 @@ export interface SongbookPdfOptions {
 }
 
 const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
+  format: 'pdf',
   pageSize: 'A4',
   isLandscape: false,
   marginMm: 10,
@@ -238,6 +247,14 @@ export class DownloadService {
     if (!book) return;
 
     const rendered = await this.render(book.entries, book);
+
+    // The other shape a book can take: a folder of pictures instead of a
+    // document. Everything below is about paper, which a ZIP has none of.
+    if (opts.format === 'zip-png') {
+      await this.songbookImages(book, rendered, opts);
+      return;
+    }
+
     const page = orient(PAGE_SIZES[opts.pageSize], opts.isLandscape);
     const margin = opts.marginMm * MM;
 
@@ -302,6 +319,74 @@ export class DownloadService {
       `${toFileSlug(book.name, 'songbook')}.pdf`,
       'application/pdf',
     );
+  }
+
+  /**
+   * A songbook as a **ZIP of images** — one PNG per song, named in book order so
+   * a file browser or a printer keeps the songs in the sequence you arranged,
+   * behind a `00-summary.png` contents page.
+   *
+   * Each song PNG carries its own Export JSON (`toPng`, like every downloaded
+   * picture), so dropping one back on Import rebuilds the song, settings and all.
+   */
+  private async songbookImages(
+    book: Songbook,
+    rendered: readonly RenderedSong[],
+    opts: Required<SongbookPdfOptions>,
+  ): Promise<void> {
+    const files: Record<string, Uint8Array> = {};
+
+    // Zero-padded to the count's width, so lexical order survives past nine
+    // songs — `10-` must not sort between `01-` and `02-`. At least two digits,
+    // so the summary's `00` files with the songs rather than ahead as `0`.
+    const width = Math.max(2, String(rendered.length).length);
+    const pad = (n: number): string => String(n).padStart(width, '0');
+
+    if (opts.hasSummary) {
+      const summary = await this.contentsImage(book, rendered);
+      files[`${pad(0)}-summary.png`] = new Uint8Array(
+        await summary.arrayBuffer(),
+      );
+    }
+
+    let n = 1;
+    for (const one of rendered) {
+      const png = await this.toPng(one);
+      // The number prefix is already unique, so no `uniqueName` dance — two
+      // songs sharing a name still get `03-` and `04-`.
+      files[`${pad(n)}-${toFileSlug(one.song.name, 'song')}.png`] =
+        new Uint8Array(await png.arrayBuffer());
+      n++;
+    }
+
+    await saveFile(
+      new Blob([(await zip(files)) as unknown as BlobPart], {
+        type: 'application/zip',
+      }),
+      `${toFileSlug(book.name, 'songbook')}.zip`,
+      'application/zip',
+    );
+  }
+
+  /**
+   * The contents page as a PNG: the book's title over its songs, numbered in the
+   * same order their image files are.
+   *
+   * Rendered through the **one pipeline** (§2) rather than drawn as ad-hoc canvas
+   * text, so it wears the book's own fonts and colours — the same reason the PDF
+   * title page is a render (`renderTitlePage`) and not typed text. Page numbers
+   * would be a lie here: every song is its own file, and the file's number is its
+   * place, so the list carries that number and nothing more.
+   */
+  private async contentsImage(
+    book: Songbook,
+    rendered: readonly RenderedSong[],
+  ): Promise<Blob> {
+    const settings = resolveSettings(this.settings.global(), book.settings);
+    await this.renderer.ensureFonts([settings]);
+    const titles = rendered.map((one) => one.song.cache.title || one.song.name);
+    const plan = this.renderer.layout(contentsAst(book, titles), settings);
+    return svgToPng(this.renderer.emit(plan, true), plan.box);
   }
 
   /**
@@ -526,6 +611,33 @@ export class DownloadService {
 async function zip(files: Record<string, Uint8Array>): Promise<Uint8Array> {
   const { zipSync } = await import('fflate');
   return zipSync(files, { level: 0 });
+}
+
+/**
+ * The contents page of the image ZIP, as a `SongAst` — the book's title over a
+ * numbered list of its songs, in book order.
+ *
+ * Built as content and rendered like any other page, the sibling of
+ * `titlePageAst`: the same reason it lives as an AST rather than as drawn text
+ * is that the renderer already knows how to lay out a title and lines, and a
+ * second layout path would have to be kept in step with the first. Local to the
+ * download because it is the one thing that wants it — a title page is previewed
+ * elsewhere; a contents *image* is not.
+ */
+function contentsAst(book: Songbook, titles: readonly string[]): SongAst {
+  return {
+    title: book.title || book.name,
+    subtitle: '',
+    blocks: [
+      {
+        lines: titles.map((text, index) => ({
+          text: `${index + 1}. ${text}`,
+          chords: [],
+        })),
+      },
+    ],
+    warnings: [],
+  };
 }
 
 /** Two songs may share a name; a ZIP entry may not. */

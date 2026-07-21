@@ -15,6 +15,7 @@ export type {
   PageNumberPlace,
   PageSizeChoice,
   SongDownloadFormat,
+  SongbookFormat,
   SongbookPdfChoice,
   SongOrder,
   SongOrderAxis,
