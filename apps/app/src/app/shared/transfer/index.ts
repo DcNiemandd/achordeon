@@ -16,5 +16,8 @@ export type {
   PageSizeChoice,
   SongDownloadFormat,
   SongbookPdfChoice,
+  SongOrder,
+  SongOrderAxis,
+  SongOrderDir,
   TitlePageVariant,
 } from './transfer-model';

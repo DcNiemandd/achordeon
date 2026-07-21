@@ -289,6 +289,12 @@ export class SongbooksPresenter {
     return (id === null ? undefined : this.find(id)?.name) ?? '';
   });
 
+  /** The download open on the virtual book — the one that gets the song-order
+   * controls, because it is the only book with no order of its own. */
+  readonly isDownloadAllSongs = computed(
+    () => this._downloadId() === ALL_SONGS_ID,
+  );
+
   /**
    * Downloadable / exportable: a real songbook, **and** the virtual All songs.
    *

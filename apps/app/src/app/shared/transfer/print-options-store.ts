@@ -24,6 +24,8 @@ export const DEFAULT_PRINT_OPTIONS: SongbookPdfChoice = {
   hasSummary: false,
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
+  // All songs prints by title (the heading a reader flips to find) by default.
+  songOrder: { axis: 'title', dir: 'asc', favoritesFirst: false },
 };
 
 @Injectable({ providedIn: 'root' })

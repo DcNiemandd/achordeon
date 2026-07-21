@@ -358,7 +358,10 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
             class="row-actions"
             [class.is-menu-open]="openMenuRow() === row.id"
           >
-            @if (capabilities().canEdit) {
+            <!-- A read-only row has no record to open — the virtual All songs
+                 book, which is downloaded and previewed but never opened into an
+                 editable view (its order is chosen at download, not here). -->
+            @if (capabilities().canEdit && !row.isReadOnly) {
               <button
                 appButton
                 type="button"
@@ -1419,7 +1422,8 @@ export class SongExplorer {
   }
 
   protected onOpen(row: SongRow): void {
-    if (this.capabilities().canEdit) {
+    // A read-only row (All songs) has nothing to open — see the edit button.
+    if (this.capabilities().canEdit && !row.isReadOnly) {
       this.opened.emit(row.id);
     }
   }

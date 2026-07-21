@@ -41,26 +41,62 @@ import { createPdf, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
 import type { jsPDF } from 'jspdf';
 
+/** The axis All songs is ordered by for print. `title` is the printed heading;
+ * the rest mirror the library's own sort axes. */
+export type SongOrderAxis = 'title' | 'name' | 'created' | 'changed';
+
+export interface SongOrder {
+  readonly axis: SongOrderAxis;
+  readonly dir: 'asc' | 'desc';
+  readonly favoritesFirst: boolean;
+}
+
+/** The order All songs falls back to when none is asked for: by title, A→Z. */
+export const DEFAULT_SONG_ORDER: SongOrder = {
+  axis: 'title',
+  dir: 'asc',
+  favoritesFirst: false,
+};
+
 /**
- * The order the virtual **All songs** prints in: alphabetical by the **title a
- * reader sees on the page**, then the library name as a tiebreak.
+ * The order the virtual **All songs** prints in.
  *
- * Sorting by `name` alone was the bug — a song's library name stays "New song"
- * until it is explicitly renamed, while its title comes from the content, so a
- * library of written-but-unrenamed songs sorted by an identical name and came
- * out in insertion order, which reads as no sort at all. The printed heading is
- * what a reader flips to find, so that is what it is ordered by.
+ * Only All songs uses this — a real songbook's order *is* its content. The
+ * default axis is `title`, the heading a reader flips to find: sorting by `name`
+ * alone was the original bug, because a song's library name stays "New song"
+ * until it is renamed while its title comes from the content, so a written-but-
+ * unrenamed library came out in insertion order. `name` is offered too, and the
+ * two date axes, all with a direction and an optional starred-first float.
  *
  * Pure and exported so the order is testable without the render pipeline.
  */
-export function librarySongOrder(songs: readonly Song[]): Song[] {
-  const key = (song: Song): string => song.cache.title || song.name;
-  return songs
-    .filter((song) => song.deletedAt === null)
-    .slice()
-    .sort(
-      (a, b) => key(a).localeCompare(key(b)) || a.name.localeCompare(b.name),
-    );
+export function librarySongOrder(
+  songs: readonly Song[],
+  order: SongOrder = DEFAULT_SONG_ORDER,
+): Song[] {
+  const text = (song: Song): string =>
+    order.axis === 'name' ? song.name : song.cache.title || song.name;
+  const num = (song: Song): number =>
+    order.axis === 'changed' ? song.updatedAt : song.createdAt;
+
+  const compare = (a: Song, b: Song): number => {
+    const by =
+      order.axis === 'created' || order.axis === 'changed'
+        ? num(a) - num(b)
+        : text(a).localeCompare(text(b));
+    // Name breaks every tie, so the order is stable and never insertion-random.
+    return (order.dir === 'desc' ? -by : by) || a.name.localeCompare(b.name);
+  };
+
+  const live = songs.filter((song) => song.deletedAt === null).sort(compare);
+
+  if (!order.favoritesFirst) return live;
+  // Stable partition: starred songs float up but keep their sorted order among
+  // themselves, and so do the rest.
+  return [
+    ...live.filter((song) => song.favorite),
+    ...live.filter((song) => !song.favorite),
+  ];
 }
 
 /** What a single song can come out as. */
@@ -93,6 +129,8 @@ export interface SongbookPdfOptions {
   readonly hasSummary?: boolean;
   readonly hasPageNumbers?: boolean;
   readonly pageNumberPosition?: PageNumberPosition;
+  /** The order All songs prints in — ignored for a real songbook. */
+  readonly songOrder?: SongOrder;
 }
 
 const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
@@ -104,6 +142,7 @@ const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
   hasSummary: false,
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
+  songOrder: DEFAULT_SONG_ORDER,
 };
 
 /** One song, laid out and serialized once — the unit every sink consumes. */
@@ -195,7 +234,7 @@ export class DownloadService {
     options: SongbookPdfOptions = {},
   ): Promise<void> {
     const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
-    const book = await this.bookFor(id);
+    const book = await this.bookFor(id, opts.songOrder);
     if (!book) return;
 
     const rendered = await this.render(book.entries, book);
@@ -275,9 +314,12 @@ export class DownloadService {
    * (`downloadSongbook(id)`) works for both, and the id stays the thing the UI
    * hands over.
    */
-  private async bookFor(id: Uuid): Promise<Songbook | undefined> {
+  private async bookFor(
+    id: Uuid,
+    order: SongOrder,
+  ): Promise<Songbook | undefined> {
     if (!isAllSongs(id)) return this.songbooks.get(id);
-    const songs = librarySongOrder(await this.songs.all());
+    const songs = librarySongOrder(await this.songs.all(), order);
     return {
       id: ALL_SONGS_ID,
       createdAt: 0,

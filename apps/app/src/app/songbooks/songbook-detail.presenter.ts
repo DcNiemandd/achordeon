@@ -123,6 +123,14 @@ export class SongbookDetailPresenter {
    * came from may never have been loaded.
    */
   async load(id: string): Promise<void> {
+    // **All songs has no editable detail view.** Its order is chosen at
+    // download, and it is browsed through the Songs module — so a link straight
+    // to it (an old bookmark, a hand-typed URL) bounces back to the list rather
+    // than opening a page the UI no longer offers a way into.
+    if (isAllSongs(id)) {
+      void this.router.navigate(['/songbooks']);
+      return;
+    }
     this._id.set(id);
     this.slotSelection.clear();
     this._currentSlotKey.set(null);

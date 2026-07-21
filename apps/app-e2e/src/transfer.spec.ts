@@ -481,6 +481,62 @@ test.describe('download a songbook', () => {
     expect(countPages(raw)).toBe(3);
   });
 
+  test('the download dialog offers a song order for All songs only', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    // A real songbook to compare against.
+    await page.getByTestId('songbooks-add').click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    await page.goto('songbooks');
+
+    // All songs: the song-order controls are there.
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const allId = await all.getAttribute('data-song-id');
+    await all.hover();
+    await page.getByTestId(`download-${allId}`).click();
+    await expect(page.getByTestId('pdf-song-order')).toBeVisible();
+    await expect(page.getByTestId('pdf-favorites-first')).toBeVisible();
+    await page.getByTestId('songbook-download-cancel').click();
+
+    // A real songbook: its order is its content, so no song-order controls.
+    const real = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'New songbook' });
+    const realId = await real.getAttribute('data-song-id');
+    await real.hover();
+    await page.getByTestId(`download-${realId}`).click();
+    await expect(page.getByTestId('pdf-song-order')).toHaveCount(0);
+    await expect(page.getByTestId('pdf-favorites-first')).toHaveCount(0);
+  });
+
+  test('the chosen song order is remembered next time', async ({ page }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+
+    await all.hover();
+    await page.getByTestId(`download-${id}`).click();
+    await page.getByTestId('pdf-song-order').selectOption('created');
+    await page.getByTestId('pdf-favorites-first').check();
+    // Confirming the download is what remembers the choice (persisted options).
+    await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    // Reopen — the last choice is still set.
+    await all.hover();
+    await page.getByTestId(`download-${id}`).click();
+    await expect(page.getByTestId('pdf-song-order')).toHaveValue('created');
+    await expect(page.getByTestId('pdf-favorites-first')).toBeChecked();
+  });
+
   test('exports All songs as the whole library', async ({ page }) => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Beta');

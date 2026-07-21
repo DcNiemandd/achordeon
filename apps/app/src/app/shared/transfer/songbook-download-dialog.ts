@@ -19,6 +19,9 @@ import type {
   PageNumberPlace,
   PageSizeChoice,
   SongbookPdfChoice,
+  SongOrder,
+  SongOrderAxis,
+  SongOrderDir,
   TitlePageVariant,
 } from './transfer-model';
 import { DEFAULT_PRINT_OPTIONS } from './print-options-store';
@@ -154,6 +157,50 @@ interface VariantOption {
             </select>
           </label>
         }
+        <!-- Song order — **All songs only**. A real songbook's order IS its
+             content; you arranged it, so it prints as arranged. All songs has no
+             order of its own, so this is where one is chosen. -->
+        @if (showSongOrder()) {
+          <div class="group" role="group" [attr.aria-label]="orderLabel">
+            <label class="row">
+              <span class="name">{{ orderLabel }}</span>
+              <select
+                class="control"
+                [value]="choice().songOrder.axis"
+                data-testid="pdf-song-order"
+                (change)="patchOrder({ axis: axis($event) })"
+              >
+                <option value="title">{{ byTitleLabel }}</option>
+                <option value="name">{{ byNameLabel }}</option>
+                <option value="created">{{ byCreatedLabel }}</option>
+                <option value="changed">{{ byChangedLabel }}</option>
+              </select>
+            </label>
+
+            <label class="row">
+              <span class="name">{{ directionLabel }}</span>
+              <select
+                class="control"
+                [value]="choice().songOrder.dir"
+                data-testid="pdf-song-dir"
+                (change)="patchOrder({ dir: dir($event) })"
+              >
+                <option value="asc">{{ ascLabel }}</option>
+                <option value="desc">{{ descLabel }}</option>
+              </select>
+            </label>
+
+            <label class="row is-toggle">
+              <input
+                type="checkbox"
+                [checked]="choice().songOrder.favoritesFirst"
+                data-testid="pdf-favorites-first"
+                (change)="patchOrder({ favoritesFirst: checked($event) })"
+              />
+              <span class="name">{{ favoritesFirstLabel }}</span>
+            </label>
+          </div>
+        }
       </div>
 
       <p class="note">{{ fitNote }}</p>
@@ -209,6 +256,18 @@ interface VariantOption {
       font: inherit;
     }
 
+    /* The song-order controls, set apart from the paper options above with a
+       hairline — they answer a different question ("in what order", not "on what
+       paper") and only appear for All songs. */
+    .group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-block-start: var(--space-1);
+      padding-block-start: var(--space-2);
+      border-block-start: 1px solid var(--border);
+    }
+
     .note {
       margin: var(--space-3) 0 0;
       color: var(--text-muted);
@@ -221,6 +280,9 @@ export class SongbookDownloadDialog {
   /** The options the dialog opens on — the last-used set, so a person's usual
    * paper is not re-chosen every time (persisted by `PrintOptionsStore`). */
   readonly initial = input<SongbookPdfChoice>(DEFAULT_PRINT_OPTIONS);
+  /** Show the song-order controls — **only for All songs**, whose order is not
+   * fixed. A real songbook prints in its arranged order, so it hides them. */
+  readonly showSongOrder = input(false);
 
   readonly chosen = output<SongbookPdfChoice>();
   readonly closed = output<void>();
@@ -236,6 +298,13 @@ export class SongbookDownloadDialog {
 
   protected patch(change: Partial<SongbookPdfChoice>): void {
     this.choice.update((current) => ({ ...current, ...change }));
+  }
+
+  protected patchOrder(change: Partial<SongOrder>): void {
+    this.choice.update((current) => ({
+      ...current,
+      songOrder: { ...current.songOrder, ...change },
+    }));
   }
 
   /** The shapes a form event arrives in — narrowed at the one place they enter
@@ -254,6 +323,14 @@ export class SongbookDownloadDialog {
 
   protected variant(event: Event): TitlePageVariant {
     return this.value(event) as TitlePageVariant;
+  }
+
+  protected axis(event: Event): SongOrderAxis {
+    return this.value(event) as SongOrderAxis;
+  }
+
+  protected dir(event: Event): SongOrderDir {
+    return this.value(event) as SongOrderDir;
   }
 
   protected number(event: Event): number {
@@ -278,6 +355,15 @@ export class SongbookDownloadDialog {
   protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
   protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
   protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
+  protected readonly orderLabel = $localize`:@@songbookDownload.order:Song order`;
+  protected readonly byTitleLabel = $localize`:@@songbookDownload.order.title:Title`;
+  protected readonly byNameLabel = $localize`:@@songbookDownload.order.name:Library name`;
+  protected readonly byCreatedLabel = $localize`:@@songbookDownload.order.created:Date created`;
+  protected readonly byChangedLabel = $localize`:@@songbookDownload.order.changed:Date changed`;
+  protected readonly directionLabel = $localize`:@@songbookDownload.direction:Direction`;
+  protected readonly ascLabel = $localize`:@@songbookDownload.asc:Ascending`;
+  protected readonly descLabel = $localize`:@@songbookDownload.desc:Descending`;
+  protected readonly favoritesFirstLabel = $localize`:@@songbookDownload.favoritesFirst:Favorites first`;
   protected readonly positionLabel = $localize`:@@songbookDownload.position:Number position`;
   protected readonly bottomCenterLabel = $localize`:@@songbookDownload.bottomCenter:Bottom, centred`;
   protected readonly bottomLeftLabel = $localize`:@@songbookDownload.bottomLeft:Bottom left`;

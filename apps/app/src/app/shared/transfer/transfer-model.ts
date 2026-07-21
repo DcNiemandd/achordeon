@@ -30,6 +30,23 @@ export type PageNumberPlace =
  * the dialog can offer them, and land later (Epic 7 follow-up stub). */
 export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
+/**
+ * The axis the **All songs** book is ordered by when it prints.
+ *
+ * Only All songs uses it — a real songbook's order *is* its content, so it is
+ * printed as arranged and this is ignored. `title` is the printed heading a
+ * reader flips to find; the rest mirror the library's own sort axes.
+ */
+export type SongOrderAxis = 'title' | 'name' | 'created' | 'changed';
+export type SongOrderDir = 'asc' | 'desc';
+
+/** How All songs is ordered for print: axis, direction, and starred-first. */
+export interface SongOrder {
+  readonly axis: SongOrderAxis;
+  readonly dir: SongOrderDir;
+  readonly favoritesFirst: boolean;
+}
+
 /** Everything the songbook PDF dialog decides. */
 export interface SongbookPdfChoice {
   readonly pageSize: PageSizeChoice;
@@ -41,6 +58,9 @@ export interface SongbookPdfChoice {
   readonly hasSummary: boolean;
   readonly hasPageNumbers: boolean;
   readonly pageNumberPosition: PageNumberPlace;
+  /** The order All songs prints in. Ignored for a real songbook, whose order is
+   * its content — the dialog only shows this control for All songs. */
+  readonly songOrder: SongOrder;
 }
 
 /** What to do about the songs a file brings that the library already has. */
