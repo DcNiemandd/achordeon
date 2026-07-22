@@ -14,7 +14,7 @@ one songbook named after the folder).
 Achordeon content is the source text of a Song: lyrics + chords + title/subtitle,
 using the markup below. Render **settings** (scale, columns, aspect ratio, colours)
 are never encoded in that text — they live as structured metadata. This skill still
-sets them, but in the **import JSON**, not in the content string (see step 5).
+sets them, but in the **import JSON**, not in the content string (see step 6).
 
 The full author-facing docs are `apps/docs/docs/songs/syntax.mdx`; the exact
 implementer grammar is `docs/PARSER-GRAMMAR.md`. This skill is self-contained — you
@@ -97,7 +97,7 @@ Two modes, same steps:
 
 - **One song** → one image (or a few images of the same song).
 - **A folder of songs** → many images, each its own song, wrapped into **one
-  songbook named after the folder** (see step 6).
+  songbook named after the folder** (see step 7).
 
 ### 1. Load the image(s)
 
@@ -105,7 +105,20 @@ Read each image with the Read tool (it accepts PNG/JPG). For folder mode, glob t
 folder for image files and read them all. If no image is actually available, ask
 for it (or whether the user would rather type/paste the song).
 
-### 2. Read everything on the image — and get it right
+### 2. Order the songs (folder mode)
+
+The songbook plays back in **`songs[]` array order** — so getting the order right
+_is_ laying the array out right. Work out the intended sequence before building:
+
+- **From the file names** — scans are usually numbered (`1.1.`, `1.2.`, … `2.4.`);
+  sort by that prefix. Absent numbering, fall back to the folder's natural sort.
+- **From a summary image** — if the user includes an index / table-of-contents page
+  (a photographed contents list), follow _its_ order, match each title to its image,
+  and let it override the file-name sort.
+
+Emit the entries into `songs[]` in that order; the builder preserves it.
+
+### 3. Read everything on the image — and get it right
 
 **Transcribe all of it.** Chord sheets carry more than lyrics: a capo note, a key,
 a tuning, repeat counts (`2×`), section markers, performance notes ("Sólo = Sloka",
@@ -135,17 +148,17 @@ Extract, per song:
   character under it**. Chord-only rows (intros, solos, turnarounds) become a
   bracket line like `[Em G D]`.
 
-### 3. Produce the song content
+### 4. Produce the song content
 
 Assemble the markup per the syntax above.
 
-### 4. Syntax-check it
+### 5. Syntax-check it
 
 Run the checker. It parses the content with the **real Achordeon parser** (the same
 grammar the app ships). **This is a _syntax_ check, not a chord check** — it
 confirms the markup parses and reports the structure the parser saw; it does **not**
 verify that the chords are musically correct or that they match the image. That
-faithfulness is on you (step 2).
+faithfulness is on you (step 3).
 
 ```bash
 # from the repo root; a file, or content on stdin with -
@@ -165,29 +178,29 @@ Read the output:
 
 Fix real problems and re-run until clean (or every remaining flag is intentional).
 
-### 5. Choose settings to match the original (for JSON output)
+### 6. Choose settings to match the original (for JSON output)
 
-When you build an import JSON (step 6), set per-song **settings** so the render
+When you build an import JSON (step 7), set per-song **settings** so the render
 resembles the source sheet. Set only what the image clearly shows; leave the rest
 to defaults. Settings go in the JSON's `settings` object, never in the content
 text. Song-scope settings and how to read them off an image:
 
-| Setting         | Value                               | Read from the image                                                                                                                                                     |
-| --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                     |
-| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                            |
-| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                  |
-| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                           |
-| `chordColor`    | `"#rrggbb"`                         | the **ink colour of the printed chords**, if distinct. Highlighter over black text ≠ chord colour — that's still black (`"#000000"`). Omit to keep the app default red. |
-| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                              |
-| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                     |
-| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                      |
+| Setting         | Value                               | Read from the image                                                                                                                                                                                                                               |
+| --------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                               |
+| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                                      |
+| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                            |
+| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                                     |
+| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Achordeon exists to _unite_ how songs look, so chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour. |
+| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                        |
+| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                               |
+| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                                |
 
 Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
 default unless the image is clearly styled. Unknown/out-of-scope keys are dropped by
 the builder with a warning, so a typo is loud.
 
-### 6. Deliver
+### 7. Deliver
 
 Follow what the user asked; if they didn't say, ask (default: print in chat).
 
@@ -202,13 +215,19 @@ Follow what the user asked; if they didn't say, ask (default: print in chat).
   node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json -o import.json
   ```
 
+  Each song entry's **`name`** (its library label) is the **source image's file
+  name without extension** — _not_ the song title. The title/subtitle come from the
+  content's `*`/`**` markers; `name` records which file the song came from and keeps
+  the folder's ordering (`1.1. …`, `1.2. …`). If the song wasn't read from a file
+  (typed/pasted), fall back to the title.
+
   Manifest for a single song:
 
   ```json
   {
     "songs": [
       {
-        "name": "Vizovice",
+        "name": "1.5. Vizovice - Fleret",
         "content": "* Vizovice\n** Fleret\n\n[G]Když se s vínem [D]probouzí [G]den\n...",
         "settings": { "aspectRatio": "A4", "columns": 1 }
       }
@@ -225,8 +244,8 @@ Follow what the user asked; if they didn't say, ask (default: print in chat).
   {
     "songbook": "Fleret",
     "songs": [
-      { "name": "Vizovice", "content": "* Vizovice\n...", "settings": { "aspectRatio": "A4" } },
-      { "name": "Zafíráček", "content": "* Zafíráček\n...", "settings": { "aspectRatio": "A4" } }
+      { "name": "1.5. Vizovice - Fleret", "content": "* Vizovice\n...", "settings": { "aspectRatio": "A4" } },
+      { "name": "1.6. Zafíráček - Fleret", "content": "* Zafíráček\n...", "settings": { "aspectRatio": "A4" } }
     ]
   }
   ```
@@ -237,6 +256,27 @@ Follow what the user asked; if they didn't say, ask (default: print in chat).
   Write the manifest to a scratch file, run the builder, and give the user the
   resulting `import.json` (or its path). The builder prints a per-song summary to
   stderr — check it before handing over.
+
+### 8. Report a result table
+
+However you delivered (chat, `.txt`, or JSON), **end every run with a summary
+table** so the user can see what came out of each image at a glance. One row per
+song, in manifest/folder order:
+
+| File                          | Title    | Subtitle  | Notes                                   |
+| ----------------------------- | -------- | --------- | --------------------------------------- |
+| `1.5. Vizovice - Fleret.jpg`  | Vizovice | Fleret    | —                                       |
+| `2.0. Anděl - Precendens.jpg` | Anděl    | Precedens | 2-column layout; `Precedens` (typo fix) |
+
+- **File** is the source image's file name (with extension).
+- **Title** / **Subtitle** are the effective `*` / `**` the parser saw — use `—`
+  when a song has none.
+- **Notes** is a _terse_ shorthand of the judgement calls for that song
+  (corrections, dropped/kept margin notes, uncertain chords, inferred layout) — a
+  few words, `—` when there were none.
+
+Below the table, keep the **full** version of those judgement calls in prose — the
+Notes column is a scannable index, not a replacement for the detail.
 
 ---
 

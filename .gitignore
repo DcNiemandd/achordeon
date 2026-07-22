@@ -57,3 +57,4 @@ testem.log
 /typings
 .playwright-mcp
 .husky/_
+test_songbook
