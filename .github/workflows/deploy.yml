@@ -97,7 +97,11 @@ jobs:
           cp -r apps/docs/build/. dist/site/
           mkdir -p dist/site/app
           cp -r dist/apps/app/browser/. dist/site/app/
-          cp dist/site/app/index.html dist/site/app/404.html
+          # GitHub Pages serves this root 404 for every miss (there is no
+          # per-app 404), so it carries the SPA fallback that reloads an app
+          # deep link back into the app instead of the Docusaurus 404. The last
+          # arg is the non-root locale subpaths (apps/app/project.json §i18n).
+          node tools/spa-github-404.mjs dist/site/404.html "$APP_BASE_HREF" cs
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

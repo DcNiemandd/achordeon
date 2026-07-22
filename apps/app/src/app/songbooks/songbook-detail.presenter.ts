@@ -26,7 +26,11 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
-import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
+import {
+  PrintOptionsStore,
+  type DownloadProgress,
+  type SongbookPdfChoice,
+} from '../shared/transfer';
 import {
   insertEntries,
   insertionIndex,
@@ -684,8 +688,11 @@ export class SongbookDetailPresenter {
 
   private readonly _isDownloadOpen = signal(false);
   private readonly _isBusy = signal(false);
+  private readonly _progress = signal<DownloadProgress | null>(null);
   readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
   readonly isBusy = this._isBusy.asReadonly();
+  /** How far a running download has generated — the dialog's spinner and count. */
+  readonly downloadProgress = this._progress.asReadonly();
 
   readonly isTransferable = computed(
     () => !this.isVirtual() && this._book() !== null,
@@ -695,15 +702,28 @@ export class SongbookDetailPresenter {
     if (this.isTransferable()) this._isDownloadOpen.set(true);
   }
 
+  /** Ignored mid-render — the dialog hosts the progress until the file is done. */
   cancelDownload(): void {
+    if (this._isBusy()) return;
     this._isDownloadOpen.set(false);
+    this._progress.set(null);
   }
 
   async download(choice: SongbookPdfChoice): Promise<void> {
-    this._isDownloadOpen.set(false);
-    if (!this.isTransferable()) return;
+    if (!this.isTransferable()) {
+      this.cancelDownload();
+      return;
+    }
     this.print.save(choice); // remember it for next time (#3)
-    await this.busy(() => this.downloads.downloadSongbook(this._id(), choice));
+    // The dialog stays open through the render for the spinner and count, then
+    // closes when the file is saved.
+    await this.busy(() =>
+      this.downloads.downloadSongbook(this._id(), choice, (done, total) =>
+        this._progress.set({ done, total }),
+      ),
+    );
+    this._progress.set(null);
+    this._isDownloadOpen.set(false);
   }
 
   async exportBook(): Promise<void> {

@@ -16,6 +16,7 @@ import type { SongbookPdfChoice } from './transfer-model';
 const KEY = 'achordeon.print';
 
 export const DEFAULT_PRINT_OPTIONS: SongbookPdfChoice = {
+  format: 'pdf',
   pageSize: 'A4',
   isLandscape: false,
   marginMm: 10,

@@ -69,6 +69,11 @@ const SEARCH_DEBOUNCE_MS = 200;
  */
 const DRAG_START_DELAY = { touch: 250, mouse: 0 };
 
+/** How far a held pointer may drift before the hold is read as a scroll and the
+ * arm cue is called off — the CDK cancels its own delayed drag the same way, so
+ * a false "picked up" tick on a scroll never fires. */
+const ARM_MOVE_TOLERANCE = 8;
+
 /**
  * The rich Song list: search, sort, multi-select, row actions
  * (CONTEXT.md §Song explorer).
@@ -97,7 +102,14 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
   // On the document, because a drag over this list may have started in the
   // other one — see `onPointerMove`. The first line of the handler is the guard
   // that makes this free while nothing is being dragged.
-  host: { '(document:pointermove)': 'onPointerMove($event)' },
+  // pointermove tracks a drag over this list (and cancels a pending arm on a
+  // drift); pointerup/cancel end the hold wherever the finger lifts, which the
+  // grip's own handlers would miss once the pointer has left it.
+  host: {
+    '(document:pointermove)': 'onPointerMove($event)',
+    '(document:pointerup)': 'clearArm()',
+    '(document:pointercancel)': 'clearArm()',
+  },
   imports: [
     ScrollingModule,
     NgTemplateOutlet,
@@ -155,15 +167,23 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
         }
 
         @if (capabilities().canSort) {
+          <!-- selected on the option, not value on the select: the select's
+               value is bound before its @for options exist, so it lands on the
+               first one and the URL's sort is ignored. Marking the matching
+               option is what makes it open on the sort the address bar holds. -->
           <select
             class="sort"
-            [value]="sort()"
             [attr.aria-label]="sortLabel"
             data-testid="explorer-sort"
             (change)="onSortPick($event)"
           >
             @for (option of sortOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+              <option
+                [value]="option.value"
+                [selected]="option.value === sort()"
+              >
+                {{ option.label }}
+              </option>
             }
           </select>
 
@@ -247,6 +267,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
           [cdkDragStartDelay]="DRAG_START_DELAY"
           [class.is-current]="row.id === currentId()"
           [class.is-selected]="selectedIds().has(row.id)"
+          [class.is-armed]="armedId() === row.id"
           [class.is-insert-before]="activeInsertAt() === row.position"
           [class.is-insert-after]="isLastAndInsertAtEnd(row)"
           [attr.data-testid]="rowTestid()"
@@ -263,6 +284,7 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
               cdkDragHandle
               aria-hidden="true"
               [attr.data-testid]="'drag-' + row.id"
+              (pointerdown)="onGripDown($event, row)"
             >
               <app-icon name="drag" />
             </span>
@@ -374,7 +396,9 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                 <app-icon name="edit" />
               </button>
             }
-            @if (capabilities().canRename && !row.isReadOnly) {
+            @if (
+              capabilities().canRename && !row.isReadOnly && !isRenameInMenu()
+            ) {
               <button
                 appButton
                 type="button"
@@ -459,6 +483,23 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
                   [testid]="'more-' + row.id"
                   (openChange)="onMenuOpen(row.id, $event)"
                 >
+                  <!-- Rename folds in here on a phone (isRenameInMenu), where the
+                       inline strip has no room for it; on a wider screen it is a
+                       direct row button and never appears twice. -->
+                  @if (
+                    isRenameInMenu() &&
+                    capabilities().canRename &&
+                    !row.isReadOnly
+                  ) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'rename-' + row.id"
+                      (chosen)="startRename(row)"
+                    >
+                      <app-icon name="rename" />
+                      {{ RENAME }}
+                    </button>
+                  }
                   <!-- Download and export are NOT gated on isReadOnly: the
                        virtual All songs book is read-only (nothing to rename,
                        duplicate or delete) yet very much downloadable — it is
@@ -682,6 +723,16 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
       min-block-size: 0;
     }
 
+    /* The CDK content wrapper is position:absolute, so at width:auto it
+       shrink-wraps to the widest row's max-content — the list then scrolls
+       sideways and a row's actions slide off a narrow screen. Capping it at the
+       viewport width makes rows shrink to fit instead, so the name and title
+       truncate (below) rather than pushing the row wide. This app must never
+       overflow horizontally (asserted in the e2e overflow suite). */
+    :host ::ng-deep .cdk-virtual-scroll-content-wrapper {
+      max-inline-size: 100%;
+    }
+
     .row {
       display: flex;
       align-items: center;
@@ -703,6 +754,17 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
        "selected for a bulk action", so a different mark. */
     .row.is-current {
       box-shadow: inset 3px 0 0 var(--brand);
+    }
+
+    /* The grip has been held long enough to reorder: the row lifts in place —
+       the pre-movement half of the "picked up" cue, before the moving clone
+       (.cdk-drag-preview) exists. Shadow and surface only, never transform,
+       so an armed row can never widen the list. */
+    .row.is-armed {
+      position: relative;
+      z-index: 1;
+      background: var(--surface-overlay, var(--surface-raised));
+      box-shadow: var(--shadow-2);
     }
 
     /* Where an add would land, while its button is hovered or focused — the
@@ -759,18 +821,44 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
     }
 
     /* The row travelling with the pointer. It is a clone lifted out of the
-       viewport, so it carries none of the list's own layout and needs its own. */
+       viewport, so it carries none of the list's own layout and needs its own.
+
+       It is also the visual half of the "picked up" cue (see onDragStarted):
+       the brand edge and the lift-in animation mark the instant the drag arms,
+       which on touch is otherwise invisible after the long-press. The animation
+       touches shadow/opacity only — never transform, which the CDK owns inline
+       to move the clone, so a scale here would be overwritten every frame. */
     .row.cdk-drag-preview {
       display: flex;
       align-items: center;
       gap: var(--space-1);
       box-sizing: border-box;
       padding-inline: var(--space-2);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--brand);
       border-radius: var(--radius-md);
       background: var(--surface-overlay);
       box-shadow: var(--shadow-2);
       opacity: 0.95;
+      animation: row-pickup 140ms ease-out;
+    }
+
+    @keyframes row-pickup {
+      from {
+        box-shadow: var(--shadow-1, 0 1px 2px rgb(0 0 0 / 0.15));
+        opacity: 0.55;
+      }
+      to {
+        box-shadow: var(--shadow-2);
+        opacity: 0.95;
+      }
+    }
+
+    /* The cue is motion; a user who asked for none keeps the lifted look without
+       the animated arrival. */
+    @media (prefers-reduced-motion: reduce) {
+      .row.cdk-drag-preview {
+        animation: none;
+      }
     }
 
     /* Nothing on a preview is clickable, and the actions it drew mid-hover would
@@ -876,7 +964,6 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
       font-size: var(--text-sm);
       color: var(--text);
     }
-
     .title {
       font-size: var(--text-xs);
       color: var(--text-faint);
@@ -940,6 +1027,20 @@ export class SongExplorer {
   readonly isFavoritesFirst = input(false);
 
   /**
+   * The page is on a phone. Passed in rather than injected, so the list stays a
+   * controlled component (rows in, intents out): on a narrow screen a menu-mount
+   * (the Songs module) also folds **rename** behind the `⋯`, keeping the row to
+   * one inline action plus the menu instead of a strip that runs off the edge.
+   */
+  readonly isCompact = input(false);
+
+  /** Rename lives in the `⋯` menu on a phone, where an inline strip does not fit
+   * — only where the row already has a menu (`usesRowMenu`). */
+  protected readonly isRenameInMenu = computed(
+    () => this.isCompact() && this.capabilities().usesRowMenu,
+  );
+
+  /**
    * Where an add would land, drawn as a line between rows. `null` while nothing
    * is being previewed; `rows().length` means "after the last row".
    */
@@ -998,6 +1099,19 @@ export class SongExplorer {
 
   /** A drag is over this list right now — see `onPointerMove`. */
   protected readonly isDragOver = signal(false);
+
+  /**
+   * The row whose grip is held long enough to arm a drag, drawn lifted **in
+   * place** (`.is-armed`). Null the rest of the time.
+   *
+   * The cue the touch reorder was missing: the CDK only surfaces `dragStarted`,
+   * which needs movement, so a finger resting on the grip past the long-press
+   * had no sign the hold had taken. This is that moment, held from when the
+   * clock fires until the press moves into a drag or lets go.
+   */
+  protected readonly armedId = signal<string | null>(null);
+  private armTimer: ReturnType<typeof setTimeout> | null = null;
+  private armStart: { x: number; y: number } | null = null;
 
   /**
    * The drag over this list started in the **other** one.
@@ -1197,6 +1311,16 @@ export class SongExplorer {
    * the CDK's own DOM-order sorting.
    */
   protected onPointerMove(event: PointerEvent): void {
+    // A held grip that drifts past the tolerance before the clock fires is a
+    // scroll, not a pickup — call off the arm so it never ticks (the CDK
+    // cancels its own delayed drag on the same drift).
+    if (this.armTimer !== null && this.armStart) {
+      const dx = event.clientX - this.armStart.x;
+      const dy = event.clientY - this.armStart.y;
+      if (dx * dx + dy * dy > ARM_MOVE_TOLERANCE * ARM_MOVE_TOLERANCE) {
+        this.clearArm();
+      }
+    }
     if (!this.isDragOver()) {
       return;
     }
@@ -1247,11 +1371,57 @@ export class SongExplorer {
    * The CDK announces `entered` only when a drag crosses into a container, so a
    * reorder within one list would never be announced at all — the item was
    * already there. This is that missing edge.
+   *
+   * It is also the one moment a **touch** drag can be confirmed. On touch the
+   * grip arms only after a quiet hold (`DRAG_START_DELAY.touch`), and until now
+   * nothing told the finger the hold had taken — so a short haptic tick fires
+   * here, the "picked up" partner to the row that lifts on screen
+   * (`.cdk-drag-preview`). Guarded because the API is absent on desktop and in
+   * jsdom, and a no-op on iOS Safari, where the lift carries the cue alone.
    */
   protected onDragStarted(): void {
+    // One tick per pickup: a held touch already vibrated when it armed, so only
+    // a drag that never armed (a mouse, or any pointer that beat the clock)
+    // vibrates now.
+    const wasArmed = this.armedId() !== null;
+    this.clearArm();
+    if (!wasArmed && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(15);
+    }
     if (this.capabilities().canDrop) {
       this.isDragOver.set(true);
     }
+  }
+
+  /**
+   * A press landed on a row's grip. Start the clock the CDK uses to tell a hold
+   * from a scroll (`DRAG_START_DELAY.touch`): when it elapses with the press
+   * still resting, the drag is armed — mark the row lifted, in place, and tick
+   * once. A mouse runs the same clock; a quick drag beats it and clears it in
+   * `onDragStarted`, so only a deliberate hold ever shows the cue there.
+   */
+  protected onGripDown(event: PointerEvent, row: SongRow): void {
+    this.clearArm();
+    this.armStart = { x: event.clientX, y: event.clientY };
+    const id = row.id;
+    this.armTimer = setTimeout(() => {
+      this.armTimer = null;
+      this.armedId.set(id);
+      if (typeof navigator.vibrate === 'function') {
+        navigator.vibrate(15);
+      }
+    }, DRAG_START_DELAY.touch);
+  }
+
+  /** The hold ended, drifted into a scroll, or became a drag — drop the clock
+   * and the armed mark. Public: bound to document pointerup/cancel (host). */
+  clearArm(): void {
+    if (this.armTimer !== null) {
+      clearTimeout(this.armTimer);
+      this.armTimer = null;
+    }
+    this.armStart = null;
+    this.armedId.set(null);
   }
 
   /** The drag went elsewhere, or ended. Either way this list is no longer
@@ -1347,7 +1517,13 @@ export class SongExplorer {
     // something out.
     if (row.isReadOnly) return caps.canDownload || caps.canExport;
     return (
-      caps.canDownload || caps.canExport || caps.canDuplicate || caps.canDelete
+      caps.canDownload ||
+      caps.canExport ||
+      caps.canDuplicate ||
+      caps.canDelete ||
+      // On a phone the menu also carries rename, so it exists even for a mount
+      // whose only other action is renaming.
+      (this.isRenameInMenu() && caps.canRename)
     );
   }
 

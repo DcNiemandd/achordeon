@@ -53,6 +53,44 @@ async function createSong(page: Page, name: string): Promise<void> {
   ).toHaveCount(1);
 }
 
+/**
+ * Create a song with a real **content title and subtitle**, filed under library
+ * name `name`.
+ *
+ * Download file names are built from title + subtitle (not the library name), so
+ * a song made with `createSong` — which leaves the tutorial title in place —
+ * cannot tell two files apart. This sets distinct content so the names below are
+ * predictable.
+ */
+async function createTitledSong(
+  page: Page,
+  name: string,
+  title: string,
+  subtitle: string,
+): Promise<void> {
+  await page.getByTestId('songs-add').click();
+  await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+
+  await page.getByTestId('editor').locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.insertText(`* ${title}\n** ${subtitle}\n\nA [C]line.`);
+  // Autosave is keystroke-debounced; let it land before navigating away.
+  await page.waitForTimeout(700);
+  await page.goBack();
+
+  const row = page.getByTestId('song-row').filter({ hasText: title }).first();
+  await expect(row).toBeVisible();
+  const id = await row.getAttribute('data-song-id');
+  await row.hover();
+  await page.getByTestId(`rename-${id}`).click();
+  await page.getByTestId(`rename-input-${id}`).fill(name);
+  await page.getByTestId(`rename-input-${id}`).press('Enter');
+  await expect(
+    page.getByTestId('song-row').filter({ hasText: name }),
+  ).toHaveCount(1);
+}
+
 async function selectRow(page: Page, name: string): Promise<void> {
   const row = page.getByTestId('song-row').filter({ hasText: name }).first();
   const id = await row.getAttribute('data-song-id');
@@ -76,6 +114,25 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
   const waiting = page.waitForEvent('download', { timeout: 30_000 });
   await act();
   return bytesOf(await waiting);
+}
+
+/**
+ * The first PNG lifted out of a stored ZIP.
+ *
+ * The archive is packed at level 0 (see DownloadService), so each PNG sits in it
+ * verbatim — from its 8-byte signature to the end of its `IEND` chunk. That is
+ * enough to carve one back out without a ZIP library, which is all the import
+ * round-trip below needs.
+ */
+function pngFromZip(zip: Buffer): Buffer {
+  const signature = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
+  const start = zip.indexOf(signature);
+  const iend = zip.indexOf(Buffer.from('IEND', 'latin1'), start);
+  if (start < 0 || iend < 0) throw new Error('no PNG found in the ZIP');
+  // IEND (4 bytes) + its CRC (4 bytes) closes the file.
+  return zip.subarray(start, iend + 8);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -212,6 +269,99 @@ test.describe('export & import', () => {
   });
 });
 
+// Import reaches — and refreshes — every module (the file holds songs and
+// songbooks alike). In-app navigation (the rail), never `page.goto`, which would
+// reload the whole app and hide a stale-store bug behind a fresh boot.
+test.describe('import across modules', () => {
+  /** Build a one-song songbook, export it, and hand back the file. Leaves the
+   * song and the book in the library. */
+  async function makeBookFile(
+    page: Page,
+    bookName: string,
+    songName: string,
+  ): Promise<Buffer> {
+    await createSong(page, songName);
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    const title = page.getByTestId('module-title-input');
+    await expect(title).toHaveValue('New songbook');
+    await title.fill(bookName);
+    await title.press('Enter');
+    await page.waitForTimeout(300);
+    await page.getByTestId('song-row').filter({ hasText: songName }).click();
+    await page.getByTestId('add-end').click();
+    await expect(page.getByTestId('entry-row')).toHaveCount(1);
+
+    await page.goto('songbooks');
+    const row = page.getByTestId('songbook-row').filter({ hasText: bookName });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    return download(page, () => page.getByTestId(`export-${id}`).click());
+  }
+
+  test('a songbook imported in Songs appears in Songbooks without a reload', async ({
+    page,
+  }) => {
+    const file = await makeBookFile(page, 'Campfire', 'Alpha');
+
+    // Delete the book so re-importing genuinely adds it back.
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('songbook-delete-confirm').click();
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(0);
+
+    // Import from the Songs module — the song already exists, so its conflict
+    // resolves to the default (replace).
+    await page.getByTestId('rail-songs').click();
+    await expect(page).toHaveURL(/\/songs(\?|$)/);
+    await page.getByTestId('songs-import-input').setInputFiles({
+      name: 'campfire.json',
+      mimeType: 'application/json',
+      buffer: file,
+    });
+    await page.getByTestId('import-confirm').click();
+
+    // Back to Songbooks by the rail — not a reload. The book is there, because
+    // the import refreshed the shared songbook store (the bug: it did not).
+    await page.getByTestId('rail-songbooks').click();
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(1);
+  });
+
+  test('a file can be imported from the Songbooks module', async ({ page }) => {
+    const file = await makeBookFile(page, 'Campfire', 'Alpha');
+
+    await freshLibrary(page);
+    await page.goto('songbooks');
+    // The Songbooks module has its own Import.
+    await expect(page.getByTestId('songbooks-import')).toBeVisible();
+    await page.getByTestId('songbooks-import-input').setInputFiles({
+      name: 'campfire.json',
+      mimeType: 'application/json',
+      buffer: file,
+    });
+    await page.getByTestId('import-confirm').click();
+
+    // The book lands in this list right away…
+    await expect(
+      page.getByTestId('songbook-row').filter({ hasText: 'Campfire' }),
+    ).toHaveCount(1);
+    // …and the song it holds is in the library.
+    await page.getByTestId('rail-songs').click();
+    await expect(
+      page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
+    ).toHaveCount(1);
+  });
+});
+
 test.describe('a row acts on itself', () => {
   test('a row exports just that song from its menu', async ({ page }) => {
     await createSong(page, 'Alpha');
@@ -317,8 +467,9 @@ test.describe('download a song', () => {
   });
 
   test('several songs pack into one ZIP', async ({ page }) => {
-    await createSong(page, 'Alpha');
-    await createSong(page, 'Beta');
+    // Titled, because the file names come from title + subtitle.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createTitledSong(page, 'Beta', 'Yesterday', 'The Beatles');
     await selectRow(page, 'Alpha');
     await selectRow(page, 'Beta');
 
@@ -329,8 +480,37 @@ test.describe('download a song', () => {
 
     expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
     const raw = file.toString('latin1');
-    expect(raw).toContain('Alpha.pdf');
-    expect(raw).toContain('Beta.pdf');
+    // Numbered in selection order, then title + subtitle — the same
+    // NN-title-subtitle shape a songbook's image ZIP uses.
+    expect(raw).toMatch(/\d\d-Wonderwall-Oasis\.pdf/);
+    expect(raw).toMatch(/\d\d-Yesterday-The-Beatles\.pdf/);
+  });
+
+  test('the dialog shows a spinner and a count while it renders', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Beta');
+    await createSong(page, 'Gamma');
+    await selectRow(page, 'Alpha');
+    await selectRow(page, 'Beta');
+    await selectRow(page, 'Gamma');
+
+    await page.getByTestId('songs-download').click();
+    const waiting = page.waitForEvent('download', { timeout: 30_000 });
+    await page.getByTestId('download-zip-png').click();
+
+    // The formats give way to the progress, and the dialog stays open through
+    // the render (the loop yields, so this is observable rather than a flash).
+    await expect(page.getByTestId('download-generating')).toBeVisible();
+    await expect(page.getByTestId('download-generating')).toContainText(
+      /Generating/,
+    );
+    await expect(page.getByTestId('download-cancel')).toBeDisabled();
+
+    await waiting;
+    // Saved → the dialog closes itself.
+    await expect(page.getByTestId('download-dialog')).toHaveCount(0);
   });
 
   test('several songs can be one document instead', async ({ page }) => {
@@ -381,6 +561,108 @@ test.describe('download a songbook', () => {
     // is why it costs a page rather than a header.
     expect(countPages(raw)).toBe(3);
     expect(raw).toContain('/FontFile2');
+  });
+
+  test('downloads as a ZIP of images numbered in book order, summary first', async ({
+    page,
+  }) => {
+    // Titled, so the ZIP entry names are the songs' titles + subtitles.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createTitledSong(page, 'Beta', 'Yesterday', 'The Beatles');
+
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+    // Added Alpha then Beta, so that is the book's order — and the ZIP must keep
+    // it, which the number prefixes are what guarantee.
+    for (const name of ['Alpha', 'Beta']) {
+      await page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first()
+        .click();
+      await page.getByTestId('add-end').click();
+    }
+    await expect(page.getByTestId('entry-row')).toHaveCount(2);
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('songbook-format').selectOption('zip-png');
+    // The contents page is the ZIP's front matter — ask for it.
+    await page.getByTestId('pdf-summary').check();
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
+    const raw = file.toString('latin1');
+    // Stored (not deflated), so the entry names are readable in the raw bytes.
+    // `00-summary.png` sorts ahead of the songs; each is one PNG named for its
+    // title + subtitle, numbered in the order it was added.
+    expect(raw).toContain('00-summary.png');
+    expect(raw).toContain('01-Wonderwall-Oasis.png');
+    expect(raw).toContain('02-Yesterday-The-Beatles.png');
+    // The order is the arrangement, not the alphabet: the first-added song's
+    // image precedes the second's in the archive.
+    expect(raw.indexOf('01-Wonderwall-Oasis.png')).toBeLessThan(
+      raw.indexOf('02-Yesterday-The-Beatles.png'),
+    );
+  });
+
+  test('the image ZIP drops the summary when it is switched off', async ({
+    page,
+  }) => {
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('songbook-format').selectOption('zip-png');
+    await page.getByTestId('pdf-summary').uncheck();
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    expect(file.subarray(0, 2).toString('latin1')).toBe('PK');
+    const raw = file.toString('latin1');
+    // No contents page, just the one song.
+    expect(raw).not.toContain('summary.png');
+    expect(raw).toContain('01-Wonderwall-Oasis.png');
+  });
+
+  test('a downloaded image from the ZIP imports back as its song', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('songbook-format').selectOption('zip-png');
+    await page.getByTestId('pdf-summary').uncheck();
+    const zip = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    // The song PNG is stored (level 0), so its bytes sit verbatim in the ZIP:
+    // pull the one PNG out by its signature and drop it on Import — it carries
+    // the song inside it, like every downloaded picture.
+    const png = pngFromZip(zip);
+    await freshLibrary(page);
+    await page.getByTestId('songs-import-input').setInputFiles({
+      name: '01-Alpha.png',
+      mimeType: 'image/png',
+      buffer: png,
+    });
+    await page.getByTestId('import-confirm').click();
+    await expect(
+      page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
+    ).toHaveCount(1);
   });
 
   test('drops the title page when it is switched off', async ({ page }) => {

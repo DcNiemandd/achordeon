@@ -158,9 +158,15 @@ export const SongStore = signalStore(
         if (isStale(seq)) {
           return;
         }
+        // The fresh query is authoritative for every id it returns. A tombstone
+        // still in the map for one of those ids is stale — the row was revived
+        // (an import that replaces a soft-deleted song writes it back live), and
+        // re-appending the old tombstone would let `setAllEntities` place it
+        // last and win by id, so a replaced song came back looking deleted.
+        const liveIds = new Set(page.rows.map((song) => song.id));
         const tombstones = store
           .entities()
-          .filter((song) => song.deletedAt !== null);
+          .filter((song) => song.deletedAt !== null && !liveIds.has(song.id));
         patchState(store, setAllEntities([...page.rows, ...tombstones]), {
           nextCursor: page.nextCursor,
         });

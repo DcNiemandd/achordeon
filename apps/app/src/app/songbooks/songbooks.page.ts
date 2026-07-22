@@ -25,7 +25,7 @@ import {
   SongExplorer,
 } from '../shared/song-explorer';
 import { SongRender } from '../shared/song-render';
-import { SongbookDownloadDialog } from '../shared/transfer';
+import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
@@ -42,6 +42,7 @@ import {
     SongExplorer,
     SongRender,
     SongbookDownloadDialog,
+    ImportPanel,
     Button,
     Dialog,
     Icon,
@@ -65,6 +66,23 @@ import {
           >
             <app-icon name="add" />
             {{ addLabel }}
+          </button>
+
+          <!-- Import a file here too: it can bring songbooks (and the songs they
+               hold), so the Songbooks module offers the same door the Songs
+               module does. Pushed to the far end, away from "New songbook". -->
+          <button
+            appButton
+            type="button"
+            class="import"
+            [isIconOnly]="true"
+            [disabled]="presenter.isBusy()"
+            [attr.aria-label]="importLabel"
+            [appTooltip]="importLabel"
+            data-testid="songbooks-import"
+            (click)="importPanel.pick()"
+          >
+            <app-icon name="import" />
           </button>
         </app-action-bar>
 
@@ -118,6 +136,8 @@ import {
         [name]="presenter.downloadName()"
         [initial]="presenter.printOptions()"
         [showSongOrder]="presenter.isDownloadAllSongs()"
+        [busy]="presenter.isBusy()"
+        [progress]="presenter.downloadProgress()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
@@ -156,11 +176,28 @@ import {
         </button>
       </app-dialog>
     }
+
+    <!-- The file input and the import/error dialogs, shared with Songs. The
+         Import button above opens its picker. -->
+    <app-import-panel
+      #importPanel
+      inputTestid="songbooks-import-input"
+      [preview]="presenter.importPreview()"
+      [error]="presenter.importError()"
+      (picked)="presenter.readImport($event)"
+      (confirmed)="presenter.confirmImport($event)"
+      (dismissed)="presenter.cancelImport()"
+    />
   `,
   styles: `
     :host {
       display: block;
       block-size: 100%;
+    }
+
+    /* Import sits at the far end of the action row, away from the primary. */
+    .import {
+      margin-inline-start: auto;
     }
 
     .pane {
@@ -204,6 +241,7 @@ export class SongbooksPage {
 
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
   protected readonly addLabel = $localize`:@@songbooks.add:New songbook`;
+  protected readonly importLabel = $localize`:@@songbooks.import:Import from a file`;
   protected readonly emptyText = $localize`:@@songbooks.empty:No songbooks yet. Create one to group songs for a set.`;
   protected readonly deleteTitle = $localize`:@@songbooks.delete.title:Delete this songbook?`;
   protected readonly keepsSongsText = $localize`:@@songbooks.delete.keeps:The songs themselves stay in your library.`;

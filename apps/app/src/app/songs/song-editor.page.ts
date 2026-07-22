@@ -19,6 +19,7 @@ import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
 import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
+import { ReturnUrl } from './return-url';
 
 /**
  * The authoring screen: content on the left, the render on the right (§4).
@@ -58,11 +59,14 @@ import { SongEditorPresenter } from './song-editor.presenter';
           (titleChange)="presenter.rename($event)"
         >
           <!-- A link, because it navigates: it must middle-click, open in a
-               new tab, and announce as a link (see the Button directive). -->
+               new tab, and announce as a link (see the Button directive). The
+               query params are the list's own — search, sort, favourites — so
+               "back" lands on the list as it was left, not a bare /songs. -->
           <a
             appButton
             bar-end
             routerLink="/songs"
+            [queryParams]="backParams()"
             [attr.aria-label]="backLabel"
             [appTooltip]="backLabel"
             data-testid="editor-back"
@@ -350,6 +354,14 @@ export class SongEditorPage {
   protected readonly ui = inject(UiStore);
   protected readonly presenter = inject(SongEditorPresenter);
   private readonly router = inject(Router);
+  private readonly returnUrl = inject(ReturnUrl);
+
+  /** The list's query params, pulled off the remembered list URL — what makes
+   * the back link and Escape restore search/sort/favourites. Empty (a bare
+   * /songs) when the editor was reached cold, e.g. a reload. */
+  protected readonly backParams = computed(
+    () => this.router.parseUrl(this.returnUrl.url() ?? '/songs').queryParams,
+  );
 
   /** `/songs/:id/edit`, delivered by `withComponentInputBinding()`. */
   readonly id = input.required<string>();
@@ -506,7 +518,9 @@ export class SongEditorPage {
       return;
     }
     event.preventDefault();
-    void this.router.navigate(['/songs']);
+    // The remembered list URL — search, sort and all — not a bare /songs (see
+    // ReturnUrl). The same place the back link points.
+    void this.router.navigateByUrl(this.returnUrl.url() ?? '/songs');
   }
 
   /**

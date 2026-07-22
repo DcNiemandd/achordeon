@@ -25,10 +25,9 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
-import { DownloadDialog, ImportDialog } from '../shared/transfer';
+import { DownloadDialog, ImportPanel } from '../shared/transfer';
 import {
   SongsPresenter,
-  type ImportFailure,
   type PendingDelete,
   type SongUse,
 } from './songs.presenter';
@@ -57,7 +56,7 @@ import {
     SelectionStatus,
     SongRender,
     DownloadDialog,
-    ImportDialog,
+    ImportPanel,
     Button,
     Dialog,
     Icon,
@@ -146,9 +145,8 @@ import {
             </button>
 
             <!-- Import takes no selection, so it is the one transfer control
-                 that is never disabled. The file input is the real control; the
-                 button is a label for it: a bare file input cannot be styled
-                 and cannot carry a tooltip. -->
+                 that is never disabled. It opens the shared import panel's file
+                 picker; the panel owns the file input and the dialogs. -->
             <button
               appButton
               type="button"
@@ -157,20 +155,10 @@ import {
               [attr.aria-label]="importLabel"
               [appTooltip]="importLabel"
               data-testid="songs-import"
-              (click)="fileInput.click()"
+              (click)="importPanel.pick()"
             >
               <app-icon name="import" />
             </button>
-            <input
-              #fileInput
-              class="file"
-              type="file"
-              accept="application/json,.json,image/png,.png"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="songs-import-input"
-              (change)="onFilePicked($event)"
-            />
 
             <button
               appButton
@@ -190,6 +178,7 @@ import {
         <app-song-explorer
           class="explorer"
           [rows]="presenter.rows()"
+          [isCompact]="viewport.isStacked()"
           [query]="query()"
           [sort]="sortKey()"
           [dir]="presenter.effectiveDir(sortKey(), sortDir())"
@@ -226,38 +215,24 @@ import {
     @if (presenter.isDownloadOpen()) {
       <app-download-dialog
         [count]="presenter.downloadIds().length"
+        [busy]="presenter.isBusy()"
+        [progress]="presenter.downloadProgress()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
     }
 
-    @if (presenter.importPreview(); as preview) {
-      <app-import-dialog
-        [preview]="preview"
-        (confirmed)="presenter.confirmImport($event)"
-        (closed)="presenter.cancelImport()"
-      />
-    }
-
-    @if (presenter.importError(); as failure) {
-      <app-dialog
-        [title]="importFailedTitle"
-        data-testid="import-error-dialog"
-        (closed)="presenter.cancelImport()"
-      >
-        <p class="warn">{{ importFailedText(failure) }}</p>
-        <button
-          dialog-actions
-          appButton
-          type="button"
-          variant="primary"
-          data-testid="import-error-close"
-          (click)="presenter.cancelImport()"
-        >
-          {{ okLabel }}
-        </button>
-      </app-dialog>
-    }
+    <!-- The file input and the import/error dialogs, shared with Songbooks. The
+         Import button above opens its picker. -->
+    <app-import-panel
+      #importPanel
+      inputTestid="songs-import-input"
+      [preview]="presenter.importPreview()"
+      [error]="presenter.importError()"
+      (picked)="presenter.readImport($event)"
+      (confirmed)="presenter.confirmImport($event)"
+      (dismissed)="presenter.cancelImport()"
+    />
 
     @if (presenter.pendingDelete(); as pending) {
       <app-dialog
@@ -356,16 +331,6 @@ import {
       margin-inline-end: var(--space-1);
     }
 
-    /* The real control behind the Import button. Not display:none, which
-       makes it unfocusable and, in some engines, unclickable from script. */
-    .file {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
     .warn {
       margin: 0 0 var(--space-2);
     }
@@ -457,28 +422,6 @@ export class SongsPage {
   );
 
   protected readonly importLabel = $localize`:@@songs.import:Import songs from a file`;
-  protected readonly importFailedTitle = $localize`:@@songs.importFailed:That file could not be imported`;
-  protected readonly okLabel = $localize`:@@songs.ok:OK`;
-
-  protected importFailedText(failure: ImportFailure): string {
-    return failure === 'refused'
-      ? $localize`:@@songs.importRefused:It was made by a newer version of Achordeon. Update the app, then try again.`
-      : $localize`:@@songs.importUnreadable:It is not an Achordeon export. Pick a JSON file exported from Achordeon, or a PNG downloaded from it.`;
-  }
-
-  /**
-   * A picked file, and then the input is cleared.
-   *
-   * Without the reset, picking the same file twice in a row fires no `change`
-   * the second time — the value has not changed — and the user is left pressing
-   * a button that does nothing after cancelling out of the dialog once.
-   */
-  protected onFilePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) void this.presenter.readImport(file);
-  }
 
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;

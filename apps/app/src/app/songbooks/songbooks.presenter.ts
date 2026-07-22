@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
+  ImportService,
   RenderService,
   SettingsStore,
   SongStore,
@@ -15,10 +16,18 @@ import {
   ALL_SONGS_ID,
   resolveSettings,
   titlePageAst,
+  type ImportPlan,
   type Songbook,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
-import { PrintOptionsStore, type SongbookPdfChoice } from '../shared/transfer';
+import {
+  PrintOptionsStore,
+  type DownloadProgress,
+  type ImportChoice,
+  type ImportFailure,
+  type ImportPreview,
+  type SongbookPdfChoice,
+} from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
 const NEW_SONGBOOK_NAME = $localize`:@@songbooks.newName:New songbook`;
@@ -59,6 +68,7 @@ export class SongbooksPresenter {
   /** The last-used print options, for the download dialog to open on (#3). */
   readonly printOptions = this.print.options;
   private readonly exporter = inject(ExportService);
+  private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
 
   /**
@@ -279,8 +289,11 @@ export class SongbooksPresenter {
   /** The book whose download dialog is open, or null. */
   private readonly _downloadId = signal<string | null>(null);
   private readonly _isBusy = signal(false);
+  private readonly _progress = signal<DownloadProgress | null>(null);
   readonly isDownloadOpen = computed(() => this._downloadId() !== null);
   readonly isBusy = this._isBusy.asReadonly();
+  /** How far a running download has generated — the dialog's spinner and count. */
+  readonly downloadProgress = this._progress.asReadonly();
 
   /** The name in the open dialog's title. */
   readonly downloadName = computed(() => {
@@ -311,16 +324,29 @@ export class SongbooksPresenter {
     if (this.isTransferable(id)) this._downloadId.set(id);
   }
 
+  /** Ignored mid-render — the dialog hosts the progress until the file is done. */
   cancelDownload(): void {
+    if (this._isBusy()) return;
     this._downloadId.set(null);
+    this._progress.set(null);
   }
 
   async download(choice: SongbookPdfChoice): Promise<void> {
     const id = this._downloadId();
-    this._downloadId.set(null);
-    if (!id || !this.isTransferable(id)) return;
+    if (!id || !this.isTransferable(id)) {
+      this.cancelDownload();
+      return;
+    }
     this.print.save(choice); // remember it for next time (#3)
-    await this.busy(() => this.downloads.downloadSongbook(id, choice));
+    // The dialog stays open through the render for the spinner and count, then
+    // closes when the file is saved.
+    await this.busy(() =>
+      this.downloads.downloadSongbook(id, choice, (done, total) =>
+        this._progress.set({ done, total }),
+      ),
+    );
+    this._progress.set(null);
+    this._downloadId.set(null);
   }
 
   /** The whole book as JSON — **with its songs**, which `ExportService` adds:
@@ -328,6 +354,66 @@ export class SongbooksPresenter {
   async exportRow(id: string): Promise<void> {
     if (!this.isTransferable(id)) return;
     await this.busy(() => this.exporter.export({ songbookIds: [id] }));
+  }
+
+  // --- Import (Epic 7) --------------------------------------------------
+  //
+  // The same import a file offers the Songs module — a file holds songs and
+  // songbooks alike, so importing from here is no different, and either module
+  // should be able to start it. The UI is the shared `ImportPanel`; the flow is
+  // here, because it touches the stores.
+
+  private readonly _importPreview = signal<ImportPreview | null>(null);
+  private readonly _importError = signal<ImportFailure | null>(null);
+  /** The plan behind the preview — held for the confirm, out of the view model. */
+  private importPlan: ImportPlan | null = null;
+  readonly importPreview = this._importPreview.asReadonly();
+  readonly importError = this._importError.asReadonly();
+
+  /** Read a picked file and work out what it would do. Nothing is written until
+   * `confirmImport`, which is the whole point of the two steps. */
+  async readImport(file: File): Promise<void> {
+    this._importError.set(null);
+    try {
+      const source = await this.importer.read(file);
+      const plan = await this.importer.plan(source.snapshot);
+      this.importPlan = plan;
+      this._importPreview.set({
+        songCount: plan.songs.length,
+        songbookCount: plan.songbooks.length,
+        conflicts: plan.conflicts.map((conflict) => ({ ...conflict })),
+        hasUnknownSettings: source.status === 'warn',
+      });
+    } catch (error) {
+      this.importPlan = null;
+      this._importPreview.set(null);
+      this._importError.set(
+        (error as { reason?: ImportFailure }).reason === 'refused'
+          ? 'refused'
+          : 'unreadable',
+      );
+    }
+  }
+
+  cancelImport(): void {
+    this.importPlan = null;
+    this._importPreview.set(null);
+    this._importError.set(null);
+  }
+
+  async confirmImport(choice: ImportChoice): Promise<void> {
+    const plan = this.importPlan;
+    this.cancelImport();
+    if (!plan) return;
+    await this.busy(async () => {
+      await this.importer.apply(plan, choice);
+      // Both stores: a file brings songs and songbooks, and this list is the
+      // songbooks, but the library size the All songs row shows comes from the
+      // song store — refresh both, then re-read the count.
+      await this.store.refresh();
+      await this.songs.refresh();
+      this._librarySize.set((await this.songs.allLive()).length);
+    });
   }
 
   private async busy(job: () => Promise<unknown>): Promise<void> {

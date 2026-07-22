@@ -2,9 +2,9 @@
 // Spec: PRD-INFRASTRUCTURE.md §8 (title page / summary / page-number toggles +
 // position, page size, songs keep their aspect ratio scaled to fit)
 //
-// A songbook is always a PDF, so this dialog asks about the *paper* rather than
-// the format. Controlled, like every other panel in `app/shared`: values in,
-// one choice out.
+// A songbook comes out as a PDF or a ZIP of per-song images, so this dialog
+// asks the format first and then, for a PDF, about the *paper*. Controlled, like
+// every other panel in `app/shared`: values in, one choice out.
 
 import {
   ChangeDetectionStrategy,
@@ -16,8 +16,10 @@ import {
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
 import type {
+  DownloadProgress,
   PageNumberPlace,
   PageSizeChoice,
+  SongbookFormat,
   SongbookPdfChoice,
   SongOrder,
   SongOrderAxis,
@@ -46,77 +48,128 @@ interface VariantOption {
       (closed)="closed.emit()"
     >
       <div class="rows">
+        <!-- Format first: it decides which of the rows below are even asked.
+             A PDF is about paper (size, margins, page numbers); a ZIP of images
+             is about none of those — so the paper block is gated on it. -->
         <label class="row">
-          <span class="name">{{ pageSizeLabel }}</span>
+          <span class="name">{{ formatLabel }}</span>
           <select
             class="control"
-            [value]="choice().pageSize"
-            data-testid="pdf-page-size"
-            (change)="patch({ pageSize: size($event) })"
+            [value]="choice().format"
+            data-testid="songbook-format"
+            (change)="patch({ format: format($event) })"
           >
-            <option value="A4">A4</option>
-            <option value="Letter">Letter</option>
-            <option value="A5">A5</option>
+            <option value="pdf">{{ pdfLabel }}</option>
+            <option value="zip-png">{{ zipPngLabel }}</option>
           </select>
         </label>
 
-        <label class="row">
-          <span class="name">{{ orientationLabel }}</span>
-          <select
-            class="control"
-            [value]="choice().isLandscape ? 'landscape' : 'portrait'"
-            data-testid="pdf-orientation"
-            (change)="patch({ isLandscape: value($event) === 'landscape' })"
-          >
-            <option value="portrait">{{ portraitLabel }}</option>
-            <option value="landscape">{{ landscapeLabel }}</option>
-          </select>
-        </label>
-
-        <label class="row">
-          <span class="name">{{ marginLabel }}</span>
-          <input
-            class="control"
-            type="number"
-            min="0"
-            max="50"
-            step="1"
-            [value]="choice().marginMm"
-            data-testid="pdf-margin"
-            (change)="patch({ marginMm: number($event) })"
-          />
-        </label>
-
-        <label class="row is-toggle">
-          <input
-            type="checkbox"
-            [checked]="choice().hasTitlePage"
-            data-testid="pdf-title-page"
-            (change)="patch({ hasTitlePage: checked($event) })"
-          />
-          <span class="name">{{ titlePageLabel }}</span>
-        </label>
-
-        <!-- The layout only matters while there is a title page. A stub for now:
-             only "Classic" renders, the rest say so and land later. -->
-        @if (choice().hasTitlePage) {
+        @if (choice().format === 'pdf') {
           <label class="row">
-            <span class="name">{{ variantLabel }}</span>
+            <span class="name">{{ pageSizeLabel }}</span>
             <select
               class="control"
-              [value]="choice().titlePageVariant"
-              data-testid="pdf-title-variant"
-              (change)="patch({ titlePageVariant: variant($event) })"
+              [value]="choice().pageSize"
+              data-testid="pdf-page-size"
+              (change)="patch({ pageSize: size($event) })"
             >
-              @for (option of variants; track option.value) {
-                <option [value]="option.value" [disabled]="!option.isReady">
-                  {{ option.label }}
-                </option>
-              }
+              <option value="A4">A4</option>
+              <option value="Letter">Letter</option>
+              <option value="A5">A5</option>
             </select>
           </label>
+
+          <label class="row">
+            <span class="name">{{ orientationLabel }}</span>
+            <select
+              class="control"
+              [value]="choice().isLandscape ? 'landscape' : 'portrait'"
+              data-testid="pdf-orientation"
+              (change)="patch({ isLandscape: value($event) === 'landscape' })"
+            >
+              <option value="portrait">{{ portraitLabel }}</option>
+              <option value="landscape">{{ landscapeLabel }}</option>
+            </select>
+          </label>
+
+          <label class="row">
+            <span class="name">{{ marginLabel }}</span>
+            <input
+              class="control"
+              type="number"
+              min="0"
+              max="50"
+              step="1"
+              [value]="choice().marginMm"
+              data-testid="pdf-margin"
+              (change)="patch({ marginMm: number($event) })"
+            />
+          </label>
+
+          <label class="row is-toggle">
+            <input
+              type="checkbox"
+              [checked]="choice().hasTitlePage"
+              data-testid="pdf-title-page"
+              (change)="patch({ hasTitlePage: checked($event) })"
+            />
+            <span class="name">{{ titlePageLabel }}</span>
+          </label>
+
+          <!-- The layout only matters while there is a title page. A stub for
+               now: only "Classic" renders, the rest say so and land later. -->
+          @if (choice().hasTitlePage) {
+            <label class="row">
+              <span class="name">{{ variantLabel }}</span>
+              <select
+                class="control"
+                [value]="choice().titlePageVariant"
+                data-testid="pdf-title-variant"
+                (change)="patch({ titlePageVariant: variant($event) })"
+              >
+                @for (option of variants; track option.value) {
+                  <option [value]="option.value" [disabled]="!option.isReady">
+                    {{ option.label }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+
+          <label class="row is-toggle">
+            <input
+              type="checkbox"
+              [checked]="choice().hasPageNumbers"
+              data-testid="pdf-page-numbers"
+              (change)="patch({ hasPageNumbers: checked($event) })"
+            />
+            <span class="name">{{ pageNumbersLabel }}</span>
+          </label>
+
+          <!-- The position only exists while the numbers do: an enabled control
+               for something that is switched off is a question with no answer. -->
+          @if (choice().hasPageNumbers) {
+            <label class="row">
+              <span class="name">{{ positionLabel }}</span>
+              <select
+                class="control"
+                [value]="choice().pageNumberPosition"
+                data-testid="pdf-number-position"
+                (change)="patch({ pageNumberPosition: place($event) })"
+              >
+                <option value="bottom-center">{{ bottomCenterLabel }}</option>
+                <option value="bottom-left">{{ bottomLeftLabel }}</option>
+                <option value="bottom-right">{{ bottomRightLabel }}</option>
+                <option value="top-center">{{ topCenterLabel }}</option>
+                <option value="top-left">{{ topLeftLabel }}</option>
+                <option value="top-right">{{ topRightLabel }}</option>
+              </select>
+            </label>
+          }
         }
 
+        <!-- Summary is front matter for either format: the PDF's contents page,
+             or the ZIP's 00-summary.png. So it stays out of the paper gate. -->
         <label class="row is-toggle">
           <input
             type="checkbox"
@@ -127,36 +180,6 @@ interface VariantOption {
           <span class="name">{{ summaryLabel }}</span>
         </label>
 
-        <label class="row is-toggle">
-          <input
-            type="checkbox"
-            [checked]="choice().hasPageNumbers"
-            data-testid="pdf-page-numbers"
-            (change)="patch({ hasPageNumbers: checked($event) })"
-          />
-          <span class="name">{{ pageNumbersLabel }}</span>
-        </label>
-
-        <!-- The position only exists while the numbers do: an enabled control
-             for something that is switched off is a question with no answer. -->
-        @if (choice().hasPageNumbers) {
-          <label class="row">
-            <span class="name">{{ positionLabel }}</span>
-            <select
-              class="control"
-              [value]="choice().pageNumberPosition"
-              data-testid="pdf-number-position"
-              (change)="patch({ pageNumberPosition: place($event) })"
-            >
-              <option value="bottom-center">{{ bottomCenterLabel }}</option>
-              <option value="bottom-left">{{ bottomLeftLabel }}</option>
-              <option value="bottom-right">{{ bottomRightLabel }}</option>
-              <option value="top-center">{{ topCenterLabel }}</option>
-              <option value="top-left">{{ topLeftLabel }}</option>
-              <option value="top-right">{{ topRightLabel }}</option>
-            </select>
-          </label>
-        }
         <!-- Song order — **All songs only**. A real songbook's order IS its
              content; you arranged it, so it prints as arranged. All songs has no
              order of its own, so this is where one is chosen. -->
@@ -203,27 +226,37 @@ interface VariantOption {
         }
       </div>
 
-      <p class="note">{{ fitNote }}</p>
+      <p class="note">{{ note() }}</p>
 
       <button
         dialog-actions
         appButton
         type="button"
         variant="secondary"
+        [disabled]="busy()"
         data-testid="songbook-download-cancel"
         (click)="closed.emit()"
       >
         {{ cancelLabel }}
       </button>
+      <!-- Confirm doubles as the progress once pressed: a spinner and, for more
+           than one song, an "n of N" count that advances as the book renders.
+           It cannot be pressed again while it works. -->
       <button
         dialog-actions
         appButton
         type="button"
         variant="primary"
+        [disabled]="busy()"
         data-testid="songbook-download-confirm"
         (click)="chosen.emit(choice())"
       >
-        {{ downloadLabel }}
+        @if (busy()) {
+          <span class="spinner" aria-hidden="true"></span>
+          {{ generatingLabel() }}
+        } @else {
+          {{ downloadLabel }}
+        }
       </button>
     </app-dialog>
   `,
@@ -273,6 +306,31 @@ interface VariantOption {
       color: var(--text-muted);
       font-size: var(--text-xs);
     }
+
+    /* Rides inside the confirm button while the book renders. Sized to the
+       button's text and tinted for its surface, since a primary button's face
+       is the brand colour. */
+    .spinner {
+      inline-size: 15px;
+      block-size: 15px;
+      flex: none;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+      border-block-start-color: currentColor;
+      animation: songbook-spin 0.7s linear infinite;
+    }
+
+    @keyframes songbook-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
   `,
 })
 export class SongbookDownloadDialog {
@@ -284,8 +342,23 @@ export class SongbookDownloadDialog {
    * fixed. A real songbook prints in its arranged order, so it hides them. */
   readonly showSongOrder = input(false);
 
+  /** The book is rendering — the confirm button becomes the progress. */
+  readonly busy = input(false);
+  /** How far it has got, or null during the layout pass before the count is
+   * known. */
+  readonly progress = input<DownloadProgress | null>(null);
+
   readonly chosen = output<SongbookPdfChoice>();
   readonly closed = output<void>();
+
+  /** The confirm button's caption while it works: "Generating…" until there is
+   * a count, then "Generating n of N…". */
+  protected readonly generatingLabel = computed(() => {
+    const progress = this.progress();
+    return progress
+      ? $localize`:@@songbookDownload.generating:Generating ${progress.done}:done: of ${progress.total}:total:…`
+      : $localize`:@@songbookDownload.generatingStart:Generating…`;
+  });
 
   // linkedSignal, not a plain signal seeded once: `initial` may arrive after
   // construction (the store hydrates async-ish), and the dialog should reflect
@@ -311,6 +384,10 @@ export class SongbookDownloadDialog {
    * typed code, which is exactly where a `<select>`'s string stops being one. */
   protected value(event: Event): string {
     return (event.target as HTMLSelectElement).value;
+  }
+
+  protected format(event: Event): SongbookFormat {
+    return this.value(event) as SongbookFormat;
   }
 
   protected size(event: Event): PageSizeChoice {
@@ -346,6 +423,9 @@ export class SongbookDownloadDialog {
     return (event.target as HTMLInputElement).checked;
   }
 
+  protected readonly formatLabel = $localize`:@@songbookDownload.format:Format`;
+  protected readonly pdfLabel = $localize`:@@songbookDownload.format.pdf:PDF`;
+  protected readonly zipPngLabel = $localize`:@@songbookDownload.format.zipPng:ZIP of images`;
   protected readonly pageSizeLabel = $localize`:@@songbookDownload.pageSize:Page size`;
   protected readonly orientationLabel = $localize`:@@songbookDownload.orientation:Orientation`;
   protected readonly portraitLabel = $localize`:@@songbookDownload.portrait:Portrait`;
@@ -399,6 +479,12 @@ export class SongbookDownloadDialog {
     },
   ];
   protected readonly fitNote = $localize`:@@songbookDownload.fitNote:Each song keeps its own shape and is scaled to fit the page.`;
+  /** The ZIP names its files in book order, so a viewer or a printer keeps the
+   * songs in the sequence you arranged them. */
+  protected readonly zipNote = $localize`:@@songbookDownload.zipNote:One image per song, numbered in order, plus a contents page.`;
+  protected readonly note = computed(() =>
+    this.choice().format === 'pdf' ? this.fitNote : this.zipNote,
+  );
   protected readonly cancelLabel = $localize`:@@songbookDownload.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@songbookDownload.confirm:Download`;
 }

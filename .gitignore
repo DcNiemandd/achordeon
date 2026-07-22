@@ -22,7 +22,9 @@ apps/app/src/index.html
 .angular
 
 # Claude Code session data (project-local; safe to share if you want)
-.claude
+.claude/*
+# ...but shared skills are checked in
+!.claude/skills
 
 # Editors / IDEs
 /.idea
@@ -55,3 +57,7 @@ testem.log
 /typings
 .playwright-mcp
 .husky/_
+
+# Image to song skill output
+test_songbook/*
+!test_songbook/*.json

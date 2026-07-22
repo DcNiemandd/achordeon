@@ -179,6 +179,36 @@ describe('SongStore', () => {
     ).not.toBeNull();
   });
 
+  it('refresh revives a song the query now returns live, over a stale tombstone', async () => {
+    // The import bug: replacing a soft-deleted song writes it back live in the
+    // repository, but the store still holds the tombstone. `refresh` must let the
+    // fresh live row win — re-appending the stale tombstone let it shadow the
+    // revived song by id, so a replaced song came back looking deleted.
+    const source = new MemoryEntitySource<Song>([song('a'), song('b')]);
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SONG_REPOSITORY,
+          useValue: new PagedRepository(source, songPagingConfig),
+        },
+      ],
+    });
+    const store = TestBed.inject(SongStore);
+    await store.load();
+    await store.remove('a'); // tombstone, in memory and in the repository
+
+    await source.put(song('a', { name: 'imported' })); // deletedAt: null
+    await store.refresh();
+
+    expect(
+      store
+        .live()
+        .map((s) => s.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
+    expect(store.live().find((s) => s.id === 'a')?.name).toBe('imported');
+  });
+
   it('searches a song by its name, not only by its parsed title', async () => {
     // A fresh song has no Title yet; if search skipped Name it would be
     // unfindable in its own library.

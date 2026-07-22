@@ -31,6 +31,15 @@ export type PageNumberPlace =
 export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 /**
+ * What shape a songbook comes out as: one printable `pdf`, or a `zip-png` — a
+ * folder of one PNG per song, named in book order (`01-…`, `02-…`) after a
+ * `00-summary.png` contents page. The paper options (size, margins, page
+ * numbers) belong only to the PDF; the summary and, for All songs, the order
+ * apply to both.
+ */
+export type SongbookFormat = 'pdf' | 'zip-png';
+
+/**
  * The axis the **All songs** book is ordered by when it prints.
  *
  * Only All songs uses it — a real songbook's order *is* its content, so it is
@@ -47,8 +56,11 @@ export interface SongOrder {
   readonly favoritesFirst: boolean;
 }
 
-/** Everything the songbook PDF dialog decides. */
+/** Everything the songbook download dialog decides. */
 export interface SongbookPdfChoice {
+  /** Printable PDF, or a ZIP of per-song images. Chooses which of the fields
+   * below matter — the paper options are the PDF's alone. */
+  readonly format: SongbookFormat;
   readonly pageSize: PageSizeChoice;
   readonly isLandscape: boolean;
   readonly marginMm: number;
@@ -62,6 +74,17 @@ export interface SongbookPdfChoice {
    * its content — the dialog only shows this control for All songs. */
   readonly songOrder: SongOrder;
 }
+
+/** How far a download's generation has got, for the dialog to show as a spinner
+ * and an "n of N" count. Mirrors the service's `DownloadProgress` callback. */
+export interface DownloadProgress {
+  readonly done: number;
+  readonly total: number;
+}
+
+/** Why a picked file could not be imported — the two the user can act on: it is
+ * not one of ours, or it is from a build this one cannot read. */
+export type ImportFailure = 'unreadable' | 'refused';
 
 /** What to do about the songs a file brings that the library already has. */
 export type ImportResolutionChoice = 'replace' | 'ignore' | 'new';

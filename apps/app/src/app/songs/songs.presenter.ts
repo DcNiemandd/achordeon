@@ -31,10 +31,13 @@ import {
 } from '../shared/song-explorer';
 import type {
   DownloadFormat,
+  DownloadProgress,
   ImportChoice,
+  ImportFailure,
   ImportPreview,
 } from '../shared/transfer';
 import { TUTORIAL_CONTENT } from './new-song';
+import { ReturnUrl } from './return-url';
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
@@ -47,10 +50,6 @@ export interface SongUse {
   readonly songId: string;
   readonly songName: string;
 }
-
-/** Why a picked file could not be imported — the two the user can act on:
- * it is not one of ours, or it is from a build this one cannot read. */
-export type ImportFailure = 'unreadable' | 'refused';
 
 /** A delete the user has asked for and not yet confirmed. */
 export interface PendingDelete {
@@ -82,6 +81,7 @@ export class SongsPresenter {
   private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly returnUrl = inject(ReturnUrl);
 
   private readonly _pendingDelete = signal<PendingDelete | null>(null);
   private readonly _isDownloadOpen = signal(false);
@@ -101,6 +101,11 @@ export class SongsPresenter {
   /** A render loop and a PDF are not instant, and a button that looks unpressed
    * while it works gets pressed again. */
   readonly isBusy = this._isBusy.asReadonly();
+  /** How far a running download has generated — the dialog's spinner and count.
+   * Null while nothing is generating, and during the layout pass before the
+   * first song is rendered. */
+  private readonly _progress = signal<DownloadProgress | null>(null);
+  readonly downloadProgress = this._progress.asReadonly();
   readonly importPreview = this._importPreview.asReadonly();
   readonly importError = this._importError.asReadonly();
 
@@ -265,7 +270,11 @@ export class SongsPresenter {
     this.session.setCurrentSong(id);
   }
 
+  /** Open the editor, remembering the exact list URL — search, sort and all —
+   * so the editor's "back" returns to the list as you left it, not the bare
+   * `/songs` (see `ReturnUrl`). */
   open(id: string): void {
+    this.returnUrl.set(this.router.url);
     void this.router.navigate(['/songs', id, 'edit']);
   }
 
@@ -474,28 +483,43 @@ export class SongsPresenter {
     this._isDownloadOpen.set(true);
   }
 
+  /** Ignored while a download is in flight: there is nothing to cancel back to
+   * once the file is rendering, so the dialog stays put until it is done. */
   cancelDownload(): void {
+    if (this._isBusy()) return;
     this._isDownloadOpen.set(false);
     this._rowTarget.set(null);
+    this._progress.set(null);
   }
 
   /**
    * Render and save. One id takes the single-song formats, several take the
    * batch ones — the dialog offers only the set that matches the count, so the
    * two branches here can trust what they are given.
+   *
+   * The dialog stays open through the render to host the spinner and the count,
+   * and closes when the file is saved — not the instant a format is picked.
    */
   async download(format: DownloadFormat): Promise<void> {
     const ids = this.downloadIds();
-    this._isDownloadOpen.set(false);
-    this._rowTarget.set(null);
-    if (ids.length === 0) return;
+    if (ids.length === 0) {
+      this.cancelDownload();
+      return;
+    }
     await this.busy(async () => {
       if (ids.length === 1) {
         await this.downloads.downloadSong(ids[0], format as SongFormat);
       } else {
-        await this.downloads.downloadSongs(ids, format as MultiFormat);
+        await this.downloads.downloadSongs(
+          ids,
+          format as MultiFormat,
+          (done, total) => this._progress.set({ done, total }),
+        );
       }
     });
+    this._progress.set(null);
+    this._isDownloadOpen.set(false);
+    this._rowTarget.set(null);
   }
 
   /** The bulk bar's Export: the selection-or-current, no dialog (nothing to
@@ -556,6 +580,10 @@ export class SongsPresenter {
       // The window is a query result, and the import just changed what that
       // query answers — several times over, at ids the window never held.
       await this.store.refresh();
+      // A file can bring songbooks too, and the Songbooks module reads the same
+      // singleton store — so refresh it here, or a book imported from this
+      // screen stays invisible over there until a reload.
+      await this.songbooks.refresh();
     });
   }
 
