@@ -37,6 +37,7 @@ import type {
   ImportPreview,
 } from '../shared/transfer';
 import { TUTORIAL_CONTENT } from './new-song';
+import { ReturnUrl } from './return-url';
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
@@ -80,6 +81,7 @@ export class SongsPresenter {
   private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly returnUrl = inject(ReturnUrl);
 
   private readonly _pendingDelete = signal<PendingDelete | null>(null);
   private readonly _isDownloadOpen = signal(false);
@@ -268,7 +270,11 @@ export class SongsPresenter {
     this.session.setCurrentSong(id);
   }
 
+  /** Open the editor, remembering the exact list URL — search, sort and all —
+   * so the editor's "back" returns to the list as you left it, not the bare
+   * `/songs` (see `ReturnUrl`). */
   open(id: string): void {
+    this.returnUrl.set(this.router.url);
     void this.router.navigate(['/songs', id, 'edit']);
   }
 

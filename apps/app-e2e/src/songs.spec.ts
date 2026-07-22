@@ -535,4 +535,36 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('pane-b')).toBeHidden();
     await expect(page.getByTestId('split-resizer')).toHaveCount(0);
   });
+
+  test('the editor returns to the list as it was left — search and sort kept', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+
+    // The list's state is its URL: filter and sort it.
+    await page.goto('songs?q=Alp&sort=changed&dir=desc');
+    const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
+    await expect(row).toBeVisible();
+    const id = await row.getAttribute('data-song-id');
+
+    // Open it, then come back by the link — the query rides along, so the list
+    // is as it was, not a bare /songs.
+    await row.hover();
+    await page.getByTestId(`edit-${id}`).click();
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+    await expect(page.getByTestId('editor-back')).toHaveAttribute(
+      'href',
+      /[?&]q=Alp(&|$)/,
+    );
+    await page.getByTestId('editor-back').click();
+    await expect(page).toHaveURL(/[?&]q=Alp(&|$)/);
+    await expect(page).toHaveURL(/[?&]sort=changed(&|$)/);
+
+    // Escape does the same.
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).hover();
+    await page.getByTestId(`edit-${id}`).click();
+    await expect(page).toHaveURL(/\/edit$/);
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/[?&]q=Alp(&|$)/);
+  });
 });
