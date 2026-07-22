@@ -70,7 +70,7 @@ Hold the order as a list of `name`s. You'll feed it to the assembler in step 5.
 ## 3. Dispatch one subagent per new image
 
 Launch the new images **in parallel**, one subagent each. If there are many, send
-them in waves (~10 at a time) — the design is wave-safe because every worker is
+them in waves (~4 at a time) — the design is wave-safe because every worker is
 fully independent and writes a distinct fragment file.
 
 Give each subagent this brief:
