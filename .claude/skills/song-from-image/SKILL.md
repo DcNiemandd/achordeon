@@ -27,7 +27,7 @@ grammar is `docs/PARSER-GRAMMAR.md`. You do not need to read those to do the job
 
 ## Which path
 
-- **One song** (one image, or a few images of the *same* song) → **inline, no
+- **One song** (one image, or a few images of the _same_ song) → **inline, no
   subagent.** Follow `song-worker.md` yourself, then deliver (steps 5–6 below).
   Spawning a subagent for a single song is pure overhead.
 - **A folder of songs** (many images, each its own song) → **subagent per image.**
@@ -61,7 +61,7 @@ now, from cheap signals, without reading any song's content:
 - **From the file names** — scans are usually numbered (`1.1.`, `1.2.`, … `2.4.`);
   sort by that prefix. Absent numbering, fall back to the folder's natural sort.
 - **From a summary image** — if the user includes an index / table-of-contents page
-  (a photographed contents list), read *that one image* here in the orchestrator,
+  (a photographed contents list), read _that one image_ here in the orchestrator,
   and let its order override the file-name sort. You'll match its listed titles to
   workers by the `title` each worker returns (step 4).
 
@@ -69,8 +69,10 @@ Hold the order as a list of `name`s. You'll feed it to the assembler in step 5.
 
 ## 3. Dispatch one subagent per new image
 
-Launch the new images **in parallel**, one subagent each. If there are many, send
-them in waves (~4 at a time) — the design is wave-safe because every worker is
+Launch the new images **in parallel**, one subagent each, but **never more than 4
+subagents running at once**. If there are more than 4 images, send them in waves of
+at most 4: do not start a new subagent while 4 are already running — wait for one to
+finish, then dispatch the next. The design is wave-safe because every worker is
 fully independent and writes a distinct fragment file.
 
 Give each subagent this brief:
@@ -84,9 +86,9 @@ with these values filled in per image:
 
 - `IMAGE` = the image's path.
 - `NAME` = the image's file name **without extension** (e.g. `1.5. Vizovice -
-  Fleret`). This is the library label and the merge key; pass it verbatim.
+Fleret`). This is the library label and the merge key; pass it verbatim.
 - `FRAGMENT_DIR` = one shared scratch dir for this run (e.g. a `mktemp -d`). Every
-  worker writes into it; each writes a *distinct* `<NAME>.song.json`, so there is
+  worker writes into it; each writes a _distinct_ `<NAME>.song.json`, so there is
   no collision.
 - If (and only if) the user explicitly asked for a chord colour/size, pass that
   through so the worker can set it.
