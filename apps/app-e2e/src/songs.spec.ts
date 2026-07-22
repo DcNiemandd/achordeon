@@ -567,4 +567,20 @@ test.describe('song explorer', () => {
     await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/[?&]q=Alp(&|$)/);
   });
+
+  test('the sort dropdown opens on the sort the URL holds', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+
+    // Landing on a sorted URL — a reload, a shared link — shows that sort, not
+    // the first option.
+    await page.goto('songs?sort=changed');
+    await expect(page.getByTestId('explorer-sort')).toHaveValue('changed');
+
+    // And picking one drives the URL and stays in step.
+    await page.getByTestId('explorer-sort').selectOption('created');
+    await expect(page).toHaveURL(/[?&]sort=created(&|$)/);
+    await expect(page.getByTestId('explorer-sort')).toHaveValue('created');
+  });
 });

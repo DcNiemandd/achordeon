@@ -167,15 +167,23 @@ const ARM_MOVE_TOLERANCE = 8;
         }
 
         @if (capabilities().canSort) {
+          <!-- selected on the option, not value on the select: the select's
+               value is bound before its @for options exist, so it lands on the
+               first one and the URL's sort is ignored. Marking the matching
+               option is what makes it open on the sort the address bar holds. -->
           <select
             class="sort"
-            [value]="sort()"
             [attr.aria-label]="sortLabel"
             data-testid="explorer-sort"
             (change)="onSortPick($event)"
           >
             @for (option of sortOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+              <option
+                [value]="option.value"
+                [selected]="option.value === sort()"
+              >
+                {{ option.label }}
+              </option>
             }
           </select>
 
