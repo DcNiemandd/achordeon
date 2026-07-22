@@ -105,9 +105,14 @@ export const SongbookStore = signalStore(
           dir: store.dir(),
           query: store.query(),
         });
+        // The fresh query wins for every id it returns: a stale tombstone left
+        // in the map for a revived book would be placed last by `setAllEntities`
+        // and shadow the live row by id — the same soft-delete trap the Song
+        // store guards against.
+        const liveIds = new Set(page.rows.map((book) => book.id));
         const tombstones = store
           .entities()
-          .filter((book) => book.deletedAt !== null);
+          .filter((book) => book.deletedAt !== null && !liveIds.has(book.id));
         patchState(store, setAllEntities([...page.rows, ...tombstones]), {
           nextCursor: page.nextCursor,
         });
