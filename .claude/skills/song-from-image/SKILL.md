@@ -1,6 +1,6 @@
 ---
 name: song-from-image
-description: Transcribe a song (or a whole folder of songs) from images — photos or scans of chord sheets / lyrics-with-chords — into Achordeon markup, syntax-check it against the real parser, and hand it back as printed content, a text file, or an Achordeon import JSON (a single song, or a whole folder as one songbook). Use when the user gives a picture of a song, a screenshot of chords, a scan, or a folder of them.
+description: Transcribe a song (or a whole folder of songs) from images — photos or scans of chord sheets / lyrics-with-chords — into Achordeon markup, syntax-check it against the real parser, and hand it back as printed content, a text file, or an Achordeon import JSON (a single song, or a whole folder as one songbook). A folder of songs is processed in parallel, one subagent per image. Use when the user gives a picture of a song, a screenshot of chords, a scan, or a folder of them.
 ---
 
 # Song from image
@@ -11,286 +11,162 @@ the user wants: printed in chat, a plain text file, or an **import JSON** they c
 drop straight on Achordeon's Import button (optionally a whole folder wrapped into
 one songbook named after the folder).
 
-Achordeon content is the source text of a Song: lyrics + chords + title/subtitle,
-using the markup below. Render **settings** (scale, columns, aspect ratio, colours)
-are never encoded in that text — they live as structured metadata. This skill still
-sets them, but in the **import JSON**, not in the content string (see step 6).
+This file is the **orchestrator**. The actual image→markup transcription lives in
+`song-worker.md`, a self-contained brief. For a folder you dispatch **one subagent
+per image**, each running `song-worker.md` on its one image in an isolated context;
+you then stitch their outputs into a single import JSON. For a single song you just
+follow `song-worker.md` yourself — no subagent needed.
 
-The full author-facing docs are `apps/docs/docs/songs/syntax.mdx`; the exact
-implementer grammar is `docs/PARSER-GRAMMAR.md`. This skill is self-contained — you
-do not need to read those to do the job, but they are the source of truth if a rule
-here is ever unclear.
-
----
-
-## Syntax reference (everything you need to write valid content)
-
-### Title `*` and Subtitle `**`
-
-- `* Some Title` → the printed **Title** (usually the song name).
-- `** Some Author` → the printed **Subtitle** (usually the author).
-- Marker must be at **column 0 and followed by a space**. `*bold*` or `*x` (no
-  space) is NOT a title — it falls through to a lyric.
-- The whole rest of the line is plain text: no chords, no colons-as-labels, no
-  escapes inside a title/subtitle. `* Live: [Acoustic]` prints literally.
-- **Last one wins.** If several `*` lines exist, the last is effective and the
-  earlier ones become warnings. Same for `**`. An empty `* ` sets nothing.
-
-### Blocks and Labels
-
-- A Song is a sequence of **blocks** (verse, chorus, bridge…).
-- A **new block** starts after a blank line, or at any labelled line.
-- A **label** is text at the start of a block ending in a **colon-run followed by a
-  space or end-of-line**. The **last colon is the delimiter and is consumed**;
-  earlier colons in the run stay as literal label text:
-  - `1.: First verse` → label `1.`, content `First verse`
-  - `R:: Chorus` → label `R:`, content `Chorus`
-  - `1:::` → label `1::`, content empty (label-only block)
-- A colon **not** followed by space/EOL is an ordinary character — `http://x`,
-  `12:30` need no escaping.
-- **Footgun:** `Narrator: hi` silently becomes a label `Narrator`. If it should be
-  a lyric, escape the colon: `Narrator\: hi`.
-- Content on the label line (`Verse: foo`) vs on the next line (`Verse:` then
-  `foo`) both render, but differently (one line vs two). Keep whichever the image
-  shows.
-
-### Chords `[ ]`
-
-- Chords go **inside the lyric, in square brackets, at the exact character** they
-  sit above. The chord renders above the character **immediately after** the
-  closing bracket: `tr[C]ade` puts `C` above the `a`.
-- **Multiple chords in one bracket**, space- or comma-separated, all sit at the
-  same spot: `[Em G Em A]`. A line whose text is empty but has chords is a
-  **chord-only line**; a block made only of chord-only lines renders larger — the
-  bridge convention.
-- A **valid chord** = root + optional accidental + quality, optional `/bass`
-  (e.g. `C`, `Am`, `F#m7`, `Gsus4`, `D/F#`). Valid chords are transposable.
-- Bracket content that is **not** a valid chord — `[Solo]`, `[x2]`, `[N.C.]`,
-  `[||: … :||]` — is still rendered **verbatim above the line** and is **never
-  transposed**. This is intentional and correct; do not "fix" such brackets.
-- **Notation:** English names, plus German **`H`** as an alias for B natural (`B`
-  stays B natural, `H` is the other name for it). Both are accepted.
-- **Default to English note names** unless the user asks otherwise. If the sheet
-  uses another system — German (`H`, `B` = B♭), Czech, or do-re-mi solfège —
-  **transcribe it into English** (`H` → `B`, German `B` → `Bb`, etc.). Only keep
-  the source notation when the user explicitly wants it preserved.
-- To print a **literal `[`** in a lyric, escape it: `\[`.
-
-### Escapes `\`
-
-- `\` before `:` `*` `[` `]` `\` or space → the char is literal (backslash
-  consumed). Main uses: `\:` to keep a colon from becoming a label, `\*` for a
-  literal leading asterisk, `\[` for a literal bracket.
-- `\\` → one literal backslash. `\` before anything else stays a literal backslash
-  (`C:\path` keeps `\p`).
-- Leading whitespace on a lyric line is stripped; to force a real leading space use
-  `\ `.
-
-### Not in the text
-
-Do **not** invent directives for transpose, columns, scale, colors, capo, tempo,
-key, etc. Those are render settings, not content. If the image shows a capo or key
-note, keep it as a plain lyric line or a verbatim bracket annotation, not a
-directive.
+Achordeon content is the source text of a Song: lyrics + chords + title/subtitle.
+Render **settings** (scale, columns, aspect ratio, colours) are never encoded in
+that text — they live as structured metadata in the import JSON. The full
+author-facing docs are `apps/docs/docs/songs/syntax.mdx`; the exact implementer
+grammar is `docs/PARSER-GRAMMAR.md`. You do not need to read those to do the job.
 
 ---
 
-## Workflow
+## Which path
 
-Two modes, same steps:
+- **One song** (one image, or a few images of the *same* song) → **inline, no
+  subagent.** Follow `song-worker.md` yourself, then deliver (steps 5–6 below).
+  Spawning a subagent for a single song is pure overhead.
+- **A folder of songs** (many images, each its own song) → **subagent per image.**
+  Run steps 1–6 below. This is where the parallelism and the flat token cost come
+  from: each image's transcription, validation, and fix loop happen in a subagent
+  context that is thrown away, and only a tiny metadata blob comes back.
 
-- **One song** → one image (or a few images of the same song).
-- **A folder of songs** → many images, each its own song, wrapped into **one
-  songbook named after the folder** (see step 7).
+---
 
-### 1. Load the image(s)
+## 1. Take stock of the folder (no transcription yet)
 
-Read each image with the Read tool (it accepts PNG/JPG). If no image is actually
-available, ask for it (or whether the user would rather type/paste the song).
+Glob the folder for image files. The import file lives **inside the image folder
+from the start**, named after it — **`<image-folder>/<Folder>.json`** (step 6) —
+that is where you both look for it and write it.
 
-For **folder mode**, glob the folder for image files, then work out which are new
-before reading anything. The import file lives **inside the image folder from the
-start**, named after it — **`<image-folder>/<Folder>.json`** (step 7); that is
-where you both look for it and write it, not a scratch copy. If it already exists,
-read it and collect the song `name`s already in it (each `name` is a source
-image's file name without extension). **Skip every image whose basename is already
-in that file — do not even Read it.** Only read and transcribe the new images; the
-builder merges them into the existing file (step 7). If every image is already
-present, there is nothing to do.
+Work out which images are **new** before spawning anything:
 
-### 2. Order the songs (folder mode)
+- If `<Folder>.json` already exists, read it and collect the song `name`s already
+  present (each `name` is a source image's file name without extension).
+- **Skip every image whose basename is already in that file — do not spawn a worker
+  for it, do not even read it.** The builder keeps those songs untouched (step 6).
+- If every image is already present, there is nothing to do — say so and stop.
 
-The songbook plays back in **`songs[]` array order** — so getting the order right
-_is_ laying the array out right. Work out the intended sequence before building:
+You only dispatch workers for the **new** images.
+
+## 2. Decide the order (orchestrator only — workers don't touch this)
+
+The songbook plays back in `songs[]` array order. Work out the intended sequence
+now, from cheap signals, without reading any song's content:
 
 - **From the file names** — scans are usually numbered (`1.1.`, `1.2.`, … `2.4.`);
   sort by that prefix. Absent numbering, fall back to the folder's natural sort.
 - **From a summary image** — if the user includes an index / table-of-contents page
-  (a photographed contents list), follow _its_ order, match each title to its image,
-  and let it override the file-name sort.
+  (a photographed contents list), read *that one image* here in the orchestrator,
+  and let its order override the file-name sort. You'll match its listed titles to
+  workers by the `title` each worker returns (step 4).
 
-Emit the entries into `songs[]` in that order; the builder preserves it.
+Hold the order as a list of `name`s. You'll feed it to the assembler in step 5.
 
-### 3. Read everything on the image — and get it right
+## 3. Dispatch one subagent per new image
 
-**Transcribe all of it.** Chord sheets carry more than lyrics: a capo note, a key,
-a tuning, repeat counts (`2×`), section markers, performance notes ("Sólo = Sloka",
-"pomalu", "koda"), a `–` before a refrain line. **Usually all of it is needed** —
-capture it, don't quietly drop the handwriting in the margin. Put such notes where
-they belong: a section note becomes a **label** (`Sólo:`), an inline annotation
-becomes a verbatim bracket (`[2×]`, `[N.C.]`), a standalone remark becomes its own
-lyric line. Only genuinely omit a note if it is purely about the paper (a page
-number, a hole-punch).
+Launch the new images **in parallel**, one subagent each. If there are many, send
+them in waves (~10 at a time) — the design is wave-safe because every worker is
+fully independent and writes a distinct fragment file.
 
-**Correct what is clearly wrong.** You are transcribing a song, not photographing a
-typo. Fix obvious misspellings, missing diacritics (Czech/other), OCR-style
-letter swaps, and broken words so the result reads as the song actually goes. Keep
-deliberate stylings, dialect, and the songwriter's actual word choices. When a
-correction is a judgement call (a possibly-wrong chord, an ambiguous word), make
-the sensible fix **and tell the user** what you changed rather than guessing
-silently. If a spot is truly unreadable, say so instead of inventing.
+Give each subagent this brief:
 
-Extract, per song:
+> Read and follow `.claude/skills/song-from-image/song-worker.md`. Transcribe the
+> single image at `IMAGE`, using `NAME` as the song's library label, and write your
+> fragment into `FRAGMENT_DIR`. Return only the JSON blob the worker brief
+> specifies — do not return the song content.
 
-- **Title / author** → `* Title` / `** Author`.
-- **Section labels** (Verse 1, Chorus, Bridge, "R:", numbers, "Sólo") → block
-  labels (`Label:`).
-- **Lyrics**, line by line, blocks separated by a blank line.
-- **Chords**, and critically **which character each sits over**. Sheets print
-  chords on a line _above_ the lyric; place each `[chord]` immediately **before the
-  character under it**. Chord-only rows (intros, solos, turnarounds) become a
-  bracket line like `[Em G D]`.
+with these values filled in per image:
 
-### 4. Produce the song content
+- `IMAGE` = the image's path.
+- `NAME` = the image's file name **without extension** (e.g. `1.5. Vizovice -
+  Fleret`). This is the library label and the merge key; pass it verbatim.
+- `FRAGMENT_DIR` = one shared scratch dir for this run (e.g. a `mktemp -d`). Every
+  worker writes into it; each writes a *distinct* `<NAME>.song.json`, so there is
+  no collision.
+- If (and only if) the user explicitly asked for a chord colour/size, pass that
+  through so the worker can set it.
 
-Assemble the markup per the syntax above.
+**Do not let workers write `<Folder>.json`.** They write only their own fragment.
+The single merge is yours alone (step 6) — this is what keeps the write race from
+happening.
 
-### 5. Syntax-check it
+## 4. Collect the returns
 
-Run the checker. It parses the content with the **real Achordeon parser** (the same
-grammar the app ships). **This is a _syntax_ check, not a chord check** — it
-confirms the markup parses and reports the structure the parser saw; it does **not**
-verify that the chords are musically correct or that they match the image. That
-faithfulness is on you (step 3).
+Each worker returns a small JSON blob: `{ name, title, subtitle, fragment, clean,
+notes }`. Collect them. These blobs are all you hold in context — never the song
+content. From them you have everything for ordering (step 2's title-matching), the
+final build (step 6), and the result table (step 7).
+
+Handle misses gracefully: a worker with `clean: false` or no `fragment` is a
+partial/failed image. Note it, keep going with the rest, and tell the user at the
+end. Because failed songs never make it into `<Folder>.json`, the dedupe in step 1
+will naturally retry exactly those images on the next run.
+
+## 5. Assemble the manifest **in code**, not by reading fragments
+
+This is the step that keeps the whole thing cheap. **Do not Read the fragment files
+into your own context to build the manifest** — that would pull every song's
+content back into the orchestrator and rebuild the very cost you sharded to avoid.
+Instead, hand the fragment directory and your order list to the assembler, which
+stitches them into a manifest without any content passing through the model:
 
 ```bash
-# from the repo root; a file, or content on stdin with -
-node .claude/skills/song-from-image/scripts/validate.mjs path/to/song.txt
-printf '%s' "$CONTENT" | node .claude/skills/song-from-image/scripts/validate.mjs -
+# order.txt = your step-2 order, one NAME per line
+printf '%s\n' "${ORDER[@]}" > order.txt
+node .claude/skills/song-from-image/scripts/assemble-manifest.mjs \
+  "$FRAGMENT_DIR" --order order.txt --songbook "<Folder>" -o manifest.json
 ```
 
-Read the output:
+The assembler emits a manifest whose `songs[]` are in your order, each carrying the
+`{name, content, settings}` the worker wrote. (Omit `--songbook` for a plain
+multi-song import with no songbook wrapper.)
 
-- **Warnings** (e.g. `SHADOWED_TITLE`) → duplicated title/subtitle; fix unless
-  intended.
-- **Brackets that render verbatim** → the parser didn't recognise them as chords,
-  so they render literally. Fine for `[N.C.]`, `[2×]`, repeat signs. If a real
-  chord shows up here (e.g. `[Cmajj7]`), that's a **syntax** typo in the symbol —
-  fix it. (This flags unrecognised _symbols_, not wrong-but-valid chords.)
-- **No title** → add `* Title` unless intentionally omitted.
+## 6. Build the import file (folder as songbook)
 
-Fix real problems and re-run until clean (or every remaining flag is intentional).
+Run the real builder on the assembled manifest. It computes the derived cache with
+the actual parser, generates ids/timestamps, stamps `schemaVersion`, validates
+settings, and — crucially — **merges incrementally** into the existing
+`<Folder>.json`: it keeps the songs already there, adds only the newly-read ones
+(matched by `name`; a same-named song is replaced), reuses the songbook's id, and
+re-orders by file name. So the manifest need only carry the images you newly read.
 
-### 6. Choose settings to match the original (for JSON output)
+```bash
+node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json \
+  -o "path/to/Fleret/Fleret.json"
+```
 
-When you build an import JSON (step 7), set per-song **settings** so the render
-resembles the source sheet. Set only what the image clearly shows; leave the rest
-to defaults. Settings go in the JSON's `settings` object, never in the content
-text. Song-scope settings and how to read them off an image:
+Write the output **into the image folder**, named after it, so it sits next to the
+images from the first run onward. The builder prints a per-song summary to stderr —
+and, when it merged, how many songs it kept vs. added — check it before handing
+over. Give the user that `<Folder>.json` path.
 
-| Setting         | Value                               | Read from the image                                                                                                                                                                                                                               |
-| --------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                               |
-| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                                      |
-| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                            |
-| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                                     |
-| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Achordeon exists to _unite_ how songs look, so chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour. |
-| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                        |
-| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                               |
-| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                                |
+(A _fresh_ build keeps manifest order, honouring a summary-image sequence; an
+incremental merge orders by file name. `--songbook` may instead be given as an
+object in the manifest — `{ "name", "title", "subtitle", "author", "settings" }` —
+for songbook-scope overrides like `chordColor`/`chordSize`; set that on the
+manifest before building if the user asked for it.)
 
-Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
-default unless the image is clearly styled. Unknown/out-of-scope keys are dropped by
-the builder with a warning, so a typo is loud.
+### Other delivery modes (single-song / inline path)
 
-### 7. Deliver
-
-Follow what the user asked; if they didn't say, ask (default: print in chat).
+When you followed `song-worker.md` yourself for a single song, deliver as the user
+asked (default: print in chat):
 
 - **Print in chat** → the final content in a fenced code block.
 - **Text file** → write the raw content to a `.txt`. Content only, no JSON wrapper.
-- **Import JSON (one or more songs)** → build a `manifest.json` and run the builder.
-  The builder computes the derived cache with the real parser, generates
-  ids/timestamps, stamps `schemaVersion`, and validates settings. The result is a
-  `SnapshotEnvelope` the user drops on Achordeon's **Import** button.
+- **Import JSON (one song)** → make a one-entry `manifest.json`
+  (`{ "songs": [ { "name", "content", "settings" } ] }`, `name` falling back to the
+  title when the song was typed/pasted rather than read from a file) and run
+  `build-import.mjs` on it as above.
 
-  ```bash
-  node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json -o import.json
-  ```
+## 7. Report a result table
 
-  Each song entry's **`name`** (its library label) is the **source image's file
-  name without extension** — _not_ the song title. The title/subtitle come from the
-  content's `*`/`**` markers; `name` records which file the song came from and keeps
-  the folder's ordering (`1.1. …`, `1.2. …`). If the song wasn't read from a file
-  (typed/pasted), fall back to the title.
-
-  Manifest for a single song:
-
-  ```json
-  {
-    "songs": [
-      {
-        "name": "1.5. Vizovice - Fleret",
-        "content": "* Vizovice\n** Fleret\n\n[G]Když se s vínem [D]probouzí [G]den\n...",
-        "settings": { "aspectRatio": "A4", "columns": 1 }
-      }
-    ]
-  }
-  ```
-
-- **A whole folder as a songbook** → one manifest, a `songbook` key set to the
-  **folder name**, and one entry in `songs[]` per image. Write the output **into
-  the image folder itself**, named after it — `-o "<image-folder>/<Folder>.json"`
-  — so it sits next to the images from the first run onward (only the manifest is a
-  scratch file). The builder wraps the songs into a songbook (entries in file-name
-  order) plus the songs themselves — importing the file adds the songbook _and_ its
-  songs in one go.
-
-  ```bash
-  node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json -o "path/to/Fleret/Fleret.json"
-  ```
-
-  If that `<Folder>.json` already exists, the builder **merges incrementally**: it
-  keeps the songs already in the file, adds only the ones in this manifest (matched
-  by `name` — a same-named song is replaced), reuses the songbook's id, and
-  re-orders it by file name. So the manifest need only carry the images you newly
-  read in step 1 — the rest come straight from the file, never re-read. (A _fresh_
-  build keeps manifest order, honouring a summary-image sequence; an incremental
-  merge orders by file name.)
-
-  ```json
-  {
-    "songbook": "Fleret",
-    "songs": [
-      { "name": "1.5. Vizovice - Fleret", "content": "* Vizovice\n...", "settings": { "aspectRatio": "A4" } },
-      { "name": "1.6. Zafíráček - Fleret", "content": "* Zafíráček\n...", "settings": { "aspectRatio": "A4" } }
-    ]
-  }
-  ```
-
-  (`"songbook"` may also be an object: `{ "name", "title", "subtitle", "author",
-"settings" }` for songbook-scope overrides like `chordColor`/`chordSize`.)
-
-  Write the manifest to a scratch file, run the builder so it writes
-  `<Folder>.json` inside the image folder, and give the user that path. The builder
-  prints a per-song summary to stderr — and, when it merged, how many songs it kept
-  vs. added — check it before handing over.
-
-### 8. Report a result table
-
-However you delivered (chat, `.txt`, or JSON), **end every run with a summary
-table** so the user can see what came out of each image at a glance. One row per
-song, in manifest/folder order:
+However you delivered, **end every run with a summary table**, built from the
+returned blobs (never by re-reading content). One row per song, in songbook order:
 
 | File                          | Title    | Subtitle  | Notes                                   |
 | ----------------------------- | -------- | --------- | --------------------------------------- |
@@ -298,18 +174,19 @@ song, in manifest/folder order:
 | `2.0. Anděl - Precendens.jpg` | Anděl    | Precedens | 2-column layout; `Precedens` (typo fix) |
 
 - **File** is the source image's file name (with extension).
-- **Title** / **Subtitle** are the effective `*` / `**` the parser saw — use `—`
+- **Title** / **Subtitle** are the effective `*` / `**` the worker reported — `—`
   when a song has none.
-- **Notes** is a _terse_ shorthand of the judgement calls for that song
-  (corrections, dropped/kept margin notes, uncertain chords, inferred layout) — a
-  few words, `—` when there were none.
+- **Notes** is the worker's terse `notes` (corrections, dropped/kept margin notes,
+  uncertain chords, inferred layout) — a few words, `—` when there were none. Flag
+  any `clean: false` / failed image here too.
 
-Below the table, keep the **full** version of those judgement calls in prose — the
-Notes column is a scannable index, not a replacement for the detail.
+Below the table, expand the notable judgement calls in prose — the Notes column is
+a scannable index, not a replacement for the detail. You have this straight from
+the workers' `notes`; you don't need to reopen anything.
 
 ---
 
-## Example
+## Example (single-song, inline path)
 
 Input (a chord-sheet photo of the intro + first line):
 
@@ -322,7 +199,7 @@ Input (a chord-sheet photo of the intro + first line):
 2.: And did they get you to [C]trade your heroes for[D] ghosts,
 ```
 
-`validate.mjs` reports: Title `Wish You Were Here`, Subtitle `Pink Floyd`, 2 blocks
-(one chord-only bridge block), no warnings. Wrapped in a manifest and run through
-`build-import.mjs`, it becomes an import JSON carrying that one song, settings and
-all.
+Following `song-worker.md`, `validate.mjs` reports: Title `Wish You Were Here`,
+Subtitle `Pink Floyd`, 2 blocks (one chord-only bridge block), no warnings. Wrapped
+in a one-entry manifest and run through `build-import.mjs`, it becomes an import
+JSON carrying that one song, settings and all.
