@@ -1,0 +1,1197 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "achordeon-skill-import",
+  "updatedAt": 1784742713157,
+  "data": {
+    "user": [],
+    "songs": [
+      {
+        "id": "82575e1e-304f-4746-8545-1925697b59db",
+        "createdAt": 1784703247750,
+        "updatedAt": 1784703247750,
+        "deletedAt": null,
+        "name": "1.1. Variace na renezanční téma - Mišík",
+        "content": "* Variace na renesanční téma\n** Mišík\n\nIntro:\nKl. + Bas\\: Am F G Am (2×)\nHousle\\: Am F G Am (4×)\n\n[Am]Láska je jako [F]večernice [G]plující [Am]černou oblohou,\nzavřete dveře [F]na pet[G]lice, zhasněte v domě všechny [Am]svíce.\nA opevněte [F]svoje [G]těla, vy kterým [Am]srdce zkameněla.\n\n[C Em Am]  [D Dm Em Am]\n\nLáska je jako krásná loď, která ztratila kapitána,\nnámořníkům se třesou ruce a bojí se co bude z rána.\n\nLáska je jako bolest z probuzení a horké ruce hvězd,\n\\[: které ti oknem do vězení květiny sypou ze svatebních cest. :\\]\n\nLáska je jako večernice plující černou oblohou,\n\\[: náš život hoří jako svíce a mrtvý milovat nemohou. :\\]\n\n3× konec",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Variace na renesanční téma",
+          "subtitle": "Mišík"
+        }
+      },
+      {
+        "id": "debcb22c-384c-4b4e-bbc5-c160c171b838",
+        "createdAt": 1784703247750,
+        "updatedAt": 1784703247750,
+        "deletedAt": null,
+        "name": "1.2. Blues o spolykaných slovech - Michal Prokop",
+        "content": "* Blues o spolykaných slovech\n** Michal Prokop\n\n1: [A]Jasně, že ti dlužím spoustu hezkejch [D]slov\n[A]Se mnou děvče nemáš na ně [G]kli[D]ku\n[A]Dávno už je umím všechny [D]nazpaměť\n[Cmaj7]Jenomže mi váznou na [D]jazyku\n\n2: [A]Takový ty slova jako čmeláčci\nHuňatý a milý s kapkou medu\nStokrát ti je v duchu šeptám do ucha\nAle znáš mě řečnit nedovedu\n\nBR: [Em7]Tak mi promiň, děvče, však to [D]napravím\n[A]Můj ty smutku, já si dám tu [Em7]práci\n[F#m7]Vyklopím je všechny aspoň [Cmaj7]naposled\n\nR: [D]Až si pro mě [Em]přijdou\n[D]Až si pro mě [Em]přijdou\n[D]Až si pro mě [Em]přijdou\nfu[A]nebráci.\n\n2: [A]Takový ty slova...\n\nBR: [Em7]Tak mi promiň, děvče...\n\nR: [D]Až si pro mě přijdou... 2×\n[D, Em, D, Em, D, Em, A]\n\nR: [D]Až si pro mě přijdou... 2×",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Blues o spolykaných slovech",
+          "subtitle": "Michal Prokop"
+        }
+      },
+      {
+        "id": "8ffc5bd6-271e-4ba6-abcd-61935bc530cc",
+        "createdAt": 1784703454990,
+        "updatedAt": 1784703454990,
+        "deletedAt": null,
+        "name": "1.3. Epizoda - COP",
+        "content": "* Epizoda\n** COP\n\n[Am]To byl ale [F]týden [C]na po[G]váženou\n[Am]není k za[F]placení [C]a na co mi [D]jsou.\nPoznání co mají určit další děj,\nbrodím se vzpomínkami, radím si neklej.\n\nDva vagóny přání, co mi platný jsou,\ndenní rozčarování, ty nejsi už mou.\nTy noci mně budí, ty noci mně chtěj,\nnemám to výchování, tak se směj.\n\nMáš rodinu svojí, byl jsem mezihrou,\ndobrá máma svých dětí, já epizodou.\nTak proč mně to nutí, sklánět hlavu svou,\nřev tvůj ti nevrátí, děti vyrostou.\n\nÓoo, óoo, ......",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Epizoda",
+          "subtitle": "COP"
+        }
+      },
+      {
+        "id": "eda7aa85-e361-44d6-a507-9b85e3369dde",
+        "createdAt": 1784703454990,
+        "updatedAt": 1784703454990,
+        "deletedAt": null,
+        "name": "1.4. Pozdě na hlasitou hudbu - Fleret",
+        "content": "* Pozdě na hlasitou hudbu\n** Fleret\n\n[G]Venku padá d[C]éšť, př[G]ichází psí č[C]as,\nstruny z oceli dávno vlhkem r[G]eziví[C][G],\nlehký ne[C]zá[G]jem klíčí [C]někde v n[G]ás,\nslova od řeč[F]í už n[G]ikdo neděl[C]í.\n\nSvětla z tančíren vpíjí pukliny stěn,\nti, co chtěli znát, víc už se neptají,\nrazí do očí odlesk zlacených scén,\nkdyž kostky ledu ve sklenicích cinkají.\n\nR: Tak b[C]ěž r[G]aději sp[C]át, p[G]ozdě zdá se b[Am]ýt,\nposlední v[G]erš můžeš př[C]ejít mlčen[G]ím,\nzbýv[C]á, zb[G]ývá zavřít p[C]art, f[G]utrál zabal[Am]it,\nje pozd[C]ě na hl[C/H]asitou h[Am]udbu, když n[G]emá v kom [C]znít\n\nŽivot otvírá krám, podomní obchodník,\nmusíš brát jen to, co na stůl vyloží,\na pak vyplnit sám vlezlý dotazník,\nnejde škrtnout, co se nehodí.\n\nTrochu shrbený s malou úklonou,\nza hrst mincí koupíš štěstí pod rukou,\njeden malý díl z druhé volby snů,\nčást pravdy s pár let prošlou zárukou.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Pozdě na hlasitou hudbu",
+          "subtitle": "Fleret"
+        }
+      },
+      {
+        "id": "a062c02c-f448-406c-a063-fa0fb8d5a73d",
+        "createdAt": 1784703454990,
+        "updatedAt": 1784703454990,
+        "deletedAt": null,
+        "name": "1.5. Vizovice - Fleret",
+        "content": "* Vizovice\n** Fleret\n\n[G]Když se s vínem [D]probouzí [G]den\njen [C]já a to víno [G]tady [D]sem\njá včera s [C]vínem [G]šel jsem i [D]spát\n- a to mám [C]rád\n\nPo vínu a po slivovici\njako balón já mám makovici\nstejně si musím ale panáka dát\n- já to mám rád\n\nTam kde leží Vizovice\ntam jsme přece my a slivovice\na dobrých lidí co mám tu čest znát\nco je mám rád\n\nSólo = Sloka\n\nTam vychází trnky brnky\nv lesích jsou jak žirafy tak i srnky\ntam ti nikdo život nebude brát\njenom o [G]játra se [D]musíš [G]bát\n\nTouhle písní chtěl jsem jen říct\nže jsou místa, kde bude vám líp\nkaždý má někde svoje Vizovice\nkde jsou známí a ne pijavice.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Vizovice",
+          "subtitle": "Fleret"
+        }
+      },
+      {
+        "id": "df01c545-d75c-44b3-a350-9e23329d246d",
+        "createdAt": 1784703637331,
+        "updatedAt": 1784703637331,
+        "deletedAt": null,
+        "name": "2.0. Anděl - Precendens",
+        "content": "* Anděl\n** Precedens\n\n[Am Am G Am F Dm Am Em F Am]\n\n1: Jsi můj [Am]anděl\n[Am]trochu padlej [G]to jsem od za[Am]čátku věděl\nmoje [F]láska, [Dm]hmm\n[Am]která bruslí [Em]i když led už [F]pod ní praská\n\n2: Jsi můj [Am]anděl\nčtyři roky jeden měsíc a pár neděl\nmoje milá, jéé\ntrochu do větru a v tom mě políbila\n\nRef: Jsi můj [Am]anděl\n[F]Máš v sobě krajinu [Dm]krásnou a záhadnou,\n[Em]v ní rostou chvíle [Am]co nikdy nevadnou.\n[F]Máš v sobě místa, kde [Dm]možná bych se bál\n[Em]a slunný louky kde s tebou jsem se [Am]smál. [F]\n\n3: Jsi můj [Am]anděl\nkterej u dvou deci na lavici seděl\nmoje láska, hmm\nkterá miluje a jindy dveřma práská\n\n4: Jsi můj [Am]anděl\ntak špatná, tak dobrá a můj úděl\nmoje milá, jéé\nněkdy střízlivá a někdy přiopilá\n\nRef: Jsi můj [Am]anděl\n[F]Máš v sobě krajinu [Dm]krásnou a záhadnou,\n[Em]v ní rostou chvíle [Am]co nikdy nevadnou.\n[F]Máš v sobě místa, kde [Dm]možná bych se bál\n[Em]a slunný louky kde s tebou jsem se [Am]smál. [F]\n\nJsi můj anděl…\n\nSólo (Sloka)\n\nRef: [F]Máš v sobě krajinu [Dm]krásnou a záhadnou,\n[Em]v ní rostou chvíle [Am]co nikdy nevadnou.\n[F]Máš v sobě místa, kde [Dm]možná bych se bál\n[Em]a slunný louky kde s tebou jsem se [Am]smál. [F]\n\nRef2: [F]máš v sobě stíny kde [Dm]neroztává led\n[Em]a lásku jakou sám bych [Am]nedoved\n[F]máš v sobě požár co [Dm]nepřestává plát\n[Em]za nocí svítí – a nehodlá to [Am]vzdát [F]\n\nJsi můj anděl",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 2
+        },
+        "cache": {
+          "title": "Anděl",
+          "subtitle": "Precedens"
+        }
+      },
+      {
+        "id": "bc170fa3-a050-4043-a9da-bfafcaf148fa",
+        "createdAt": 1784703637331,
+        "updatedAt": 1784703637331,
+        "deletedAt": null,
+        "name": "2.1. Proč zrovna ty - Olympic",
+        "content": "* Proč zrovna ty\n** Olympic\n\nKlávesy (2×):\n[Am C Hm Am C Hm G Em G Am C Hm]\n\n[Am]Mě ne[F]bolí, když holky lžou\nvždyť [G]jsou na [Em]to [Am]stavěný\nŽe rozdrolí svý lásky tmou\nco víc čekat od ženy\n\n[F]Ať [G]vířej [Am]pro zá[G]žitky\n[F]vody [G]sto[Am]jatý\n[F]Proč [G]mívám [Am]z toho [G]mžitky\n[F]když [G]se ptá–[Am]ám: Proč zrovna ty?\n\nSólo 2×\n\nMně nevadí, že holky maj'\nsvůj ráj, hry a proměny\nže nezradí, svý slovo daj'\npak jdou, co chtít od ženy\n\nJá láskám rád se díval\nobčas na paty\nteď blednu a ty zíváš,\nkdyž se ptá–ám? Proč zrovna ty?",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Proč zrovna ty",
+          "subtitle": "Olympic"
+        }
+      },
+      {
+        "id": "8b4cfe2b-ff19-4222-8552-703839db6433",
+        "createdAt": 1784703821479,
+        "updatedAt": 1784703821479,
+        "deletedAt": null,
+        "name": "2.2. Modrý pondělí - Argema",
+        "content": "* Modrý pondělí\n** Argema\n\nsólo: [Am Em F C Am Em F G]\n\n[Am]Modrý [Em]pondělí divnej [F]byl včerejší [C]den\n[Am]padá ka[Em]mení na [F]mou hlavu [C]jen\n[Am]já své [G]znám [C]touhy být tady o chvilku [Am]dýl\na je [G]mi to líto.\n\nSedím nevnímám kolem letí lež\nneznám odpověď hlavně že tu seš\nproklínám každej den co jsem bez tebe byl\na každej ví to.\n\nRef: Ty se [C]díváš něco [Am]skrýváš\nje to [F]smích a nebo [G]pláč\nje to [C]láska nebo [Am]sázka\n[F]modrý pondělí mě [G]máš, jen mě [C]máš.\n\nNemám den vím nemám nikdy klid\njaké znamení můžeš si ho vzít\nzatím spíš v hlavě honí se po zpátku čas\nčas který sčítáš.\n\nRef: Ty se díváš....\n...a kdo sází ten je hráč\nTy se díváš....\n...modrý pondělí mě máš, jen mě máš.\n\nSólo: jako sloka\n\nRef: Ty se díváš\n\nNa na ná ná ......",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Modrý pondělí",
+          "subtitle": "Argema"
+        }
+      },
+      {
+        "id": "81b296c5-5094-4227-bc00-0721389ced90",
+        "createdAt": 1784703821479,
+        "updatedAt": 1784703821479,
+        "deletedAt": null,
+        "name": "2.3. Kočičí - Argema",
+        "content": "* Kočičí\n** Argema\n\n[G]Kočka která [C]prohne svoje [G]záda [C]\n[G]kočka která [C]drápky scho[D]vává\n[G]když jí hladím [C]tak to nemá [G]ráda [Em]\n[C]každej den [D]si se mnou za[G]hrává. [C] [D]\n\nNa střechách se kočky večer schází\npřed světlem své oči přivíraj\na ta moje taky se mnou hází\nže prej spadla, že prej skomírá.\n\nRef: [G]Všichni [C]ví, že se [G]vrátí [C]\n[G]každá kočka má prej [C]devět [D]životů\n[G]A s námi [C]jdou a čas si [G]krátí [Em]\na [C]my jako kluci [D]kopem do [G]plotů\n\nŘíkaj o mě že jsem jejich králem\nže za mnou hned všechny kočky jdou\njá se umím spokojit i s málem\nstačí když jdou jedna za druhou.\n\nNejradši mám, když je koček průvod\na těch nohou kdo je spočítá\nvoni maj asi ňákej důvod\nvečer jim to starej vyčítá.\n\nRef: Všichni ví ...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Kočičí",
+          "subtitle": "Argema"
+        }
+      },
+      {
+        "id": "6462487e-0517-4f83-bb4b-b22a32d328e7",
+        "createdAt": 1784703821479,
+        "updatedAt": 1784703821479,
+        "deletedAt": null,
+        "name": "2.4. Pět minut - Jan Kalousek",
+        "content": "* Pět minut\n** Jan Kalousek\n\n[Em]Tak ti [C]říkám, [G]nech to [D]plavat, nech mě [Em]žít\nkdyž tě svlíkám, tak to prostě nejde neumřít\nkdyž tě střídám, nespím, trápím telefon\nkdyž tě vídám, tak mi zas vadí ten tvůj tón.\n\nRef: [C]Jsi dlouhá noc a krátkej [D]den\na silná moc a tenkej [C]kmen\na vzácnej kov a dlouhej [D]čas, i co [D]bylo\n[G]Jsi dál pět minut [C]příjemná [G]\npět [C]minut vážně [G]zlá\npět [C]minut [D]zoufalá.\n\nSám se dívám, koukám jak chodím ulicí\nsám tu zívám, soukromej problém s vichřicí\nsám si koupím jednu láhev prozatím\nzítra vstoupím do stejný řeky, vím co s tím.\n\nRef: Jsi dlouhá noc ...\nJsi dál pět minut ...\nA já, já jsem i nejsem rád\nchci jít i zůstat stát\ndál čekám ňákej spád.\n\nSólo:\n[Em C G D]\n[Em C G D]\n\nKonec: [Em C G]\n\nRef:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Pět minut",
+          "subtitle": "Jan Kalousek"
+        }
+      },
+      {
+        "id": "6c4ab7e7-24ff-4e18-898d-e0ce1deaea9f",
+        "createdAt": 1784704160270,
+        "updatedAt": 1784704160270,
+        "deletedAt": null,
+        "name": "3.1. Hořely, padaly hvězdy - Michal Šindelář",
+        "content": "* Hořely, padaly hvězdy\n** Michal Šindelář\n\n[D]Andělům otrhalo [G]ráno [A]křídla\nA v koutech usínají moje sny\nZa oknem déšť tiše zpívá\nNaše srdce sou vyhaslý\nZavírám oči\n\nR: Tu noc hořely padaly hvězdy\nTy si se bála že nepřijde den\nJá věděl že je to navždy\na ty že vedle tebe jsem\n\nSlova jsou naděje i zklamání z pravdy\nMěsta jsou jen ozvěny našich jmen\nJenže ty cesty nejsou vůbec snadný\nKlesají stoupají s pohledem\n\nTak tady ležím a loučím se s nudou\nKterou nemá nikdo z nás\nA věřím že ty stíny v sebe splynou\nA všechno začne znovu zas\n\nPřicházím do tmy\n\nR:\n\nSólo\n\nR:\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Hořely, padaly hvězdy",
+          "subtitle": "Michal Šindelář"
+        }
+      },
+      {
+        "id": "4587b72d-64c5-4695-951b-9eeb32dd626e",
+        "createdAt": 1784704160270,
+        "updatedAt": 1784704160270,
+        "deletedAt": null,
+        "name": "3.2. Slunečný hrob - Blue Effect (1)",
+        "content": "* Slunečný hrob\n** Blue Effect\n\n[D]Zdá se mi, je to [F#m]moc [Em]let\n[Em]já byl kluk, kterej chtěl\n[Em]Znát ti svět, s tebou jsem si hrál ...\n\n[Em]Vrátím se a chtěl bych rád\n[Em]být s tebou zavzpomínat\n[Em]Mám teď ale zprávu zlou [D] [D7]\n\n[Bm]Suchá hlína [G]tady\n[Bm]Nevzklíčí [G]bez [Em]vody\n[F#m]Já na ni poklekám [Em]vzpomínkou pocta se [A]vzdává\n[D]Loučím se a [Em]něco však tam [F#m]zůstalo [Em]\nz těch našich dnů\njá teď vím, věrný zůstanu\n\nSólo\n\n[Bm]Suchá hlína [G]tady\n[Bm]Nevzklíčí [G]bez [Em]vody\n[F#m]Já na ni poklekám [Em]vzpomínkou pocta se [A]vzdává\n\nLoučím se a něco však tam zůstalo\nz těch našich dnů\njá teď vím, věrný zůstanu",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Slunečný hrob",
+          "subtitle": "Blue Effect"
+        }
+      },
+      {
+        "id": "d2aeb97a-7ddd-4f64-8e02-46e99de3ab68",
+        "createdAt": 1784704160270,
+        "updatedAt": 1784704160270,
+        "deletedAt": null,
+        "name": "3.3. Schody - Kabát",
+        "content": "* Schody\n** Kabát\n\nJeden [D]stoupá a jeho schody potaže[G]ný samet[D]em\ndruhý krví špiní provaz co je [G]z lýka uplet[A]en\nZa ko[Hm]mínem ptáci spí koupel[G]ny maj z oka[D]pů\nVezmy [Hm]skoby rezavý a svůj [G]provaz\nbudeš [A]blízko u mra[D]ků.\n\nOpraš hůl a starej klobouk ať tě [G]slunce nespá[D]lí\npevný boty rum a kyslík poča[G]sí je nestá[A]lý\nAž tam [Hm]prapor bude vlát všechny [G]šerpy pozdra[D]vuj\nneza[Hm]pomeň zamávat na tvý [G]půdě střeše [A]světa\nhrdě stůj\n\nPracho[Em]vý peří na vrcholcích padá jak [D]sníh\n[Em]parta ti věří po pláči je nejlepší [C,A]smích\nslavnost[D]ní maj lidi šaty kapel[G]ník je připra[D]ven\nvyšel v jednu je půl pátý za pár [G]hodin končí [A]den\nVšechno [Hm]stojí všechno padá na pos[G]lední podla[D]ží\nstejně [Hm]máš ho pořád ráda za to [G]že je\nže se [A]vůbec odvážil\n\nRef: Je to [D]víš málo platný jako [G]drahý kame[D]ní\njako řeka ve tvých žilách která [G]v srdci prame[A]ní\nco jen [Hm]víc může dát to co [G]slíbí to je [D]svatý\ntak si [Hm]srovnej dlaní šaty a ty [G]hudbo začni [A]hrát",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Schody",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "4b560e7c-74ba-4017-a6cb-90e396924291",
+        "createdAt": 1784704160270,
+        "updatedAt": 1784704160270,
+        "deletedAt": null,
+        "name": "3.4. Síla starejch vín - Škwor",
+        "content": "* Síla starejch vín\n** Škwor\n\n[G D Em C Em C Em D G G]\n\n[Em]Podle nepsanejch [C]zákonů\nHle[D]dáme něco, co nám nejspíš schází\n[Em]Podle prastarejch [C]pudů,\nkte[D]rý nás nutěj furt za něčim jít\nDo stejný řeky nikdy nevstoupíš,\nklacky sám sobě pod nohy házíš\nCos chtěl, máš, stejně dojdeš k poznání\n\nR: Že [G]věci některý jsou ne[D]měnný\njak [Em]síla starejch [C]vín\nA [Em]někdy je tma kolem [C]nás\nTo [Em]když zrovna nejsme [D]stálí\nNajednou blízký jsou si vzdálený\nTo z vočí kouká nám\nTak na chvílí stůj, vzpomínej,\nNo a [Em]přiznej, taky jsme se [D]báli, co bude [G]dál\n\n[Em]Každej ctí asi jinej [C]zákon\na [D]kdo ví, co nám odvahu dává\nKaždej má asi jinej kód\na ty sám zřejmě všechno víš líp\nJak když přesadíš starej strom,\ntaky to nebude velká sláva\nCos chtěl máš, stejně dojdeš k poznání\n\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Síla starejch vín",
+          "subtitle": "Škwor"
+        }
+      },
+      {
+        "id": "3f7fc4c0-ebbd-40c0-b052-b4238e4295fa",
+        "createdAt": 1784704160270,
+        "updatedAt": 1784704160270,
+        "deletedAt": null,
+        "name": "3.5. Pojď se mnou, lásko má - Poletíme",
+        "content": "* Pojď se mnou, lásko má\n** Poletíme\n\nR: [G]Pojď se mnou, lásko [Am]má\n[C]já ukážu ti cestu [G]realitou je [D]nádherná,\n[G]budem dřít si holou řiť, tak jak se [Am]má\n[C]a od zdi ke [D]zdi šourat se [G]my dva.\n\n1: [Am]Mám vlhkej byt bez oken, [G]ve kterým jsme spokojen,\nmám pánvičku i kastroly, na WC šváby a v mouce moly,\nmám matraci i přikrývku, umím vajíčka i polívku\na hlavně umím obejmout, ale nechci tě zbytečně dojmout.\n\nR: Pojď se mnou, lásko má\n\n2: Tvoje přání rozkazem, mrtvou kočkou vytřu zem\na když budeš chtít na výlet, můžeš k botníku a zpět\na když budeš mít hlad, nebudu se ti jen smát,\nbude to co vyhodili do kontyšů u Billy.\n\nR: Pojď se mnou, lásko má\n\n3: Víš, byl jsem milionář, ale ztratil jsem svou tvář\na pak mě Bůh zase našel, a dal mi z cigaret kašel\na tak jdu cestou necestou, a ty buď moji nevěstou,\nobčas v dobrym a hlavně v zlym a na konci se ti oběsim.\n\nR: Pojď se mnou, lásko má\n\n[G Am C G D]  [G Am C D G]\n\nR: Pojď se mnou, lásko má 2×",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Pojď se mnou, lásko má",
+          "subtitle": "Poletíme"
+        }
+      },
+      {
+        "id": "238a348e-c289-4dc9-91f1-d3826f8170a9",
+        "createdAt": 1784704316453,
+        "updatedAt": 1784704316453,
+        "deletedAt": null,
+        "name": "4.1. Camarro - Doga",
+        "content": "* Camarro\n** Doga\n\n[G C G D] 4×\n\n[G]Do tmy se [C]řítím a [G]pocity [D]mám\nže [G]tuhletu [C]káru, jak [G]svý boty [D]znám\n[G]motoru [C]síla a k [G]tomu ta [D]má\n[G]dvanácti [C]válec, ten [G]musí se [D]smát.\n\nRef1: [C]Xenony pálí a [G]do lesa [D]svítí\n[C]v rovině táhlý to [G]rozjedu [A]víc,\n[C]brzo se vzdálím i z [G]mapových [D]sítí\n[C]a cestu správnou jen [A]camarro ví, camarro ví.\n\nMožná tě trápí pravdivej sen\nže já v tuhle chvíli už daleko jsem\nbyla to síla, co chtěl jsem ti dát\nty plachá jsi víla, tak běž zase spát.\n\nRef1: Xenony pálí a do lesa svítí ...\n\nRef2: [G]Nekončí flám, nekončí [D]pláč\nnekončí síla blížen[Em]ců\nnekončí sláva šílen[C]ců.\n[G]Kde končí hráz, kde končí [D]sráz\nkde končí láska přátels[Em]ká\nkde končí jízda ďábels[C]ká.\n\nMěsíc už stoupá v oblaku par\nmá lasičko hloupá, tak sbohem a zdar\naž budeš vstávat, já budu už sám\njen cesty a tráva a žíznivej krám.\n\nRef1: Xenony pálí a do lesa svítí ...\n\nRef2: Nekončí flám, nekončí pláč ...\n\nRef1: Xenony pálí a do lesa svítí ...\n\nRef2: Nekončí flám, nekončí pláč ...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Camarro",
+          "subtitle": "Doga"
+        }
+      },
+      {
+        "id": "b5c6a6c7-d07c-4a4a-8a8b-8db2c6d10cfd",
+        "createdAt": 1784704316453,
+        "updatedAt": 1784704316453,
+        "deletedAt": null,
+        "name": "4.2. Poletuju - Doga",
+        "content": "* Poletuju\n** Doga\n\n[G# D# B C#]\n\n1: [G#]Nikdo nic neřeší, nikdo se ne[D#]věší\n[B]a nic se neděje a tak to [C#]prostě je.\nTvý oči hladový, mozek ti napoví\nstraší ti ve věži, co na tom záleží.\n\n2: To, co ti nesvědčí, proto se nebrečí\nzachovej paniku není z ní úniku.\nTy klíny do hlavy, tě někdy unaví\nz důvodu etiky, zajdem do putyky.\n\nR: /: [G#]Já si tak [D#]rád\njen tak [F#]poletuju\n[C#]poletuju, padám. :/\n\n3: A to tě uráží, tak pryč s tou pakáží\nlehce se dotýkat, od všeho utíkat,\nkdyž pil si moc ruma, tak sešel jsi z uma\nnikdo ti nevěří, po boji příměří.\n\n4: Zas tě to nahání, máš z toho cukání\nbrání ti v rozletu, tak to se nepletu\nsedět a polykat, hlavně neusychat\nhezky se zlinkovat a v tom si libovat.\n\nR: /: Já si tak rád\njen tak poletuju\npoletuju, padám. :/",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Poletuju",
+          "subtitle": "Doga"
+        }
+      },
+      {
+        "id": "ef7b0763-005e-48c6-a20b-aa087fd404a5",
+        "createdAt": 1784704316453,
+        "updatedAt": 1784704316453,
+        "deletedAt": null,
+        "name": "4.3. Přirození - Harlej",
+        "content": "* Přirození\n** Harlej\n\n1: [C]Byla jsi královnou všech, tvý [G]tělo bralo mi [Am]dech\na já byl [F]šedivá myš.\n[C]Ráno jsem před školou stál a [G]jako blbec se [Am]smál,\nmyslel si že [F]o mně víš.\n\nPsal jsem Ti verše v parku, šmíroval při těláku,\nkoukal Ti na kalhotky.\nA tys mě neviděla, vo mě bys nevotřela\nani svý polobotky.\n[G]A tak jsem všechno vzdal, pomstu Ti [C]přísahal.\n\nR: [C]Na zeď jsem po setmění, [G]nakreslil [F]přirození\na pod něj [C]napsal pak, jméno Tvý.\nNikdy se [G]neusměješ, nikdy mě [F]neoceníš\na pořád jako [C]vůl stát, mě nebaví\n\n2: A pak jsem Tvoje boky, neviděl dlouhý roky,\naž včera na náměstí.\nPil jsem tam teplý pivo a koukal jak jde život\nlidem co mají štěstí.\n\nTy jsi šla naproti mě, bylo to jako v kině,\ntrémou jsem ztratil rozum.\nJenže Ty bez váhání, na místo přivítání\ndalas mi dvacet korun.\n\nTak jsem ty prachy vzal, pomstu Ti přísahal.\n\nR: (2×)\n\nA tak jsem všechno vzdal, pomstu Ti přísahal.\n\nR: (2×)\n\nTak jsem ty prachy vzal, pomstu Ti přísahal.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Přirození",
+          "subtitle": "Harlej"
+        }
+      },
+      {
+        "id": "5e8ddd0f-ea9a-471e-8cbd-156e53a97f08",
+        "createdAt": 1784704316453,
+        "updatedAt": 1784704316453,
+        "deletedAt": null,
+        "name": "4.4. Zombice - Daniel Landa",
+        "content": "* Zombice\n** Daniel Landa\n\n[Am G]\n\n1: [Am]Do naší ulice se stěhovala zombice,\n[G]má tetovaný záda, asi mě má ráda.\n[Am]Říkám jí dokola že vypadá jak mrtvola,\n[G]úsměv neuvízne, jen mě trochu hryzne.\n[Am]Má krásný žlutý vočička, je to moje holčička,\n[G]z natržený huby, [Am]čnějí dlouhý zuby.\n\nR: [F]V ru[G]báši pe[Am]láší mýmu ná[G]ručí [F]vstříc,\n[F]zombice z naší [G]ulice. [G#m]\n\nUsmívá se zombice, když zmizela řeznice,\nv hrnci něco vaří, kde jsou popeláři.\nZavřeno má pekařství, kde je pekař – kdopak ví.\nMístní policie se taky neukryje\npřed mojí malou zombicí co vyprázdnila ulici,\nuž je taková, zrůdička hladová.\n\nVyžraná je márnice i ruzyňská věznice,\nbrácha nevěří, že ho chce k večeří.\nPraha žije v panice že sežere ji zombice,\nmoje chcíplá láska, co ouška mi mlaská.\nJá až se s ní ožením, tak vás potom taky sním –\nto mě naučila, živá – mrtvá, milá.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Zombice",
+          "subtitle": "Daniel Landa"
+        }
+      },
+      {
+        "id": "0a84b0c9-a49c-4544-b106-d0cc7f0b5f3e",
+        "createdAt": 1784704466227,
+        "updatedAt": 1784704466227,
+        "deletedAt": null,
+        "name": "5.1. Snídaně v trávě - Michal Tučný",
+        "content": "* Snídaně v trávě\n** Michal Tučný\n\n1: [G]Já nejsem [Em]zdejší, [C]jen [D]projíždím,\n[G]jsou movi[Em]tější, [C]já ti [D]nabízím:\n\nR: [G]Snídani v trávě, teď právě [D]prostřenou,\nloukou ráno [G]vzbuzenou, napůl v snách\n[C]hledám teď po kapsách, čím za[G]platím\ndřív, než se vy[D]tratím, snídani v [G]trávě.\n\n2: Dál podle pražců, tam je můj cíl,\ndám na každej nápis, že jsem tu žil.\n\nR:\n\n*: [C]Kdybych měl plátno a zlatý [G]rám,\n[C]tak se do malování [H]dám.\n\n3: Jsou povolanější, jak jsem si vším',\njá nejsem zdejší, tak jenom sním.\n\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Snídaně v trávě",
+          "subtitle": "Michal Tučný"
+        }
+      },
+      {
+        "id": "13b41e28-8214-4b94-be18-8d4db6a3c021",
+        "createdAt": 1784704466227,
+        "updatedAt": 1784704466227,
+        "deletedAt": null,
+        "name": "5.2. Veď mě dál, cesto má - Pavel Bobek",
+        "content": "* Veď mě dál, cesto má\n** Pavel Bobek\n\n1: [G]Někde v dálce cesty [Em]končí,\n[D]každá prý však [C]cíl svůj [G]skrývá,\nněkde v dálce každá má svůj [Em]cíl,\n[D]ať je pár mil dlouhá, [C]nebo tisíc [G]mil.\n\nR: [G]Veď mě dál, cesto má, [D]veď mě dál, [Em]vždyť i [C]já\n[G]tam, kde končíš, chtěl bych [D]dojít, [C]veď mě dál, cesto [G]má.\n\n2: Chodím dlouho po všech cestách,\nvšechny znám je, jen ta má mi zbývá,\nje jak dívky, co jsem měl tak rád,\nplná žáru bývá, hned zas samý chlad.\n\nR:\n\n*: [Em]Pak na patník po[D]slední na[G]píšu křídou\n[C]jméno své, a pod [G]něj, že jsem [D]žil hrozně rád,\n[Em]písně své, co mi v [F]kapsách zbydou,\n[C]dám si bandou [G]cvrčků hrát a [D]půjdu spát, půjdu [D7]spát.\n\nR: + \\[: [G]veď mě [D]dál, cesto [G]má ... :\\]\n\nKonec: 2× Ref + 2× poslední řádek",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Veď mě dál, cesto má",
+          "subtitle": "Pavel Bobek"
+        }
+      },
+      {
+        "id": "962bf28d-310c-4d43-9ab5-4ce1a1449526",
+        "createdAt": 1784704466227,
+        "updatedAt": 1784704466227,
+        "deletedAt": null,
+        "name": "5.3. Domov na zemi - Spirituál kvintet",
+        "content": "* Domov na zemi\n** Spirituál kvintet\n\n1: [D]Jak léta jdou, svět [G]pro mě ztrácí [D]glanc,\nvšichni se rvou a [A7]duši dávaj' všanc\n[D]a za pár šestáků vás [G]prodaj', věřte [D]mi,\nuž víc nechci mít [G]domov [D]svůj [A7]na [D]zemi!\n\nR: [D]Čas žádá svý a [G]mně se krátí [D]dech,\nkdyž před kaplí tu [A7]zpívám na schodech\n[D]svou píseň vo nebi, kde [G]bude blaze [D]mi,\nuž víc nechci mít [G]domov [D]svůj [A7]na [D]zemi!\n\n2: Po jmění netoužím, jsme tu jen nakrátko,\ni sláva je jak dým, jak prázdný pozlátko,\njá koukám do voblak, až anděl kejvne mi,\nuž víc nechci mít domov svůj na zemi!\n\nR:\n\n3: Teď říkám \"good-bye\" světskýmu veselí,\ntěm, co si užívaj', nechci lízt do zelí,\njsem hříšná nádoba, však spása kyne mi,\nuž víc nechci mít domov svůj na zemi!\n\nR:\n\n4: V určenej čas kytara dohraje,\nzmlkne můj hlas na cestě do ráje,\nvo tomhle špacíru noc co noc zdá se mi,\nuž víc nechci mít domov svůj na zemi!\n\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Domov na zemi",
+          "subtitle": "Spirituál kvintet"
+        }
+      },
+      {
+        "id": "7ab19422-668d-4eea-9fe9-01240ca6a8da",
+        "createdAt": 1784704466227,
+        "updatedAt": 1784704466227,
+        "deletedAt": null,
+        "name": "5.4. Nashwille - Kamelot",
+        "content": "* Nashville\n** Kamelot\n\n[D]Roztál sníh, zmizel i [A]mráz, [D]stromy kvést začly [G]zas\n[D]a voněl svět, rád šel bych [A]tam, kde jsem jako [D]kluk [A]žil.\nSmutnej den já dneska mám, je to rok co nesmím tam,\nna hlavu mou vypsanou maj odměnu tam v Nashville.\n\n[A]Nápad mám já bláznivej, [G]zpátky jít a bejt [D]živej.\n[A]Vysvětlovat všem, že tenkrát jsem [D]nevinej byl.\nToulavý svý boty mám, celý státy teď už znám\nale neznám město krásnější jak Nashville.\n\nVšechny znaj mě nádraží, touha těžká jak závaží,\nmě táhne zpět do města, kde prej já lupič bank byl.\nZ novin zbyl mi v kapse cár, poslední nití látal,\ndžínsy modrý jak obloha tam u nás v Nashville.\n\nTáta můj mi psaní psal, Johny Bůh si mámu vzal\na pláč jak déšť kropil mou dlaň a já tak smutnej byl.\nProč jenom je život zlej, raděj bych já pouta měl,\njen kdybych směl vidět svůj dům a město Nashville.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Nashville",
+          "subtitle": "Kamelot"
+        }
+      },
+      {
+        "id": "1589251a-7fc3-4b7b-a556-4fd1471b7620",
+        "createdAt": 1784704643621,
+        "updatedAt": 1784704643621,
+        "deletedAt": null,
+        "name": "6.1. Čmelák - Divokej Bill",
+        "content": "* Čmelák\n** Divokej Bill\n\n[D A G A Hm D A G A Hm]\n\n1: [D]Žiju si jako v pohádce, když [A]nechci [G]nejdu do [D]práce\nvenku se [A]pasou [G]ovce, dělá si každá co [D]chce\nPošeptáš mi co Tě [A]láká [G]a to je pro [D]čmeláka\nco broukal si v klidu svůj [A]part, najednou [G]malá louka a [D]start.\n\n2: Tak žijem jako v pohádce když nechcem nejdem do práce,\na to nechcem nikdy venku se pasou krávy\nšeptáš co Tě láká to je pro čmeláka\nco broukal v klidu svůj part najednou malá louka a\n\nR: [D]Start, [A]pro [G]všechny první [D]třídu.....\n[D]Start, [A]pro [G]všechny první [D]třídu.....\n[Hm]Ať se [G]propadnu [A]jestli, [D]nemám [Hm]pravdu [G]tak dám [A]fant,\n[D]slunce Ti [Hm]pihy na tváře [G]kreslí [A]a co [D]já? [Hm]Já [G]nic, já [A]muzikant.\n\n3: Poslední dobou v lese, nikdo neví kde jsme,\nvenku se pasou kozy, dělá si taky každá co chce.\nPošeptáš mi co Tě láká, a to je pro čmeláka,\nco broukal si v klidu svůj part, najednou malá louka a\n\nStart, pro všechny první třídu...\na Start, pro všechny první třídu?\nAť se propadnu jestli, nemám pravdu tak dám fant.\nslunce ti pihy na tváře kreslí\na co já ?\nJá nic, já muzikant...\nJá nic, já muzikant...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Čmelák",
+          "subtitle": "Divokej Bill"
+        }
+      },
+      {
+        "id": "98b02ea4-8d9d-4e9e-a4e2-9d41752a3860",
+        "createdAt": 1784704643621,
+        "updatedAt": 1784704643621,
+        "deletedAt": null,
+        "name": "6.2. Dávno - Divokej Bill",
+        "content": "* Dávno\n** Divokej Bill\n\n[Am]Už je to dávno co [C]zkřížil mi cestu\nprej [G]podepiš se mi krví,\n[Am]budeš mít všechno, ale [C]neujdeš trestu,\n[G]jo [Am]byla to síla, [C]byl to fakt nářez,\n[G]bylo to vážně skvělý\n[Am]teď tu mám všechno, ale [C]neujdu trestu,\n[G]jo [Am]do roka a do dne [C]přijdu si pro tebe,\n[G]tady mi to podepiš\n[Am]do roka a do dne [C]zapomeň na nebe,\n[G]budeš o pár metrů,\nbudeš o pár metrů [Am]níž.\n\n[Am]Mlčel jsem dlouho, do [C]nebe se díval,\n[G]čekal až přijde,\n[Am]chtěl to vzít zpátky, teď [C]zdá se to krátký,\n[G]jo pryč z tý pohádky chci,\n[Am]do roka a do dne [C]přijdu si pro tebe,\n[G]tady mi to podepiš,\n[Am]do roka a do dne [C]zapomeň na nebe,\n[G]budeš o pár metrů,\nbudeš o pár metrů, [Am]řvi si a [C]nadávej,\n[G]nezmůžeš nic mladej,\n[Am]i kdybys [C]řval z plnejch [G]plic, [Am]řvi si a [C]nadávej,\n[G]nezmůžeš nic mladej,\n[Am]i kdybys [C]řval z plnejch [G]plic, nezmůžeš [Am]nic.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Dávno",
+          "subtitle": "Divokej Bill"
+        }
+      },
+      {
+        "id": "874bf257-4968-4694-b09e-eebc4954a406",
+        "createdAt": 1784704643621,
+        "updatedAt": 1784704643621,
+        "deletedAt": null,
+        "name": "6.3. Bohužel - Divokej Bill",
+        "content": "* Bohužel\n** Divokej Bill\n\nJsou prokletý upsali duši ďáblu\nlejstra krvavý dokázat to můžou\nrej jejich těl ochabnul a slábnul\nale už si bohužel nepomůžou\n\n[D]Ale už si [A]bohužel [E]nepomů[A]žou\n[A]Zatracená [E]práce usmál [D]se a krátce [A]řek'\nkosu [D]mám to [A]proto že jsem [E]řezník [A]sám\n[A]chtěl mít svý [E]jistý já [D]svědomí mám [A]čistý\njá [D]jedinou jistotu [A]mám totiž že [E]ke dnu nepůjdu [A]sám\n\nAle už si bohužel nepomůžou\nPřevozník na řece to se přece může stát\nkolikrát je člověk pomalej a nechce se mu vstát\npak potřebuješ přes vodu na cestě daleký\nusneš chlapík vyskočí a jsi tu na věky\nAle už si bohužel nepomůžou",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Bohužel",
+          "subtitle": "Divokej Bill"
+        }
+      },
+      {
+        "id": "f9b67583-47e7-4d2b-94e2-c3b151a41853",
+        "createdAt": 1784704643621,
+        "updatedAt": 1784704643621,
+        "deletedAt": null,
+        "name": "6.4. Pověste ho vejš - Harlej",
+        "content": "* Pověste ho vejš\n** Harlej\n\nR1: Pověste ho vejš, ať se [F#m]houpá,\npověste ho vejš, ať [A]má [E]dost,\npověste ho vejš, ať [Hm]se [F#m]houpá,\nže [E]tu byl nezvanej [F#m]host.\n\n1: Pověste ho že byl [F#m]jinej,\nže tu s [A]náma dejchal stejnej [E]vzduch\n[Hm]pověste ho, že byl [F#m]línej\na [E]tak trochu [F#m]dobrodruh.\n\n2: Pověste ho za El Paso,\nza Snídani v trávě a Lodní zvon,\nza to, že neoplýval krásou,\nže měl [D]country rád\na že se [C#7]uměl smát\ni [F#m]vám.\n\nR2: Nad [A]hlavou mi slunce [E]pálí,\n[Hm]konec můj nic [A]neod[E]dálí,\ndo [A]mých snů se dívám [E]zdáli\na do [Hm]uší mi stále zní\n[C#7]tahle píseň poslední.\n\n3: Pověste ho za tu banku,\nv který zruinoval svůj vklad,\nza to, že nikdy nevydržel\nna jednom místě stát.\n\n[F#m A E Hm F#m E F#m]\n\nR2+R1: Nad [A]hlavou mi slunce [E]pálí\n\n4: Pověste ho za tu jistou,\nkterý nesplnil svůj slib,\nže byl zarputilým optimistou,\na tak dělal spoustu chyb\n\n5: Pověste ho, že se koukal\na že hodně jed a hodně pil,\nže dal přednost jarním loukám\na pak se oženil a pak se usadil a žil\n\nR2+R1: Nad [A]hlavou mi slunce [E]pálí",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1,
+          "titlePosition": "left"
+        },
+        "cache": {
+          "title": "Pověste ho vejš",
+          "subtitle": "Harlej"
+        }
+      },
+      {
+        "id": "152e58ca-6b78-4c9f-bc8f-e68df9906a68",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "7.1. Zafúkané - Fleret",
+        "content": "* Zafúkané\n** Fleret\n\n1.: [Am]Větr sněh [Aadd9]zanésl z [Am]hor do [Aadd9]polí,\n[Am]já idu [C]přes kopce, [G]přes [Am]údolí,\n[C]idu k tvej [G]dědině za[C]túlanej,\n[F]cestičky [C]sněhem [E]sú zafúk[Am]ané.\n\nR:: [Am]Za[C]fú[G]kané, [C]zafúkané,\n[F]kolem mňa [C]všecko je [Dm]zafú[E]kané.\n[Am]Za[C]fú[G]kané, [C]zafúkané,\n[F]kolem mňa [Dm]všecko je [E]zafúka[Am]né.\n\n2.: Už vašu chaľupu z dálky vidím,\nsrdce sa ozvalo, bit ho slyším,\nsnáď enom pár kroků mi zostává,\na budu u tvého okénka stát.\n\nR:: \\[: Ale(-) zafúkané, zafúkané,\nokénko k tobě je zafúkané. :]\n\n3.: Od tvého okna sa smutný vracám,\nv závějoch zpátky dom cestu hledám,\nspadl sněh na srdce zatúlané,\naj na mé stopy - sú zafúkané.\n\nR:: \\[: Zafúkané, zafúkané,\nmé stopy k tobě sú zafúkané. :]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Zafúkané",
+          "subtitle": "Fleret"
+        }
+      },
+      {
+        "id": "40b686be-9983-4ccc-aab5-4bc1ad37ac22",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "7.2. Hruška - Čechomor",
+        "content": "* Hruška\n** Čechomor\n\nPředehra: jedem všichni, šlapič přechod\n\n[A D]Stojí hruška v širém poli\nvršek se jí zelená\n/\\: Pod ní se pase kůň vraný\npase ho má milá :/\n\nProč [D]má milá dnes [A]pásete\nz ve[D]čera [G]do rá[A]na\n\n/\\: Kam [D]můj mi[G]lý po[A]jede[D]te\njá poje[A]du s v[D]áma :/\n\nSólo:\n[A G D A] [8x]\npřechod\n\nO [D/D]já pojedu [A/D]daleko\npřes [D/D]vody [G/D]hlubo[A/D]ké\n\n/\\: Kéž [D/D]bych byl [G/D]nikdy [A/D]nepoz[D/D]nal\npanny [A/D]černoo[D/D]ké :/\n[D] - mezihra\nstopka, cinkání na činel\n\nzávěr:\n[G D]\n[G C D]\n[G C D G D G]\n[G C D Em]\n[G D]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Hruška",
+          "subtitle": "Čechomor"
+        }
+      },
+      {
+        "id": "849d2217-85b0-478f-b54b-4fc3a542f382",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "7.3. Včelín - Čechomor",
+        "content": "* Včelín\n** Čechomor\n\nPředehra:\nPřidám se, hihat\n\n[Dm]SOUSEDOVIC VĚRA [C]MÁ\n[Dm]JAKO ŽÁDNÁ JI[C]NÁ\n[Dm]VIDĚL JSEM JI VČERA [C]MÁCHAT\n[Dm]DOLE U [Am]VČE[Dm]LÍNA\n\nRef.: [Dm]Dole dole dole dole\n[F]Dole dole dole\n[G]Hej dole dole dole\nDole u [Dm]včelína.\n\nPřechody:\n\nhihat\nLÍČKA JAKO RŮŽE MÁŠ\nJÁ TĚ MUSÍM DOSTAT\nNIC TI NEPOMŮŽE SPÁT\nSKOČÍM TŘEBA DO SNA\nRef, Přechody\n\nAŤ V POLEDNE RADOST MÁ\nSLUNKO HEZKY HŘEJE\nKDYŽ SE NA MĚ PODÍVÁ\nDÁM JÍ CO SI PŘEJE\nRef, Přechody\n\nLÍČKA JAKO RŮŽE MÁŠ\nZAJDU K PANU KRÁLI\nAŤ PŘIKÁZAT VAŠIM DÁ\nABY MI TĚ DALI\nstop",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Včelín",
+          "subtitle": "Čechomor"
+        }
+      },
+      {
+        "id": "463f6432-2f02-417c-a0ca-7b26c3ca4838",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "7.4. Rehradice - Čechomor",
+        "content": "* Rehradice\n** Čechomor\n\n[Dm]A te Rehradice [C]na pěkný [F]rovině\n[G]Teče tam [Am]voděnka [Dm]dolů [G7]po [C]dědině\n[Gm]Je [Am]pěkná, [Dm]je čistá\n\nA po tej voděnce drobný rebé skáčó\nPověz mi má milá, proč tvý oči pláčó\nTak smutně, žalostně\n\nPláčó oné pláčó šohajó po tebé\nŽe sme sa dostali daleko vod sebe\nDaleko vod sebe\n\nProč by neplakaly, když srdénko bolí\nMusijó zaplakat šohajovi kvůli\nŠohajovi kvůli.\n\nA te Rehradice na pěkný rovině\nTeče tam voděnka dolů po dědině\nJe pěkná, je čistá.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Rehradice",
+          "subtitle": "Čechomor"
+        }
+      },
+      {
+        "id": "641048c4-104b-42da-a850-36a44b82dc59",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "8.1. Stížnost - Chinaski",
+        "content": "* Stížnost\n** Chinaski\n\n[F]Dva večery sepisuju [C]dlouhou stížnost [Gm]na život\nchci [A#]zrušit svoji existenci [F]bylo toho víc než [C]dost\n\n[F]Zalepím jim do o[C]bálky\na [Gm]nad příslušnou adresu\nnale[A#]pím hned čtyry zná[F]mky\ns tím [C]chlapem co ho nesnesu [Gm]\n\nProhledávám doklady a chci v nich najít rodnej list\nvšechny stopy, data, důkazy toužím zničit, jsem si jist\n\nDva večery sepisuju dlouhou stížnost na život\nchci zrušit svoji existenci bylo toho víc než dost\n\nDo deseti let čekám odpověď úřední oznámení\nže pro takový jako já tenhleten svět není\n\nPůjdu někam na matriku\na rodnej list tam odevzdám\nchci vymazat svou evidenci\nvobčanku jim taky dám\npřidám taky řidičák, dřív než vyhraju nějaký body\nkašlu na ty vaše závody, kde se hraje o náhody\n\nDva večery sepisuju dlouhou stížnost na život\nchci zrušit svoji existenci bylo toho víc než dost.\n\nDo deseti let čekám odpověď úřední oznámení\nže pro takový jako já tenhle ten svět není\n\nJá si podám žalobu\na razítkem ji opatřím\n\nSnad dřív než půjdu do hrobu\nsoud uzná, že sem nepatřím\n\nDva večery sepisuju dlouhou stížnost na život\nchci zrušit svoji existenci bylo toho víc než dost\n\nDo deseti let čekám odpověď úřední oznámení\nže pro takový jako já tenhle ten svět není\n\nDva večery sepisuju dlouhou stížnost na život",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Stížnost",
+          "subtitle": "Chinaski"
+        }
+      },
+      {
+        "id": "c370f152-2ba4-44b3-9ae1-de603c2dac77",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "8.2. Radši si to píšu - SEVEN",
+        "content": "* Radši si to píšu\n** Seven\n\n[A F#m D E A]\n\n[A]Jen chvíli [F#m]mít, sednout si a [D]psát.\nJen [E]tak, co [A]kdyby...\n\nZejtra se [A]vzbudim a ty už tu nemusíš [F#m]spát.\nČlověk tak [D]nerad [E]dělá [A]chyby...\n\n[F#m]Jseš to [D]nejhezčí co [A]mám,\ntakhle se [E]tvořej hity.\n[F#m]Tak to na [D]čistej papír [A]dám,\njen tak, co [E]kdyby...\n\nTak si to [A]píšu, jak dejcháš, jak voníš, jak mluvíš,\njak [F#m]vypadá tvý tělo, když na posteli leží...[D]\nPro případ že [E]bych to někdy zapomněl...[A]\n\nRef.:\nTak si to [B]píšu, jak dejcháš, jak voníš, jak mluvíš,\njak [G#m]vypadá tvý tělo, když na posteli leží...[E]\nPro případ že [F#]bych to někdy zapomněl...[B]\nA ty se [B]stydíš, tak hezky, tak krásně, jen ležíš [E]\na [G#m]pohráváš si s vlasy, když píšu tyhle básně. [E]\nPro případ že [F#]bych to někdy zapomněl...[B]\n\n[A F#m D E A]\n[B G#m E F# B]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Radši si to píšu",
+          "subtitle": "Seven"
+        }
+      },
+      {
+        "id": "871e9e40-a7e9-4540-8bd5-3ae3e5799a57",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "8.3. Léta s tebou - morava",
+        "content": "* Léto s tebou\n\n[D]Mám rád tvé paže bílé\nmá rád ty krásné chvíle\nprostě já mám rád - léto s tebou\n\n[C]Mám [B]rád na [G]louce kv[D]ítí\nmám rád když slunce svítí\nprostě já mám rád - léto s tebou\n\n[A]A ráno když fé[D]n sl[A]uneční, ti vlasy vysuší\npotichu snad po špičkách, ti kávu půjdu hřát\ntak si říkám - svět je nádherný\n\n[G]Má rád to ticho les[D]ní\nmám rád, když bouře běsní\nprostě já mám rád - léto s tebou\n\nMám rád tu těžkou vůni\nmám rád chlad hloubku tůní\nprostě já mám rád léto s tebou\n\na nocí hvězdy padají a ty je počítáš\njá slyším tvůj hlas za sebou\na že líbám tvoji tvář\ntak si říkám - svět je nádherný",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Léto s tebou",
+          "subtitle": ""
+        }
+      },
+      {
+        "id": "a66f308b-14f5-4467-94ae-a8cab91f61bd",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "8.4. Nemít rád - Bryan Adams (Summet of 69)",
+        "content": "* Nemít rád\n\nzač. kytara\n\n[D]Zkus mi říct jak máš mě ráda\n[A]mám snad jít a nebo stát\n[D]další šance co mi dáváš\n[A]je snad víc než nemít rád\n\nKdyž se ptám proč si mi lhala\nneříkáš nic klopíš zrak\nodpověď tvá vyhýbavá\nje snad víc než nemít rád\n\nRef.: [Bm]Ve dne skrýváš [A]za rty smích\n[D]pláčeš v nocích [G]bezesných\n[Bm]že byl jsem tvůj [A]ideál\n[D]to já si [G]vždycky přál\n[D]spoustu nocí [A]nejmíň [D]tisíckrát\n\nmez. klávesy\n\nŽivot tvůj jak žhavá láva\nvpřed se valí a neví kam\nstojíš tu jak chladná skála\ndivíš se že tě odmítám\nRef.: Ve dne skrýváš ......\n\nmez. klávesy\n\n[F]Bloudíš tmou a [Bb]nemáš kam jít [C]spát\nkam se [Bb]poděl lásky [F]žár\nnajít pro svůj život [Bb]řád - /: mít rád :/\n\nmez. klávesy\n\nZnova 1. sloka + Ref.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Nemít rád",
+          "subtitle": ""
+        }
+      },
+      {
+        "id": "aeab9180-fe42-4225-9498-f21fcc7a6f29",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "8.5 Slibuju že nebudu pít - Rybičky48",
+        "content": "* Slibuju že nebudu pít\n** Rybičky 48\n\nJe deset hodin [A]ráno, zalepený [C#m]voči, nemůžu vstát.\nKafe a [D]cigáro si dám, včera jsem [Dm]byl zas jako Dán.\nA ty se [A]díváš, ty se na mě [C#m]díváš pohledem,\nkterej [D]každej mužskej zná, a jen žena [Dm]ho dovede.\n\n[A]Chceš ode mě slyšet tu větu vět,\nkterou i [C#m]Shakespeare znal nazpaměť.\nKterou i [D]Adam říkal Evě,\nkdyž večer [F]předtím zašel na dvě.\n[A]Chceš ode mě slyšet tu větu vět,\njá nechci [C#m]kázání, ani jít na zpověď\nUchýlím se [D]k malé lži,\nsnad karma [F]promine, vždyť jsme jen muži.\n\n[A]Slibuju, že nebudu [E]pít, [F#m]včera to [D]bylo naposled.\n[A]Slibuju, že nebudu [E]pít, to [D]přísahám. [2x]\n\nKde jsem včera byl, jak jsem se asi měl.\nSnad kamarádi ví, když já to zapomněl.\nV krku mě bolí, takže se asi zpívalo.\nA když dneska smutno je, tak včera asi bylo veselo.\n\nChceš ode mě slyšet tu větu vět,\nkterou i Shakespeare znal nazpaměť.\nKterou i Adam říkal Evě,\nkdyž večer předtím zašel na dvě.\n\nChceš ode mě slyšet tu větu vět,\njá nechci kázání, ani jít na zpověď.\nUchýlím se k malé lži,\nsnad karma promine, vždyť jsme jen muži.\n\nSlibuju, že nebudu pít, včera to bylo naposled.\nSlibuju, že nebudu pít, to přísahám. [2x]\n\nSlibuju, že nebudu pít,\nvčera to bylo naposled.\nSlibuju, že nebudu pít,\nto přísahám.\n\nUž jenom na svatbách a nebo promocích.\nPřes den ne, jenom po nocích.\nNa oslavách, nebo večírcích.\nPřes den ne, jenom po nocích.\n\nSlibuju, že nebudu pít,\nto přísahám. [2x]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 2
+        },
+        "cache": {
+          "title": "Slibuju že nebudu pít",
+          "subtitle": "Rybičky 48"
+        }
+      },
+      {
+        "id": "d1a57f54-c592-423a-a6f0-3eb647e25ec9",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "9.1. První polibek - Brutus",
+        "content": "* První polibek\n** Brutus\n\n[C E Am F C G C G]\n\nKdyž ti [C]máma dvacku [E]dá a [Am]můžeš přijít až v [F]osum\n[C]Neslyšíš její [G]slova [C]zkušený [G]\nOční [C]stíny [E]dlouhý řasy [Am]božskej [F]účes dlouhý vlasy\nJak jsi [C]hrdá na [G]svejch [C]sedumná-áct [G]\nChodíš [E]městem je ti [E]krásně neznámej [Am]kluk se hned k tobě [F]zná\nNení [C]špatnej první [G]schůzka ruku [C]dá-át [G]\n\n[C]Proč tě [E]zlákal [Am]první [F]polibek\n[C]První polibek [G]ale ne ten [C]máminej [G]\n[C]Na toho [E]kluka teď [Am]už [F]nemyslíš\n[C]Teď už nemyslíš [G]chce se ti [C]plakat [G]\n\nS kruhama pod očima denně usínáš\nSkoro denně se chytneš s mámou no a pak dostaneš\nPro pár vět zboříš svět je ti nanic\nJenom si myslíš že tě nemá nikdo rád\n\nProč tě zlákal první polibek\nPrvní polibek ale ne ten máminej\nNa toho kluka teď už nemyslíš\nTeď už nemyslíš chce se ti plakat\n\nNěkdy si myslíš že tě nemá nikdo rád\nJsi smutná a třeba pláčeš\nKaždá dívka věří že k ní jednou přijde princ\nTen by ji vzal za ruku a řekl by lásko mám tě rád\nVe skutečnosti je to ovšem jiné\nŽádný princ nepřijde a neřekne ta tři krásná slova\nŽivot je pro tebe jako hřbitov nebo louka bez kvítí\nNajednou se něco stane zahrady světa rozkvetou\nA ty si uvědomíš že tě má konečně někdo rád",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "První polibek",
+          "subtitle": "Brutus"
+        }
+      },
+      {
+        "id": "75e47337-435c-4c98-bf2b-059218f7dca8",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "9.2. Jak děkuje se andělům - Keks",
+        "content": "* Jak děkuje se andělům\n** Keks\n\n[D]S tou nejmilejší tváří,\n[G]Co nakreslil mi bůh,\n[Em]S náručí, jenž [G]chrání\nOd [D]počátků mých [A]snů.\n\n[D]Úsměvem když září,\n[G]Jak slunce den co den,\n[Em]s tou nejsilnější [G]láskou,\nco [D]dává matkám [A]jen\n\nR:\n[G]Jak děkuje se andělům,\n[C]těm nocím probdělým\n[Am]dál necháváš mě [C]věřit snům,\na [G]bráníš časům [D]zlým\n\n[G]Ty nečekáš nic za lásku,\n[C]jsi srdcem na dlani,\n[Am]co nespoléhá na [C]sázku,\nkdyž [G]vcházím [D]svítáním.\n\n[D G Em G D A]\n\n[D]Čas vrásky kreslil v oči,\n[G]teď zdobí tvojí tvář,\n[Em]do srdce nikdy [G]nevkročí,\n[D]nevezme očím [A]zář.\n\n[D]Nejsou slova jak ti říct,\n[G]tu píseň srdce zpívá,\n[Em]až jednou ten práh [G]překročíš,\n[D]v něm navždy budeš [A]živá\n\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Jak děkuje se andělům",
+          "subtitle": "Keks"
+        }
+      },
+      {
+        "id": "01800a4f-53d7-4735-a304-89874c28c358",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "9.3. Šípková Růženka - Jiří Schelinger",
+        "content": "* Šípková Růženka\n** Jiří Schelinger\n\n1.: Ještě [Am]spí a spí a spí zámek [G]šípkový,\n[Am]žádný princ tam v lesích ptáky [Em]neloví,\nještě [Am]spí a spí a spí dívka [G]zakletá,\n[Am]u lůžka jí planá růže [Em]rozkvétá.\n\nR.: [C]To se [D]schválně dětem [Am]říká,\n[F]aby s [G]důvěrou šli [C]spát, klidně [E]spát,\n[Am]že se dům [G]probouzí a ta [C]kráska proci[F]tá,\n[Dm]zatím spí tam [Em]dál, spí tam v [Am]růžích.\n\nSólo:\n[Am D Am D]\n[Am C D Am]\n\n2.: Kdo ji ústa k ústům dá, kdo ji zachrání,\nkdo si dívku pobledlou, vezme za paní,\nvyjdi zítra za ní a nevěř pohádkám,\nžádný princ už není, musíš tam jít sám.\n\nR.:\n\n+: [Am]Musíš vyjít [G]sám, nesmíš [C]věřit pohád[F]kám,\n[Dm]čeká dívka [Em]dál, spí tam v [Am]růžích,\n[Dm]čeká dívka [Em]dál, spí tam [Asus4]v [A]růžích.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Šípková Růženka",
+          "subtitle": "Jiří Schelinger"
+        }
+      },
+      {
+        "id": "4e62e733-df60-485e-b061-2dcb5e52f6f3",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "9.4. Zimní královna - Arakain",
+        "content": "* Zimní královna\n** Arakain\n\n[F]V pohád[C]kách najdeš\nmou[Gm]drou pravdu spousty [Bb]příběhů\n[F]stejně [C]i svůj v nich můžeš [Bb]číst\n[F]Okouz[C]lí cizí [Gm]žena lásku tvou\ntoho [Bb]s kým jste si souzeni\n[F]tak jak to [C]nést kde návod [Bb]vzít\n\nJenom si vzpomeň\njednou přijela tak Zimní královna\nmalýho kluka odvezla na saních\nGerda pláče\nvolá Káji, Káj má srdce studený\nmalá Gerda musí ho zachránit\n\nOtři si slzy\ndobře víš, že pláč ten nic už nespraví\nmusíš teď jít, ne takhle stát\nNezoufej\ndej si radit pohádkou\ntu už víc nikdo nezmění\nosud ti dá co musí dát\n\nJenom si vzpomeň...\n\nBude to boj\nsrdce z ledu, její cit\ndobře víš kdo v něm zvítězí\nvzpomene Káj a jeho srdce roztaje\na stejně ty, jdi teď za ní\nje v tvých silách tu druhou porazit\ntak jako Gerda, když šla za Kájem",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Zimní královna",
+          "subtitle": "Arakain"
+        }
+      },
+      {
+        "id": "c754fcc0-16e8-4a94-9f37-7207b284bbdd",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "10.1. Špinavý záda - Jasná páka (Hudba Praha)",
+        "content": "* Špinavý záda\n** Jasná páka (Hudba Praha)\n\n[Em]1. Potkal jsem ji na Žofíně,\n[G]celá v [Em]černém, nesla se jak páv,\nzáda bílý od stěn měla,\nu šatny mě chytla za rukáv.\nR: [G]Špinavá, špinavá, [D]špinavá, [Am]špinavá krásná [Em]holka,\nta mě na kolena dostala, teď po mně jen tak kouká,\nšpinavý, špinavý, špinavý, vona má špinavý záda,\nnepije, nekouří, nesladí a má to tolik ráda.\n\n2. Cestou taxíkem pak domů\nzašpinila trochu sedadla,\npak za dveřma v jejím bytě\nkolem krku mě hned popadla.\n\nR: Špinavá, špinavá, špinavá, …\n\n3. Ráno zase na ulici\nřekla mi, že byl to jenom žert,\nschlíplej beru ranní tramvaj:\nsakra, holka, ať tě veme čert!\n\nR: Špinavý, špinavý, špinavý, mi ukázala záda,\nnepila, kouřila, nevadí, vždyť to má tolik ráda,\nšpinavý, špinavý, špinavý, vona má špinavý záda,\nnepije, nekouří, nesladí a má to tolik ráda.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Špinavý záda",
+          "subtitle": "Jasná páka (Hudba Praha)"
+        }
+      },
+      {
+        "id": "7e025cfb-5eab-4a57-86af-24eb9294293b",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "10.2. Nechte vlajky vlát - Aleš Brichta",
+        "content": "* Nechte vlajky vlát\n** Aleš Brichta\n\nIntro: [Am F C G] (4x)\n\n[Am F]Často [C]máme [G]chraplavej [Am]hlas\n[F]někdy [C]sípem [G]už za polo [Am]čas\n[F]v kruhu [C]síla [G]je naše [Am]víra. [F G]\n\nČasto jásá nadšenej sbor\nněkdy pláčem pro hloupej gól\njenže víra je naše síla.\n\nR: Nechte vítr vát, nechte chóry znít\nkaždej máme svý hymny vítězný.\nNechte vlajky vlát, vždyť je máte ctít\nkaždej známe svý barvy vítězný.\n\nmezihra\n\nPřišel zvláštní toreador\njinej má dres ten podivnej tvor\nco to píská -- no to je síla.\n\nStejně zvládnem tenhleten mač\nbanán v bráně -- jó, není zač\nje to síla ta naše víra.\n\nR: Nechte vítr vát .......\n\nmezihra\n\nR: Nechte vítr vát .......\nR: Nechte vítr vát .......",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Nechte vlajky vlát",
+          "subtitle": "Aleš Brichta"
+        }
+      },
+      {
+        "id": "e49533d4-c569-4f96-8cc5-da7722bc320d",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "10.3. Svařák - Harlej",
+        "content": "* Svařák\n** Harlej\n\n[C B G Am C G]\n\n[G]Když jsem sám doma,\n[Am]poslouchám Vavra,\n[C]starýho vola,\n[D]pořád dokola.\n[G]Chce to mít nápad,\n[Am]a né pořád chrápat,\n[C]já dostal jsem nápad,\n[D]udělat mejdan. [C B]\n\nR: [G]Mám ráád svařené [Am]víno červené,\njá mám [C]rád, rád sva[G]řák.\n[G]Mám ráád svařené [Am]víno červené,\njá mám [C]rád, rád sva[G]řák.\n[G Am C G]\n\n[G]Se známou partou,\n[Am]domluva krátká,\n[C]zejtra v 6 hodin,\n[D]vstup jedna lampa.\n[G]Začíná mejdan,\n[Am]na 200%,\n[C]my plníme plány,\n[D]rostou nám blány. [C B]\n\nRef:\nsolo:\n[G Am C D G Am C D]\n[G Am C D G Am C D]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Svařák",
+          "subtitle": "Harlej"
+        }
+      },
+      {
+        "id": "6ec6d552-09d7-43f2-9454-731dd99783d8",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "10.4. Časy zlý - Hudba Praha",
+        "content": "* Časy zlý\n** Hudba Praha\n\n[D]Tak zase jeden [A]protlučenej [G]den\na nikdo ani trochu neuhnem\nkam zmizel ten náš zatracenej vkus\nje dávno ten tam, zbyl už jenom hnus.\n\nZbyly nám jen oči zlý....\n\nPliveme jedem aby měl druhej zlost\ntřesem se hněvem druhýmu pro radost\na už to nejde nejde zastavit\nkam zmizel ten náš kdysi velkej cit.\n\nZbyly nám jen řeči zlý....\n\nTak nás to nese pořád dál a dál\nuž sotva lezem tak kdo by o to stál\nděravý sliby jak roztrhanej fáč\ntak kam se poděl ten náš srdcerváč.\n\nZbyly nám jen časy zlý....\n\nSólo\nRef.\npřechod Konec 7×KONEC",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Časy zlý",
+          "subtitle": "Hudba Praha"
+        }
+      },
+      {
+        "id": "18ab24ed-c52f-4ffd-9d58-1974a768f707",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "10.5. Karneval - XIII. století",
+        "content": "* Karneval\n** XIII. století\n\n[Am]Karneval karne[F]val všude [C]růže\na šperky [G]dam a lesku jak v [Am]Rotrdam\nKarneval karneval račte dál žádný nesmí stát opodál\nKarneval karneval začal bláznivý shon a rej a každýmu je náhle hej\nKarneval karneval začal bál začal slavností letní bál\n\n[Am]Zástupy dívek volných [F]spánků chraňte si čest a mládí\n[Am]zamkněte brány na [G]pět zámků ve [Am]městě masky řádí [A][G]\n[Em]Důstojní páni šedých [F]strání chraňte si stříbro stáří\n[C]člověk se někdy těžko [G]brání těm co [Am]se nóbl tváří\n\n[E] jak se dá, óóó ..\n\n[Am]Karneval [G]kar[F]neval račte [C]dál\nžádný nes[G]mí stát [Am]opodál\nKarneval karneval začal bláznivý shon\na rej a každýmu je náhle hej\nKarneval karneval začal bál\nzačal slavností letní bál\n\nZástupy dívek volných spánků chraňte si čest a mládí\nzamkněte brány na pět zámků ve městě masky řádí\nDůstojní páni šedých strání chraňte si stříbro stáří\nčlověk se někdy těžko brání těm co se nóbl tváří\n\njak se dá óóó",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Karneval",
+          "subtitle": "XIII. století"
+        }
+      },
+      {
+        "id": "45ee6ab8-53e7-49e2-8a3c-3eb419d092bd",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "11.1. Siluety - Mandrage",
+        "content": "* Siluety\n** Mandrage\n\n[Dm G A]\nKdybych měl [Dm]pro tebe [G A]\nvyšplhat [Dm]do nebe [G A]\npostavím [Dm]z ocele\nkovový chrám [G A]\n\nNa cestu [Dm]k měsíci [G A]\nsestrojím [Dm]pramici [G A]\nnakreslím [Dm]dálnici [G A]\na po ní se [Dm]dám [A]\n\nDovol, mi [Dm]prosím abych dnes [G]v noci zastínil [C]měsíc\npřeházel [F]hvězdy, proměnil [Bb]svět na ostrov [G]pustý\ntam kromě [A]nás nikdo nesmí\ndovol mi [Dm]najít slova a [G]rýmy\nmatoucí [C]smyslem [F]synonymy\na sdělit [Bb]všem na všechny [G]směry\ndokud nás [A]smrt nerozdělí\n\nKdybych šel pro tebe\npo schodech do nebe\nvytvořím ve chvilce\nzatmění měsíce\nVypustím raketu\nstředního doletu\nsilou dvou magnetů\nchytím tě za letu\nto udělám\n\n[2×]Dovol, mi prosím abych dnes v noci zastínil měsíc\npřeházel hvězdy, proměnil svět na ostrov pustý\ntam kromě nás nikdo nesmí\ndovol mi najít slova a rýmy\nmatoucí smyslem synonymy\na sdělit všem na všechny směry\ndokud nás smrt nerozdělí\n\nRozsviťte světla, už začlo se stmívat\nkdyž jsi tu ty je na co se dívat\nchci dobrý výhled, využívat\na ze rtů tvých odezírat\nChci slyšet slova i celý věty\nchci vidět tvary siluety\na hvězdný prach z meteoritu\nkontrasty stínů, šerosvitů",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Siluety",
+          "subtitle": "Mandrage"
+        }
+      },
+      {
+        "id": "00c9241d-c544-45cd-82b5-30cc399b523a",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "11.2. Všema deseti - Divokej Bill",
+        "content": "* Všema deseti\n** Divokej Bill\n\n[Am]Ač půso[Dm]bím, že jsem jakkoliv [C]bázl[G]i[Am]vý,\nčasto bý[Dm]vám no[C]hama [G]na ze[Am]mi\na vím, že mě bůh neopustí.\nTo, co teď mám, je jeden z nesplněných snů,\nco se mi zdál a já si ho teď prožívám.\n\nR: [Dm]Srdce [G]unavený, [C]na kusy [Am]rozervaný,\n[Dm]zařvi to [G]na celej [Am]svět.\n[Dm]Všema [G]deseti [C]má tě [Am]ve svý moci,\n[Dm]zamyká [G]dveře na pet[Am]lici.\n\nObčas mívám nálady, který neskrývám,\nchtěl jsem víc, ale jsem v tom až po uši\na doufám, že až tohle pomine,\nse probudím a vše bude jako dřív.\n\nR: Srdce unavený, na kusy rozervaný... (2×)\n\nR: Srdce unavený, na kusy rozervaný,\nzařvi to na celej svět. (Našel jsem si tebe)\nVšema deseti má tě ve svý moci,\nzamyká dveře z obou stran na petlici.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Všema deseti",
+          "subtitle": "Divokej Bill"
+        }
+      },
+      {
+        "id": "50c3b525-3461-45a8-9601-ef20dde31ed6",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "11.3. Vím jak bolí - Doga",
+        "content": "* Vím jak bolí\n** Doga\n\n[Am]Dnes, pod okny [C]mými\nprašivý [G]pes celou noc [D]vyl\nŠel z toho [Em]děs, jak mezi [B]svými\nna dvoře lez z posledních sil\n\nTmou neslo se vití\nhořké jak blín, černé jak bez,\nsmutné jak stín dvou živobytí\nnahoře já, dole ten pes\n\n[Em]Vím jak [B]bolí [G]v ráně [D]sůl\n[Em]chléb se [B]solí zlého půl\n\nZas pod okny mými\nprašivý pes celou noc vyl\nsmutně jak stín dvou živobytí\nnahoře já, dole ten pes\n\nVím jak bolí...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Vím jak bolí",
+          "subtitle": "Doga"
+        }
+      },
+      {
+        "id": "c4c778df-a574-456f-b992-efd79b7f1e2d",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "11.4. Kalhotky si sundej - Mig21",
+        "content": "* Kalhotky si sundej\n** Mig 21\n\n1.:\n[Em]Déšť proťal blesk, ozářil tvář, osvítil [D]líc,\n[Em]bůh Zeus oslovil ženu, stačilo jen [D]říct.\n[Em]Známe se, neznáme se, [C]máš v sobě [D]žár, máš v sobě [Em]vtip.\n[Em]Cítím se sám buď moje, [C]jen ve dvou [D]může nám bejt [G]líp.\n\nREF:\n[G]Zvolna [C]kalhotky si [G]sundej, odpusť [C]jestli trochu [G]nalé[Am]hám.\n[G]Neznám [C]rým na slovo [G]sundej, touha je [Bb]silněj[F]ší než [C]já.\n\n2.:\n[Em]Déšť proťal blesk, ozářil tvář, osvítil [D]líc,\n[Em]bůh Zeus oslovil ženu, stačilo jen [D]říct.\n[Em]Si ladná si mladá, [C]si smrtelná [D]neztrácej [Em]čas,\n[Em]soukolí hodin tolik [C]netiká, [D]než to tiká [G]nám.\n\nREF:\n\n3.:\n[Em]Déšť proťal blesk, ozářil tvář, osvítil [D]líc,\n[Em]bůh Zeus oslovil ženu, stačilo jen [D]říct.\n[Em]Tvý kroky, svůdný boky, [C]svedli mě [D]sem, sám nevím [Em]kam.\n[Em]Za chvíli budem v cíli, [C]na co se [D]ptáš jakej mám [G]plán.\n\nREF:\n\n4.:\n[Em]Tvý slzy uschnou brzy, [C]ráda vítr [D]máš, na to mám [Em]čich.\n[Em]Stokrát ti lásku vrátím, [C]chci jen vidět [D]jiskry se vo [G]čích.\n\nREF:\n\nREF:\n\nREF:\n[G]Zvolna [C]kalhotky si [G]sundej, odpusť [C]jestli trochu [G]nalé[Am]hám.\n[G]Neznám [C]rým na slovo [G]sundej, ale [Bb]co já [F]vlastně [C]znám, co já vlastně [C]znám.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Kalhotky si sundej",
+          "subtitle": "Mig 21"
+        }
+      },
+      {
+        "id": "9bf8c80b-b88e-4bd9-996c-ae2bb499c5e2",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "12.1. Pohoda - Kabát",
+        "content": "* Pohoda\n** Kabát\n\n[F#m]Vezmu tě má milá rovnou [C#m]k nám\n[F#m]kolem louky lesy, hejna [C#m]vran\n[F#m]všude samá [E]kráva, samej [Bm]vůl\n\nMáme kino máme hospodu\nv obci všeobecnou pohodu\nmáme hujer žito, chléb i sůl\n\nRef.: [D]Když se u nás chlapy po[A]perou\ntak jenom [E]nožem a nebo se[Bm]kerou\n[D]v zimě tam dlouhý noci [A]sou a tuhej [Bm]mráz\n\nJak sou naše cesty zaváty\ntak vezmem vidle a nebo lopaty\nkdyž něco nejde, co na tom sejde, my máme čas.\n\nChlapy někdy prudký sou\nholky s motykama tancujou\ns ranní rosou táhnou do polí\nNikdo se tam nikam nežene\nmáme traktory a né že ne\naž to spatříš ledy povolí\n\nRef.: Když se u nás...\nsólo kytara\n\nHoří les a hoří rodnej dům\nhoří velkostatek sousedům\nto je smůla, drahá podívej\nHasiči to stejně přejedou\nhlavně si moc dobře nevedou\nschovej sirky ať je nevidej\n\nRef.: Když se u nás... [2x]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Pohoda",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "489b44de-bd22-4513-b08a-34fea9403435",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "12.2. Balada o špinavejch fuseklích - Kabát",
+        "content": "* Balada o špinavejch fuseklích\n** Kabát\n\n1.: [A]Ráno se [Bm]otevřou [D]moje oči vot[A]eklý\nkopnu jen po[Bm]d postel pá[D]r špinavejch [E]fuseklí\n[A]tělo mý je [Bm]bolavý a vedle [D]od sousedů hudb[A]a zní\n[A]nejde mi do [Bm]hlavy kd[D]o je ta holka co tu spí\nta ho[E]lka co tu se mnou spí – je s[A]mutná.\n\n2.: Jen divná nálada zůstane tu já jdu dál\na tak mi připadá jako bych jí něco vzal\nJeště se otočím a vrány v letu spočítám\nvidím jí na očích, že letěj asi někam tak\nto letěj asi někam tam.\n\nR.: Teď to v[G]šechno začíná a každá [D]holka nevinná\nprávo [C]první noci měl jsem jenom j[G]á[D]\nmožná nezbyl[G]o jí nic jen ty [D]slzy slaný víc\njak jí p[C]adaj večer do klína m[D]ě proklíná já vim.\n\n3.: Je ráno musím jít a její oči vlhký sou\nmý pravdě nevěří protože jí všichni lžou\nlehám si pod obraz a někdy se tak cejtim sám\njsou na něm havrani co letěj asi někam tam\nco letěj asi někam tam.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Balada o špinavejch fuseklích",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "ff9a97d9-5df9-42ac-95a9-728c632cdd18",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "12.3. Stará Lou - Kabát",
+        "content": "* Stará Lou\n** Kabát\n\n[F#]Já, línej [E]Bob a stará [A]Lou se [C#]táhnem po kraji\n[F#]už tolik [E]let a tolik [A]dnů na [C#]turné po [F#]ráji\n[F#]tam z horskejch [E]bystřin budem [A]pít\na [C#]pod hvězdama [F#]spát.\n[F#]Mám rád ten [E]vlídnej [A]ranní klid, to [C#]tolikrát\n[B]když noční můry padnou a opilci si [C#]lížou rány.\n\nRef.: Nad [D]obzorem svítá [A]je to za [E]náma\na naše stará Lou, [D]Lou ten lektvar [A]míchá\na [E]pak ho podává a nám se nechce [F#]spát.\n\nJá, línej Bob a stará Lou, ta parta podivná\njsme lovci zatoulanejch snů a po cestách\nco bůhví kde končí, se vláčíme a nad obzorem.\n\nRef.: Nad obzorem...\n\nNěkdo si jen tak trochu dal\njinej na dno hráb\na rohatej se pousmál\nspokojen, že zaťal dráp.\n\nRef.:Nad obzorem...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Stará Lou",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "470d51ac-7e53-4998-82e5-c9c37e015923",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "12.4. Šaman - Kabát",
+        "content": "* Šaman\n** Kabát\n\nPoslou[A]chám jak v dáli [D]temný [F#m]bonga zní\nněco tu [E]kolem [D]zavoní\nto starej [A]šaman cocu [E]žvejká\n\nHodně ví taky už nikam nespěchá\nnamísto nože v ruce má\nvyhaslou dýmku tiše dejchá\n\nProtejká mu tělem celá jeho zem\nopilost mužů a bolest žen\nkdyž děti na svět za tmy přijdou\n\nSedí sám a nikdo nemá tolik sil\naby ho něčím urazil\nto jenom pro něj hvězdy vyjdou\n\nA kdo z nás si může vážně v klidu říct\nže na svý černý duši nemá nic\nten slyší v dálce bonga znít\n\nKolikrát se ještě vrátím abych žil\na co jsem nezvlád napravil\nchtěl bych spláchnout jednou rád",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Šaman",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "15668762-2a8a-4b87-bf8f-f482256bcdf4",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "13.1. Stejně jako já - Chinaski",
+        "content": "* Stejně jako já\n** Chinaski\n\nZačátek: [C][F][C][F]\n\n1.: Do práce [C]nevstávám\nsvou ženu nemiluju\nsvinstva si ne[F]píchám\nbudoucnost ne[Bb]maluju\n\n2.: Po ránu nesnídám\nsloženky vyhazuju\nmilenky nestřídám\nslzy si zakazuju\n\n3.: Špatně se oblíkám\nnoviny nekupuju\nněco si namlouvám\nv něčem si důvěřuju\n\n4.: Moc dlouho vybírám\ntěžko se rozhoduju\na když se do toho dám\nničeho nelituju\n\nR.: [Am]A ty mi to vy[D]čítáš\n[F]a já se vůbec ne[D#]bráním\n[Am]a ty se na mě po[D]díváš\n[F]a já vím\nže v podstatě jseš na tom stejně jako [C]já\n\n*.: V podstatě nedalas mi šanci\nnikdy cokoliv říct\nzabalíš si věci\npřijdeš za měsíc\nA já čekám telefon\nsnad aspoň zavoláš\njestli já nebo on.\n\nSólo: [F][C][F]\n\nRefrén, sólo, refrén (opakování)",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 2
+        },
+        "cache": {
+          "title": "Stejně jako já",
+          "subtitle": "Chinaski"
+        }
+      },
+      {
+        "id": "e81490a2-721c-40b1-8b59-df836f4f3369",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "13.2. Město a rock and roll - Brutus",
+        "content": "* Město a rock and roll\n** Brutus\n\n[E]\n\n[A]Přišla za mnou moje holka s novinou\n[A]Že se bude hrát už jenom rock and roll\n[A]Je to blbý nemá zrovna volnej byt\n[A]Mohli jsme se taky trochu pobavit\nJó [D]rock and roll ten mi sílu [A]dá\nJak [E]alkohol mou [D]duši [A]objímá\n\nVyšli jsme si ruku v ruce do ulic\nKolem nás se táhla vůně z popelnic\nBůra v kapse pravda moc to nebylo\nA ne že by nám to zas tolik vadilo\nJó rock and roll ten mi sílu dá\nJak alkohol mou duši objímá\n\n- - - - - -\n\nPovídám jí najednou že zdá se mi\nRock and roll se hraje tady za dveřmi\nVona na mě že jsme tam už měli být\nZrovna hrajou její milej hit\nJó rock and roll ten mi sílu dá\nJak alkohol mou duši objímá",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Město a rock and roll",
+          "subtitle": "Brutus"
+        }
+      },
+      {
+        "id": "514118f5-e65d-4da3-bb18-02476acc4407",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "13.3. Jsem jaký jsem - Argema",
+        "content": "* Jsem jaký jsem\n** Argema\n\n[C]Jsem jaký [G]jsem a [Am]často ještě [F]horší[G]\n[C]tam kde [G]končí den můj [F]život začíná[G]\n[C]bláznivé [G]hry a [Am]dívky stále [F]krásné[G]\n[C]jsem jaký [G]jsem mě nikdo [F]ne[G]změ[C]ní.\n\nKdyž měsíc večer slunce střídá\nvycházím ven s kytarou\nhraju sám a přitom zpívám\nsnad pro dívku neznámou\n\nPotkal jsem už hodně dívek\nžádnou na srdci nenosím\npokaždé jí opustím hned\njak mě změnit zatouží.\n\nRef.: Jsem jaký jsem ...\n\nSólo kytara:\n\nPoznal jsem už hodně věcí\njednu v očích stále mám\nzrcadlo se tříští praská\ntak dopadnu taky já\n\nRef.: Jsem jaký jsem ...",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Jsem jaký jsem",
+          "subtitle": "Argema"
+        }
+      },
+      {
+        "id": "1093c034-785c-4496-8b4b-59cdaf0e7a17",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "13.4. Dál se ptej - Arakain (Aleš Brichta)",
+        "content": "* Dál dál se ptej\n** Arakain\n\n[Am]Dál dál se [G]ptej\n\n[Am]Vyprávím jak jsem dávno [G]brázdil Mis[Am]sissip[G]pi\ncítím se jako Tom a Hackelberry Finn\nslova jen z [F]knížek vyčte[G]ný\n[C]který v příběh pro[Em]měním a o[F]kouzlím tě [G]jím\n\nVzpomínám jak jsem vážně básnil o Aljašce\no lesech stříbrných a písních nočních hvězd\nverše o ránech studených\nkdy do mý stopy padal sníh\na snídal z tváří cest\n[C]A tak [Em]dál dál se [Am]ptej\n[E]já ti krásně můžu l[G]hát\njenom dál dál se ptej\nvymýšlím si nastokrát\nSvojich snů snů se ptej\nkdo chceš být a kdo jsem já\nkdo jsem já\n\nŘíkám ti jak jsem se rozšoupnul v Riu\nBacardi pil tak až se rozhoupala zem\nkrásný holky že bys řval\nzrovna běžel karneval\na každej jásal jen",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Dál dál se ptej",
+          "subtitle": "Arakain"
+        }
+      },
+      {
+        "id": "829f0c8e-0113-4789-afd7-56bda7f5f6a3",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "14.1. Zahrada ticha - Pavel Roth",
+        "content": "* Zahrada ticha\n** Pavel Roth\n\nPředehra:\n[Dm C F G]\n[Dm C F D7]\n[G Am] [4x]\n[G Am F C G]\n\n1.: Je tam brána [G]zdobená, cestu [Am]otevírá,\nzahradu [F]zelenou, [C]všechno [G]připomíná.\n\n2.: Jako dým závojů, mlhou upředených,\nvstupuješ do ticha, cestou vyvolených.\n\n3.: Je to březový háj, je to borový les,\nje to anglický park, je to hluboký vřes.\n\n4.: Je to samota dnů, kdy jsi pomalu zrál,\nv zahradě zelený, kde sis za dětství hrál.\n\n5.: Kolik chceš, tolik máš očí otevřených,\ntam venku za branou, leží studený sníh.\n\n6.: Z počátku uslyšíš, vítr a ptáčí hlas,\nv zahradě zelený, přejdou do ticha zas.\n\n7.: Světlo připomíná, rána slunečných dnů,\nv zahradě zelený, v zahradě beze snů.\n\n8.: Uprostřed závratí, sluncem prosvícených,\nvstupuješ do ticha cestou vyvolených.\n\nKonec:\n[Dm C F G]\n[Dm C F G]\n[Dm C F D7 G Am G Am G]",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Zahrada ticha",
+          "subtitle": "Pavel Roth"
+        }
+      },
+      {
+        "id": "d816c7b3-3563-40dd-9d63-6b188972ea40",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "14.2. Vyznání - Bobr a motýl",
+        "content": "* Vyznání\n\n[G]Znám tě pouze [C]krátce, [D]možná to byl [G]sen\nMěsíc jasně [C]svítil, [D]byl to zvláštní [G]den\n[Em]Vítr mírně [Am]foukal, [D]cítila [G]jsi chlad\nJá poprvé tě [C]objal, [D]chvíli jsem tě [G]hřál.\n\nRtům svým stále dáváš zámek nebo mříž\nVšechny plody lásky klidně zahodíš\nTrápím se a nevím co si myslet mám\nnáhle marně tady stojím, tebe přemlouvám.\n\nREF.: Ty jsi má [D]láska ty jsi [G]můj sen\nTebe chci [D]líbat snad [G]celý den\nTy jsi má [C]touha, tebe [G]chci mít\nnocí se [D]toulat, životem [G]jít.\n\nTvým vlasům teď zpívá vítr píseň svou\npodávám ti růži rosou skrápěnou\npovídáš tak sundej zámek těžkou mříž\nprosím jen mně dlouze líbej právě ty to smíš\n\nREF.:\nSólo.: [Em Am D G Em Am D G]\n2x\n\nMluvím jen ti líbám něžnou tvoji tvář\ndo očí se dívám, říkám, mám tě rád\nkřičí mokrá tráva od nás zválená\njenom měsíc na nás mává, hvězdy ty šly spát",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Vyznání",
+          "subtitle": ""
+        }
+      },
+      {
+        "id": "a8a2a49f-ed65-4844-8f5a-ae88795463ee",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "14.3. Nevinná - David Kraus",
+        "content": "* Nevinná\n** David Kraus\n\nNevi[E]nná[A], jsi nevi[E]nná[A]\nnevi[E]nná[A]\n\nsám v sobě [E]sedím, vagóny [G#m]počítám\n[A]můj vlak chce bejt [F#m7]zas se mnou sám\n[Amaj7]v náručí mě [G#]svírá, [A]odmykám\nna dně [E]tvých očí, poklady [G#m]pirátů\n[A]mý paže z [F#m7]větví akátů\n[A]prorůstaj [F#m7]tvým tělem, [B]nevinná\n\nRef:\n[E]Jsi sama tak co proti [B]lásce zmůžeš\n[C#m]připadá ti snad [A]láska zvrácena\n[E]léčíš [B]stínem úžeh, [A]ztracená\n[E]Neříkej, že ti [B]láska dává málo\n[C#m]vítr ten mystik [A]všechno ví\n[E]loví [B]tvoje [A]vlásky ve křoví\n\nNevinná, jsi nevinná\nnevinná, květina\n\n[A]svět se [C#m]chce tulit na [C#m]tvým bříšku\n[A]a cpe se [C#m]blíž, blíž, blíž\n[A]nabízí način[B]čanou mříž, mříž, spíš a zatím\n\nV nás padaj hvězdy dolů,\nale andělé nás zvou nahoru\nhvězdám není dáno zahynout\nNeříkej, že nám láska dává málo\nvítr ten mystik všechno ví\nloví naše vlásky ve křoví",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1,
+          "titleLayout": "inline"
+        },
+        "cache": {
+          "title": "Nevinná",
+          "subtitle": "David Kraus"
+        }
+      },
+      {
+        "id": "8daf7abd-3990-4bb0-a3e1-bc3318b6ee6e",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "14.4. Heavens - Titan rock (Bryan Adams)",
+        "content": "* Heaven\n** Bryan Adams\n\n[C]Vím, že [Am]uvidím tě jednou někde [G]stát\na [Dm]tvoje oči [Am]řeknou pojď\npojď si [Dm]se mnou chvilku [G]hrát\n\nVím, že potají mě jednou pozveš k vám\naž budou u vás všichni spát\nvšichni klidně spát\npotom teprv půjdu dál.\n\nRef.:[F]Pověz mi [G]dívko [Am]má\nproč jen [C]musím s tebou takhle [F]žít\nproč [F]stále [G]zůstává s [Am]námi po[G]dzim\nBez tebe usínám ale ve snu ležíš vedle mě\nkdyž k ránu procitám, tak tě hledám.\n\nSním o tom že snídáš vedle mě\na tvoje oči náhle jsou\njsou tak krásně tajemné\nJá do očí tvých teď hledím\nsvé city ukrýváš , tak však bloudím dál\njá se v tobě nevyznám.\nRef.:Pověz mi dívko má.....\n\n[Dm]Tak přestaň se [C]mě [F]bát\ncelé [G]srdce chci [Am]ti dát\n\ntak mi svoje za ně [G]dej\n[Dm]Touhu svoji [C]zapí[F]ráš\n\nmoje city [G]dávnou [C]znáš\n\nnééé – už [G]prosím neříkej.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Heaven",
+          "subtitle": "Bryan Adams"
+        }
+      },
+      {
+        "id": "9d02a89e-4c7a-4b8e-b139-bf4069f269be",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "15.1. Břímě - Kalandra Petr",
+        "content": "* Břímě\n** Kalandra Petr\n\n[G]včera mě spolkl [Bm]Nazareth,\naby [C]dnes vypliv ostatky [G]mý\nCelou noc hledám místo, kam složit vlasy šedivý.\nHej pane nechcete mi říct, kde tu složit hlavu svou,\nne řekl a hned zmizel tam za tou velkou bílou budovou\n\nR: [G]Sundej [Bm]z něj to [C]břímě,\n[G]a nech [Bm]těj za to [C]nic\n[G]dědek ať [Bm]už se nedře, [C]hej, hej …\n[G]nan [Bm]dej mi ho na [C]záda [G D Em D C]\n\nPřes rameno ranec svůj, jak rád bych nějaký místo měl\nkam bych se v klidu schoval a na všechno bych zapomněl\nV tom vidím Carmen s Ghiou jak po ulici proti jdou\nCarmen, že nemá čas, že si spolu rychle užijou.\nR:\n\nKdyž přijdeš k paní Mósrové, tam není co bys řek´\npřipadáš si jak v automatu, ve frontě na párek.\nPovídá mladej kmete a což takhle třeba Nathalii,\nuž není právě nejmladší a tak zůstaň dneska večer s ní.\nR:\n\nPostarší právník mě nakop a to rovnou do koulí,\npovídá já ti cestu ukážu, ale musíš s mým psem ven.\nPovídám moment soudče, já jsem taky Homo sapiens.\nAbych si trochu ulehčil, tu ránu jsem mu navrátil.\nR:\n\nNa dělový kouli z roku 1835,\nse vezu někam dolů, je na čase mi závidět\ntak letim mezi vás, pozdravuje vás tamten svět.\nŽe prej se nemusíme vracet, jé na čase mi závidět.\nR:",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Břímě",
+          "subtitle": "Kalandra Petr"
+        }
+      },
+      {
+        "id": "61dd2e63-4792-47a5-a862-80182c8119fa",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "15.2. Bílým koním - COP",
+        "content": "* Bílým koním\n** COP\n\n[Bm]Blázni[G]vý [Bm]tvý tóny [G]jsou,\n[Am]za krokem [C]bláznů [G]tvý slova [D]jdou,\n[Bm]bohatství [G]snad [Bm]nás zachrá[G]ní,\n[Am]nemáš to [C]štěstí a [G]já nadá[D]ní.\n\nR: [Am]Bílým [C]koním [G]snad [F]mávat teď [C]smím,\n[Am]bílým [C]koním[G], jsou [F]volní, to [C]vím\n\nJá nemám nic, jen zpívám,\njsem stále stejný, cítím se sám,\nmám touhy svý\\: pár koní mít,\npředhonit času běh, cválat a snít.\n\nR:\n\nTak žijem dál, zmizel i smích,\npár cizích lidí do snů zhroucených,\nchtěl jsem jít pryč, zůstávám,\ndál s dvojí pýchou svejch pár koní mám.\n\nR: +\n[Am]bílým [C]koním[G], jsou [F]volní, to [C]vím,",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Bílým koním",
+          "subtitle": "COP"
+        }
+      },
+      {
+        "id": "dbcfc05b-a6ae-44b7-9637-cf117d351e99",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "15.3. Sbohem, galánečko - Vlasta Redl (Fleret)",
+        "content": "* Sbohem, galánečko\n** Vlasta Redl\n\n1. [G]Sbohem, galá[Em]nečko, [Am]já už [D7]musím [G]jíti,\n[D]sbohem, galá[Bm]nečko, [Em]já už [A]musím [D]jíti,\n[Am]kyselé ví[D]nečko, [G]kyselé víne[Em]čko [D] [G]podalas' mně k [Em]pi [D]– [G]tí,\n[Am]kyselé ví[D]nečko, [G]kyselé víne[Em]čko [D][G]podalas' mně k [Em]pi [D]– [G]tí.\n\n2. \\[\\: Sbohem, galánečko, rozlučme sa v pánu, :\\]\n\\[\\: \\[: kyselé vínečko :\\] podalas' mně v džbánu. :\\]\n\n3. \\[\\: Ač bylo kyselé, přecaj sem sa opil, :\\]\n\\[\\: \\[: eště včil sa stydím, :\\] co sem všecko tropil. :\\]\n\n4. \\[\\: Ale sa něhněvám, žes' mňa ošidila, :\\]\n\\[\\: \\[: to ta moja žízeň, :\\] ta to zavinila. :\\]\n",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 1
+        },
+        "cache": {
+          "title": "Sbohem, galánečko",
+          "subtitle": "Vlasta Redl"
+        }
+      },
+      {
+        "id": "1887bf3d-58de-46cc-aeeb-b7ff50b8bf64",
+        "createdAt": 1784742713157,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "15.4. Místečko - Čechomor",
+        "content": "* Místečko\n** Čechomor\n\nRefrén:\n[C]Starala se máti má,\n[G]starala se máti má,\nhej nám hej[Dm] ,\n[C]kam mě k místu docho[G]vá.\n\nNestarej se matičko,\nnestarej se matičko,\nhej nám hej,\ndostanu já místečko.\n\nVerze:\n[Am]Na hřbitově za stěn[F]ou\ntam mi postel ustel[G]ou.\n[Am]Místo peřin pracho[F]vých\ndají třísek jedlo[G]vých.\n\nMísto vrchní peřiny\nnasypou navrch hlíny.\nPřátele se rozejdou\na mě tady zahrabou.\n\nZahrabou mě do jámy\nmezi červy a žáby.\nZvony budou pěkně hrát\na já budu tvrdě spát.\n\nKdyby hráli sto hodin,\nuž se nikdy nevzbudím.\n[Am]Kdyby hráli dvěstě [F]let\nuž nepřijdu na ten [G]svět [F],\n\nRefrén:\n[C]Starala se máti má,\n[G]starala se máti má,\nhej nám hej[Dm] ,\n[C]kam mě k místu docho[G]vá.\n\nNestarej se matičko,\nnestarej se matičko,\nhej nám hej,\ndostanu já místečko.\n\nSólo:\n[Am Dm C G]\n\nMluvení:\n[C]Starala se máti má,\n[G]starala se máti má,\nhej nám hej[Dm] ,\n[C]kam mě k místu docho[G]vá.\n\nNestarej se matičko,\nnestarej se matičko,\nhej nám hej,\ndostanu já místečko.\n\nRefrén:\n[C]Starala se máti má,\n[G]starala se máti má,\nhej nám hej[Dm] ,\n[C]kam mě k místu docho[G]vá.\n\nNestarej se matičko,\nnestarej se matičko,\nhej nám hej,\ndostanu já místečko.\n\nNana nana naj nanaj,\nNana nana naj nanaj,\nhej nám hej,\nkam mě k místu dochová.\n\nNana nana naj nanaj,\nNana nana naj nanaj,\nhej nám hej,\ndostanu já místečko.",
+        "favorite": false,
+        "settings": {
+          "aspectRatio": "A4",
+          "columns": 2
+        },
+        "cache": {
+          "title": "Místečko",
+          "subtitle": "Čechomor"
+        }
+      }
+    ],
+    "songbooks": [
+      {
+        "id": "cf800c1f-3664-4ab1-8767-95410909094e",
+        "createdAt": 1784703177863,
+        "updatedAt": 1784742713157,
+        "deletedAt": null,
+        "name": "GARDE 2016",
+        "title": "GARDE 2016",
+        "subtitle": "2016",
+        "author": "",
+        "settings": {},
+        "entries": [
+          "82575e1e-304f-4746-8545-1925697b59db",
+          "debcb22c-384c-4b4e-bbc5-c160c171b838",
+          "8ffc5bd6-271e-4ba6-abcd-61935bc530cc",
+          "eda7aa85-e361-44d6-a507-9b85e3369dde",
+          "a062c02c-f448-406c-a063-fa0fb8d5a73d",
+          "df01c545-d75c-44b3-a350-9e23329d246d",
+          "bc170fa3-a050-4043-a9da-bfafcaf148fa",
+          "8b4cfe2b-ff19-4222-8552-703839db6433",
+          "81b296c5-5094-4227-bc00-0721389ced90",
+          "6462487e-0517-4f83-bb4b-b22a32d328e7",
+          "6c4ab7e7-24ff-4e18-898d-e0ce1deaea9f",
+          "4587b72d-64c5-4695-951b-9eeb32dd626e",
+          "d2aeb97a-7ddd-4f64-8e02-46e99de3ab68",
+          "4b560e7c-74ba-4017-a6cb-90e396924291",
+          "3f7fc4c0-ebbd-40c0-b052-b4238e4295fa",
+          "238a348e-c289-4dc9-91f1-d3826f8170a9",
+          "b5c6a6c7-d07c-4a4a-8a8b-8db2c6d10cfd",
+          "ef7b0763-005e-48c6-a20b-aa087fd404a5",
+          "5e8ddd0f-ea9a-471e-8cbd-156e53a97f08",
+          "0a84b0c9-a49c-4544-b106-d0cc7f0b5f3e",
+          "13b41e28-8214-4b94-be18-8d4db6a3c021",
+          "962bf28d-310c-4d43-9ab5-4ce1a1449526",
+          "7ab19422-668d-4eea-9fe9-01240ca6a8da",
+          "1589251a-7fc3-4b7b-a556-4fd1471b7620",
+          "98b02ea4-8d9d-4e9e-a4e2-9d41752a3860",
+          "874bf257-4968-4694-b09e-eebc4954a406",
+          "f9b67583-47e7-4d2b-94e2-c3b151a41853",
+          "152e58ca-6b78-4c9f-bc8f-e68df9906a68",
+          "40b686be-9983-4ccc-aab5-4bc1ad37ac22",
+          "849d2217-85b0-478f-b54b-4fc3a542f382",
+          "463f6432-2f02-417c-a0ca-7b26c3ca4838",
+          "641048c4-104b-42da-a850-36a44b82dc59",
+          "c370f152-2ba4-44b3-9ae1-de603c2dac77",
+          "871e9e40-a7e9-4540-8bd5-3ae3e5799a57",
+          "a66f308b-14f5-4467-94ae-a8cab91f61bd",
+          "aeab9180-fe42-4225-9498-f21fcc7a6f29",
+          "d1a57f54-c592-423a-a6f0-3eb647e25ec9",
+          "75e47337-435c-4c98-bf2b-059218f7dca8",
+          "01800a4f-53d7-4735-a304-89874c28c358",
+          "4e62e733-df60-485e-b061-2dcb5e52f6f3",
+          "c754fcc0-16e8-4a94-9f37-7207b284bbdd",
+          "7e025cfb-5eab-4a57-86af-24eb9294293b",
+          "e49533d4-c569-4f96-8cc5-da7722bc320d",
+          "6ec6d552-09d7-43f2-9454-731dd99783d8",
+          "18ab24ed-c52f-4ffd-9d58-1974a768f707",
+          "45ee6ab8-53e7-49e2-8a3c-3eb419d092bd",
+          "00c9241d-c544-45cd-82b5-30cc399b523a",
+          "50c3b525-3461-45a8-9601-ef20dde31ed6",
+          "c4c778df-a574-456f-b992-efd79b7f1e2d",
+          "9bf8c80b-b88e-4bd9-996c-ae2bb499c5e2",
+          "489b44de-bd22-4513-b08a-34fea9403435",
+          "ff9a97d9-5df9-42ac-95a9-728c632cdd18",
+          "470d51ac-7e53-4998-82e5-c9c37e015923",
+          "15668762-2a8a-4b87-bf8f-f482256bcdf4",
+          "e81490a2-721c-40b1-8b59-df836f4f3369",
+          "514118f5-e65d-4da3-bb18-02476acc4407",
+          "1093c034-785c-4496-8b4b-59cdaf0e7a17",
+          "829f0c8e-0113-4789-afd7-56bda7f5f6a3",
+          "d816c7b3-3563-40dd-9d63-6b188972ea40",
+          "a8a2a49f-ed65-4844-8f5a-ae88795463ee",
+          "8daf7abd-3990-4bb0-a3e1-bc3318b6ee6e",
+          "9d02a89e-4c7a-4b8e-b139-bf4069f269be",
+          "61dd2e63-4792-47a5-a862-80182c8119fa",
+          "dbcfc05b-a6ae-44b7-9637-cf117d351e99",
+          "1887bf3d-58de-46cc-aeeb-b7ff50b8bf64"
+        ]
+      }
+    ]
+  }
+}
