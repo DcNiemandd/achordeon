@@ -75,6 +75,12 @@ at most 4: do not start a new subagent while 4 are already running — wait for 
 finish, then dispatch the next. The design is wave-safe because every worker is
 fully independent and writes a distinct fragment file.
 
+Spawn each worker on **Sonnet** (`model: "sonnet"`). Transcription is a vision +
+careful-copying task, not a hard-reasoning one, so Sonnet matches Opus on the parts
+that matter here (reading handwriting, diacritics, chord placement) at a fraction of
+the token cost. Every judgement call surfaces in the worker's `notes` for review
+anyway. Only reach for Opus to re-run a specific sheet Sonnet clearly botched.
+
 Give each subagent this brief:
 
 > Read and follow `.claude/skills/song-from-image/song-worker.md`. Transcribe the
