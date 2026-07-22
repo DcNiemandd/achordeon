@@ -82,6 +82,13 @@ the song content in your message.
   (`C:\path` keeps `\p`).
 - Leading whitespace on a lyric line is stripped; to force a real leading space use
   `\ `.
+- **Repeat brackets `[: … :]` are a double footgun — escape the colon too.** A line
+  that starts with a bracket-repeat mark and renders it literally must escape **both**
+  the bracket **and** the colon: `\[\: … :\]`. Escaping only the bracket (`\[: …`)
+  leaves an unescaped `:` followed by a space, so the parser reads the leading `\[`
+  as a **label** and eats the repeat mark. The colon is what makes a label, not the
+  bracket — so any line whose opening token is followed by `: ` needs that colon
+  written as `\:`, or the whole opening token silently becomes a label.
 
 ### Not in the text
 
@@ -156,16 +163,16 @@ Track whether you reached a clean parse — you report it as `clean` below.
 Set only what the image clearly shows; leave the rest to defaults. These go in your
 fragment's `settings` object, never in the content text.
 
-| Setting         | Value                               | Read from the image                                                                                                                                                                                                                               |
-| --------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                               |
-| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                                      |
-| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                            |
-| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                                     |
-| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so).         |
-| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                        |
-| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                               |
-| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                                |
+| Setting         | Value                               | Read from the image                                                                                                                                                                                                                       |
+| --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                       |
+| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                              |
+| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                    |
+| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                             |
+| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so). |
+| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                |
+| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                       |
+| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                        |
 
 Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
 default unless the image is clearly styled.
