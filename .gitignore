@@ -57,4 +57,7 @@ testem.log
 /typings
 .playwright-mcp
 .husky/_
+
+# Image to song skill output
 test_songbook
+!test_songbook/*.json

@@ -70,6 +70,10 @@ here is ever unclear.
   transposed**. This is intentional and correct; do not "fix" such brackets.
 - **Notation:** English names, plus German **`H`** as an alias for B natural (`B`
   stays B natural, `H` is the other name for it). Both are accepted.
+- **Default to English note names** unless the user asks otherwise. If the sheet
+  uses another system — German (`H`, `B` = B♭), Czech, or do-re-mi solfège —
+  **transcribe it into English** (`H` → `B`, German `B` → `Bb`, etc.). Only keep
+  the source notation when the user explicitly wants it preserved.
 - To print a **literal `[`** in a lyric, escape it: `\[`.
 
 ### Escapes `\`
@@ -101,9 +105,18 @@ Two modes, same steps:
 
 ### 1. Load the image(s)
 
-Read each image with the Read tool (it accepts PNG/JPG). For folder mode, glob the
-folder for image files and read them all. If no image is actually available, ask
-for it (or whether the user would rather type/paste the song).
+Read each image with the Read tool (it accepts PNG/JPG). If no image is actually
+available, ask for it (or whether the user would rather type/paste the song).
+
+For **folder mode**, glob the folder for image files, then work out which are new
+before reading anything. The import file lives **inside the image folder from the
+start**, named after it — **`<image-folder>/<Folder>.json`** (step 7); that is
+where you both look for it and write it, not a scratch copy. If it already exists,
+read it and collect the song `name`s already in it (each `name` is a source
+image's file name without extension). **Skip every image whose basename is already
+in that file — do not even Read it.** Only read and transcribe the new images; the
+builder merges them into the existing file (step 7). If every image is already
+present, there is nothing to do.
 
 ### 2. Order the songs (folder mode)
 
@@ -236,9 +249,24 @@ Follow what the user asked; if they didn't say, ask (default: print in chat).
   ```
 
 - **A whole folder as a songbook** → one manifest, a `songbook` key set to the
-  **folder name**, and one entry in `songs[]` per image. The builder wraps them into
-  a songbook (entries in manifest order) plus the songs themselves — importing the
-  file adds the songbook _and_ its songs in one go.
+  **folder name**, and one entry in `songs[]` per image. Write the output **into
+  the image folder itself**, named after it — `-o "<image-folder>/<Folder>.json"`
+  — so it sits next to the images from the first run onward (only the manifest is a
+  scratch file). The builder wraps the songs into a songbook (entries in file-name
+  order) plus the songs themselves — importing the file adds the songbook _and_ its
+  songs in one go.
+
+  ```bash
+  node .claude/skills/song-from-image/scripts/build-import.mjs manifest.json -o "path/to/Fleret/Fleret.json"
+  ```
+
+  If that `<Folder>.json` already exists, the builder **merges incrementally**: it
+  keeps the songs already in the file, adds only the ones in this manifest (matched
+  by `name` — a same-named song is replaced), reuses the songbook's id, and
+  re-orders it by file name. So the manifest need only carry the images you newly
+  read in step 1 — the rest come straight from the file, never re-read. (A _fresh_
+  build keeps manifest order, honouring a summary-image sequence; an incremental
+  merge orders by file name.)
 
   ```json
   {
@@ -253,9 +281,10 @@ Follow what the user asked; if they didn't say, ask (default: print in chat).
   (`"songbook"` may also be an object: `{ "name", "title", "subtitle", "author",
 "settings" }` for songbook-scope overrides like `chordColor`/`chordSize`.)
 
-  Write the manifest to a scratch file, run the builder, and give the user the
-  resulting `import.json` (or its path). The builder prints a per-song summary to
-  stderr — check it before handing over.
+  Write the manifest to a scratch file, run the builder so it writes
+  `<Folder>.json` inside the image folder, and give the user that path. The builder
+  prints a per-song summary to stderr — and, when it merged, how many songs it kept
+  vs. added — check it before handing over.
 
 ### 8. Report a result table
 

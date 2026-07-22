@@ -29,8 +29,12 @@
 //   node build-import.mjs manifest.json                 # → JSON on stdout
 //   node build-import.mjs manifest.json -o import.json  # → file
 //   cat manifest.json | node build-import.mjs -         # stdin
+//
+// If the -o file already exists, songs are MERGED into it (kept by name, new ones
+// added, songbook re-ordered by file name) — so a folder's import file grows one
+// batch at a time. Name that file after the folder: -o "<Folder>.json".
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import {
   inspect,
@@ -85,7 +89,7 @@ console.error('─'.repeat(48));
 console.error('Building Achordeon import');
 console.error('─'.repeat(48));
 
-const songs = manifest.songs.map((s, i) => {
+const newSongs = manifest.songs.map((s, i) => {
   if (typeof s.content !== 'string' || s.content.trim() === '') {
     console.error(`Song #${i + 1} has no "content".`);
     process.exit(1);
@@ -117,28 +121,66 @@ const songs = manifest.songs.map((s, i) => {
   };
 });
 
+// --- incremental merge into an existing import file ---
+// When -o points at a file that already exists, grow it instead of overwriting:
+// keep the songs already in it and add only the ones in this manifest (matched by
+// `name`, i.e. the source image's file name — a same-named song is replaced). This
+// is what lets a folder's import file accumulate one batch of new images at a time
+// without re-reading the ones already transcribed.
+let existing = null;
+if (outFile && existsSync(outFile)) {
+  try {
+    existing = JSON.parse(readFileSync(outFile, 'utf8'));
+  } catch (e) {
+    console.error(
+      `Existing ${outFile} is not valid JSON — refusing to merge/overwrite:`,
+      e.message,
+    );
+    process.exit(1);
+  }
+}
+
+const byFileName = (a, b) =>
+  a.name.localeCompare(b.name, undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+
+const newNames = new Set(newSongs.map((s) => s.name));
+const kept = (existing?.data?.songs ?? []).filter((s) => !newNames.has(s.name));
+// Fresh build → keep manifest order (honours a summary-image sequence, step 2).
+// Incremental merge → order by file name so new songs slot into place.
+const songs = kept.length ? [...kept, ...newSongs].sort(byFileName) : newSongs;
+if (kept.length)
+  console.error(
+    `\nMerging into ${outFile}: kept ${kept.length} existing, added/updated ${newSongs.length}.`,
+  );
+
 const songbooks = [];
-if (manifest.songbook) {
-  const b =
-    typeof manifest.songbook === 'string'
+const existingBook = existing?.data?.songbooks?.[0] ?? null;
+if (manifest.songbook || existingBook) {
+  const b = !manifest.songbook
+    ? {}
+    : typeof manifest.songbook === 'string'
       ? { name: manifest.songbook }
       : manifest.songbook;
-  const bookName = (b.name ?? 'Songbook').trim() || 'Songbook';
+  const bookName =
+    (b.name ?? existingBook?.name ?? 'Songbook').trim() || 'Songbook';
   songbooks.push({
-    id: randomUUID(),
-    createdAt: now,
+    id: existingBook?.id ?? randomUUID(),
+    createdAt: existingBook?.createdAt ?? now,
     updatedAt: now,
     deletedAt: null,
     name: bookName,
-    title: (b.title ?? bookName).trim(),
-    subtitle: (b.subtitle ?? '').trim(),
-    author: (b.author ?? '').trim(),
+    title: (b.title ?? existingBook?.title ?? bookName).trim(),
+    subtitle: (b.subtitle ?? existingBook?.subtitle ?? '').trim(),
+    author: (b.author ?? existingBook?.author ?? '').trim(),
     settings: pickSettings(
-      b.settings,
+      b.settings ?? existingBook?.settings,
       SONGBOOK_SETTING_KEYS,
       `songbook "${bookName}"`,
     ),
-    entries: songs.map((s) => s.id), // song order = manifest order
+    entries: songs.map((s) => s.id), // song order = songs order above
   });
   console.error(`\nSongbook: "${bookName}" (${songs.length} entries)`);
 }
