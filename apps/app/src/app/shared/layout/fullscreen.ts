@@ -69,7 +69,10 @@ export class Fullscreen {
   /** Must be called from a user gesture — browsers reject fullscreen otherwise. */
   async enter(): Promise<void> {
     this.ui.setFullscreen(true);
-    this.reveal();
+    // Hidden by default: fullscreen is "just the song". The bars come back on the
+    // next pointer move or tap (reveal), not on a timer from entry.
+    this._isChromeVisible.set(false);
+    this.clearIdle();
     await this.acquireWakeLock();
     try {
       await this.document.documentElement.requestFullscreen?.();
