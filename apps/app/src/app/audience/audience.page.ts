@@ -36,6 +36,25 @@ import { BlankPage, Fullscreen } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { AudiencePresenter } from './audience.presenter';
 
+/** localStorage key for the last PIN that successfully connected. */
+const LAST_PIN_KEY = 'achordeon.audience.lastPin';
+
+function readLastPin(): string {
+  try {
+    return localStorage.getItem(LAST_PIN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeLastPin(pin: string): void {
+  try {
+    localStorage.setItem(LAST_PIN_KEY, pin);
+  } catch {
+    // Storage unavailable (private mode / quota) — prefill is a nicety, skip it.
+  }
+}
+
 @Component({
   selector: 'app-audience-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,99 +72,6 @@ import { AudiencePresenter } from './audience.presenter';
   ],
   template: `
     <div class="screen" (pointerup)="onPointerUp($event)">
-      <!-- Top bar — the SAME shape and icon positions as performing, minus the
-           song controls a viewer does not get. It exists only once JOINED: the
-           PIN prompt is chromeless (no fullscreen, no leave). Hidden in
-           fullscreen until a tap reveals it. -->
-      @if (presenter.status() === 'joined') {
-        <nav
-          class="stage-bar stage-bar--top"
-          [hidden]="!fullscreen.isChromeVisible()"
-          data-testid="audience-bar"
-        >
-          <!-- Left: title + actions, same order as performing (summary,
-               fullscreen, audience/lobby), then the viewer-only hide-chords. -->
-          <div class="bar-start">
-            <span class="bar-title">{{ presenter.songName() || title }}</span>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [class.is-active]="isSummaryOpen()"
-              [attr.aria-pressed]="isSummaryOpen()"
-              [attr.aria-label]="summaryLabel"
-              [appTooltip]="summaryLabel"
-              data-testid="audience-summary"
-              (click)="isSummaryOpen.set(!isSummaryOpen())"
-            >
-              <app-icon name="list" />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [attr.aria-label]="fullscreenLabel()"
-              [attr.aria-pressed]="fullscreen.isActive()"
-              [appTooltip]="fullscreenLabel()"
-              data-testid="audience-fullscreen"
-              (click)="fullscreen.toggle()"
-            >
-              <app-icon
-                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-              />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [attr.aria-label]="lobbyLabel"
-              [appTooltip]="lobbyLabel"
-              data-testid="audience-lobby"
-              (click)="isLobbyOpen.set(true)"
-            >
-              <app-icon name="audience" />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [class.is-active]="presenter.hideChords()"
-              [attr.aria-pressed]="presenter.hideChords()"
-              [attr.aria-label]="hideChordsLabel"
-              [appTooltip]="hideChordsLabel"
-              data-testid="audience-hide-chords"
-              (click)="presenter.toggleHideChords()"
-            >
-              <app-icon name="note" />
-            </button>
-          </div>
-
-          <!-- Center: empty — a viewer has no prev/next (the same grid column
-               performing centres its nav in, kept so the exit sits identically). -->
-          <div class="bar-nav"></div>
-
-          <!-- Right: red exit cross — the performing close position. -->
-          <div class="bar-end-slot">
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              class="btn-exit"
-              [attr.aria-label]="exitLabel"
-              [appTooltip]="exitLabel"
-              data-testid="audience-exit"
-              (click)="exit()"
-            >
-              <app-icon name="close" />
-            </button>
-          </div>
-        </nav>
-      }
-
       <div class="render" data-testid="audience-render">
         @switch (view()) {
           @case ('entry') {
@@ -291,7 +217,93 @@ import { AudiencePresenter } from './audience.presenter';
               <img class="qr" [src]="qrDataUrl()" [alt]="qrLabel" />
             </dd>
           </dl>
+
+          <!-- Viewer-local, reflow-safe hide-chords (§4.6). It lives here rather
+               than in the 4-slot bottom bar: it is a viewer preference, not a
+               navigation control. -->
+          <button
+            appButton
+            type="button"
+            class="lobby-toggle"
+            [class.is-active]="presenter.hideChords()"
+            [attr.aria-pressed]="presenter.hideChords()"
+            data-testid="audience-hide-chords"
+            (click)="presenter.toggleHideChords()"
+          >
+            <app-icon name="note" />
+            {{ hideChordsLabel }}
+          </button>
         </app-dialog>
+      }
+
+      <!-- Bottom bar — a viewer's controls (Summary · Fullscreen · Lobby ·
+           Leave), only once JOINED (the PIN prompt is chromeless), hidden in
+           fullscreen until a tap reveals it. Four equal thumb targets. -->
+      @if (presenter.status() === 'joined') {
+        <nav
+          class="audience-bar"
+          [hidden]="!fullscreen.isChromeVisible()"
+          role="group"
+          [attr.aria-label]="controlsLabel"
+          data-testid="audience-bar"
+        >
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            class="control"
+            [class.is-active]="isSummaryOpen()"
+            [attr.aria-pressed]="isSummaryOpen()"
+            [attr.aria-label]="summaryLabel"
+            data-testid="audience-summary"
+            (click)="isSummaryOpen.set(!isSummaryOpen())"
+          >
+            <app-icon name="list" />
+            {{ summaryShort }}
+          </button>
+
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            class="control"
+            [attr.aria-pressed]="fullscreen.isActive()"
+            [attr.aria-label]="fullscreenLabel()"
+            data-testid="audience-fullscreen"
+            (click)="fullscreen.toggle()"
+          >
+            <app-icon
+              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+            />
+            {{ fullscreenShort }}
+          </button>
+
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            class="control"
+            [attr.aria-label]="lobbyLabel"
+            data-testid="audience-lobby"
+            (click)="isLobbyOpen.set(true)"
+          >
+            <app-icon name="audience" />
+            {{ lobbyShort }}
+          </button>
+
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            class="control is-danger"
+            [attr.aria-label]="exitLabel"
+            data-testid="audience-exit"
+            (click)="exit()"
+          >
+            <app-icon name="close" />
+            {{ leaveShort }}
+          </button>
+        </nav>
       }
     </div>
   `,
@@ -315,54 +327,50 @@ import { AudiencePresenter } from './audience.presenter';
       min-block-size: 0;
     }
 
-    /* Top bar — the SAME grid as performing: [left 1fr] [center auto] [right 1fr]
-       so the exit cross lands in the identical spot. The centre column is empty
-       (a viewer has no prev/next). Same surface + border as the performing bar. */
-    .stage-bar--top {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      padding: var(--space-1) var(--space-3);
+    /* Bottom bar — four equal thumb targets, the same shape as the stage's
+       mobile bar (icon over a short label, ghost buttons). */
+    .audience-bar {
+      display: flex;
+      gap: 2px;
+      padding: 2px;
       background: var(--surface-raised);
-      border-block-end: 1px solid var(--border);
+      border-block-start: 1px solid var(--border);
     }
 
-    .bar-start {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      flex-wrap: nowrap;
+    .audience-bar .control {
+      flex: 1;
       min-inline-size: 0;
+      flex-direction: column;
+      gap: 2px;
+      block-size: var(--tap-target);
+      font-size: var(--text-xs);
     }
 
-    .bar-nav {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
+    .audience-bar .control app-icon {
+      --icon-size: 20px;
     }
 
-    .bar-title {
-      font-size: var(--text-md);
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-inline-end: var(--space-1);
+    .audience-bar .control.is-active {
+      color: var(--brand);
     }
 
-    .bar-end-slot {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: var(--space-2);
-    }
-
-    .btn-exit {
+    .audience-bar .control.is-danger {
       color: var(--danger, #c0362c);
     }
 
-    .btn-exit:hover:not(:disabled) {
+    .audience-bar .control.is-danger:hover {
       background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
+    }
+
+    /* Hide-chords toggle inside the lobby dialog. */
+    .lobby-toggle {
+      margin-block-start: var(--space-4);
+      gap: var(--space-2);
+    }
+
+    .lobby-toggle.is-active {
+      color: var(--brand);
+      border-color: var(--brand);
     }
 
     /* Join form — centered card in the render area. */
@@ -553,7 +561,9 @@ export class AudiencePage {
 
   protected readonly isSummaryOpen = signal(false);
   protected readonly isLobbyOpen = signal(false);
-  protected readonly pinDraft = signal('');
+  // Prefilled with the last PIN that actually connected, so re-joining is one
+  // tap. Persisted in localStorage on a successful join (see the effect below).
+  protected readonly pinDraft = signal(readLastPin());
 
   /**
    * Which body to draw. `entry` covers "no PIN", "wrong PIN", "lobby ended" and
@@ -596,13 +606,22 @@ export class AudiencePage {
       const pin = this.pin();
       if (pin) void this.presenter.join(pin.toUpperCase());
     });
+
+    // Remember a PIN once it actually connects — that is the one worth
+    // prefilling next time (a mistyped PIN never reaches 'joined').
+    effect(() => {
+      if (this.presenter.status() === 'joined' && this.pin()) {
+        writeLastPin(this.pin().toUpperCase());
+      }
+    });
   }
 
   /** Leave the lobby: stop following, drop fullscreen, back to the PIN prompt. */
   protected exit(): void {
     void this.presenter.leave();
     void this.fullscreen.exit();
-    this.pinDraft.set('');
+    // Prefill the prompt with the PIN just left, so rejoining is one tap.
+    this.pinDraft.set(readLastPin());
     void this.router.navigate(['/audience']);
   }
 
@@ -641,7 +660,6 @@ export class AudiencePage {
       : this.enterFullscreenLabel;
   }
 
-  protected readonly title = $localize`:@@audience.title:Audience`;
   protected readonly joinHeading = $localize`:@@audience.joinHeading:Join an audience`;
   protected readonly joinHint = $localize`:@@audience.joinHint:Enter the PIN the performer is showing, or scan their QR code.`;
   protected readonly pinPlaceholder = $localize`:@@audience.pinPlaceholder:PIN`;
@@ -651,8 +669,13 @@ export class AudiencePage {
   protected readonly endedText = $localize`:@@audience.ended:The performer ended the lobby.`;
   protected readonly unavailableText = $localize`:@@audience.unavailable:Audiences are unavailable right now.`;
 
+  protected readonly controlsLabel = $localize`:@@audience.controls:Audience controls`;
   protected readonly summaryLabel = $localize`:@@audience.summary:Song list`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
+  protected readonly summaryShort = $localize`:@@stage.summaryShort:Songs`;
+  protected readonly fullscreenShort = $localize`:@@audience.fullscreenShort:Screen`;
+  protected readonly lobbyShort = $localize`:@@audience.lobby:Lobby`;
+  protected readonly leaveShort = $localize`:@@audience.leaveShort:Leave`;
   protected readonly closeLabel = $localize`:@@audience.close:Close`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
