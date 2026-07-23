@@ -15,6 +15,10 @@ apps/app/src/index.html
 # Generated from env (SUPABASE_URL/ANON_KEY) via apps/app/tools/gen-supabase.mjs
 apps/app/src/app/supabase.config.ts
 
+# Local env (committed template is .env.local.example)
+.env.local
+.env
+
 # Nx caches
 .nx/cache
 .nx/workspace-data

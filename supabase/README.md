@@ -24,15 +24,17 @@ The first run applies the migration in `supabase/migrations/` (the
 supabase db reset       # rebuild from migrations (drops local data)
 ```
 
-`supabase start` prints an **API URL** and **anon key**. With the local stack
-these are the fixed defaults already baked into
-`apps/app/src/app/supabase.config.ts`:
+`supabase start` prints an **API URL** and **anon key** (or `supabase status`).
+Point the app at them via an env file — one flow, same as production:
 
-- API URL: `http://127.0.0.1:54321`
-- anon key: the standard local demo JWT
+```bash
+cp .env.local.example .env.local     # defaults already target the local stack
+pnpm nx serve app                    # gen-supabase reads .env.local at build
+```
 
-So the app talks to your local stack out of the box — just `supabase start`,
-then run the app (`pnpm nx serve app`). Open Studio at `http://127.0.0.1:54323`.
+Open Studio at `http://127.0.0.1:54323`. If `supabase status` shows a **different
+anon key** than the example, paste it into `.env.local` — Kong rejects any other
+key with **403**.
 
 ## Try the lobby
 
@@ -50,9 +52,10 @@ Auth lands (Epic 10) they are silently denied — the live path is unaffected.
 
 `apps/app/src/app/supabase.config.ts` is **generated, never committed**
 (`apps/app/tools/gen-supabase.mjs`, gitignored — same pattern as `index.html`).
-It runs before `build`/`serve`/`test` and on `pnpm install`:
+It runs before `build`/`serve`/`test` and on `pnpm install`, reading the same two
+variables from `process.env` first, then `.env.local`:
 
-- **Dev** — no env set → the local `supabase start` defaults above. Just works.
+- **Dev** — `.env.local` (from the example) → local stack. Just works.
 - **Prod (CI)** — `.github/workflows/deploy.yml` passes `SUPABASE_URL` +
   `SUPABASE_ANON_KEY` from **repo variables** into the build.
 
