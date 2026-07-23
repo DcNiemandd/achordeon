@@ -81,7 +81,7 @@ type AudienceState = 'closed' | 'create' | 'active';
       (pointerup)="endSwipe($event)"
     >
       <app-action-bar [title]="presenter.name()">
-        <!-- Prev / position / next — the core navigation trio. -->
+        <!-- Spec order: Prev | Summary | Menu | Next -->
         <button
           appButton
           type="button"
@@ -95,24 +95,6 @@ type AudienceState = 'closed' | 'create' | 'active';
           <app-icon name="chevronLeft" />
         </button>
 
-        <span class="position" aria-live="polite" data-testid="stage-position">
-          {{ presenter.position() }} / {{ presenter.total() }}
-        </span>
-
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [disabled]="!presenter.hasNext()"
-          [attr.aria-label]="nextLabel"
-          [appTooltip]="nextLabel"
-          data-testid="stage-next"
-          (click)="presenter.next()"
-        >
-          <app-icon name="chevronRight" />
-        </button>
-
-        <!-- Summary: compact song list to jump. -->
         <button
           appButton
           type="button"
@@ -129,7 +111,7 @@ type AudienceState = 'closed' | 'create' | 'active';
         </button>
 
         <!-- Menu: Fullscreen | Create audience (premium) | Exit -->
-        <app-menu [label]="menuLabel" testid="stage-menu" bar-end>
+        <app-menu [label]="menuLabel" testid="stage-menu">
           <button
             appMenuItem
             type="button"
@@ -168,6 +150,19 @@ type AudienceState = 'closed' | 'create' | 'active';
             {{ exitLabel }}
           </button>
         </app-menu>
+
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [disabled]="!presenter.hasNext()"
+          [attr.aria-label]="nextLabel"
+          [appTooltip]="nextLabel"
+          data-testid="stage-next"
+          (click)="presenter.next()"
+        >
+          <app-icon name="chevronRight" />
+        </button>
       </app-action-bar>
 
       <!-- The render — fills whatever the bar left. Any pointer event on the
@@ -333,15 +328,6 @@ type AudienceState = 'closed' | 'create' | 'active';
     .render {
       flex: 1;
       min-block-size: 0;
-    }
-
-    .position {
-      padding-inline: var(--space-2);
-      font-size: var(--text-sm);
-      color: var(--text-muted);
-      white-space: nowrap;
-      min-inline-size: 4ch;
-      text-align: center;
     }
 
     /* Summary panel — overlays the render from the right side. */
