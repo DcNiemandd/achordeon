@@ -28,6 +28,15 @@ function channelName(pin: string): string {
   return `lobby:${pin}`;
 }
 
+/**
+ * How long to coalesce rapid song changes before pushing. A performer tapping
+ * "next" through a book to reach a song would otherwise track + broadcast the
+ * full Song object on every tap, flooding viewers with heavy payloads they
+ * render and then immediately discard — which is what makes a viewer freeze.
+ * Only the payload the performer lands on matters; this waits for them to land.
+ */
+const UPDATE_DEBOUNCE_MS = 200;
+
 @Injectable({ providedIn: 'root' })
 export class LobbyHost {
   private readonly supabase = inject(SupabaseService);
@@ -35,6 +44,8 @@ export class LobbyHost {
 
   private channel: RealtimeChannel | null = null;
   private currentPin = '';
+  private updateTimer: ReturnType<typeof setTimeout> | null = null;
+  private pending: LobbyPayload | null = null;
 
   private readonly _audienceCount = signal(0);
   /** Live viewers on the channel — Presence, minus the host's own entry. */
@@ -55,26 +66,48 @@ export class LobbyHost {
    * stays on the payload they joined with. So Presence keeps the current state
    * available for new joiners, and a Broadcast pushes the change to the ones
    * already here.
+   *
+   * Opening a channel (a new PIN) is immediate; **updates on the same PIN are
+   * debounced** so tapping quickly through a book pushes only the song landed on.
    */
   async sync(pin: string, payload: LobbyPayload): Promise<void> {
     if (pin !== this.currentPin) {
+      this.cancelPending();
       await this.close();
       await this.open(pin, payload);
       return;
     }
-    if (this.channel) {
-      await this.channel.track(payload);
-      await this.channel.send({
-        type: 'broadcast',
-        event: 'song',
-        payload,
-      });
-      this.analytics.songChanged(pin, payload.song.id);
+    if (!this.channel) return;
+    this.pending = payload;
+    if (this.updateTimer !== null) clearTimeout(this.updateTimer);
+    this.updateTimer = setTimeout(
+      () => this.flushPending(),
+      UPDATE_DEBOUNCE_MS,
+    );
+  }
+
+  /** Push the latest coalesced payload once the performer has settled. */
+  private flushPending(): void {
+    this.updateTimer = null;
+    const payload = this.pending;
+    this.pending = null;
+    if (!this.channel || payload === null) return;
+    void this.channel.track(payload);
+    void this.channel.send({ type: 'broadcast', event: 'song', payload });
+    this.analytics.songChanged(this.currentPin, payload.song.id);
+  }
+
+  private cancelPending(): void {
+    if (this.updateTimer !== null) {
+      clearTimeout(this.updateTimer);
+      this.updateTimer = null;
     }
+    this.pending = null;
   }
 
   /** Retire the lobby: remove the channel so every viewer's Presence sync drops it. */
   async close(): Promise<void> {
+    this.cancelPending();
     const client = await this.supabase.client();
     if (this.channel && client) {
       await client.removeChannel(this.channel);

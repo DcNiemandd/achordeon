@@ -257,11 +257,14 @@ import { AudiencePresenter } from './audience.presenter';
         </div>
       }
 
-      <!-- Read-only lobby dialog: PIN + QR (share with a neighbour) + count. -->
+      <!-- Read-only lobby dialog: PIN + QR (share with a neighbour) + count.
+           Viewport mode so it has a scrim and a click on the backdrop closes it
+           (there is no live render behind it worth keeping visible, unlike the
+           editor's settings dialog). -->
       @if (isLobbyOpen()) {
         <app-dialog
           [title]="lobbyLabel"
-          mode="container"
+          mode="viewport"
           data-testid="audience-lobby-dialog"
           (closed)="isLobbyOpen.set(false)"
         >
@@ -579,9 +582,11 @@ export class AudiencePage {
     });
   }
 
-  /** Leave the lobby and drop back to the PIN prompt. */
+  /** Leave the lobby: stop following, drop fullscreen, back to the PIN prompt. */
   protected exit(): void {
     void this.presenter.leave();
+    void this.fullscreen.exit();
+    this.pinDraft.set('');
     void this.router.navigate(['/audience']);
   }
 
