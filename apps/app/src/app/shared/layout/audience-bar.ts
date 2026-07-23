@@ -30,20 +30,6 @@ import { Fullscreen } from './fullscreen';
         type="button"
         variant="ghost"
         class="control"
-        [class.is-active]="session.isSummaryOpen()"
-        [attr.aria-pressed]="session.isSummaryOpen()"
-        [attr.aria-label]="summaryLabel"
-        data-testid="audience-summary"
-        (click)="session.toggleSummary()"
-      >
-        <app-icon name="list" />
-      </button>
-
-      <button
-        appButton
-        type="button"
-        variant="ghost"
-        class="control"
         [attr.aria-pressed]="fullscreen.isActive()"
         [attr.aria-label]="fullscreenLabel()"
         data-testid="audience-fullscreen"
@@ -52,6 +38,20 @@ import { Fullscreen } from './fullscreen';
         <app-icon
           [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
         />
+      </button>
+
+      <button
+        appButton
+        type="button"
+        variant="ghost"
+        class="control"
+        [class.is-active]="session.isSummaryOpen()"
+        [attr.aria-pressed]="session.isSummaryOpen()"
+        [attr.aria-label]="summaryLabel"
+        data-testid="audience-summary"
+        (click)="session.toggleSummary()"
+      >
+        <app-icon name="list" />
       </button>
 
       <button

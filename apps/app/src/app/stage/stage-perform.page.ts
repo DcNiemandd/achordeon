@@ -274,13 +274,13 @@ const SWIPE_THRESHOLD_PX = 60;
         </div>
       }
 
-      <!-- Audience dialog — stub for Epic 9 lobby creation.
-           Pre-creation: "Create lobby" button (premium highlighted).
-           Post-creation: PIN, audience URL, QR placeholder, "End lobby". -->
+      <!-- Audience dialog — lobby creation / live lobby info.
+           Viewport mode so a backdrop click closes it; there is no live render
+           behind it worth keeping visible (unlike the editor settings dialog). -->
       @if (session.audienceState() !== 'closed') {
         <app-dialog
           [title]="audienceDialogTitle"
-          mode="container"
+          mode="viewport"
           data-testid="stage-audience-dialog"
           (closed)="session.closeAudience()"
         >
