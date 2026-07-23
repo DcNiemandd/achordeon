@@ -22,7 +22,7 @@ import {
   Premium,
   Tooltip,
 } from '../primitives';
-import { ActionBar, BlankPage, Fullscreen } from '../shared/layout';
+import { BlankPage, Fullscreen, Viewport } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
@@ -61,7 +61,6 @@ type AudienceState = 'closed' | 'create' | 'active';
   },
   imports: [
     RouterLink,
-    ActionBar,
     BlankPage,
     SongRender,
     EmptyState,
@@ -80,90 +79,203 @@ type AudienceState = 'closed' | 'create' | 'active';
       (pointerdown)="startSwipe($event)"
       (pointerup)="endSwipe($event)"
     >
-      <app-action-bar [title]="presenter.name()">
-        <!-- Spec order: Prev | Summary | Menu | Next -->
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [disabled]="!presenter.hasPrev()"
-          [attr.aria-label]="prevLabel"
-          [appTooltip]="prevLabel"
-          data-testid="stage-prev"
-          (click)="presenter.prev()"
+      <!--
+        Responsive stage bar.
+        Mobile (< 1200px): bottom bar, Prev | Summary | Menu | Next in a row.
+        Desktop (≥ 1200px): top bar, [title + Summary + Menu] left unwrapped,
+        [Prev  Next] centered via CSS grid 1fr/auto/1fr.
+      -->
+      @if (viewport.isCompact()) {
+        <!-- Mobile bottom bar -->
+        <nav
+          class="stage-bar stage-bar--bottom"
+          [hidden]="!fullscreen.isChromeVisible()"
+          data-testid="stage-bar"
         >
-          <app-icon name="chevronLeft" />
-        </button>
-
-        <button
-          appButton
-          type="button"
-          variant="secondary"
-          [isIconOnly]="true"
-          [class.is-active]="presenter.isSummaryOpen()"
-          [attr.aria-pressed]="presenter.isSummaryOpen()"
-          [attr.aria-label]="summaryLabel"
-          [appTooltip]="summaryLabel"
-          data-testid="stage-summary"
-          (click)="toggleSummary()"
-        >
-          <app-icon name="list" />
-        </button>
-
-        <!-- Menu: Fullscreen | Create audience (premium) | Exit -->
-        <app-menu [label]="menuLabel" testid="stage-menu">
           <button
-            appMenuItem
+            appButton
             type="button"
-            data-testid="stage-menu-fullscreen"
-            (chosen)="fullscreen.toggle()"
+            [isIconOnly]="true"
+            [disabled]="!presenter.hasPrev()"
+            [attr.aria-label]="prevLabel"
+            [appTooltip]="prevLabel"
+            data-testid="stage-prev"
+            (click)="presenter.prev()"
           >
-            <app-icon
-              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-            />
-            {{
-              fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
-            }}
+            <app-icon name="chevronLeft" />
           </button>
 
-          <app-premium [label]="audienceLabel">
+          <button
+            appButton
+            type="button"
+            variant="secondary"
+            [isIconOnly]="true"
+            [class.is-active]="presenter.isSummaryOpen()"
+            [attr.aria-pressed]="presenter.isSummaryOpen()"
+            [attr.aria-label]="summaryLabel"
+            [appTooltip]="summaryLabel"
+            data-testid="stage-summary"
+            (click)="toggleSummary()"
+          >
+            <app-icon name="list" />
+          </button>
+
+          <app-menu [label]="menuLabel" testid="stage-menu">
             <button
               appMenuItem
               type="button"
-              [attr.aria-describedby]="audiencePremiumId"
-              data-testid="stage-menu-audience"
-              (chosen)="openAudienceDialog()"
+              data-testid="stage-menu-fullscreen"
+              (chosen)="fullscreen.toggle()"
             >
-              <app-icon name="audience" />
-              {{ audienceLabel }}
+              <app-icon
+                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+              />
+              {{
+                fullscreen.isActive()
+                  ? exitFullscreenLabel
+                  : enterFullscreenLabel
+              }}
             </button>
-          </app-premium>
+
+            <app-premium [label]="audienceLabel">
+              <button
+                appMenuItem
+                type="button"
+                [attr.aria-describedby]="audiencePremiumId"
+                data-testid="stage-menu-audience"
+                (chosen)="openAudienceDialog()"
+              >
+                <app-icon name="audience" />
+                {{ audienceLabel }}
+              </button>
+            </app-premium>
+
+            <button
+              appMenuItem
+              type="button"
+              class="is-danger"
+              routerLink="/stage"
+              data-testid="stage-menu-exit"
+            >
+              <app-icon name="close" />
+              {{ exitLabel }}
+            </button>
+          </app-menu>
 
           <button
-            appMenuItem
+            appButton
             type="button"
-            class="is-danger"
-            routerLink="/stage"
-            data-testid="stage-menu-exit"
+            [isIconOnly]="true"
+            [disabled]="!presenter.hasNext()"
+            [attr.aria-label]="nextLabel"
+            [appTooltip]="nextLabel"
+            data-testid="stage-next"
+            (click)="presenter.next()"
           >
-            <app-icon name="close" />
-            {{ exitLabel }}
+            <app-icon name="chevronRight" />
           </button>
-        </app-menu>
-
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [disabled]="!presenter.hasNext()"
-          [attr.aria-label]="nextLabel"
-          [appTooltip]="nextLabel"
-          data-testid="stage-next"
-          (click)="presenter.next()"
+        </nav>
+      } @else {
+        <!-- Desktop top bar -->
+        <nav
+          class="stage-bar stage-bar--top"
+          [hidden]="!fullscreen.isChromeVisible()"
+          data-testid="stage-bar"
         >
-          <app-icon name="chevronRight" />
-        </button>
-      </app-action-bar>
+          <!-- Left: title + actions, unwrapped -->
+          <div class="bar-start">
+            <span class="bar-title">{{ presenter.name() }}</span>
+
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [class.is-active]="presenter.isSummaryOpen()"
+              [attr.aria-pressed]="presenter.isSummaryOpen()"
+              [attr.aria-label]="summaryLabel"
+              [appTooltip]="summaryLabel"
+              data-testid="stage-summary"
+              (click)="toggleSummary()"
+            >
+              <app-icon name="list" />
+            </button>
+
+            <app-menu [label]="menuLabel" testid="stage-menu">
+              <button
+                appMenuItem
+                type="button"
+                data-testid="stage-menu-fullscreen"
+                (chosen)="fullscreen.toggle()"
+              >
+                <app-icon
+                  [name]="
+                    fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'
+                  "
+                />
+                {{
+                  fullscreen.isActive()
+                    ? exitFullscreenLabel
+                    : enterFullscreenLabel
+                }}
+              </button>
+
+              <app-premium [label]="audienceLabel">
+                <button
+                  appMenuItem
+                  type="button"
+                  [attr.aria-describedby]="audiencePremiumId"
+                  data-testid="stage-menu-audience"
+                  (chosen)="openAudienceDialog()"
+                >
+                  <app-icon name="audience" />
+                  {{ audienceLabel }}
+                </button>
+              </app-premium>
+
+              <button
+                appMenuItem
+                type="button"
+                class="is-danger"
+                routerLink="/stage"
+                data-testid="stage-menu-exit"
+              >
+                <app-icon name="close" />
+                {{ exitLabel }}
+              </button>
+            </app-menu>
+          </div>
+
+          <!-- Center: Prev + Next (centered by 1fr/auto/1fr grid) -->
+          <div class="bar-nav">
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!presenter.hasPrev()"
+              [attr.aria-label]="prevLabel"
+              [appTooltip]="prevLabel"
+              data-testid="stage-prev"
+              (click)="presenter.prev()"
+            >
+              <app-icon name="chevronLeft" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!presenter.hasNext()"
+              [attr.aria-label]="nextLabel"
+              [appTooltip]="nextLabel"
+              data-testid="stage-next"
+              (click)="presenter.next()"
+            >
+              <app-icon name="chevronRight" />
+            </button>
+          </div>
+        </nav>
+      }
 
       <!-- The render — fills whatever the bar left. Any pointer event on the
            render area reveals the chrome in fullscreen mode; startSwipe() calls
@@ -328,6 +440,52 @@ type AudienceState = 'closed' | 'create' | 'active';
     .render {
       flex: 1;
       min-block-size: 0;
+    }
+
+    /* Mobile bottom bar — sits below .render via flex order */
+    .stage-bar--bottom {
+      order: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-2);
+      background: var(--surface-raised);
+      border-block-start: 1px solid var(--border);
+    }
+
+    /* Desktop top bar — grid: [left 1fr] [nav auto] [empty 1fr] = nav centered */
+    .stage-bar--top {
+      order: -1;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: var(--space-1) var(--space-3);
+      background: var(--surface-raised);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .bar-start {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: nowrap;
+      min-inline-size: 0;
+    }
+
+    .bar-title {
+      font-size: var(--text-md);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-inline-end: var(--space-1);
+    }
+
+    .bar-nav {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
     }
 
     /* Summary panel — overlays the render from the right side. */
@@ -506,6 +664,7 @@ type AudienceState = 'closed' | 'create' | 'active';
 export class StagePerformPage {
   protected readonly presenter = inject(StagePerformPresenter);
   protected readonly fullscreen = inject(Fullscreen);
+  protected readonly viewport = inject(Viewport);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
   readonly songbookId = input.required<string>();
