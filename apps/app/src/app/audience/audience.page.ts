@@ -1,11 +1,16 @@
 // Audience page — Epic 9 ▸ Audience & lobby
 // Spec: docs/achordeon-implementation.md §Epic 9; apps/docs/docs/stage-audience/index.mdx
 //
-// The viewer half of the follow-along feature. Join a lobby by PIN (typed or via
-// the QR deep link `/audience/:pin`), then render the performer's current song
-// locally — the payload carries the full Song + resolved settings, so this
-// render matches the host's byte for byte (ADR-0003). The summary is read-only;
-// hide-chords is a viewer-local, reflow-safe toggle (§4.6).
+// The viewer half of the follow-along feature, and deliberately the SAME view as
+// performing (StagePerformPage) — one full-bleed render, a minimal top bar,
+// a summary overlay — only **read-only**: no prev/next (the performer drives the
+// song), a read-only summary (no jump), and a read-only lobby dialog (info, no
+// create/end). Plus the one thing only a viewer has: a local, reflow-safe
+// hide-chords toggle (§4.6).
+//
+// Join by PIN (typed) or the QR deep link `/audience/:pin`; the payload carries
+// the full Song + resolved settings, so this render matches the host's byte for
+// byte (ADR-0003).
 
 import {
   ChangeDetectionStrategy,
@@ -27,7 +32,7 @@ import {
   Icon,
   Tooltip,
 } from '../primitives';
-import { ActionBar, BlankPage, Fullscreen } from '../shared/layout';
+import { BlankPage, Fullscreen } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { AudiencePresenter } from './audience.presenter';
 
@@ -35,9 +40,8 @@ import { AudiencePresenter } from './audience.presenter';
   selector: 'app-audience-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [AudiencePresenter],
-  host: { '(document:keydown.escape)': 'onEscape()' },
+  host: { '(document:keydown)': 'onKeyDown($event)' },
   imports: [
-    ActionBar,
     BlankPage,
     SongRender,
     Button,
@@ -48,225 +52,301 @@ import { AudiencePresenter } from './audience.presenter';
     Tooltip,
   ],
   template: `
-    <app-action-bar [title]="presenter.songName() || title">
-      @if (presenter.status() === 'joined') {
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [class.is-active]="isSummaryOpen()"
-          [attr.aria-pressed]="isSummaryOpen()"
-          [attr.aria-label]="summaryLabel"
-          [appTooltip]="summaryLabel"
-          data-testid="audience-summary"
-          (click)="isSummaryOpen.set(!isSummaryOpen())"
-        >
-          <app-icon name="list" />
-        </button>
-
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [class.is-active]="presenter.hideChords()"
-          [attr.aria-pressed]="presenter.hideChords()"
-          [attr.aria-label]="hideChordsLabel"
-          [appTooltip]="hideChordsLabel"
-          data-testid="audience-hide-chords"
-          (click)="presenter.toggleHideChords()"
-        >
-          <app-icon name="note" />
-        </button>
-
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [attr.aria-label]="lobbyLabel"
-          [appTooltip]="lobbyLabel"
-          data-testid="audience-lobby"
-          (click)="isLobbyOpen.set(true)"
-        >
-          <app-icon name="audience" />
-        </button>
-      }
-
-      <button
-        appButton
-        type="button"
-        [isIconOnly]="true"
-        [attr.aria-label]="fullscreenLabel()"
-        [attr.aria-pressed]="fullscreen.isActive()"
-        [appTooltip]="fullscreenLabel()"
-        data-testid="audience-fullscreen"
-        (click)="fullscreen.toggle()"
+    <div class="screen" (pointerup)="onPointerUp($event)">
+      <!-- Top bar — the same shape as performing, minus the song controls.
+           Hidden in fullscreen until a tap reveals it. -->
+      <nav
+        class="stage-bar stage-bar--top"
+        [hidden]="!fullscreen.isChromeVisible()"
+        data-testid="audience-bar"
       >
-        <app-icon
-          [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-        />
-      </button>
-    </app-action-bar>
+        <div class="bar-start">
+          <span class="bar-title">{{ presenter.songName() || title }}</span>
 
-    <div class="body" data-testid="audience-body">
-      @switch (view()) {
-        @case ('entry') {
-          <!-- No PIN yet, or the joined lobby went away: ask for a PIN. -->
-          <form
-            class="join"
-            (submit)="submitPin($event)"
-            data-testid="audience-join"
-          >
-            <h2 class="join-title">{{ joinHeading }}</h2>
-            <p class="join-hint">{{ joinHint }}</p>
-            @if (presenter.status() === 'not-found') {
-              <p class="join-error" data-testid="audience-not-found">
-                <app-icon name="warning" />
-                {{ notFoundText }}
-              </p>
-            }
-            @if (presenter.status() === 'ended') {
-              <p class="join-error" data-testid="audience-ended">
-                {{ endedText }}
-              </p>
-            }
-            @if (presenter.status() === 'unavailable') {
-              <p class="join-error" data-testid="audience-unavailable">
-                {{ unavailableText }}
-              </p>
-            }
-            <input
-              appField
-              class="join-input"
-              [placeholder]="pinPlaceholder"
-              autocapitalize="characters"
-              autocomplete="off"
-              spellcheck="false"
-              [value]="pinDraft()"
-              data-testid="audience-pin-input"
-              (input)="onPinInput($event)"
-            />
+          @if (presenter.status() === 'joined') {
             <button
               appButton
-              type="submit"
-              variant="primary"
-              [disabled]="pinDraft().length === 0"
-              data-testid="audience-join-submit"
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="isSummaryOpen()"
+              [attr.aria-pressed]="isSummaryOpen()"
+              [attr.aria-label]="summaryLabel"
+              [appTooltip]="summaryLabel"
+              data-testid="audience-summary"
+              (click)="isSummaryOpen.set(!isSummaryOpen())"
             >
-              {{ joinLabel }}
+              <app-icon name="list" />
             </button>
-          </form>
-        }
-        @case ('connecting') {
-          <app-empty-state
-            [text]="connectingText"
-            data-testid="audience-connecting"
-          />
-        }
-        @case ('render') {
-          <app-blank-page [ratio]="presenter.pageRatio()">
-            @if (presenter.svg(); as svg) {
-              <app-song-render [svg]="svg" />
-            }
-          </app-blank-page>
-        }
-      }
-    </div>
 
-    <!-- Read-only summary: search + jump-list, but no jump. The current song is
-         marked; a viewer follows, it does not choose. -->
-    @if (isSummaryOpen()) {
-      <div
-        class="summary"
-        role="dialog"
-        [attr.aria-label]="summaryLabel"
-        data-testid="audience-summary-panel"
-      >
-        <div class="summary-head">
-          <h2 class="summary-title">{{ summaryHeading }}</h2>
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="presenter.hideChords()"
+              [attr.aria-pressed]="presenter.hideChords()"
+              [attr.aria-label]="hideChordsLabel"
+              [appTooltip]="hideChordsLabel"
+              data-testid="audience-hide-chords"
+              (click)="presenter.toggleHideChords()"
+            >
+              <app-icon name="note" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [attr.aria-label]="lobbyLabel"
+              [appTooltip]="lobbyLabel"
+              data-testid="audience-lobby"
+              (click)="isLobbyOpen.set(true)"
+            >
+              <app-icon name="audience" />
+            </button>
+          }
+        </div>
+
+        <div class="bar-end-slot">
           <button
             appButton
             type="button"
             [isIconOnly]="true"
-            [attr.aria-label]="closeLabel"
-            (click)="isSummaryOpen.set(false)"
+            [attr.aria-label]="fullscreenLabel()"
+            [attr.aria-pressed]="fullscreen.isActive()"
+            [appTooltip]="fullscreenLabel()"
+            data-testid="audience-fullscreen"
+            (click)="fullscreen.toggle()"
+          >
+            <app-icon
+              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+            />
+          </button>
+
+          <button
+            appButton
+            type="button"
+            [isIconOnly]="true"
+            class="btn-exit"
+            [attr.aria-label]="exitLabel"
+            [appTooltip]="exitLabel"
+            data-testid="audience-exit"
+            (click)="exit()"
           >
             <app-icon name="close" />
           </button>
         </div>
+      </nav>
 
-        <input
-          appField
-          type="search"
-          class="summary-search"
-          [placeholder]="searchPlaceholder"
-          [value]="presenter.summaryQuery()"
-          data-testid="audience-summary-search"
-          (input)="onSummarySearch($event)"
-        />
-
-        <ul class="summary-list" data-testid="audience-summary-list">
-          @for (row of presenter.summaryRows(); track row.index) {
-            <li
-              class="summary-row"
-              [class.is-current]="row.index === presenter.currentIndex()"
-              [attr.data-testid]="'audience-summary-row-' + row.index"
+      <div class="render" data-testid="audience-render">
+        @switch (view()) {
+          @case ('entry') {
+            <!-- No PIN yet, or the joined lobby went away: ask for a PIN. -->
+            <form
+              class="join"
+              (submit)="submitPin($event)"
+              data-testid="audience-join"
             >
-              <span class="summary-num">{{ row.index + 1 }}</span>
-              <span class="summary-info">
-                <span class="summary-name">{{ row.name }}</span>
-                @if (row.title) {
-                  <span class="summary-sub">{{ row.title }}</span>
-                }
-              </span>
-            </li>
+              <h2 class="join-title">{{ joinHeading }}</h2>
+              <p class="join-hint">{{ joinHint }}</p>
+              @if (presenter.status() === 'not-found') {
+                <p class="join-error" data-testid="audience-not-found">
+                  <app-icon name="warning" />
+                  {{ notFoundText }}
+                </p>
+              }
+              @if (presenter.status() === 'ended') {
+                <p class="join-error" data-testid="audience-ended">
+                  {{ endedText }}
+                </p>
+              }
+              @if (presenter.status() === 'unavailable') {
+                <p class="join-error" data-testid="audience-unavailable">
+                  {{ unavailableText }}
+                </p>
+              }
+              <input
+                appField
+                class="join-input"
+                [placeholder]="pinPlaceholder"
+                autocapitalize="characters"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="pinDraft()"
+                data-testid="audience-pin-input"
+                (input)="onPinInput($event)"
+              />
+              <button
+                appButton
+                type="submit"
+                variant="primary"
+                [disabled]="pinDraft().length === 0"
+                data-testid="audience-join-submit"
+              >
+                {{ joinLabel }}
+              </button>
+            </form>
           }
-          @if (presenter.summaryRows().length === 0) {
-            <li class="summary-empty">{{ noMatchText }}</li>
+          @case ('connecting') {
+            <app-empty-state
+              [text]="connectingText"
+              data-testid="audience-connecting"
+            />
           }
-        </ul>
+          @case ('render') {
+            <app-blank-page [ratio]="presenter.pageRatio()">
+              @if (presenter.svg(); as svg) {
+                <app-song-render [svg]="svg" />
+              }
+            </app-blank-page>
+          }
+        }
       </div>
-    }
 
-    <!-- Lobby info: PIN + QR (share with a neighbour) + live count. -->
-    @if (isLobbyOpen()) {
-      <app-dialog
-        [title]="lobbyLabel"
-        mode="container"
-        data-testid="audience-lobby-dialog"
-        (closed)="isLobbyOpen.set(false)"
-      >
-        <dl class="lobby-info">
-          <dt>{{ pinLabel }}</dt>
-          <dd class="lobby-pin" data-testid="audience-lobby-pin">
-            {{ pin() }}
-          </dd>
-          <dt>{{ countLabel }}</dt>
-          <dd data-testid="audience-lobby-count">
-            {{ presenter.audienceCount() }}
-          </dd>
-          <dt>{{ qrLabel }}</dt>
-          <dd class="lobby-qr">
-            <img class="qr" [src]="qrDataUrl()" [alt]="qrLabel" />
-          </dd>
-        </dl>
-      </app-dialog>
-    }
+      <!-- Read-only summary: search + list, no jump. The current song is marked;
+           a viewer follows, it does not choose. -->
+      @if (isSummaryOpen()) {
+        <div
+          class="summary"
+          role="dialog"
+          [attr.aria-label]="summaryLabel"
+          data-testid="audience-summary-panel"
+        >
+          <div class="summary-head">
+            <h2 class="summary-title">{{ summaryHeading }}</h2>
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [attr.aria-label]="closeLabel"
+              (click)="isSummaryOpen.set(false)"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
+
+          <input
+            appField
+            type="search"
+            class="summary-search"
+            [placeholder]="searchPlaceholder"
+            [value]="presenter.summaryQuery()"
+            data-testid="audience-summary-search"
+            (input)="onSummarySearch($event)"
+          />
+
+          <ul class="summary-list" data-testid="audience-summary-list">
+            @for (row of presenter.summaryRows(); track row.index) {
+              <li
+                class="summary-row"
+                [class.is-current]="row.index === presenter.currentIndex()"
+                [attr.data-testid]="'audience-summary-row-' + row.index"
+              >
+                <span class="summary-num">{{ row.index + 1 }}</span>
+                <span class="summary-info">
+                  <span class="summary-name">{{ row.name }}</span>
+                  @if (row.title) {
+                    <span class="summary-sub">{{ row.title }}</span>
+                  }
+                </span>
+              </li>
+            }
+            @if (presenter.summaryRows().length === 0) {
+              <li class="summary-empty">{{ noMatchText }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      <!-- Read-only lobby dialog: PIN + QR (share with a neighbour) + count. -->
+      @if (isLobbyOpen()) {
+        <app-dialog
+          [title]="lobbyLabel"
+          mode="container"
+          data-testid="audience-lobby-dialog"
+          (closed)="isLobbyOpen.set(false)"
+        >
+          <dl class="lobby-info">
+            <dt>{{ pinLabel }}</dt>
+            <dd class="lobby-pin" data-testid="audience-lobby-pin">
+              {{ pin() }}
+            </dd>
+            <dt>{{ countLabel }}</dt>
+            <dd data-testid="audience-lobby-count">
+              {{ presenter.audienceCount() }}
+            </dd>
+            <dt>{{ qrLabel }}</dt>
+            <dd class="lobby-qr">
+              <img class="qr" [src]="qrDataUrl()" [alt]="qrLabel" />
+            </dd>
+          </dl>
+        </app-dialog>
+      }
+    </div>
   `,
   styles: `
     :host {
+      display: block;
+      block-size: 100%;
+    }
+
+    .screen {
       display: flex;
       flex-direction: column;
       block-size: 100%;
       position: relative;
       overflow: hidden;
+      user-select: none;
     }
 
-    .body {
+    .render {
       flex: 1;
       min-block-size: 0;
     }
 
-    /* Join form — centered card. */
+    /* Top bar — grid: [left 1fr] [right auto] (no centered nav; a viewer has no
+       prev/next). Same surface + border as the performing bar. */
+    .stage-bar--top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: var(--space-1) var(--space-3);
+      background: var(--surface-raised);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .bar-start {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: nowrap;
+      min-inline-size: 0;
+    }
+
+    .bar-title {
+      font-size: var(--text-md);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-inline-end: var(--space-1);
+    }
+
+    .bar-end-slot {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .btn-exit {
+      color: var(--danger, #c0362c);
+    }
+
+    .btn-exit:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
+    }
+
+    /* Join form — centered card in the render area. */
     .join {
       display: flex;
       flex-direction: column;
@@ -309,7 +389,7 @@ import { AudiencePresenter } from './audience.presenter';
       text-transform: uppercase;
     }
 
-    /* Summary panel — overlays from the right, same shape as Stage's. */
+    /* Summary panel — overlays from the right, same shape as performing. */
     .summary {
       position: absolute;
       inset-block: 0;
@@ -499,6 +579,19 @@ export class AudiencePage {
     });
   }
 
+  /** Leave the lobby and drop back to the PIN prompt. */
+  protected exit(): void {
+    void this.presenter.leave();
+    void this.router.navigate(['/audience']);
+  }
+
+  /** In fullscreen, a tap reveals the chrome (no dedicated zone — like Stage). */
+  protected onPointerUp(event: PointerEvent): void {
+    if ((event.target as HTMLElement).closest('.summary, button, a, input'))
+      return;
+    this.fullscreen.reveal();
+  }
+
   protected onPinInput(event: Event): void {
     this.pinDraft.set((event.target as HTMLInputElement).value.toUpperCase());
   }
@@ -514,8 +607,11 @@ export class AudiencePage {
     this.presenter.setSummaryQuery((event.target as HTMLInputElement).value);
   }
 
-  protected onEscape(): void {
-    if (this.isSummaryOpen()) this.isSummaryOpen.set(false);
+  protected onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.isSummaryOpen()) {
+      event.preventDefault();
+      this.isSummaryOpen.set(false);
+    }
   }
 
   protected fullscreenLabel(): string {
@@ -540,6 +636,7 @@ export class AudiencePage {
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
   protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
+  protected readonly exitLabel = $localize`:@@audience.exit:Leave audience`;
 
   protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
   protected readonly pinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
