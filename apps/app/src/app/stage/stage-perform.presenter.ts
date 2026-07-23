@@ -7,16 +7,33 @@ import {
   ParserService,
   RenderService,
   SettingsStore,
+  SongStore,
   SongbookStore,
 } from '@achordeon/shared/data-access';
 import { SONG_REPOSITORY } from '@achordeon/shared/data-access';
 import {
+  ALL_SONGS_ID,
+  isAllSongs,
   resolveSettings,
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
 
 const A4_RATIO = 210 / 297;
+
+/** Minimal fake-book record for the virtual "All songs" case. */
+const ALL_SONGS_BOOK: Songbook = {
+  id: ALL_SONGS_ID,
+  name: $localize`:@@songbooks.allSongs:All songs`,
+  title: '',
+  subtitle: '',
+  author: '',
+  entries: [],
+  settings: {},
+  createdAt: 0,
+  updatedAt: 0,
+  deletedAt: null,
+};
 
 export interface StageSummaryRow {
   readonly index: number;
@@ -31,10 +48,14 @@ export interface StageSummaryRow {
  * index, renders the current song to SVG, and provides navigation commands.
  *
  * Signals in, commands out (PRD-UI-SHELL.md §3).
+ *
+ * For the virtual All songs book, `booksStore.byId` returns undefined — so the
+ * presenter detects `isAllSongs(id)` and calls `songsStore.allLive()` instead.
  */
 @Injectable()
 export class StagePerformPresenter {
   private readonly booksStore = inject(SongbookStore);
+  private readonly songsStore = inject(SongStore);
   private readonly songRepo = inject(SONG_REPOSITORY);
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
@@ -119,14 +140,25 @@ export class StagePerformPresenter {
   /**
    * Load the songbook and hydrate its entry songs.
    *
-   * A missing or tombstoned book bounces back to /stage rather than showing a
-   * broken view.
+   * For the virtual All songs book (`isAllSongs(id)` is true), the store has
+   * no record, so we bypass the store and use `songsStore.allLive()` directly.
+   * That returns all live songs in name order, which is the logical definition
+   * of "All songs".
    *
-   * Songs are loaded in entry order, and tombstoned entries are skipped rather
-   * than making the list sparse: a deleted song was removed from the library,
-   * not from this performance.
+   * For real books, a missing or tombstoned book bounces back to /stage rather
+   * than showing a broken view. Songs that were deleted are skipped: a deleted
+   * song was removed from the library, not from this performance, so the list
+   * just becomes shorter.
    */
   async load(id: string): Promise<void> {
+    if (isAllSongs(id)) {
+      this._book.set(ALL_SONGS_BOOK);
+      this._index.set(0);
+      const songs = await this.songsStore.allLive({ sort: 'name' });
+      this._songs.set(songs);
+      return;
+    }
+
     const book = await this.booksStore.byId(id);
     if (!book || book.deletedAt !== null) {
       void this.router.navigate(['/stage']);

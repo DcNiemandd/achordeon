@@ -1,15 +1,27 @@
 // Stage perform page — Epic 8 ▸ performing mode
-// Spec: docs/achordeon-implementation.md §Epic 8
+// Spec: docs/achordeon-implementation.md §Epic 8; apps/docs/docs/stage-audience/index.mdx
 
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Button, EmptyState, Field, Icon, Tooltip } from '../primitives';
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  Field,
+  Icon,
+  Menu,
+  MenuItem,
+  Premium,
+  Tooltip,
+} from '../primitives';
 import { ActionBar, BlankPage, Fullscreen } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -17,8 +29,13 @@ import { StagePerformPresenter } from './stage-perform.presenter';
 /** Minimum horizontal travel (px) that counts as a swipe. */
 const SWIPE_THRESHOLD_PX = 60;
 
+type AudienceState = 'closed' | 'create' | 'active';
+
 /**
  * Performing mode: one song at a time, full-screen, swipe to navigate.
+ *
+ * Action bar (docs spec): Prev | n/total | Next | Summary | Menu
+ * Menu items: Fullscreen toggle, Create audience (premium), Exit.
  *
  * The action bar auto-hides in fullscreen mode and comes back on any pointer
  * event — the `Fullscreen` service handles this through `reveal()`. There is
@@ -31,6 +48,9 @@ const SWIPE_THRESHOLD_PX = 60;
  * The summary is a non-blocking panel that slides over the render area. It
  * stays open until dismissed so the performer can browse without losing their
  * place.
+ *
+ * DestroyRef exits fullscreen on route leave so the browser chrome is restored
+ * automatically — no manual "exit before leaving" friction.
  */
 @Component({
   selector: 'app-stage-perform-page',
@@ -49,6 +69,10 @@ const SWIPE_THRESHOLD_PX = 60;
     Field,
     Icon,
     Tooltip,
+    Menu,
+    MenuItem,
+    Premium,
+    Dialog,
   ],
   template: `
     <div
@@ -57,17 +81,6 @@ const SWIPE_THRESHOLD_PX = 60;
       (pointerup)="endSwipe($event)"
     >
       <app-action-bar [title]="presenter.name()">
-        <a
-          appButton
-          bar-end
-          routerLink="/stage"
-          [attr.aria-label]="backLabel"
-          [appTooltip]="backLabel"
-          data-testid="stage-back"
-        >
-          <app-icon name="close" />
-        </a>
-
         <!-- Prev / position / next — the core navigation trio. -->
         <button
           appButton
@@ -115,38 +128,46 @@ const SWIPE_THRESHOLD_PX = 60;
           <app-icon name="list" />
         </button>
 
-        <!-- Fullscreen: enter / exit performing mode. -->
-        <button
-          appButton
-          type="button"
-          variant="secondary"
-          [isIconOnly]="true"
-          [attr.aria-label]="
-            fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
-          "
-          [appTooltip]="
-            fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
-          "
-          data-testid="stage-fullscreen"
-          (click)="fullscreen.toggle()"
-        >
-          <app-icon
-            [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-          />
-        </button>
+        <!-- Menu: Fullscreen | Create audience (premium) | Exit -->
+        <app-menu [label]="menuLabel" testid="stage-menu" bar-end>
+          <button
+            appMenuItem
+            type="button"
+            data-testid="stage-menu-fullscreen"
+            (chosen)="fullscreen.toggle()"
+          >
+            <app-icon
+              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+            />
+            {{
+              fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
+            }}
+          </button>
 
-        <!-- Create audience — entry point for Epic 9.
-             Placeholder: linked to /audience but Epic 9 is not yet built. -->
-        <a
-          appButton
-          variant="secondary"
-          routerLink="/audience"
-          [attr.aria-label]="audienceLabel"
-          [appTooltip]="audienceLabel"
-          data-testid="stage-audience"
-        >
-          <app-icon name="audience" />
-        </a>
+          <app-premium [label]="audienceLabel">
+            <button
+              appMenuItem
+              type="button"
+              [attr.aria-describedby]="audiencePremiumId"
+              data-testid="stage-menu-audience"
+              (chosen)="openAudienceDialog()"
+            >
+              <app-icon name="audience" />
+              {{ audienceLabel }}
+            </button>
+          </app-premium>
+
+          <button
+            appMenuItem
+            type="button"
+            class="is-danger"
+            routerLink="/stage"
+            data-testid="stage-menu-exit"
+          >
+            <app-icon name="close" />
+            {{ exitLabel }}
+          </button>
+        </app-menu>
       </app-action-bar>
 
       <!-- The render — fills whatever the bar left. Any pointer event on the
@@ -226,6 +247,70 @@ const SWIPE_THRESHOLD_PX = 60;
             }
           </ul>
         </div>
+      }
+
+      <!-- Audience dialog — stub for Epic 9 lobby creation.
+           Pre-creation: "Create lobby" button (premium highlighted).
+           Post-creation: PIN, audience URL, QR placeholder, "End lobby". -->
+      @if (audienceState() !== 'closed') {
+        <app-dialog
+          [title]="audienceDialogTitle"
+          mode="viewport"
+          data-testid="stage-audience-dialog"
+          (closed)="closeAudienceDialog()"
+        >
+          @if (audienceState() === 'create') {
+            <p class="dialog-info">{{ audienceCreateInfo }}</p>
+          }
+          @if (audienceState() === 'create') {
+            <ng-container dialog-actions>
+              <app-premium [label]="createLobbyLabel">
+                <button
+                  appButton
+                  type="button"
+                  variant="primary"
+                  [attr.aria-describedby]="audiencePremiumId"
+                  data-testid="stage-create-lobby"
+                  (click)="createLobby()"
+                >
+                  {{ createLobbyLabel }}
+                </button>
+              </app-premium>
+            </ng-container>
+          }
+
+          @if (audienceState() === 'active') {
+            <dl class="lobby-info">
+              <dt>{{ lobbyPinLabel }}</dt>
+              <dd class="lobby-pin" data-testid="stage-lobby-pin">
+                {{ lobbyPin() }}
+              </dd>
+              <dt>{{ lobbyLinkLabel }}</dt>
+              <dd>
+                <code class="lobby-link" data-testid="stage-lobby-link">
+                  {{ audienceUrl() }}
+                </code>
+              </dd>
+              <dt>{{ lobbyQrLabel }}</dt>
+              <dd class="lobby-qr" data-testid="stage-lobby-qr">
+                <span class="qr-placeholder">QR</span>
+                <span class="qr-url">{{ audienceUrl() }}</span>
+              </dd>
+            </dl>
+          }
+          @if (audienceState() === 'active') {
+            <button
+              appButton
+              type="button"
+              class="is-danger"
+              dialog-actions
+              data-testid="stage-end-lobby"
+              (click)="endLobby()"
+            >
+              {{ endLobbyLabel }}
+            </button>
+          }
+        </app-dialog>
       }
     </div>
   `,
@@ -370,6 +455,66 @@ const SWIPE_THRESHOLD_PX = 60;
       font-size: var(--text-sm);
       color: var(--text-faint);
     }
+
+    /* Audience dialog */
+    .dialog-info {
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+    .lobby-info {
+      margin: 0;
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: var(--space-1) var(--space-3);
+      align-items: baseline;
+      font-size: var(--text-sm);
+    }
+
+    .lobby-info dt {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .lobby-info dd {
+      margin: 0;
+    }
+
+    .lobby-pin {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lobby-link {
+      font-size: var(--text-xs);
+      word-break: break-all;
+    }
+
+    .lobby-qr {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-1);
+    }
+
+    .qr-placeholder {
+      display: grid;
+      place-items: center;
+      inline-size: 120px;
+      block-size: 120px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text-faint);
+    }
+
+    .qr-url {
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
   `,
 })
 export class StagePerformPage {
@@ -382,7 +527,19 @@ export class StagePerformPage {
   private swipeStartX: number | null = null;
   private swipeStartY: number | null = null;
 
+  protected readonly audienceState = signal<AudienceState>('closed');
+  protected readonly lobbyPin = signal('');
+
+  protected readonly audienceUrl = () =>
+    `${location.origin}/audience/${this.lobbyPin()}`;
+
+  /** Referenced by aria-describedby on the premium audience button. */
+  protected readonly audiencePremiumId = 'stage-audience-premium';
+
   constructor() {
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => void this.fullscreen.exit());
+
     effect(() => {
       void this.presenter.load(this.songbookId());
     });
@@ -402,10 +559,6 @@ export class StagePerformPage {
     } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault();
       this.presenter.next();
-    } else if (event.key === 'Escape' && !this.fullscreen.isActive()) {
-      // Escape without fullscreen bounces to the picker. In fullscreen, Escape
-      // is handled by the browser and fires fullscreenchange, which the
-      // Fullscreen service already handles.
     }
   }
 
@@ -449,7 +602,29 @@ export class StagePerformPage {
     this.presenter.setSummaryQuery((event.target as HTMLInputElement).value);
   }
 
-  protected readonly backLabel = $localize`:@@stage.back:Back to songbook list`;
+  protected openAudienceDialog(): void {
+    this.audienceState.set('create');
+  }
+
+  protected closeAudienceDialog(): void {
+    this.audienceState.set('closed');
+  }
+
+  protected createLobby(): void {
+    // Stub — Epic 9 will wire this to the Supabase lobby RPC.
+    // Generate a random 5-digit PIN until the backend is in place.
+    const pin = Math.floor(10000 + Math.random() * 90000).toString();
+    this.lobbyPin.set(pin);
+    this.audienceState.set('active');
+  }
+
+  protected endLobby(): void {
+    // Stub — Epic 9 will call the Supabase end-lobby RPC.
+    this.lobbyPin.set('');
+    this.audienceState.set('closed');
+  }
+
+  protected readonly menuLabel = $localize`:@@stage.menu:More options`;
   protected readonly prevLabel = $localize`:@@stage.prev:Previous song`;
   protected readonly nextLabel = $localize`:@@stage.next:Next song`;
   protected readonly summaryLabel = $localize`:@@stage.summary:Song list`;
@@ -457,8 +632,17 @@ export class StagePerformPage {
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
+  protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly emptySongbookText = $localize`:@@stage.emptySongbook:This songbook has no songs.`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
+
+  protected readonly audienceDialogTitle = $localize`:@@stage.audienceDialog.title:Create an audience`;
+  protected readonly audienceCreateInfo = $localize`:@@stage.audienceDialog.info:Share the code or link with your audience so they can follow along on their devices.`;
+  protected readonly createLobbyLabel = $localize`:@@stage.audienceDialog.create:Create lobby`;
+  protected readonly endLobbyLabel = $localize`:@@stage.audienceDialog.end:End lobby`;
+  protected readonly lobbyPinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
+  protected readonly lobbyLinkLabel = $localize`:@@stage.audienceDialog.link:Link`;
+  protected readonly lobbyQrLabel = $localize`:@@stage.audienceDialog.qr:QR code`;
 }

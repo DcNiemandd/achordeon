@@ -2,8 +2,7 @@
 // Spec: docs/achordeon-implementation.md §Epic 8
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { Button, EmptyState, Icon, Tooltip } from '../primitives';
+import { EmptyState } from '../primitives';
 import { ActionBar } from '../shared/layout';
 import { StagePresenter } from './stage.presenter';
 
@@ -12,16 +11,19 @@ import { StagePresenter } from './stage.presenter';
  *
  * A simple list rather than the full SongExplorer — the stage is a
  * performance context, not a management one, so search, sort, and bulk
- * actions would be noise. Each row has one action: Perform.
+ * actions would be noise. Each row is a button: clicking anywhere on the row
+ * starts performing that songbook.
  *
- * Empty songbooks are shown but their Perform button is disabled: you cannot
- * perform nothing. The hint says why.
+ * Empty songbooks are hidden entirely (you cannot perform nothing).
+ * A note below the list reports how many are hidden.
+ *
+ * "All songs" is always listed first.
  */
 @Component({
   selector: 'app-stage-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StagePresenter],
-  imports: [ActionBar, EmptyState, Button, Icon, RouterLink, Tooltip],
+  imports: [ActionBar, EmptyState],
   template: `
     <app-action-bar [title]="title" />
 
@@ -30,27 +32,28 @@ import { StagePresenter } from './stage.presenter';
     } @else {
       <ul class="list" data-testid="stage-list">
         @for (row of presenter.rows(); track row.id) {
-          <li class="row" [attr.data-testid]="'stage-row-' + row.id">
-            <div class="info">
+          <li>
+            <button
+              type="button"
+              class="row"
+              [class.is-all-songs]="row.isAllSongs"
+              [attr.aria-label]="performLabel(row.name)"
+              [attr.data-testid]="'stage-row-' + row.id"
+              (click)="presenter.perform(row.id)"
+              (dblclick)="presenter.perform(row.id)"
+            >
               <span class="name">{{ row.name }}</span>
               <span class="count">{{ countLabel(row.entryCount) }}</span>
-            </div>
-            <button
-              appButton
-              type="button"
-              variant="primary"
-              [disabled]="row.entryCount === 0"
-              [attr.aria-label]="performLabel(row.name)"
-              [appTooltip]="row.entryCount === 0 ? emptyBookTooltip : ''"
-              [attr.data-testid]="'stage-perform-' + row.id"
-              (click)="presenter.perform(row.id)"
-            >
-              <app-icon name="stage" />
-              {{ performShort }}
             </button>
           </li>
         }
       </ul>
+
+      @if (presenter.hiddenCount() > 0) {
+        <p class="hidden-note" data-testid="stage-hidden-note">
+          {{ hiddenNote(presenter.hiddenCount()) }}
+        </p>
+      }
     }
   `,
   styles: `
@@ -69,22 +72,26 @@ import { StagePresenter } from './stage.presenter';
 
     .row {
       display: flex;
-      align-items: center;
-      gap: var(--space-3);
+      flex-direction: column;
+      gap: var(--space-1);
+      inline-size: 100%;
       padding: var(--space-3) var(--space-4);
+      border: none;
       border-block-end: 1px solid var(--border);
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
     }
 
     .row:hover {
       background: var(--surface-raised);
     }
 
-    .info {
-      flex: 1;
-      min-inline-size: 0;
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
+    .row:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: -2px;
     }
 
     .name {
@@ -95,7 +102,17 @@ import { StagePresenter } from './stage.presenter';
       white-space: nowrap;
     }
 
+    .is-all-songs .name {
+      color: var(--brand);
+    }
+
     .count {
+      font-size: var(--text-sm);
+      color: var(--text-faint);
+    }
+
+    .hidden-note {
+      margin: var(--space-3) var(--space-4);
       font-size: var(--text-sm);
       color: var(--text-faint);
     }
@@ -105,9 +122,7 @@ export class StagePage {
   protected readonly presenter = inject(StagePresenter);
 
   protected readonly title = $localize`:@@stage.title:Stage`;
-  protected readonly emptyText = $localize`:@@stage.empty:No songbooks yet. Create a songbook to perform.`;
-  protected readonly performShort = $localize`:@@stage.perform:Perform`;
-  protected readonly emptyBookTooltip = $localize`:@@stage.emptyBook:Add songs to this songbook before performing.`;
+  protected readonly emptyText = $localize`:@@stage.empty:No songs yet. Add songs to start performing.`;
 
   protected performLabel(name: string): string {
     return $localize`:@@stage.performLabel:Perform "${name}:name:"`;
@@ -115,6 +130,10 @@ export class StagePage {
 
   protected countLabel(count: number): string {
     return $localize`:@@stage.songCount:${count}:count: songs`;
+  }
+
+  protected hiddenNote(count: number): string {
+    return $localize`:@@stage.hiddenEmpty:${count}:count: empty songbooks are hidden`;
   }
 
   constructor() {
