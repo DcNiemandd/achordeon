@@ -75,6 +75,11 @@ export class SongbookDetailPresenter {
   readonly id = this._id.asReadonly();
   readonly isVirtual = computed(() => isAllSongs(this._id()));
 
+  /** True when the Perform button should be active: a real book with entries. */
+  readonly canPerform = computed(
+    () => !this.isVirtual() && (this._book()?.entries.length ?? 0) > 0,
+  );
+
   /** True once the route's book is known — a missing id must not read as empty. */
   private readonly _isFound = signal(false);
   readonly isFound = this._isFound.asReadonly();

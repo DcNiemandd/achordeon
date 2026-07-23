@@ -1,3 +1,11 @@
+# Prompt
+
+```
+i want you to implement the work even thought i told you not to before. I want you to commit witht your signature. I want you to use @docs and @docs/achordeon-implementation.md specificaly. If you have questions, leave them at the end and continue with different work.
+
+implement epic 8
+```
+
 # Plan: Achordeon implementation
 
 > Source PRDs: `CONTEXT.md`, `docs/PRD-INFRASTRUCTURE.md`, `docs/PRD-DOMAIN-MODEL.md`,
@@ -13,7 +21,7 @@ store → service → UI; epics 11–12 are cross-cutting shell and settings.
 
 ## How to read it
 
-- **What to build** — the end-to-end behaviour of the slice, layer-agnostic.
+- **What to bucreild** — the end-to-end behaviour of the slice, layer-agnostic.
 - **Subtasks** — the smaller pieces to turn into issue checkboxes.
 - **Depends on** — which epics should land first.
 

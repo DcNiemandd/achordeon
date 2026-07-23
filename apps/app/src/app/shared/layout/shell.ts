@@ -9,6 +9,8 @@ import { BackNavigation } from './back-navigation';
 import { ModuleSwitcher } from './module-switcher';
 import { Panes } from './panes';
 import { Rail } from './rail';
+import { StageBar } from './stage-bar';
+import { StageSession } from './stage-session';
 import { Viewport } from './viewport';
 
 /**
@@ -27,11 +29,14 @@ import { Viewport } from './viewport';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, Rail, ModuleSwitcher, Button],
-  // While performing, any pointer movement or tap brings the bars back.
+  imports: [RouterOutlet, Rail, ModuleSwitcher, StageBar, Button],
+  // While performing, mouse movement or a key brings the bars back. Touch is
+  // deliberately excluded here: a swipe to change song must NOT reveal the
+  // chrome — the perform view itself reveals on a genuine tap (a pointerup that
+  // did not travel far enough to be a swipe).
   host: {
-    '(document:pointermove)': 'onActivity()',
-    '(document:pointerdown)': 'onActivity()',
+    '(document:pointermove)': 'onPointerActivity($event)',
+    '(document:pointerdown)': 'onPointerActivity($event)',
     '(document:keydown)': 'onActivity()',
   },
   template: `
@@ -48,10 +53,17 @@ import { Viewport } from './viewport';
         <div class="bottom-bar" data-testid="bottom-bar">
           <app-module-switcher />
           <div class="bar-slot">
+            <!-- Performing takes the slot: the stage controls live in the
+                 shell's one bar so a phone never shows a second bar of the
+                 feature's (spec). Reached through StageSession, the same way the
+                 pane switcher is reached through Panes. -->
+            @if (session.isMounted()) {
+              <app-stage-bar />
+            }
             <!-- The pane switcher: segmented, and only in split modules (§4).
                  It is the shell's, because the bar is; which panes exist is the
                  feature's, and reaches us through the Panes service. -->
-            @if (panes.isSplit()) {
+            @else if (panes.isSplit()) {
               <div
                 class="switcher"
                 role="group"
@@ -161,6 +173,7 @@ import { Viewport } from './viewport';
 export class Shell {
   protected readonly viewport = inject(Viewport);
   protected readonly panes = inject(Panes);
+  protected readonly session = inject(StageSession);
   private readonly fullscreen = inject(Fullscreen);
   /**
    * Injected for its side effect, not for anything the shell draws: it counts
@@ -205,6 +218,12 @@ export class Shell {
     if (this.fullscreen.isActive()) {
       this.fullscreen.reveal();
     }
+  }
+
+  /** Mouse and pen reveal; touch does not (a swipe would otherwise reveal). */
+  protected onPointerActivity(event: PointerEvent): void {
+    if (event.pointerType === 'touch') return;
+    this.onActivity();
   }
 
   /**
