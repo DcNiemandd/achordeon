@@ -53,17 +53,21 @@ import { AudiencePresenter } from './audience.presenter';
   ],
   template: `
     <div class="screen" (pointerup)="onPointerUp($event)">
-      <!-- Top bar — the same shape as performing, minus the song controls.
-           Hidden in fullscreen until a tap reveals it. -->
-      <nav
-        class="stage-bar stage-bar--top"
-        [hidden]="!fullscreen.isChromeVisible()"
-        data-testid="audience-bar"
-      >
-        <div class="bar-start">
-          <span class="bar-title">{{ presenter.songName() || title }}</span>
+      <!-- Top bar — the SAME shape and icon positions as performing, minus the
+           song controls a viewer does not get. It exists only once JOINED: the
+           PIN prompt is chromeless (no fullscreen, no leave). Hidden in
+           fullscreen until a tap reveals it. -->
+      @if (presenter.status() === 'joined') {
+        <nav
+          class="stage-bar stage-bar--top"
+          [hidden]="!fullscreen.isChromeVisible()"
+          data-testid="audience-bar"
+        >
+          <!-- Left: title + actions, same order as performing (summary,
+               fullscreen, audience/lobby), then the viewer-only hide-chords. -->
+          <div class="bar-start">
+            <span class="bar-title">{{ presenter.songName() || title }}</span>
 
-          @if (presenter.status() === 'joined') {
             <button
               appButton
               type="button"
@@ -82,14 +86,15 @@ import { AudiencePresenter } from './audience.presenter';
               appButton
               type="button"
               [isIconOnly]="true"
-              [class.is-active]="presenter.hideChords()"
-              [attr.aria-pressed]="presenter.hideChords()"
-              [attr.aria-label]="hideChordsLabel"
-              [appTooltip]="hideChordsLabel"
-              data-testid="audience-hide-chords"
-              (click)="presenter.toggleHideChords()"
+              [attr.aria-label]="fullscreenLabel()"
+              [attr.aria-pressed]="fullscreen.isActive()"
+              [appTooltip]="fullscreenLabel()"
+              data-testid="audience-fullscreen"
+              (click)="fullscreen.toggle()"
             >
-              <app-icon name="note" />
+              <app-icon
+                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+              />
             </button>
 
             <button
@@ -103,39 +108,43 @@ import { AudiencePresenter } from './audience.presenter';
             >
               <app-icon name="audience" />
             </button>
-          }
-        </div>
 
-        <div class="bar-end-slot">
-          <button
-            appButton
-            type="button"
-            [isIconOnly]="true"
-            [attr.aria-label]="fullscreenLabel()"
-            [attr.aria-pressed]="fullscreen.isActive()"
-            [appTooltip]="fullscreenLabel()"
-            data-testid="audience-fullscreen"
-            (click)="fullscreen.toggle()"
-          >
-            <app-icon
-              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-            />
-          </button>
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="presenter.hideChords()"
+              [attr.aria-pressed]="presenter.hideChords()"
+              [attr.aria-label]="hideChordsLabel"
+              [appTooltip]="hideChordsLabel"
+              data-testid="audience-hide-chords"
+              (click)="presenter.toggleHideChords()"
+            >
+              <app-icon name="note" />
+            </button>
+          </div>
 
-          <button
-            appButton
-            type="button"
-            [isIconOnly]="true"
-            class="btn-exit"
-            [attr.aria-label]="exitLabel"
-            [appTooltip]="exitLabel"
-            data-testid="audience-exit"
-            (click)="exit()"
-          >
-            <app-icon name="close" />
-          </button>
-        </div>
-      </nav>
+          <!-- Center: empty — a viewer has no prev/next (the same grid column
+               performing centres its nav in, kept so the exit sits identically). -->
+          <div class="bar-nav"></div>
+
+          <!-- Right: red exit cross — the performing close position. -->
+          <div class="bar-end-slot">
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              class="btn-exit"
+              [attr.aria-label]="exitLabel"
+              [appTooltip]="exitLabel"
+              data-testid="audience-exit"
+              (click)="exit()"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
+        </nav>
+      }
 
       <div class="render" data-testid="audience-render">
         @switch (view()) {
@@ -306,11 +315,12 @@ import { AudiencePresenter } from './audience.presenter';
       min-block-size: 0;
     }
 
-    /* Top bar — grid: [left 1fr] [right auto] (no centered nav; a viewer has no
-       prev/next). Same surface + border as the performing bar. */
+    /* Top bar — the SAME grid as performing: [left 1fr] [center auto] [right 1fr]
+       so the exit cross lands in the identical spot. The centre column is empty
+       (a viewer has no prev/next). Same surface + border as the performing bar. */
     .stage-bar--top {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
       padding: var(--space-1) var(--space-3);
       background: var(--surface-raised);
@@ -323,6 +333,12 @@ import { AudiencePresenter } from './audience.presenter';
       gap: var(--space-2);
       flex-wrap: nowrap;
       min-inline-size: 0;
+    }
+
+    .bar-nav {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
     }
 
     .bar-title {
