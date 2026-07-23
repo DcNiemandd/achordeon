@@ -5,6 +5,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SongStore, SongbookStore } from '@achordeon/shared/data-access';
 import { ALL_SONGS_ID } from '@achordeon/shared/domain';
+import { StageSession } from '../shared/layout';
 
 export interface SongbookPickerRow {
   readonly id: string;
@@ -31,6 +32,7 @@ export class StagePresenter {
   private readonly books = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly router = inject(Router);
+  private readonly session = inject(StageSession);
 
   private readonly _librarySize = signal(0);
 
@@ -63,6 +65,15 @@ export class StagePresenter {
   );
 
   async load(): Promise<void> {
+    // Returning to the Stage module while a performance is open reopens it — the
+    // picker is for choosing what to perform, not for interrupting a performance
+    // already in progress.
+    const activeBook = this.session.bookId();
+    if (activeBook !== null) {
+      void this.router.navigate(['/stage', activeBook]);
+      return;
+    }
+
     if (!this.books.loaded()) {
       await this.books.load();
     }
