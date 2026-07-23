@@ -39,7 +39,6 @@ import { StagePresenter } from './stage.presenter';
               [class.is-all-songs]="row.isAllSongs"
               [attr.aria-label]="performLabel(row.name)"
               [attr.data-testid]="'stage-row-' + row.id"
-              (click)="presenter.perform(row.id)"
               (dblclick)="presenter.perform(row.id)"
             >
               <span class="name">{{ row.name }}</span>
