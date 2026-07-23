@@ -5,11 +5,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   effect,
   inject,
   input,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import qrcode from 'qrcode-generator';
 import {
   Button,
   Dialog,
@@ -97,7 +99,6 @@ const SWIPE_THRESHOLD_PX = 60;
             <button
               appButton
               type="button"
-              variant="secondary"
               [isIconOnly]="true"
               [class.is-active]="session.isSummaryOpen()"
               [attr.aria-pressed]="session.isSummaryOpen()"
@@ -112,7 +113,6 @@ const SWIPE_THRESHOLD_PX = 60;
             <button
               appButton
               type="button"
-              variant="secondary"
               [isIconOnly]="true"
               [attr.aria-label]="
                 fullscreen.isActive()
@@ -137,7 +137,6 @@ const SWIPE_THRESHOLD_PX = 60;
             <button
               appButton
               type="button"
-              variant="secondary"
               [isIconOnly]="true"
               [attr.aria-label]="audienceLabel"
               [appTooltip]="audienceLabel"
@@ -280,7 +279,7 @@ const SWIPE_THRESHOLD_PX = 60;
       @if (session.audienceState() !== 'closed') {
         <app-dialog
           [title]="audienceDialogTitle"
-          mode="viewport"
+          mode="container"
           data-testid="stage-audience-dialog"
           (closed)="session.closeAudience()"
         >
@@ -316,7 +315,7 @@ const SWIPE_THRESHOLD_PX = 60;
               </dd>
               <dt>{{ lobbyQrLabel }}</dt>
               <dd class="lobby-qr" data-testid="stage-lobby-qr">
-                <span class="qr-placeholder">QR</span>
+                <img class="qr" [src]="qrDataUrl()" [alt]="lobbyQrLabel" />
                 <span class="qr-url">{{ session.audienceUrl() }}</span>
               </dd>
             </dl>
@@ -561,16 +560,14 @@ const SWIPE_THRESHOLD_PX = 60;
       gap: var(--space-1);
     }
 
-    .qr-placeholder {
-      display: grid;
-      place-items: center;
-      inline-size: 120px;
-      block-size: 120px;
-      border: 2px dashed var(--border);
+    .qr {
+      inline-size: 200px;
+      block-size: 200px;
+      /* The generator draws its own quiet-zone margin, so a white plate keeps
+         the code scannable in dark mode without any padding of our own. */
+      background: #fff;
       border-radius: var(--radius-md);
-      font-size: var(--text-xl);
-      font-weight: 700;
-      color: var(--text-faint);
+      image-rendering: pixelated;
     }
 
     .qr-url {
@@ -588,6 +585,21 @@ export class StagePerformPage {
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
   readonly songbookId = input.required<string>();
+
+  /**
+   * The join URL as a scannable QR, generated client-side (no backend, no
+   * network round-trip): the audience points a camera at it instead of typing
+   * the PIN. A GIF data URL, built synchronously so it stays a plain computed;
+   * empty string until a lobby exists.
+   */
+  protected readonly qrDataUrl = computed(() => {
+    const url = this.session.audienceUrl();
+    if (url === '') return '';
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    return qr.createDataURL(6, 2);
+  });
 
   private swipeStartX: number | null = null;
   private swipeStartY: number | null = null;

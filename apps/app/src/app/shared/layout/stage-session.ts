@@ -1,10 +1,11 @@
 // Stage session — Epic 8 ▸ performing mode (persistent across modules)
 // Spec: docs/achordeon-implementation.md §Epic 8; apps/docs/docs/stage-audience/index.mdx
 
+import { LocationStrategy } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Fullscreen } from './fullscreen';
 
-/** The audience/lobby dialog phase. Stub PIN until Epic 9 wires Supabase. */
+/** The audience panel phase. Stub PIN until Epic 9 wires Supabase. */
 export type AudienceState = 'closed' | 'create' | 'active';
 
 /**
@@ -26,12 +27,13 @@ export type AudienceState = 'closed' | 'create' | 'active';
 @Injectable({ providedIn: 'root' })
 export class StageSession {
   private readonly fullscreen = inject(Fullscreen);
+  private readonly locationStrategy = inject(LocationStrategy);
 
   private readonly _bookId = signal<string | null>(null);
   private readonly _index = signal(0);
   private readonly _total = signal(0);
   private readonly _isSummaryOpen = signal(false);
-  private readonly _audienceState = signal<AudienceState>('closed');
+  private readonly _isAudienceOpen = signal(false);
   private readonly _lobbyPin = signal('');
   private readonly _isMounted = signal(false);
 
@@ -39,7 +41,6 @@ export class StageSession {
   readonly index = this._index.asReadonly();
   readonly total = this._total.asReadonly();
   readonly isSummaryOpen = this._isSummaryOpen.asReadonly();
-  readonly audienceState = this._audienceState.asReadonly();
   readonly lobbyPin = this._lobbyPin.asReadonly();
   readonly isMounted = this._isMounted.asReadonly();
 
@@ -49,9 +50,35 @@ export class StageSession {
   readonly hasPrev = computed(() => this._index() > 0);
   readonly hasNext = computed(() => this._index() < this._total() - 1);
 
-  readonly audienceUrl = computed(
-    () => `${location.origin}/audience/${this._lobbyPin()}`,
+  /**
+   * The lobby — and so the audience — is live. Its lifetime is the lobby's,
+   * nothing else's: closing the panel keeps it (reopen resumes on it), and only
+   * `endLobby`/`end` retire it. This is what the persistence across modules buys.
+   */
+  readonly hasLobby = computed(() => this._lobbyPin() !== '');
+
+  /**
+   * The audience panel's phase, derived — never stored — so it can never drift
+   * from the lobby it describes: `closed` while the panel is down, `active` the
+   * moment a lobby exists, `create` only before one does.
+   */
+  readonly audienceState = computed<AudienceState>(() =>
+    !this._isAudienceOpen() ? 'closed' : this.hasLobby() ? 'active' : 'create',
   );
+
+  /**
+   * The join URL, base-href-aware. `prepareExternalUrl` folds in the app's
+   * deploy base (`/achordeon/app/`, plus the locale sub-path) — a bare
+   * `/audience/…` would point at the domain root, which is not where the app
+   * lives. Empty until a lobby exists.
+   */
+  readonly audienceUrl = computed(() => {
+    const pin = this._lobbyPin();
+    if (pin === '') return '';
+    return `${location.origin}${this.locationStrategy.prepareExternalUrl(
+      `/audience/${pin}`,
+    )}`;
+  });
 
   /**
    * Begin (or resume) a performance of `bookId`. Idempotent on the same book:
@@ -94,24 +121,26 @@ export class StageSession {
     this._isSummaryOpen.update((open) => !open);
   }
 
+  /** Show the panel. If a lobby already exists it resumes on it (`active`). */
   openAudience(): void {
-    this._audienceState.set('create');
+    this._isAudienceOpen.set(true);
   }
 
+  /** Hide the panel only — the lobby lives on, so reopening resumes on it. */
   closeAudience(): void {
-    this._audienceState.set('closed');
+    this._isAudienceOpen.set(false);
   }
 
   createLobby(): void {
     // Stub — Epic 9 wires this to the Supabase lobby RPC. A random 5-digit PIN
     // stands in until then.
     this._lobbyPin.set(Math.floor(10000 + Math.random() * 90000).toString());
-    this._audienceState.set('active');
   }
 
+  /** Retire the lobby: the audience ends with it, so the panel closes too. */
   endLobby(): void {
     this._lobbyPin.set('');
-    this._audienceState.set('closed');
+    this._isAudienceOpen.set(false);
   }
 
   /** The perform page is on screen: the shell draws the stage controls. */
