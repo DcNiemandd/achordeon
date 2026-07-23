@@ -704,15 +704,55 @@ render it locally with the same renderer. Plus the fire-and-forget analytics log
 
 ### Subtasks
 
-- [ ] Host: open a lobby (random ~5-char PIN, unambiguous alphabet), channel per
+- [x] Host: open a lobby (random ~5-char PIN, unambiguous alphabet), channel per
       PIN, `track()` `{ currentSongObject, summary }`; re-track on song change.
-- [ ] Generate the QR encoding the `/audience/:pin` deep link.
-- [ ] Viewer: join by PIN or QR; `onPresenceSync` delivers current song + summary
+- [x] Generate the QR encoding the `/audience/:pin` deep link.
+- [x] Viewer: join by PIN or QR; `onPresenceSync` delivers current song + summary
       immediately; render locally; read-only summary.
-- [ ] Hide-chords viewer-local toggle (reflow-safe — keeps reserved chord rows).
-- [ ] Audience count from viewer Presence; lobby ends on host disconnect.
-- [ ] Append-only `lobby_events` analytics (created / song_changed), off the
+- [x] Hide-chords viewer-local toggle (reflow-safe — keeps reserved chord rows).
+- [x] Audience count from viewer Presence; lobby ends on host disconnect.
+- [x] Append-only `lobby_events` analytics (created / song_changed), off the
       Presence critical path, song_ref without content; RLS insert-by-owner.
+
+### Landed — what implementation changed
+
+Corrections the build forced, recorded so they aren't re-litigated:
+
+- **The lobby's network owner is root, its driver is route-scoped.** The
+  performance is persistent (Epic 8), so a host may leave `/stage/:id` and keep
+  hosting — the Supabase channel therefore lives in a root `LobbyHost`, not the
+  route-scoped presenter, or glancing at the library would drop every viewer. But
+  only a presenter may touch data-access (the shell rule, enforced in eslint), so
+  `StagePerformPresenter` **drives** the root host from shell-owned session state:
+  one effect keeps Presence `== (pin, payload)` — opens on a PIN, re-tracks on
+  every prev/next (a computed payload, so it is automatic), closes when the PIN
+  clears. `StageSession` still owns the PIN (a pure `generateLobbyPin`, no
+  network) so the mobile bar and dialog read it without reaching into a store.
+- **The payload carries resolved settings, not just the Song.** ADR-0003 says
+  "the full current Song (content + settings)", but a viewer has neither the
+  host's library nor a way to run the host's cascade (Global ⊕ Songbook ⊕ Song).
+  So the wire carries the **already-resolved** `GlobalSettings`, which is what
+  makes the viewer's local render byte-identical to the host's. `LobbyPayload`
+  also carries `currentIndex`, so the read-only summary can mark where the
+  performer stands without a second message.
+- **`@supabase/supabase-js` is `import()`ed on the first lobby action**, quarantined
+  to `data-access/lobby/` (ADR-0008). The SDK is ~120 KB and the Audience path is
+  a network feature most sessions never touch — the same on-gesture split Epic 7
+  uses for jsPDF/fflate, keeping it out of the initial budget.
+- **"Lobby not found" is a timeout, not an error.** Subscribing to a PIN with no
+  host succeeds at the channel level; the only signal that the PIN is dead is
+  "no host appeared in Presence within a grace window". A host that later vanishes
+  from a sync we had already joined is `ended`, a distinct state.
+- **Analytics is best-effort and unawaited.** `lobby_events` is RLS
+  insert-by-owner, and Auth is Epic 10 — so today every insert is silently denied.
+  That is fine: nothing reads the table at runtime and no write is on the Presence
+  path, so a denied insert never disturbs a performance.
+- **Config is a public source file, not a secret.** The anon key is a JWT the
+  browser is meant to hold and RLS is the guard, so `SUPABASE_CONFIG` is provided
+  from `apps/app/src/app/supabase.config.ts`, defaulting to the local
+  `supabase start` values so the app talks to a local stack out of the box. An
+  empty `url` builds the app offline-only and the Audience UI reports itself
+  unavailable rather than throwing.
 
 ---
 

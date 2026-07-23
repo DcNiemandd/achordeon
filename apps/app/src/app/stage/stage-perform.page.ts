@@ -314,6 +314,10 @@ const SWIPE_THRESHOLD_PX = 60;
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
                 {{ session.lobbyPin() }}
               </dd>
+              <dt>{{ lobbyAudienceLabel }}</dt>
+              <dd data-testid="stage-lobby-count">
+                {{ session.audienceCount() }}
+              </dd>
               <dt>{{ lobbyLinkLabel }}</dt>
               <dd>
                 <!-- Click to copy: the link is long and hand-typing it is the
@@ -773,6 +777,7 @@ export class StagePerformPage {
   protected readonly endLobbyLabel = $localize`:@@stage.audienceDialog.end:End lobby`;
   protected readonly lobbyPremiumNote = $localize`:@@stage.audienceDialog.premium:Audiences are a Premium feature — free while in testing.`;
   protected readonly lobbyPinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
+  protected readonly lobbyAudienceLabel = $localize`:@@stage.audienceDialog.count:Listening`;
   protected readonly lobbyLinkLabel = $localize`:@@stage.audienceDialog.link:Link`;
   protected readonly copyLinkLabel = $localize`:@@stage.audienceDialog.copyLink:Copy link`;
   protected readonly copiedLabel = $localize`:@@stage.audienceDialog.copied:Copied`;

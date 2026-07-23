@@ -33,6 +33,7 @@
     "@fontsource-variable/roboto-mono": "5.2.9",
     "@lezer/highlight": "^1.2.3",
     "@ngrx/signals": "^21.1.1",
+    "@supabase/supabase-js": "^2.110.8",
     "@tonaljs/chord": "^6.1.2",
     "@tonaljs/note": "^4.12.1",
     "dexie": "^4.4.4",

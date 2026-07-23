@@ -3,9 +3,10 @@
 
 import { LocationStrategy } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { generateLobbyPin } from '@achordeon/shared/domain';
 import { Fullscreen } from './fullscreen';
 
-/** The audience panel phase. Stub PIN until Epic 9 wires Supabase. */
+/** The audience panel phase. */
 export type AudienceState = 'closed' | 'create' | 'active';
 
 /**
@@ -35,6 +36,7 @@ export class StageSession {
   private readonly _isSummaryOpen = signal(false);
   private readonly _isAudienceOpen = signal(false);
   private readonly _lobbyPin = signal('');
+  private readonly _audienceCount = signal(0);
   private readonly _isMounted = signal(false);
 
   readonly bookId = this._bookId.asReadonly();
@@ -42,6 +44,7 @@ export class StageSession {
   readonly total = this._total.asReadonly();
   readonly isSummaryOpen = this._isSummaryOpen.asReadonly();
   readonly lobbyPin = this._lobbyPin.asReadonly();
+  readonly audienceCount = this._audienceCount.asReadonly();
   readonly isMounted = this._isMounted.asReadonly();
 
   /** A performance is open (whether or not its view is on screen). */
@@ -131,15 +134,26 @@ export class StageSession {
     this._isAudienceOpen.set(false);
   }
 
+  /**
+   * Allocate a PIN — a pure act, no network. Setting `_lobbyPin` flips
+   * `hasLobby`, which the route-scoped `StagePerformPresenter` watches to open
+   * the Supabase channel (the shell may not touch data-access — the presenter
+   * rule, PRD-UI-SHELL.md §3). So this holder decides *that* there is a lobby;
+   * the presenter makes it real over the wire (ADR-0003).
+   */
   createLobby(): void {
-    // Stub — Epic 9 wires this to the Supabase lobby RPC. A random 5-digit PIN
-    // stands in until then.
-    this._lobbyPin.set(Math.floor(10000 + Math.random() * 90000).toString());
+    this._lobbyPin.set(generateLobbyPin());
+  }
+
+  /** Live viewer count, pushed in by the presenter from the host channel. */
+  setAudienceCount(count: number): void {
+    this._audienceCount.set(count);
   }
 
   /** Retire the lobby: the audience ends with it, so the panel closes too. */
   endLobby(): void {
     this._lobbyPin.set('');
+    this._audienceCount.set(0);
     this._isAudienceOpen.set(false);
   }
 

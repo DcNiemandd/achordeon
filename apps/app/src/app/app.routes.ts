@@ -51,6 +51,11 @@ export const appRoutes: Route[] = [
       import('./audience/audience.page').then((m) => m.AudiencePage),
   },
   {
+    path: 'audience/:pin',
+    loadComponent: () =>
+      import('./audience/audience.page').then((m) => m.AudiencePage),
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./settings/settings.page').then((m) => m.SettingsPage),

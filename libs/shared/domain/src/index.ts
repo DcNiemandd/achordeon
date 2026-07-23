@@ -3,6 +3,7 @@ export * from './lib/settings';
 export * from './lib/snapshot';
 export * from './lib/migration';
 export * from './lib/import-plan';
+export * from './lib/lobby';
 export * from './lib/title-page';
 export * from './lib/theory';
 export * from './lib/ast';
