@@ -1,12 +1,11 @@
 // Audience page — Epic 9 ▸ Audience & lobby
 // Spec: docs/achordeon-implementation.md §Epic 9; apps/docs/docs/stage-audience/index.mdx
 //
-// The viewer half of the follow-along feature, and deliberately the SAME view as
-// performing (StagePerformPage) — one full-bleed render, a minimal top bar,
-// a summary overlay — only **read-only**: no prev/next (the performer drives the
-// song), a read-only summary (no jump), and a read-only lobby dialog (info, no
-// create/end). Plus the one thing only a viewer has: a local, reflow-safe
-// hide-chords toggle (§4.6).
+// The viewer half of the follow-along feature. One full-bleed render, a read-only
+// summary overlay, and a read-only lobby dialog. The CONTROLS are AudienceBar
+// (Summary · Fullscreen · More), which — exactly like the performing controls —
+// lives in the shell's one bottom bar on a phone (so there is never a second
+// bar) and is mounted here at the foot only on desktop. Both read AudienceSession.
 //
 // Join by PIN (typed) or the QR deep link `/audience/:pin`; the payload carries
 // the full Song + resolved settings, so this render matches the host's byte for
@@ -24,15 +23,14 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
+import { Button, Dialog, EmptyState, Field, Icon } from '../primitives';
 import {
-  Button,
-  Dialog,
-  EmptyState,
-  Field,
-  Icon,
-  Tooltip,
-} from '../primitives';
-import { BlankPage, Fullscreen } from '../shared/layout';
+  AudienceBar,
+  AudienceSession,
+  BlankPage,
+  Fullscreen,
+  Viewport,
+} from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { AudiencePresenter } from './audience.presenter';
 
@@ -63,12 +61,12 @@ function writeLastPin(pin: string): void {
   imports: [
     BlankPage,
     SongRender,
+    AudienceBar,
     Button,
     Dialog,
     EmptyState,
     Field,
     Icon,
-    Tooltip,
   ],
   template: `
     <div class="screen" (pointerup)="onPointerUp($event)">
@@ -137,9 +135,22 @@ function writeLastPin(pin: string): void {
         }
       </div>
 
+      <!-- Desktop: the controls sit at the foot of the page (there is no shell
+           bottom bar above the breakpoint — the rail takes its place). On a phone
+           this is absent and the shell mounts <app-audience-bar> in its one bar. -->
+      @if (presenter.status() === 'joined' && !viewport.isCompact()) {
+        <div
+          class="page-bar"
+          [hidden]="!fullscreen.isChromeVisible()"
+          data-testid="audience-page-bar"
+        >
+          <app-audience-bar />
+        </div>
+      }
+
       <!-- Read-only summary: search + list, no jump. The current song is marked;
            a viewer follows, it does not choose. -->
-      @if (isSummaryOpen()) {
+      @if (session.isSummaryOpen()) {
         <div
           class="summary"
           role="dialog"
@@ -153,7 +164,7 @@ function writeLastPin(pin: string): void {
               type="button"
               [isIconOnly]="true"
               [attr.aria-label]="closeLabel"
-              (click)="isSummaryOpen.set(false)"
+              (click)="session.closeSummary()"
             >
               <app-icon name="close" />
             </button>
@@ -193,15 +204,13 @@ function writeLastPin(pin: string): void {
       }
 
       <!-- Read-only lobby dialog: PIN + QR (share with a neighbour) + count.
-           Viewport mode so it has a scrim and a click on the backdrop closes it
-           (there is no live render behind it worth keeping visible, unlike the
-           editor's settings dialog). -->
-      @if (isLobbyOpen()) {
+           Viewport mode so a backdrop click closes it. -->
+      @if (session.isLobbyOpen()) {
         <app-dialog
           [title]="lobbyLabel"
           mode="viewport"
           data-testid="audience-lobby-dialog"
-          (closed)="isLobbyOpen.set(false)"
+          (closed)="session.closeLobby()"
         >
           <dl class="lobby-info">
             <dt>{{ pinLabel }}</dt>
@@ -217,93 +226,7 @@ function writeLastPin(pin: string): void {
               <img class="qr" [src]="qrDataUrl()" [alt]="qrLabel" />
             </dd>
           </dl>
-
-          <!-- Viewer-local, reflow-safe hide-chords (§4.6). It lives here rather
-               than in the 4-slot bottom bar: it is a viewer preference, not a
-               navigation control. -->
-          <button
-            appButton
-            type="button"
-            class="lobby-toggle"
-            [class.is-active]="presenter.hideChords()"
-            [attr.aria-pressed]="presenter.hideChords()"
-            data-testid="audience-hide-chords"
-            (click)="presenter.toggleHideChords()"
-          >
-            <app-icon name="note" />
-            {{ hideChordsLabel }}
-          </button>
         </app-dialog>
-      }
-
-      <!-- Bottom bar — a viewer's controls (Summary · Fullscreen · Lobby ·
-           Leave), only once JOINED (the PIN prompt is chromeless), hidden in
-           fullscreen until a tap reveals it. Four equal thumb targets. -->
-      @if (presenter.status() === 'joined') {
-        <nav
-          class="audience-bar"
-          [hidden]="!fullscreen.isChromeVisible()"
-          role="group"
-          [attr.aria-label]="controlsLabel"
-          data-testid="audience-bar"
-        >
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            class="control"
-            [class.is-active]="isSummaryOpen()"
-            [attr.aria-pressed]="isSummaryOpen()"
-            [attr.aria-label]="summaryLabel"
-            data-testid="audience-summary"
-            (click)="isSummaryOpen.set(!isSummaryOpen())"
-          >
-            <app-icon name="list" />
-            {{ summaryShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            class="control"
-            [attr.aria-pressed]="fullscreen.isActive()"
-            [attr.aria-label]="fullscreenLabel()"
-            data-testid="audience-fullscreen"
-            (click)="fullscreen.toggle()"
-          >
-            <app-icon
-              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-            />
-            {{ fullscreenShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            class="control"
-            [attr.aria-label]="lobbyLabel"
-            data-testid="audience-lobby"
-            (click)="isLobbyOpen.set(true)"
-          >
-            <app-icon name="audience" />
-            {{ lobbyShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            class="control is-danger"
-            [attr.aria-label]="exitLabel"
-            data-testid="audience-exit"
-            (click)="exit()"
-          >
-            <app-icon name="close" />
-            {{ leaveShort }}
-          </button>
-        </nav>
       }
     </div>
   `,
@@ -327,50 +250,12 @@ function writeLastPin(pin: string): void {
       min-block-size: 0;
     }
 
-    /* Bottom bar — four equal thumb targets, the same shape as the stage's
-       mobile bar (icon over a short label, ghost buttons). */
-    .audience-bar {
+    /* Desktop foot bar — a full-width strip that AudienceBar (flex: 1) fills. */
+    .page-bar {
       display: flex;
-      gap: 2px;
       padding: 2px;
       background: var(--surface-raised);
       border-block-start: 1px solid var(--border);
-    }
-
-    .audience-bar .control {
-      flex: 1;
-      min-inline-size: 0;
-      flex-direction: column;
-      gap: 2px;
-      block-size: var(--tap-target);
-      font-size: var(--text-xs);
-    }
-
-    .audience-bar .control app-icon {
-      --icon-size: 20px;
-    }
-
-    .audience-bar .control.is-active {
-      color: var(--brand);
-    }
-
-    .audience-bar .control.is-danger {
-      color: var(--danger, #c0362c);
-    }
-
-    .audience-bar .control.is-danger:hover {
-      background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
-    }
-
-    /* Hide-chords toggle inside the lobby dialog. */
-    .lobby-toggle {
-      margin-block-start: var(--space-4);
-      gap: var(--space-2);
-    }
-
-    .lobby-toggle.is-active {
-      color: var(--brand);
-      border-color: var(--brand);
     }
 
     /* Join form — centered card in the render area. */
@@ -554,13 +439,13 @@ function writeLastPin(pin: string): void {
 export class AudiencePage {
   protected readonly presenter = inject(AudiencePresenter);
   protected readonly fullscreen = inject(Fullscreen);
+  protected readonly session = inject(AudienceSession);
+  protected readonly viewport = inject(Viewport);
   private readonly router = inject(Router);
 
   /** `/audience/:pin`, absent on the bare `/audience` route. */
   readonly pin = input<string>('');
 
-  protected readonly isSummaryOpen = signal(false);
-  protected readonly isLobbyOpen = signal(false);
   // Prefilled with the last PIN that actually connected, so re-joining is one
   // tap. Persisted in localStorage on a successful join (see the effect below).
   protected readonly pinDraft = signal(readLastPin());
@@ -596,9 +481,15 @@ export class AudiencePage {
   });
 
   constructor() {
+    // The shell-side bar cannot reach the presenter (data-access); it asks the
+    // session to leave, which runs this.
+    this.session.registerLeave(() => this.exit());
+
     inject(DestroyRef).onDestroy(() => {
       void this.presenter.leave();
       void this.fullscreen.exit();
+      this.session.setMounted(false);
+      this.session.reset();
     });
 
     // Join whenever the routed PIN changes; a bare /audience leaves us idle.
@@ -606,6 +497,9 @@ export class AudiencePage {
       const pin = this.pin();
       if (pin) void this.presenter.join(pin.toUpperCase());
     });
+
+    // The shell draws the audience bar only while a viewer is joined.
+    effect(() => this.session.setMounted(this.presenter.status() === 'joined'));
 
     // Remember a PIN once it actually connects — that is the one worth
     // prefilling next time (a mistyped PIN never reaches 'joined').
@@ -620,6 +514,7 @@ export class AudiencePage {
   protected exit(): void {
     void this.presenter.leave();
     void this.fullscreen.exit();
+    this.session.reset();
     // Prefill the prompt with the PIN just left, so rejoining is one tap.
     this.pinDraft.set(readLastPin());
     void this.router.navigate(['/audience']);
@@ -648,16 +543,10 @@ export class AudiencePage {
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && this.isSummaryOpen()) {
+    if (event.key === 'Escape' && this.session.isSummaryOpen()) {
       event.preventDefault();
-      this.isSummaryOpen.set(false);
+      this.session.closeSummary();
     }
-  }
-
-  protected fullscreenLabel(): string {
-    return this.fullscreen.isActive()
-      ? this.exitFullscreenLabel
-      : this.enterFullscreenLabel;
   }
 
   protected readonly joinHeading = $localize`:@@audience.joinHeading:Join an audience`;
@@ -669,24 +558,14 @@ export class AudiencePage {
   protected readonly endedText = $localize`:@@audience.ended:The performer ended the lobby.`;
   protected readonly unavailableText = $localize`:@@audience.unavailable:Audiences are unavailable right now.`;
 
-  protected readonly controlsLabel = $localize`:@@audience.controls:Audience controls`;
   protected readonly summaryLabel = $localize`:@@audience.summary:Song list`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
-  protected readonly summaryShort = $localize`:@@stage.summaryShort:Songs`;
-  protected readonly fullscreenShort = $localize`:@@audience.fullscreenShort:Screen`;
-  protected readonly lobbyShort = $localize`:@@audience.lobby:Lobby`;
-  protected readonly leaveShort = $localize`:@@audience.leaveShort:Leave`;
   protected readonly closeLabel = $localize`:@@audience.close:Close`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
-  protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
-  protected readonly exitLabel = $localize`:@@audience.exit:Leave audience`;
 
   protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
   protected readonly pinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
   protected readonly countLabel = $localize`:@@stage.audienceDialog.count:Listening`;
   protected readonly qrLabel = $localize`:@@stage.audienceDialog.qr:QR code`;
-
-  protected readonly enterFullscreenLabel = $localize`:@@fullscreen.enter:Fullscreen`;
-  protected readonly exitFullscreenLabel = $localize`:@@fullscreen.exit:Exit fullscreen`;
 }

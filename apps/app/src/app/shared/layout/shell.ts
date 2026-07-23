@@ -11,6 +11,8 @@ import { Panes } from './panes';
 import { Rail } from './rail';
 import { StageBar } from './stage-bar';
 import { StageSession } from './stage-session';
+import { AudienceBar } from './audience-bar';
+import { AudienceSession } from './audience-session';
 import { Viewport } from './viewport';
 
 /**
@@ -29,7 +31,7 @@ import { Viewport } from './viewport';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, Rail, ModuleSwitcher, StageBar, Button],
+  imports: [RouterOutlet, Rail, ModuleSwitcher, StageBar, AudienceBar, Button],
   // While performing, mouse movement or a key brings the bars back. Touch is
   // deliberately excluded here: a swipe to change song must NOT reveal the
   // chrome — the perform view itself reveals on a genuine tap (a pointerup that
@@ -59,6 +61,11 @@ import { Viewport } from './viewport';
                  pane switcher is reached through Panes. -->
             @if (session.isMounted()) {
               <app-stage-bar />
+            }
+            <!-- The audience viewer's controls take the slot the same way, so a
+                 phone shows one bar, not the feature's stacked on the shell's. -->
+            @else if (audienceSession.isMounted()) {
+              <app-audience-bar />
             }
             <!-- The pane switcher: segmented, and only in split modules (§4).
                  It is the shell's, because the bar is; which panes exist is the
@@ -174,6 +181,7 @@ export class Shell {
   protected readonly viewport = inject(Viewport);
   protected readonly panes = inject(Panes);
   protected readonly session = inject(StageSession);
+  protected readonly audienceSession = inject(AudienceSession);
   private readonly fullscreen = inject(Fullscreen);
   /**
    * Injected for its side effect, not for anything the shell draws: it counts

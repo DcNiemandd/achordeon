@@ -8,6 +8,7 @@ import {
   RenderService,
 } from '@achordeon/shared/data-access';
 import type { LobbySummaryRow } from '@achordeon/shared/domain';
+import { AudienceSession } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
 
@@ -26,17 +27,21 @@ export class AudiencePresenter {
   private readonly viewer = inject(LobbyViewer);
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
+  private readonly session = inject(AudienceSession);
 
   private readonly _summaryQuery = signal('');
-  private readonly _hideChords = signal(false);
 
   readonly status = this.viewer.status;
   readonly audienceCount = this.viewer.audienceCount;
   readonly payload = this.viewer.payload;
 
   readonly summaryQuery = this._summaryQuery.asReadonly();
-  /** Viewer-local chord hide — reflow-safe (§4.6): the chord rows stay reserved. */
-  readonly hideChords = this._hideChords.asReadonly();
+  /**
+   * Viewer-local chord hide — reflow-safe (§4.6): the chord rows stay reserved.
+   * The state lives in `AudienceSession` so the shell-side bar can toggle it; the
+   * render reads it here.
+   */
+  readonly hideChords = this.session.hideChords;
 
   readonly songName = computed(() => this.payload()?.song.name ?? '');
   /** Where the performer stands in the setlist, for the read-only summary mark. */
@@ -47,7 +52,7 @@ export class AudiencePresenter {
     if (!p) return null;
     const ast = this.parser.parse(p.song.content);
     return this.renderer.layout(ast, p.settings, {
-      hideChords: this._hideChords(),
+      hideChords: this.session.hideChords(),
     });
   });
 
@@ -85,6 +90,6 @@ export class AudiencePresenter {
   }
 
   toggleHideChords(): void {
-    this._hideChords.update((v) => !v);
+    this.session.toggleHideChords();
   }
 }

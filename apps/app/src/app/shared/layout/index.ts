@@ -17,6 +17,8 @@ export { Shell } from './shell';
 export { StageBar } from './stage-bar';
 export { StageSession } from './stage-session';
 export type { AudienceState } from './stage-session';
+export { AudienceBar } from './audience-bar';
+export { AudienceSession } from './audience-session';
 export { SplitPane } from './split-pane';
 export { ThemeApplier } from './theme-applier';
 export { UiStore } from './ui-store';
