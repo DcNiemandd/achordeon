@@ -17,12 +17,10 @@ import {
   EmptyState,
   Field,
   Icon,
-  Menu,
-  MenuItem,
   Premium,
   Tooltip,
 } from '../primitives';
-import { BlankPage, Fullscreen, Viewport } from '../shared/layout';
+import { ActionBar, BlankPage, Fullscreen, Viewport } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
@@ -61,6 +59,7 @@ type AudienceState = 'closed' | 'create' | 'active';
   },
   imports: [
     RouterLink,
+    ActionBar,
     BlankPage,
     SongRender,
     EmptyState,
@@ -68,8 +67,6 @@ type AudienceState = 'closed' | 'create' | 'active';
     Field,
     Icon,
     Tooltip,
-    Menu,
-    MenuItem,
     Premium,
     Dialog,
   ],
@@ -81,108 +78,109 @@ type AudienceState = 'closed' | 'create' | 'active';
     >
       <!--
         Responsive stage bar.
-        Mobile (< 1200px): bottom bar, Prev | Summary | Menu | Next in a row.
-        Desktop (≥ 1200px): top bar, [title + Summary + Menu] left unwrapped,
-        [Prev  Next] centered via CSS grid 1fr/auto/1fr.
+        Mobile (< 1200px): standard ActionBar at top; ghost lg buttons with
+        icon + text; red exit cross in bar-end.
+        Desktop (≥ 1200px): custom grid bar; buttons unwrapped on left, Prev/Next
+        centered, red exit cross on right.
       -->
       @if (viewport.isCompact()) {
-        <!-- Mobile bottom bar -->
-        <nav
-          class="stage-bar stage-bar--bottom"
-          [hidden]="!fullscreen.isChromeVisible()"
-          data-testid="stage-bar"
-        >
+        <!-- Mobile: ActionBar handles fullscreen hide/show internally. -->
+        <app-action-bar [title]="presenter.name()">
+          <!-- Red exit cross — right side of title row. -->
+          <a
+            appButton
+            bar-end
+            routerLink="/stage"
+            class="btn-exit"
+            [attr.aria-label]="exitLabel"
+            [appTooltip]="exitLabel"
+            data-testid="stage-exit"
+          >
+            <app-icon name="close" />
+          </a>
+
+          <!-- Ghost lg buttons with icon + text, matching pane-switcher style. -->
           <button
             appButton
             type="button"
-            [isIconOnly]="true"
+            variant="ghost"
+            size="lg"
             [disabled]="!presenter.hasPrev()"
             [attr.aria-label]="prevLabel"
-            [appTooltip]="prevLabel"
             data-testid="stage-prev"
             (click)="presenter.prev()"
           >
             <app-icon name="chevronLeft" />
+            {{ prevShort }}
           </button>
 
           <button
             appButton
             type="button"
-            variant="secondary"
-            [isIconOnly]="true"
+            variant="ghost"
+            size="lg"
             [class.is-active]="presenter.isSummaryOpen()"
             [attr.aria-pressed]="presenter.isSummaryOpen()"
             [attr.aria-label]="summaryLabel"
-            [appTooltip]="summaryLabel"
             data-testid="stage-summary"
             (click)="toggleSummary()"
           >
             <app-icon name="list" />
+            {{ summaryShort }}
           </button>
-
-          <app-menu [label]="menuLabel" testid="stage-menu">
-            <button
-              appMenuItem
-              type="button"
-              data-testid="stage-menu-fullscreen"
-              (chosen)="fullscreen.toggle()"
-            >
-              <app-icon
-                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-              />
-              {{
-                fullscreen.isActive()
-                  ? exitFullscreenLabel
-                  : enterFullscreenLabel
-              }}
-            </button>
-
-            <app-premium [label]="audienceLabel">
-              <button
-                appMenuItem
-                type="button"
-                [attr.aria-describedby]="audiencePremiumId"
-                data-testid="stage-menu-audience"
-                (chosen)="openAudienceDialog()"
-              >
-                <app-icon name="audience" />
-                {{ audienceLabel }}
-              </button>
-            </app-premium>
-
-            <button
-              appMenuItem
-              type="button"
-              class="is-danger"
-              routerLink="/stage"
-              data-testid="stage-menu-exit"
-            >
-              <app-icon name="close" />
-              {{ exitLabel }}
-            </button>
-          </app-menu>
 
           <button
             appButton
             type="button"
-            [isIconOnly]="true"
+            variant="ghost"
+            size="lg"
+            [attr.aria-label]="audienceLabel"
+            data-testid="stage-audience"
+            (click)="openAudienceDialog()"
+          >
+            <app-icon name="audience" />
+            {{ audienceShort }}
+          </button>
+
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            size="lg"
+            [attr.aria-label]="
+              fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
+            "
+            data-testid="stage-fullscreen"
+            (click)="fullscreen.toggle()"
+          >
+            <app-icon
+              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+            />
+            {{ fullscreenShort }}
+          </button>
+
+          <button
+            appButton
+            type="button"
+            variant="ghost"
+            size="lg"
             [disabled]="!presenter.hasNext()"
             [attr.aria-label]="nextLabel"
-            [appTooltip]="nextLabel"
             data-testid="stage-next"
             (click)="presenter.next()"
           >
             <app-icon name="chevronRight" />
+            {{ nextShort }}
           </button>
-        </nav>
+        </app-action-bar>
       } @else {
-        <!-- Desktop top bar -->
+        <!-- Desktop: custom grid bar [left 1fr][center auto][right 1fr]. -->
         <nav
           class="stage-bar stage-bar--top"
           [hidden]="!fullscreen.isChromeVisible()"
           data-testid="stage-bar"
         >
-          <!-- Left: title + actions, unwrapped -->
+          <!-- Left: title + actions, unwrapped, no overflow menu. -->
           <div class="bar-start">
             <span class="bar-title">{{ presenter.name() }}</span>
 
@@ -201,52 +199,45 @@ type AudienceState = 'closed' | 'create' | 'active';
               <app-icon name="list" />
             </button>
 
-            <app-menu [label]="menuLabel" testid="stage-menu">
-              <button
-                appMenuItem
-                type="button"
-                data-testid="stage-menu-fullscreen"
-                (chosen)="fullscreen.toggle()"
-              >
-                <app-icon
-                  [name]="
-                    fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'
-                  "
-                />
-                {{
-                  fullscreen.isActive()
-                    ? exitFullscreenLabel
-                    : enterFullscreenLabel
-                }}
-              </button>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [attr.aria-label]="
+                fullscreen.isActive()
+                  ? exitFullscreenLabel
+                  : enterFullscreenLabel
+              "
+              [appTooltip]="
+                fullscreen.isActive()
+                  ? exitFullscreenLabel
+                  : enterFullscreenLabel
+              "
+              data-testid="stage-fullscreen"
+              (click)="fullscreen.toggle()"
+            >
+              <app-icon
+                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+              />
+            </button>
 
-              <app-premium [label]="audienceLabel">
-                <button
-                  appMenuItem
-                  type="button"
-                  [attr.aria-describedby]="audiencePremiumId"
-                  data-testid="stage-menu-audience"
-                  (chosen)="openAudienceDialog()"
-                >
-                  <app-icon name="audience" />
-                  {{ audienceLabel }}
-                </button>
-              </app-premium>
-
-              <button
-                appMenuItem
-                type="button"
-                class="is-danger"
-                routerLink="/stage"
-                data-testid="stage-menu-exit"
-              >
-                <app-icon name="close" />
-                {{ exitLabel }}
-              </button>
-            </app-menu>
+            <!-- Audience: plain button, no premium wrapper in bar. -->
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [attr.aria-label]="audienceLabel"
+              [appTooltip]="audienceLabel"
+              data-testid="stage-audience"
+              (click)="openAudienceDialog()"
+            >
+              <app-icon name="audience" />
+              {{ audienceShort }}
+            </button>
           </div>
 
-          <!-- Center: Prev + Next (centered by 1fr/auto/1fr grid) -->
+          <!-- Center: Prev + Next (centered by 1fr/auto/1fr grid). -->
           <div class="bar-nav">
             <button
               appButton
@@ -273,6 +264,21 @@ type AudienceState = 'closed' | 'create' | 'active';
             >
               <app-icon name="chevronRight" />
             </button>
+          </div>
+
+          <!-- Right: red exit cross — same position as songs/songbooks close. -->
+          <div class="bar-end-slot">
+            <a
+              appButton
+              [isIconOnly]="true"
+              routerLink="/stage"
+              class="btn-exit"
+              [attr.aria-label]="exitLabel"
+              [appTooltip]="exitLabel"
+              data-testid="stage-exit"
+            >
+              <app-icon name="close" />
+            </a>
           </div>
         </nav>
       }
@@ -370,20 +376,18 @@ type AudienceState = 'closed' | 'create' | 'active';
             <p class="dialog-info">{{ audienceCreateInfo }}</p>
           }
           @if (audienceState() === 'create') {
-            <ng-container dialog-actions>
-              <app-premium [label]="createLobbyLabel">
-                <button
-                  appButton
-                  type="button"
-                  variant="primary"
-                  [attr.aria-describedby]="audiencePremiumId"
-                  data-testid="stage-create-lobby"
-                  (click)="createLobby()"
-                >
-                  {{ createLobbyLabel }}
-                </button>
-              </app-premium>
-            </ng-container>
+            <!-- Premium indicator lives in the dialog, not on the bar button. -->
+            <app-premium [label]="createLobbyLabel" dialog-actions>
+              <button
+                appButton
+                type="button"
+                variant="primary"
+                data-testid="stage-create-lobby"
+                (click)="createLobby()"
+              >
+                {{ createLobbyLabel }}
+              </button>
+            </app-premium>
           }
 
           @if (audienceState() === 'active') {
@@ -442,21 +446,8 @@ type AudienceState = 'closed' | 'create' | 'active';
       min-block-size: 0;
     }
 
-    /* Mobile bottom bar — sits below .render via flex order */
-    .stage-bar--bottom {
-      order: 2;
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      gap: var(--space-1);
-      padding: var(--space-1) var(--space-2);
-      background: var(--surface-raised);
-      border-block-start: 1px solid var(--border);
-    }
-
-    /* Desktop top bar — grid: [left 1fr] [nav auto] [empty 1fr] = nav centered */
+    /* Desktop top bar — grid: [left 1fr] [nav auto] [right 1fr] = nav centered */
     .stage-bar--top {
-      order: -1;
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
@@ -486,6 +477,21 @@ type AudienceState = 'closed' | 'create' | 'active';
       display: flex;
       align-items: center;
       gap: var(--space-1);
+    }
+
+    .bar-end-slot {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    /* Red exit button — danger color, used in both mobile bar-end and desktop. */
+    .btn-exit {
+      color: var(--danger, #c0362c);
+    }
+
+    .btn-exit:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
     }
 
     /* Summary panel — overlays the render from the right side. */
@@ -678,9 +684,6 @@ export class StagePerformPage {
   protected readonly audienceUrl = () =>
     `${location.origin}/audience/${this.lobbyPin()}`;
 
-  /** Referenced by aria-describedby on the premium audience button. */
-  protected readonly audiencePremiumId = 'stage-audience-premium';
-
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => void this.fullscreen.exit());
@@ -769,7 +772,6 @@ export class StagePerformPage {
     this.audienceState.set('closed');
   }
 
-  protected readonly menuLabel = $localize`:@@stage.menu:More options`;
   protected readonly prevLabel = $localize`:@@stage.prev:Previous song`;
   protected readonly nextLabel = $localize`:@@stage.next:Next song`;
   protected readonly summaryLabel = $localize`:@@stage.summary:Song list`;
@@ -778,6 +780,13 @@ export class StagePerformPage {
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
+
+  /* Short labels for mobile ghost buttons (icon + text). */
+  protected readonly prevShort = $localize`:@@stage.prevShort:Prev`;
+  protected readonly nextShort = $localize`:@@stage.nextShort:Next`;
+  protected readonly summaryShort = $localize`:@@stage.summaryShort:Songs`;
+  protected readonly audienceShort = $localize`:@@stage.audienceShort:Audience`;
+  protected readonly fullscreenShort = $localize`:@@stage.fullscreenShort:Full`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly emptySongbookText = $localize`:@@stage.emptySongbook:This songbook has no songs.`;
