@@ -12,6 +12,9 @@ coverage
 # Generated from src/index.html.template via apps/app/tools/gen-index.mjs
 apps/app/src/index.html
 
+# Generated from env (SUPABASE_URL/ANON_KEY) via apps/app/tools/gen-supabase.mjs
+apps/app/src/app/supabase.config.ts
+
 # Nx caches
 .nx/cache
 .nx/workspace-data

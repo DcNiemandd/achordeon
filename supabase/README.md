@@ -46,15 +46,40 @@ Presence needs no auth, so the follow-along works immediately. The
 `lobby_events` inserts are **best-effort** and RLS is insert-by-owner, so until
 Auth lands (Epic 10) they are silently denied — the live path is unaffected.
 
-## Deploying to a hosted project
+## How the keys are wired (dev + prod, no manual edits)
 
-Replace the values in `apps/app/src/app/supabase.config.ts` with your project's
-URL + anon key (dashboard ▸ Settings ▸ API), and push the migration:
+`apps/app/src/app/supabase.config.ts` is **generated, never committed**
+(`apps/app/tools/gen-supabase.mjs`, gitignored — same pattern as `index.html`).
+It runs before `build`/`serve`/`test` and on `pnpm install`:
+
+- **Dev** — no env set → the local `supabase start` defaults above. Just works.
+- **Prod (CI)** — `.github/workflows/deploy.yml` passes `SUPABASE_URL` +
+  `SUPABASE_ANON_KEY` from **repo variables** into the build.
+
+So you never edit a file before a PR — the key comes from the environment.
+
+### Deploying to a hosted project
+
+1. Push the schema:
+
+   ```bash
+   supabase link --project-ref <ref>
+   supabase db push
+   ```
+
+2. In GitHub → **Settings ▸ Secrets and variables ▸ Actions ▸ Variables**, add
+   repo **variables** (not secrets — the anon key is public by design, RLS is the
+   guard, ADR-0003):
+   - `SUPABASE_URL` = `https://<ref>.supabase.co`
+   - `SUPABASE_ANON_KEY` = the project's anon key (dashboard ▸ Settings ▸ API)
+
+That's it — every push to `main` builds with those values. Leave the variables
+unset to ship **offline-only** (Audience reports itself unavailable rather than
+pointing at localhost).
+
+To generate the file by hand (e.g. to point local dev at a hosted project):
 
 ```bash
-supabase link --project-ref <ref>
-supabase db push
+SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<key> \
+  node apps/app/tools/gen-supabase.mjs
 ```
-
-Set `url` to `''` to build the app with **no backend** (offline-only): the
-Audience UI then reports itself unavailable instead of erroring.

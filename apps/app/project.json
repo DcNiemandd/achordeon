@@ -29,10 +29,19 @@
         "cwd": "apps/app"
       }
     },
+    "gen-supabase": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": ["{projectRoot}/src/app/supabase.config.ts"],
+      "options": {
+        "command": "node tools/gen-supabase.mjs",
+        "cwd": "apps/app"
+      }
+    },
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
-      "dependsOn": ["gen-index"],
+      "dependsOn": ["gen-index", "gen-supabase"],
       "options": {
         "outputPath": "dist/apps/app",
         "browser": "apps/app/src/main.ts",
@@ -83,7 +92,7 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
-      "dependsOn": ["gen-index"],
+      "dependsOn": ["gen-index", "gen-supabase"],
       "configurations": {
         "production": {
           "buildTarget": "app:build:production"
@@ -111,6 +120,7 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
+      "dependsOn": ["gen-supabase"],
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "jestConfig": "apps/app/jest.config.ts",
