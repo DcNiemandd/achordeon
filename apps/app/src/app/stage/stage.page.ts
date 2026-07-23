@@ -2,7 +2,7 @@
 // Spec: docs/achordeon-implementation.md §Epic 8
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { EmptyState } from '../primitives';
+import { Button, EmptyState, Icon } from '../primitives';
 import { ActionBar } from '../shared/layout';
 import { StagePresenter } from './stage.presenter';
 
@@ -23,7 +23,7 @@ import { StagePresenter } from './stage.presenter';
   selector: 'app-stage-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StagePresenter],
-  imports: [ActionBar, EmptyState],
+  imports: [ActionBar, EmptyState, Button, Icon],
   template: `
     <app-action-bar [title]="title" />
 
@@ -32,17 +32,26 @@ import { StagePresenter } from './stage.presenter';
     } @else {
       <ul class="list" data-testid="stage-list">
         @for (row of presenter.rows(); track row.id) {
-          <li>
-            <button
-              type="button"
-              class="row"
-              [class.is-all-songs]="row.isAllSongs"
-              [attr.aria-label]="performLabel(row.name)"
-              [attr.data-testid]="'stage-row-' + row.id"
-              (dblclick)="presenter.perform(row.id)"
-            >
+          <li
+            class="row"
+            [class.is-all-songs]="row.isAllSongs"
+            [attr.data-testid]="'stage-row-' + row.id"
+            (dblclick)="presenter.perform(row.id)"
+          >
+            <div class="info">
               <span class="name">{{ row.name }}</span>
               <span class="count">{{ countLabel(row.entryCount) }}</span>
+            </div>
+            <button
+              appButton
+              type="button"
+              variant="primary"
+              [attr.aria-label]="performLabel(row.name)"
+              [attr.data-testid]="'stage-perform-' + row.id"
+              (click)="presenter.perform(row.id)"
+            >
+              <app-icon name="stage" />
+              {{ performShort }}
             </button>
           </li>
         }
@@ -71,26 +80,22 @@ import { StagePresenter } from './stage.presenter';
 
     .row {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      inline-size: 100%;
+      align-items: center;
+      gap: var(--space-3);
       padding: var(--space-3) var(--space-4);
-      border: none;
       border-block-end: 1px solid var(--border);
-      background: none;
-      color: inherit;
-      font: inherit;
-      text-align: start;
-      cursor: pointer;
     }
 
     .row:hover {
       background: var(--surface-raised);
     }
 
-    .row:focus-visible {
-      outline: 2px solid var(--brand);
-      outline-offset: -2px;
+    .info {
+      flex: 1;
+      min-inline-size: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
     }
 
     .name {
@@ -122,6 +127,7 @@ export class StagePage {
 
   protected readonly title = $localize`:@@stage.title:Stage`;
   protected readonly emptyText = $localize`:@@stage.empty:No songs yet. Add songs to start performing.`;
+  protected readonly performShort = $localize`:@@stage.perform:Perform`;
 
   protected performLabel(name: string): string {
     return $localize`:@@stage.performLabel:Perform "${name}:name:"`;
