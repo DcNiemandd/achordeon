@@ -1,0 +1,139 @@
+// Stage session — Epic 8 ▸ performing mode (persistent across modules)
+// Spec: docs/achordeon-implementation.md §Epic 8; apps/docs/docs/stage-audience/index.mdx
+
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Fullscreen } from './fullscreen';
+
+/** The audience/lobby dialog phase. Stub PIN until Epic 9 wires Supabase. */
+export type AudienceState = 'closed' | 'create' | 'active';
+
+/**
+ * The **persistent** part of a performance: which book, which song, and the
+ * lobby — the state that must outlive the `/stage/:id` route so the session
+ * survives a jump to another module and resumes on return (only the exit cross
+ * ends it).
+ *
+ * A store-free UI-state holder, deliberately in `shared/layout` beside `Panes`
+ * and `Fullscreen`: the shell's bottom bar renders the mobile controls and so
+ * must read this, and `shared/**` may not touch a store (the presenter rule,
+ * PRD-UI-SHELL.md §3, enforced in eslint). The store-dependent, render-derived
+ * half of a performance (songs, SVG, summary rows) stays in the route-scoped
+ * `StagePerformPresenter`, which reads `index` from here.
+ *
+ * `isMounted` is the `Panes`-style report: the perform page raises it while it
+ * is on screen, and the shell draws the stage controls only then.
+ */
+@Injectable({ providedIn: 'root' })
+export class StageSession {
+  private readonly fullscreen = inject(Fullscreen);
+
+  private readonly _bookId = signal<string | null>(null);
+  private readonly _index = signal(0);
+  private readonly _total = signal(0);
+  private readonly _isSummaryOpen = signal(false);
+  private readonly _audienceState = signal<AudienceState>('closed');
+  private readonly _lobbyPin = signal('');
+  private readonly _isMounted = signal(false);
+
+  readonly bookId = this._bookId.asReadonly();
+  readonly index = this._index.asReadonly();
+  readonly total = this._total.asReadonly();
+  readonly isSummaryOpen = this._isSummaryOpen.asReadonly();
+  readonly audienceState = this._audienceState.asReadonly();
+  readonly lobbyPin = this._lobbyPin.asReadonly();
+  readonly isMounted = this._isMounted.asReadonly();
+
+  /** A performance is open (whether or not its view is on screen). */
+  readonly isPerforming = computed(() => this._bookId() !== null);
+
+  readonly hasPrev = computed(() => this._index() > 0);
+  readonly hasNext = computed(() => this._index() < this._total() - 1);
+
+  readonly audienceUrl = computed(
+    () => `${location.origin}/audience/${this._lobbyPin()}`,
+  );
+
+  /**
+   * Begin (or resume) a performance of `bookId`. Idempotent on the same book:
+   * re-entering the route must keep the current song, so only a *different* book
+   * resets the index. The presenter reloads the songs either way.
+   */
+  start(bookId: string): void {
+    if (this._bookId() === bookId) return;
+    this._bookId.set(bookId);
+    this._index.set(0);
+    this._total.set(0);
+  }
+
+  setTotal(total: number): void {
+    this._total.set(total);
+  }
+
+  prev(): void {
+    this._index.update((i) => Math.max(0, i - 1));
+  }
+
+  next(): void {
+    this._index.update((i) => Math.min(this._total() - 1, i + 1));
+  }
+
+  jumpTo(index: number): void {
+    this._index.set(Math.max(0, Math.min(this._total() - 1, index)));
+    this._isSummaryOpen.set(false);
+  }
+
+  openSummary(): void {
+    this._isSummaryOpen.set(true);
+  }
+
+  closeSummary(): void {
+    this._isSummaryOpen.set(false);
+  }
+
+  toggleSummary(): void {
+    this._isSummaryOpen.update((open) => !open);
+  }
+
+  openAudience(): void {
+    this._audienceState.set('create');
+  }
+
+  closeAudience(): void {
+    this._audienceState.set('closed');
+  }
+
+  createLobby(): void {
+    // Stub — Epic 9 wires this to the Supabase lobby RPC. A random 5-digit PIN
+    // stands in until then.
+    this._lobbyPin.set(Math.floor(10000 + Math.random() * 90000).toString());
+    this._audienceState.set('active');
+  }
+
+  endLobby(): void {
+    this._lobbyPin.set('');
+    this._audienceState.set('closed');
+  }
+
+  /** The perform page is on screen: the shell draws the stage controls. */
+  enterView(): void {
+    this._isMounted.set(true);
+  }
+
+  leaveView(): void {
+    this._isMounted.set(false);
+  }
+
+  /**
+   * The performance is over — the single "end it" path, reached only by the
+   * exit cross. Clears the session, ends any lobby, and drops fullscreen. Does
+   * not navigate: the caller owns where to go (back to the picker).
+   */
+  end(): void {
+    this._bookId.set(null);
+    this._index.set(0);
+    this._total.set(0);
+    this._isSummaryOpen.set(false);
+    this.endLobby();
+    void this.fullscreen.exit();
+  }
+}

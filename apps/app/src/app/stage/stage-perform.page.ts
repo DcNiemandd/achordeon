@@ -8,9 +8,8 @@ import {
   effect,
   inject,
   input,
-  signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import {
   Button,
   Dialog,
@@ -20,35 +19,43 @@ import {
   Premium,
   Tooltip,
 } from '../primitives';
-import { ActionBar, BlankPage, Fullscreen, Viewport } from '../shared/layout';
+import {
+  BlankPage,
+  Fullscreen,
+  StageSession,
+  Viewport,
+} from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
 /** Minimum horizontal travel (px) that counts as a swipe. */
 const SWIPE_THRESHOLD_PX = 60;
 
-type AudienceState = 'closed' | 'create' | 'active';
-
 /**
  * Performing mode: one song at a time, full-screen, swipe to navigate.
  *
- * Action bar (docs spec): Prev | n/total | Next | Summary | Menu
- * Menu items: Fullscreen toggle, Create audience (premium), Exit.
+ * The bar differs by width, and the two do not share a shape:
  *
- * The action bar auto-hides in fullscreen mode and comes back on any pointer
- * event — the `Fullscreen` service handles this through `reveal()`. There is
- * no dedicated tap zone: the entire render area reveals the chrome.
+ * - **Mobile** renders no bar of its own — the controls live in the shell's one
+ *   bottom bar (`StageBar`, reached through `StageSession`), so a phone shows a
+ *   single bar, not the feature's stacked on the shell's. There is no title.
+ * - **Desktop** keeps its own top grid bar: actions unwrapped on the left,
+ *   Prev/Next centered, a red exit cross on the right (the songs/songbooks
+ *   close position). The Audience button is icon-only.
+ *
+ * The performance itself is **persistent**: which book, which song and the
+ * lobby live in `StageSession` (root), so leaving for another module keeps the
+ * session alive and returning resumes it. Only the exit cross ends it
+ * (`session.end()`); leaving the route merely drops fullscreen.
  *
  * Swipe detection uses the Pointer Events API so it works for both mouse and
  * touch. A drag is horizontal when |dx| > SWIPE_THRESHOLD_PX and |dx| > |dy|,
- * which avoids competing with a vertical scroll gesture.
+ * which avoids competing with a vertical scroll gesture. Any pointer event on
+ * the render reveals the chrome in fullscreen (`fullscreen.reveal()`), so a tap
+ * doubles as tap-to-reveal with no dedicated zone (spec).
  *
- * The summary is a non-blocking panel that slides over the render area. It
- * stays open until dismissed so the performer can browse without losing their
- * place.
- *
- * DestroyRef exits fullscreen on route leave so the browser chrome is restored
- * automatically — no manual "exit before leaving" friction.
+ * The summary is a non-blocking panel that slides over the render area and
+ * stays open until dismissed, so the performer can browse without losing place.
  */
 @Component({
   selector: 'app-stage-perform-page',
@@ -56,10 +63,9 @@ type AudienceState = 'closed' | 'create' | 'active';
   providers: [StagePerformPresenter],
   host: {
     '(document:keydown)': 'onKeyDown($event)',
+    '(document:pointerdown)': 'onDocumentPointerDown($event)',
   },
   imports: [
-    RouterLink,
-    ActionBar,
     BlankPage,
     SongRender,
     EmptyState,
@@ -76,105 +82,9 @@ type AudienceState = 'closed' | 'create' | 'active';
       (pointerdown)="startSwipe($event)"
       (pointerup)="endSwipe($event)"
     >
-      <!--
-        Responsive stage bar.
-        Mobile (< 1200px): standard ActionBar at top; ghost lg buttons with
-        icon + text; red exit cross in bar-end.
-        Desktop (≥ 1200px): custom grid bar; buttons unwrapped on left, Prev/Next
-        centered, red exit cross on right.
-      -->
-      @if (viewport.isCompact()) {
-        <!-- Mobile: ActionBar handles fullscreen hide/show internally. -->
-        <app-action-bar [title]="presenter.name()">
-          <!-- Red exit cross — right side of title row. -->
-          <a
-            appButton
-            bar-end
-            routerLink="/stage"
-            class="btn-exit"
-            [attr.aria-label]="exitLabel"
-            [appTooltip]="exitLabel"
-            data-testid="stage-exit"
-          >
-            <app-icon name="close" />
-          </a>
-
-          <!-- Ghost lg buttons with icon + text, matching pane-switcher style. -->
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            size="lg"
-            [disabled]="!presenter.hasPrev()"
-            [attr.aria-label]="prevLabel"
-            data-testid="stage-prev"
-            (click)="presenter.prev()"
-          >
-            <app-icon name="chevronLeft" />
-            {{ prevShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            size="lg"
-            [class.is-active]="presenter.isSummaryOpen()"
-            [attr.aria-pressed]="presenter.isSummaryOpen()"
-            [attr.aria-label]="summaryLabel"
-            data-testid="stage-summary"
-            (click)="toggleSummary()"
-          >
-            <app-icon name="list" />
-            {{ summaryShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            size="lg"
-            [attr.aria-label]="audienceLabel"
-            data-testid="stage-audience"
-            (click)="openAudienceDialog()"
-          >
-            <app-icon name="audience" />
-            {{ audienceShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            size="lg"
-            [attr.aria-label]="
-              fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
-            "
-            data-testid="stage-fullscreen"
-            (click)="fullscreen.toggle()"
-          >
-            <app-icon
-              [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-            />
-            {{ fullscreenShort }}
-          </button>
-
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            size="lg"
-            [disabled]="!presenter.hasNext()"
-            [attr.aria-label]="nextLabel"
-            data-testid="stage-next"
-            (click)="presenter.next()"
-          >
-            <app-icon name="chevronRight" />
-            {{ nextShort }}
-          </button>
-        </app-action-bar>
-      } @else {
-        <!-- Desktop: custom grid bar [left 1fr][center auto][right 1fr]. -->
+      <!-- Desktop only: the feature's own top grid bar. Mobile draws nothing
+           here — its controls are the shell's bottom bar (StageBar). -->
+      @if (!viewport.isCompact()) {
         <nav
           class="stage-bar stage-bar--top"
           [hidden]="!fullscreen.isChromeVisible()"
@@ -189,12 +99,12 @@ type AudienceState = 'closed' | 'create' | 'active';
               type="button"
               variant="secondary"
               [isIconOnly]="true"
-              [class.is-active]="presenter.isSummaryOpen()"
-              [attr.aria-pressed]="presenter.isSummaryOpen()"
+              [class.is-active]="session.isSummaryOpen()"
+              [attr.aria-pressed]="session.isSummaryOpen()"
               [attr.aria-label]="summaryLabel"
               [appTooltip]="summaryLabel"
               data-testid="stage-summary"
-              (click)="toggleSummary()"
+              (click)="session.toggleSummary()"
             >
               <app-icon name="list" />
             </button>
@@ -222,18 +132,19 @@ type AudienceState = 'closed' | 'create' | 'active';
               />
             </button>
 
-            <!-- Audience: plain button, no premium wrapper in bar. -->
+            <!-- Audience: icon-only, plain button; the premium tint lives in
+                 the dialog, not on the bar. -->
             <button
               appButton
               type="button"
               variant="secondary"
+              [isIconOnly]="true"
               [attr.aria-label]="audienceLabel"
               [appTooltip]="audienceLabel"
               data-testid="stage-audience"
-              (click)="openAudienceDialog()"
+              (click)="session.openAudience()"
             >
               <app-icon name="audience" />
-              {{ audienceShort }}
             </button>
           </div>
 
@@ -243,11 +154,11 @@ type AudienceState = 'closed' | 'create' | 'active';
               appButton
               type="button"
               [isIconOnly]="true"
-              [disabled]="!presenter.hasPrev()"
+              [disabled]="!session.hasPrev()"
               [attr.aria-label]="prevLabel"
               [appTooltip]="prevLabel"
               data-testid="stage-prev"
-              (click)="presenter.prev()"
+              (click)="session.prev()"
             >
               <app-icon name="chevronLeft" />
             </button>
@@ -256,11 +167,11 @@ type AudienceState = 'closed' | 'create' | 'active';
               appButton
               type="button"
               [isIconOnly]="true"
-              [disabled]="!presenter.hasNext()"
+              [disabled]="!session.hasNext()"
               [attr.aria-label]="nextLabel"
               [appTooltip]="nextLabel"
               data-testid="stage-next"
-              (click)="presenter.next()"
+              (click)="session.next()"
             >
               <app-icon name="chevronRight" />
             </button>
@@ -268,17 +179,18 @@ type AudienceState = 'closed' | 'create' | 'active';
 
           <!-- Right: red exit cross — same position as songs/songbooks close. -->
           <div class="bar-end-slot">
-            <a
+            <button
               appButton
+              type="button"
               [isIconOnly]="true"
-              routerLink="/stage"
               class="btn-exit"
               [attr.aria-label]="exitLabel"
               [appTooltip]="exitLabel"
               data-testid="stage-exit"
+              (click)="exit()"
             >
               <app-icon name="close" />
-            </a>
+            </button>
           </div>
         </nav>
       }
@@ -304,8 +216,8 @@ type AudienceState = 'closed' | 'create' | 'active';
 
       <!-- Summary panel: a non-blocking overlay with search + jump list.
            Positioned over the render so the song stays visible behind it.
-           Escape and clicking the summary button again dismiss it. -->
-      @if (presenter.isSummaryOpen()) {
+           Escape and the summary button again dismiss it. -->
+      @if (session.isSummaryOpen()) {
         <div
           class="summary"
           role="dialog"
@@ -319,7 +231,7 @@ type AudienceState = 'closed' | 'create' | 'active';
               type="button"
               [isIconOnly]="true"
               [attr.aria-label]="closeSummaryLabel"
-              (click)="presenter.closeSummary()"
+              (click)="session.closeSummary()"
             >
               <app-icon name="close" />
             </button>
@@ -341,9 +253,9 @@ type AudienceState = 'closed' | 'create' | 'active';
                 <button
                   type="button"
                   class="summary-row"
-                  [class.is-current]="row.index === presenter.index()"
+                  [class.is-current]="row.index === session.index()"
                   [attr.data-testid]="'stage-summary-row-' + row.index"
-                  (click)="presenter.jumpTo(row.index)"
+                  (click)="session.jumpTo(row.index)"
                 >
                   <span class="summary-num">{{ row.index + 1 }}</span>
                   <span class="summary-info">
@@ -365,17 +277,17 @@ type AudienceState = 'closed' | 'create' | 'active';
       <!-- Audience dialog — stub for Epic 9 lobby creation.
            Pre-creation: "Create lobby" button (premium highlighted).
            Post-creation: PIN, audience URL, QR placeholder, "End lobby". -->
-      @if (audienceState() !== 'closed') {
+      @if (session.audienceState() !== 'closed') {
         <app-dialog
           [title]="audienceDialogTitle"
           mode="viewport"
           data-testid="stage-audience-dialog"
-          (closed)="closeAudienceDialog()"
+          (closed)="session.closeAudience()"
         >
-          @if (audienceState() === 'create') {
+          @if (session.audienceState() === 'create') {
             <p class="dialog-info">{{ audienceCreateInfo }}</p>
           }
-          @if (audienceState() === 'create') {
+          @if (session.audienceState() === 'create') {
             <!-- Premium indicator lives in the dialog, not on the bar button. -->
             <app-premium [label]="createLobbyLabel" dialog-actions>
               <button
@@ -383,40 +295,40 @@ type AudienceState = 'closed' | 'create' | 'active';
                 type="button"
                 variant="primary"
                 data-testid="stage-create-lobby"
-                (click)="createLobby()"
+                (click)="session.createLobby()"
               >
                 {{ createLobbyLabel }}
               </button>
             </app-premium>
           }
 
-          @if (audienceState() === 'active') {
+          @if (session.audienceState() === 'active') {
             <dl class="lobby-info">
               <dt>{{ lobbyPinLabel }}</dt>
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
-                {{ lobbyPin() }}
+                {{ session.lobbyPin() }}
               </dd>
               <dt>{{ lobbyLinkLabel }}</dt>
               <dd>
                 <code class="lobby-link" data-testid="stage-lobby-link">
-                  {{ audienceUrl() }}
+                  {{ session.audienceUrl() }}
                 </code>
               </dd>
               <dt>{{ lobbyQrLabel }}</dt>
               <dd class="lobby-qr" data-testid="stage-lobby-qr">
                 <span class="qr-placeholder">QR</span>
-                <span class="qr-url">{{ audienceUrl() }}</span>
+                <span class="qr-url">{{ session.audienceUrl() }}</span>
               </dd>
             </dl>
           }
-          @if (audienceState() === 'active') {
+          @if (session.audienceState() === 'active') {
             <button
               appButton
               type="button"
               class="is-danger"
               dialog-actions
               data-testid="stage-end-lobby"
-              (click)="endLobby()"
+              (click)="session.endLobby()"
             >
               {{ endLobbyLabel }}
             </button>
@@ -485,7 +397,7 @@ type AudienceState = 'closed' | 'create' | 'active';
       align-items: center;
     }
 
-    /* Red exit button — danger color, used in both mobile bar-end and desktop. */
+    /* Red exit button — danger color. */
     .btn-exit {
       color: var(--danger, #c0362c);
     }
@@ -669,8 +581,10 @@ type AudienceState = 'closed' | 'create' | 'active';
 })
 export class StagePerformPage {
   protected readonly presenter = inject(StagePerformPresenter);
+  protected readonly session = inject(StageSession);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
+  private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
   readonly songbookId = input.required<string>();
@@ -678,47 +592,54 @@ export class StagePerformPage {
   private swipeStartX: number | null = null;
   private swipeStartY: number | null = null;
 
-  protected readonly audienceState = signal<AudienceState>('closed');
-  protected readonly lobbyPin = signal('');
-
-  protected readonly audienceUrl = () =>
-    `${location.origin}/audience/${this.lobbyPin()}`;
-
   constructor() {
     const destroyRef = inject(DestroyRef);
-    destroyRef.onDestroy(() => void this.fullscreen.exit());
+    // Leaving the route drops fullscreen (chrome must come back on the next
+    // module) and stops the shell drawing the stage controls — but the session
+    // itself lives on. Only the exit cross ends it (see exit()).
+    destroyRef.onDestroy(() => {
+      this.session.leaveView();
+      void this.fullscreen.exit();
+    });
+
+    // The shell draws the stage controls while this view is on screen.
+    this.session.enterView();
 
     effect(() => {
-      void this.presenter.load(this.songbookId());
+      void this.presenter.open(this.songbookId());
     });
   }
 
+  protected exit(): void {
+    this.session.end();
+    void this.router.navigate(['/stage']);
+  }
+
   protected onKeyDown(event: KeyboardEvent): void {
-    if (this.presenter.isSummaryOpen()) {
+    if (this.session.isSummaryOpen()) {
       if (event.key === 'Escape') {
         event.preventDefault();
-        this.presenter.closeSummary();
+        this.session.closeSummary();
       }
       return;
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       event.preventDefault();
-      this.presenter.prev();
+      this.session.prev();
     } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault();
-      this.presenter.next();
+      this.session.next();
     }
   }
 
   protected startSwipe(event: PointerEvent): void {
-    // Only track swipes that start on the render area, not on the summary panel
-    // or action bar buttons.
+    // Only track gestures that start on the render area, not on the summary
+    // panel or action bar buttons. No reveal here: a swipe must leave the chrome
+    // hidden, so the reveal decision waits for pointerup, where a tap is told
+    // apart from a swipe.
     if ((event.target as HTMLElement).closest('.summary, button, a')) return;
     this.swipeStartX = event.clientX;
     this.swipeStartY = event.clientY;
-    // Reveal chrome on any pointer interaction — tap-to-reveal, no dedicated
-    // zone (spec). The Fullscreen service resets the idle timer.
-    this.fullscreen.reveal();
   }
 
   protected endSwipe(event: PointerEvent): void {
@@ -728,48 +649,38 @@ export class StagePerformPage {
     this.swipeStartX = null;
     this.swipeStartY = null;
 
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-    if (Math.abs(dy) >= Math.abs(dx)) return; // not horizontal enough
+    const isHorizontalSwipe =
+      Math.abs(dx) >= SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy);
+    if (!isHorizontalSwipe) {
+      // A tap, not a swipe: reveal the chrome (tap-to-reveal, no dedicated
+      // zone — spec). The swipe itself never reveals.
+      this.fullscreen.reveal();
+      return;
+    }
 
     if (dx < 0) {
-      this.presenter.next();
+      this.session.next();
     } else {
-      this.presenter.prev();
+      this.session.prev();
     }
   }
 
-  protected toggleSummary(): void {
-    if (this.presenter.isSummaryOpen()) {
-      this.presenter.closeSummary();
-    } else {
-      this.presenter.openSummary();
-    }
+  /**
+   * Click/tap outside the open summary dismisses it. The toggle button is
+   * excluded — it owns the open/close itself, and closing here too would fight
+   * it. On the pointerdown that opens the panel the panel is not open yet, so
+   * this is a no-op then.
+   */
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.session.isSummaryOpen()) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.summary')) return;
+    if (target.closest('[data-testid="stage-summary"]')) return;
+    this.session.closeSummary();
   }
 
   protected onSummarySearch(event: Event): void {
     this.presenter.setSummaryQuery((event.target as HTMLInputElement).value);
-  }
-
-  protected openAudienceDialog(): void {
-    this.audienceState.set('create');
-  }
-
-  protected closeAudienceDialog(): void {
-    this.audienceState.set('closed');
-  }
-
-  protected createLobby(): void {
-    // Stub — Epic 9 will wire this to the Supabase lobby RPC.
-    // Generate a random 5-digit PIN until the backend is in place.
-    const pin = Math.floor(10000 + Math.random() * 90000).toString();
-    this.lobbyPin.set(pin);
-    this.audienceState.set('active');
-  }
-
-  protected endLobby(): void {
-    // Stub — Epic 9 will call the Supabase end-lobby RPC.
-    this.lobbyPin.set('');
-    this.audienceState.set('closed');
   }
 
   protected readonly prevLabel = $localize`:@@stage.prev:Previous song`;
@@ -781,12 +692,6 @@ export class StagePerformPage {
   protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
 
-  /* Short labels for mobile ghost buttons (icon + text). */
-  protected readonly prevShort = $localize`:@@stage.prevShort:Prev`;
-  protected readonly nextShort = $localize`:@@stage.nextShort:Next`;
-  protected readonly summaryShort = $localize`:@@stage.summaryShort:Songs`;
-  protected readonly audienceShort = $localize`:@@stage.audienceShort:Audience`;
-  protected readonly fullscreenShort = $localize`:@@stage.fullscreenShort:Full`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly emptySongbookText = $localize`:@@stage.emptySongbook:This songbook has no songs.`;

@@ -18,6 +18,7 @@ import {
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
+import { StageSession } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
 
@@ -42,10 +43,14 @@ export interface StageSummaryRow {
 }
 
 /**
- * Performing-mode state for one songbook.
+ * The **render-derived** half of a performance: the songs of the current book
+ * and the SVG for the song at `StageSession.index()`.
  *
- * Loads the songbook + its songs from the repository, tracks the current
- * index, renders the current song to SVG, and provides navigation commands.
+ * Route-scoped (the page provides it) and store-dependent, which is why it
+ * lives here and not in `shared/layout`: `shared/**` may not inject a store
+ * (the presenter rule, PRD-UI-SHELL.md §3). The *persistent* half — which book,
+ * which index, the lobby — lives in `StageSession`, so a jump to another module
+ * and back rehydrates the render at the song the performer left on.
  *
  * Signals in, commands out (PRD-UI-SHELL.md §3).
  *
@@ -61,33 +66,21 @@ export class StagePerformPresenter {
   private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
+  private readonly session = inject(StageSession);
 
   private readonly _book = signal<Songbook | null>(null);
   private readonly _songs = signal<Song[]>([]);
-  private readonly _index = signal(0);
-
-  private readonly _isSummaryOpen = signal(false);
   private readonly _summaryQuery = signal('');
 
   readonly name = computed(() => this._book()?.name ?? '');
-  readonly total = computed(() => this._songs().length);
-  readonly index = this._index.asReadonly();
-  /** 1-based display position. */
-  readonly position = computed(() =>
-    this._songs().length > 0 ? this._index() + 1 : 0,
-  );
-
-  readonly hasPrev = computed(() => this._index() > 0);
-  readonly hasNext = computed(() => this._index() < this._songs().length - 1);
 
   /** True once loaded and the book is truly empty. A missing book bounces to /stage. */
   readonly isEmpty = computed(() => this._songs().length === 0);
 
-  readonly isSummaryOpen = this._isSummaryOpen.asReadonly();
   readonly summaryQuery = this._summaryQuery.asReadonly();
 
   private readonly _currentSong = computed(
-    () => this._songs()[this._index()] ?? null,
+    () => this._songs()[this.session.index()] ?? null,
   );
 
   /**
@@ -140,22 +133,29 @@ export class StagePerformPresenter {
   /**
    * Load the songbook and hydrate its entry songs.
    *
-   * For the virtual All songs book (`isAllSongs(id)` is true), the store has
-   * no record, so we bypass the store and use `songsStore.allLive()` directly.
-   * That returns all live songs in name order, which is the logical definition
-   * of "All songs".
+   * `session.start(id)` decides the index (kept on the same book, reset on a new
+   * one); this always reloads the songs, because a fresh presenter instance
+   * after a route re-entry has none — that reload at the preserved index is what
+   * makes the performance resume.
+   *
+   * For the virtual All songs book (`isAllSongs(id)` is true), the store has no
+   * record, so we bypass the store and use `songsStore.allLive()` directly. That
+   * returns all live songs in name order, which is the logical definition of
+   * "All songs".
    *
    * For real books, a missing or tombstoned book bounces back to /stage rather
    * than showing a broken view. Songs that were deleted are skipped: a deleted
    * song was removed from the library, not from this performance, so the list
    * just becomes shorter.
    */
-  async load(id: string): Promise<void> {
+  async open(id: string): Promise<void> {
+    this.session.start(id);
+
     if (isAllSongs(id)) {
       this._book.set(ALL_SONGS_BOOK);
-      this._index.set(0);
       const songs = await this.songsStore.allLive({ sort: 'name' });
       this._songs.set(songs);
+      this.session.setTotal(songs.length);
       return;
     }
 
@@ -165,7 +165,6 @@ export class StagePerformPresenter {
       return;
     }
     this._book.set(book);
-    this._index.set(0);
 
     const songs: Song[] = [];
     for (const songId of book.entries) {
@@ -175,28 +174,7 @@ export class StagePerformPresenter {
       }
     }
     this._songs.set(songs);
-  }
-
-  prev(): void {
-    this._index.update((i) => Math.max(0, i - 1));
-  }
-
-  next(): void {
-    this._index.update((i) => Math.min(this._songs().length - 1, i + 1));
-  }
-
-  jumpTo(index: number): void {
-    this._index.set(Math.max(0, Math.min(this._songs().length - 1, index)));
-    this._isSummaryOpen.set(false);
-  }
-
-  openSummary(): void {
-    this._isSummaryOpen.set(true);
-    this._summaryQuery.set('');
-  }
-
-  closeSummary(): void {
-    this._isSummaryOpen.set(false);
+    this.session.setTotal(songs.length);
   }
 
   setSummaryQuery(q: string): void {
