@@ -44,10 +44,17 @@ export class LobbyHost {
   readonly status = this._status.asReadonly();
 
   /**
-   * Make Presence match `(pin, payload)`. The one method the presenter's effect
-   * calls: it opens the channel the first time (or when the PIN changes), and
-   * re-tracks the payload on every subsequent song change. Idempotent enough to
-   * be driven straight from a signal effect.
+   * Make the lobby match `(pin, payload)`. The one method the presenter's effect
+   * calls: opens the channel the first time (or when the PIN changes), and on
+   * every subsequent song change **both** re-tracks Presence and Broadcasts the
+   * new payload.
+   *
+   * Why both (ADR-0003 says "re-tracks **or** Broadcasts"): a Presence `track()`
+   * update is delivered to a *late joiner*'s first sync, but Realtime does **not**
+   * push a meta-update diff to viewers already subscribed — their Presence cache
+   * stays on the payload they joined with. So Presence keeps the current state
+   * available for new joiners, and a Broadcast pushes the change to the ones
+   * already here.
    */
   async sync(pin: string, payload: LobbyPayload): Promise<void> {
     if (pin !== this.currentPin) {
@@ -57,6 +64,11 @@ export class LobbyHost {
     }
     if (this.channel) {
       await this.channel.track(payload);
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'song',
+        payload,
+      });
       this.analytics.songChanged(pin, payload.song.id);
     }
   }
@@ -83,7 +95,7 @@ export class LobbyHost {
     this._status.set('connecting');
 
     const channel = client.channel(channelName(pin), {
-      config: { presence: { key: 'host' } },
+      config: { presence: { key: 'host' }, broadcast: { self: false } },
     });
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();

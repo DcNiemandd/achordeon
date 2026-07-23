@@ -66,7 +66,16 @@ export class LobbyViewer {
     this.sawHost = false;
 
     const channel = client.channel(channelName(pin), {
-      config: { presence: { key: randomViewerKey() } },
+      config: {
+        presence: { key: randomViewerKey() },
+        broadcast: { self: false },
+      },
+    });
+    // Live song changes arrive as Broadcasts (Presence does not push meta
+    // updates to already-subscribed viewers — see LobbyHost.sync).
+    channel.on('broadcast', { event: 'song' }, (message) => {
+      this._payload.set(message['payload'] as LobbyPayload);
+      this._status.set('joined');
     });
     channel.on('presence', { event: 'sync' }, () => this.onSync(channel));
     this.channel = channel;
@@ -112,12 +121,19 @@ export class LobbyViewer {
     // adds, which the payload shape ignores).
     const hostEntry = state['host']?.[0] as unknown as LobbyPayload | undefined;
     if (hostEntry) {
-      this.sawHost = true;
       if (this.notFoundTimer !== null) {
         clearTimeout(this.notFoundTimer);
         this.notFoundTimer = null;
       }
-      this._payload.set(hostEntry);
+      // Set the payload from Presence only on the FIRST host sighting — that is
+      // the join-time current state. After that, this viewer's Presence cache is
+      // frozen at the join payload (Realtime never diffs a host meta-update to
+      // it), so honouring later syncs would clobber a fresher Broadcast with the
+      // stale join value. Subsequent changes come via the broadcast handler.
+      if (!this.sawHost) {
+        this.sawHost = true;
+        this._payload.set(hostEntry);
+      }
       this._status.set('joined');
     } else if (this.sawHost) {
       // Host was here and is gone — the lobby ended (ADR-0003).
