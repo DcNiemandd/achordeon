@@ -9,6 +9,7 @@ import {
   effect,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
@@ -302,6 +303,12 @@ const SWIPE_THRESHOLD_PX = 60;
           }
 
           @if (session.audienceState() === 'active') {
+            <!-- Gold tint marks the lobby as a Premium feature, the same
+                 language the premium glow speaks elsewhere (§5.3). -->
+            <p class="premium-note" data-testid="stage-lobby-premium">
+              <app-icon name="favorite" [isFilled]="true" />
+              {{ lobbyPremiumNote }}
+            </p>
             <dl class="lobby-info">
               <dt>{{ lobbyPinLabel }}</dt>
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
@@ -309,14 +316,23 @@ const SWIPE_THRESHOLD_PX = 60;
               </dd>
               <dt>{{ lobbyLinkLabel }}</dt>
               <dd>
-                <code class="lobby-link" data-testid="stage-lobby-link">
+                <!-- Click to copy: the link is long and hand-typing it is the
+                     thing we are trying to avoid. A button, not a code span, so
+                     it is focusable and announces the copy action. -->
+                <button
+                  type="button"
+                  class="lobby-link"
+                  data-testid="stage-lobby-link"
+                  [attr.aria-label]="isCopied() ? copiedLabel : copyLinkLabel"
+                  [appTooltip]="isCopied() ? copiedLabel : copyLinkLabel"
+                  (click)="copyLink()"
+                >
                   {{ session.audienceUrl() }}
-                </code>
+                </button>
               </dd>
               <dt>{{ lobbyQrLabel }}</dt>
               <dd class="lobby-qr" data-testid="stage-lobby-qr">
                 <img class="qr" [src]="qrDataUrl()" [alt]="lobbyQrLabel" />
-                <span class="qr-url">{{ session.audienceUrl() }}</span>
               </dd>
             </dl>
           }
@@ -523,13 +539,34 @@ const SWIPE_THRESHOLD_PX = 60;
       color: var(--text-muted);
     }
 
+    .premium-note {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0 0 var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--premium);
+      border-radius: var(--radius-md);
+      background: hsl(45 90% 45% / 0.1);
+      color: var(--premium);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+
+    .premium-note app-icon {
+      --icon-size: 16px;
+    }
+
     .lobby-info {
       margin: 0;
       display: grid;
       grid-template-columns: max-content 1fr;
-      gap: var(--space-1) var(--space-3);
+      gap: var(--space-4) var(--space-3);
       align-items: baseline;
       font-size: var(--text-sm);
+      /* The screen kills selection so a swipe never grabs text; the dialog is
+         where you copy the PIN and link by hand, so it opts back in. */
+      user-select: text;
     }
 
     .lobby-info dt {
@@ -549,8 +586,20 @@ const SWIPE_THRESHOLD_PX = 60;
     }
 
     .lobby-link {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--brand);
+      font-family: var(--font-ui);
       font-size: var(--text-xs);
+      text-align: start;
+      text-decoration: underline;
       word-break: break-all;
+      cursor: pointer;
+    }
+
+    .lobby-link:hover {
+      color: var(--brand-hover);
     }
 
     .lobby-qr {
@@ -568,11 +617,6 @@ const SWIPE_THRESHOLD_PX = 60;
       background: #fff;
       border-radius: var(--radius-md);
       image-rendering: pixelated;
-    }
-
-    .qr-url {
-      font-size: var(--text-xs);
-      color: var(--text-faint);
     }
   `,
 })
@@ -612,6 +656,7 @@ export class StagePerformPage {
     destroyRef.onDestroy(() => {
       this.session.leaveView();
       void this.fullscreen.exit();
+      if (this.copiedResetTimer !== null) clearTimeout(this.copiedResetTimer);
     });
 
     // The shell draws the stage controls while this view is on screen.
@@ -625,6 +670,19 @@ export class StagePerformPage {
   protected exit(): void {
     this.session.end();
     void this.router.navigate(['/stage']);
+  }
+
+  /** Briefly true after a copy, so the label can flip to "Copied". */
+  protected readonly isCopied = signal(false);
+  private copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected copyLink(): void {
+    const url = this.session.audienceUrl();
+    if (url === '') return;
+    void navigator.clipboard?.writeText(url);
+    this.isCopied.set(true);
+    if (this.copiedResetTimer !== null) clearTimeout(this.copiedResetTimer);
+    this.copiedResetTimer = setTimeout(() => this.isCopied.set(false), 2000);
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
@@ -713,7 +771,10 @@ export class StagePerformPage {
   protected readonly audienceCreateInfo = $localize`:@@stage.audienceDialog.info:Share the code or link with your audience so they can follow along on their devices.`;
   protected readonly createLobbyLabel = $localize`:@@stage.audienceDialog.create:Create lobby`;
   protected readonly endLobbyLabel = $localize`:@@stage.audienceDialog.end:End lobby`;
+  protected readonly lobbyPremiumNote = $localize`:@@stage.audienceDialog.premium:Audiences are a Premium feature — free while in testing.`;
   protected readonly lobbyPinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
   protected readonly lobbyLinkLabel = $localize`:@@stage.audienceDialog.link:Link`;
+  protected readonly copyLinkLabel = $localize`:@@stage.audienceDialog.copyLink:Copy link`;
+  protected readonly copiedLabel = $localize`:@@stage.audienceDialog.copied:Copied`;
   protected readonly lobbyQrLabel = $localize`:@@stage.audienceDialog.qr:QR code`;
 }
