@@ -123,6 +123,28 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               <!-- Download and Export, on the book you are already in — the
                    same pair the songbook list offers on the one you have
                    picked. -->
+              <!-- Perform this songbook on the Stage. A link, not a button:
+                   navigating to a route is exactly what a link does.
+                   Disabled (pointer-events off) when empty — performing nothing
+                   is not a useful act, and the tooltip explains why. -->
+              <a
+                appButton
+                variant="secondary"
+                [isIconOnly]="true"
+                [attr.routerLink]="
+                  presenter.canPerform() ? ['/stage', presenter.id()] : null
+                "
+                [class.is-disabled]="!presenter.canPerform()"
+                [attr.aria-disabled]="!presenter.canPerform()"
+                [attr.aria-label]="performLabel"
+                [appTooltip]="
+                  presenter.canPerform() ? performLabel : cannotPerformLabel
+                "
+                data-testid="songbook-detail-perform"
+              >
+                <app-icon name="stage" />
+              </a>
+
               <button
                 appButton
                 type="button"
@@ -602,6 +624,8 @@ export class SongbookDetailPage {
       : ENTRY_CAPABILITIES,
   );
 
+  protected readonly performLabel = $localize`:@@songbooks.perform:Perform this songbook`;
+  protected readonly cannotPerformLabel = $localize`:@@songbooks.cannotPerform:Add songs before performing`;
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
   protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
   protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;

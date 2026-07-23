@@ -41,6 +41,11 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./stage/stage.page').then((m) => m.StagePage),
   },
   {
+    path: 'stage/:songbookId',
+    loadComponent: () =>
+      import('./stage/stage-perform.page').then((m) => m.StagePerformPage),
+  },
+  {
     path: 'audience',
     loadComponent: () =>
       import('./audience/audience.page').then((m) => m.AudiencePage),
