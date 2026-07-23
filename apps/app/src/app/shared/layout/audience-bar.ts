@@ -1,5 +1,10 @@
-// Stage bar — Epic 8 ▸ performing mode (mobile)
-// Spec: apps/docs/docs/stage-audience/index.mdx (Prev | Summary | Menu | Next)
+// Audience bar — Epic 9 ▸ viewer controls
+// Spec: docs/achordeon-implementation.md §Epic 9
+//
+// The viewer's controls, dropped into the shell's one bottom bar so a phone
+// shows a single bar — the same composition as StageBar. Three icon-only targets
+// (no labels): Summary · Fullscreen · More, where More holds the rarer acts
+// (lobby info, hide chords, leave). It reads AudienceSession, never a store.
 
 import {
   ChangeDetectionStrategy,
@@ -7,26 +12,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router } from '@angular/router';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
+import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
-import { StageSession } from './stage-session';
 
-/**
- * The performing controls, dropped into the shell's bottom bar so a phone shows
- * **one** bar (the shell's), not a second one of the feature's. The docs order
- * is `Prev | Summary | Menu | Next`; the menu carries the rarer acts —
- * Fullscreen, Create audience, Exit — so the four thumb targets stay big.
- *
- * It reads `StageSession`, never a store: the shell may not touch the business
- * layer (the presenter rule, PRD-UI-SHELL.md §3), and the render-derived state
- * it does not need lives in the route-scoped presenter. The menu is a CDK
- * overlay opening upward, the same composition as `ModuleSwitcher`.
- */
 @Component({
-  selector: 'app-stage-bar',
+  selector: 'app-audience-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, Icon, CdkConnectedOverlay, CdkOverlayOrigin, CdkTrapFocus],
   host: { '(document:keydown.escape)': 'closeMenu()' },
@@ -37,12 +30,14 @@ import { StageSession } from './stage-session';
         type="button"
         variant="ghost"
         class="control"
-        [disabled]="!session.hasPrev()"
-        [attr.aria-label]="prevLabel"
-        data-testid="stage-prev"
-        (click)="session.prev()"
+        [attr.aria-pressed]="fullscreen.isActive()"
+        [attr.aria-label]="fullscreenLabel()"
+        data-testid="audience-fullscreen"
+        (click)="fullscreen.toggle()"
       >
-        <app-icon name="chevronLeft" />
+        <app-icon
+          [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+        />
       </button>
 
       <button
@@ -53,7 +48,7 @@ import { StageSession } from './stage-session';
         [class.is-active]="session.isSummaryOpen()"
         [attr.aria-pressed]="session.isSummaryOpen()"
         [attr.aria-label]="summaryLabel"
-        data-testid="stage-summary"
+        data-testid="audience-summary"
         (click)="session.toggleSummary()"
       >
         <app-icon name="list" />
@@ -69,23 +64,10 @@ import { StageSession } from './stage-session';
         [attr.aria-label]="menuLabel"
         [attr.aria-expanded]="isMenuOpen()"
         aria-haspopup="true"
-        data-testid="stage-menu"
+        data-testid="audience-menu"
         (click)="isMenuOpen.set(!isMenuOpen())"
       >
         <app-icon name="more" />
-      </button>
-
-      <button
-        appButton
-        type="button"
-        variant="ghost"
-        class="control"
-        [disabled]="!session.hasNext()"
-        [attr.aria-label]="nextLabel"
-        data-testid="stage-next"
-        (click)="session.next()"
-      >
-        <app-icon name="chevronRight" />
       </button>
     </div>
 
@@ -104,43 +86,41 @@ import { StageSession } from './stage-session';
         [cdkTrapFocusAutoCapture]="true"
         role="menu"
         [attr.aria-label]="menuLabel"
-        data-testid="stage-menu-popup"
+        data-testid="audience-menu-popup"
       >
         <button
           type="button"
           class="item"
           role="menuitem"
-          data-testid="stage-fullscreen"
-          (click)="onFullscreen()"
+          data-testid="audience-lobby"
+          (click)="onLobby()"
         >
-          <app-icon
-            [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
-          />
-          {{
-            fullscreen.isActive() ? exitFullscreenLabel : enterFullscreenLabel
-          }}
+          <app-icon name="audience" />
+          {{ lobbyLabel }}
         </button>
 
         <button
           type="button"
           class="item"
-          role="menuitem"
-          data-testid="stage-audience"
-          (click)="onAudience()"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="session.hideChords()"
+          [class.is-active]="session.hideChords()"
+          data-testid="audience-hide-chords"
+          (click)="onHideChords()"
         >
-          <app-icon name="audience" />
-          {{ audienceLabel }}
+          <app-icon name="note" />
+          {{ hideChordsLabel }}
         </button>
 
         <button
           type="button"
           class="item is-danger"
           role="menuitem"
-          data-testid="stage-exit"
-          (click)="onExit()"
+          data-testid="audience-exit"
+          (click)="onLeave()"
         >
           <app-icon name="close" />
-          {{ exitLabel }}
+          {{ leaveLabel }}
         </button>
       </div>
     </ng-template>
@@ -151,8 +131,7 @@ import { StageSession } from './stage-session';
       min-inline-size: 0;
     }
 
-    /* Four equal thumb targets across the bar's leftover width — the same even
-       split the pane switcher uses, so the two bars read alike. */
+    /* Three equal thumb targets, icon-only (no labels). */
     .bar {
       display: flex;
       gap: 2px;
@@ -200,6 +179,10 @@ import { StageSession } from './stage-session';
       background: var(--surface-sunken);
     }
 
+    .item.is-active {
+      color: var(--brand);
+    }
+
     .item.is-danger {
       color: var(--danger, #c0362c);
     }
@@ -209,10 +192,9 @@ import { StageSession } from './stage-session';
     }
   `,
 })
-export class StageBar {
-  protected readonly session = inject(StageSession);
+export class AudienceBar {
+  protected readonly session = inject(AudienceSession);
   protected readonly fullscreen = inject(Fullscreen);
-  private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);
 
@@ -220,20 +202,24 @@ export class StageBar {
     this.isMenuOpen.set(false);
   }
 
-  protected onFullscreen(): void {
+  protected onLobby(): void {
     this.closeMenu();
-    void this.fullscreen.toggle();
+    this.session.openLobby();
   }
 
-  protected onAudience(): void {
-    this.closeMenu();
-    this.session.openAudience();
+  protected onHideChords(): void {
+    this.session.toggleHideChords();
   }
 
-  protected onExit(): void {
+  protected onLeave(): void {
     this.closeMenu();
-    this.session.end();
-    void this.router.navigate(['/stage']);
+    this.session.leave();
+  }
+
+  protected fullscreenLabel(): string {
+    return this.fullscreen.isActive()
+      ? this.exitFullscreenLabel
+      : this.enterFullscreenLabel;
   }
 
   /** Opens upward: the trigger lives in the bottom bar. */
@@ -254,13 +240,12 @@ export class StageBar {
     },
   ];
 
-  protected readonly groupLabel = $localize`:@@stage.controls:Performance controls`;
-  protected readonly prevLabel = $localize`:@@stage.prev:Previous song`;
-  protected readonly nextLabel = $localize`:@@stage.next:Next song`;
-  protected readonly summaryLabel = $localize`:@@stage.summary:Song list`;
+  protected readonly groupLabel = $localize`:@@audience.controls:Audience controls`;
+  protected readonly summaryLabel = $localize`:@@audience.summary:Song list`;
   protected readonly menuLabel = $localize`:@@stage.menu:More`;
+  protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
+  protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
+  protected readonly leaveLabel = $localize`:@@audience.exit:Leave audience`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
-  protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
-  protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
 }

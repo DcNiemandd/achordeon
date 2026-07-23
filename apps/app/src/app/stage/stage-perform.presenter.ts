@@ -1,9 +1,10 @@
 // Stage perform presenter — Epic 8 ▸ performing mode
 // Spec: docs/achordeon-implementation.md §Epic 8
 
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  LobbyHost,
   ParserService,
   RenderService,
   SettingsStore,
@@ -15,6 +16,7 @@ import {
   ALL_SONGS_ID,
   isAllSongs,
   resolveSettings,
+  type LobbyPayload,
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
@@ -67,6 +69,7 @@ export class StagePerformPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
   private readonly session = inject(StageSession);
+  private readonly host = inject(LobbyHost);
 
   private readonly _book = signal<Songbook | null>(null);
   private readonly _songs = signal<Song[]>([]);
@@ -90,17 +93,72 @@ export class StagePerformPresenter {
    * book settings, song settings or global settings change — all via signals,
    * so nothing needs to be wired explicitly.
    */
-  private readonly _plan = computed(() => {
+  /**
+   * The fully-cascaded settings for the current song (Global ⊕ Songbook ⊕ Song).
+   * Shared by the local render and the lobby payload, so a viewer renders against
+   * exactly what the performer sees (ADR-0003, ADR-0006).
+   */
+  private readonly _resolved = computed(() => {
     const song = this._currentSong();
     if (!song) return null;
-    const ast = this.parser.parse(song.content);
-    const resolved = resolveSettings(
+    return resolveSettings(
       this.settings.global(),
       this._book()?.settings,
       song.settings,
     );
+  });
+
+  private readonly _plan = computed(() => {
+    const song = this._currentSong();
+    const resolved = this._resolved();
+    if (!song || !resolved) return null;
+    const ast = this.parser.parse(song.content);
     return this.renderer.layout(ast, resolved);
   });
+
+  /**
+   * The Presence payload for the current song: the full Song, its resolved
+   * settings, and the setlist. `null` until a song is loaded. The host effect
+   * below re-tracks it whenever it changes — which, being a computed, is
+   * automatically on every prev/next (ADR-0003).
+   */
+  readonly payload = computed<LobbyPayload | null>(() => {
+    const song = this._currentSong();
+    const resolved = this._resolved();
+    if (!song || !resolved) return null;
+    return {
+      song,
+      settings: resolved,
+      summary: this._songs().map((s, i) => ({
+        index: i,
+        name: s.name,
+        title: s.cache.title,
+      })),
+      currentIndex: this.session.index(),
+    };
+  });
+
+  constructor() {
+    // The lobby lives in the root `LobbyHost` (it must outlive this route — the
+    // performance is persistent), but this route-scoped presenter is the only
+    // thing allowed to touch data-access, so it drives the host from the
+    // shell-owned session state. One effect keeps Presence == (pin, payload):
+    // opens the channel when a PIN appears, re-tracks on every song change, and
+    // closes when the PIN clears (endLobby / exit).
+    effect(() => {
+      const pin = this.session.lobbyPin();
+      if (pin === '') {
+        void this.host.close();
+        return;
+      }
+      const payload = this.payload();
+      if (payload) void this.host.sync(pin, payload);
+    });
+
+    // Mirror the live viewer count back to the shell-owned session so the mobile
+    // bar and the dialog can show it without reaching into data-access.
+    effect(() => this.session.setAudienceCount(this.host.audienceCount()));
+  }
 
   /** Self-contained SVG string for <app-song-render>. */
   readonly svg = computed(() => {

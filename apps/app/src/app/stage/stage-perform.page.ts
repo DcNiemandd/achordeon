@@ -274,13 +274,13 @@ const SWIPE_THRESHOLD_PX = 60;
         </div>
       }
 
-      <!-- Audience dialog — stub for Epic 9 lobby creation.
-           Pre-creation: "Create lobby" button (premium highlighted).
-           Post-creation: PIN, audience URL, QR placeholder, "End lobby". -->
+      <!-- Audience dialog — lobby creation / live lobby info.
+           Viewport mode so a backdrop click closes it; there is no live render
+           behind it worth keeping visible (unlike the editor settings dialog). -->
       @if (session.audienceState() !== 'closed') {
         <app-dialog
           [title]="audienceDialogTitle"
-          mode="container"
+          mode="viewport"
           data-testid="stage-audience-dialog"
           (closed)="session.closeAudience()"
         >
@@ -313,6 +313,10 @@ const SWIPE_THRESHOLD_PX = 60;
               <dt>{{ lobbyPinLabel }}</dt>
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
                 {{ session.lobbyPin() }}
+              </dd>
+              <dt>{{ lobbyAudienceLabel }}</dt>
+              <dd data-testid="stage-lobby-count">
+                {{ session.audienceCount() }}
               </dd>
               <dt>{{ lobbyLinkLabel }}</dt>
               <dd>
@@ -773,6 +777,7 @@ export class StagePerformPage {
   protected readonly endLobbyLabel = $localize`:@@stage.audienceDialog.end:End lobby`;
   protected readonly lobbyPremiumNote = $localize`:@@stage.audienceDialog.premium:Audiences are a Premium feature — free while in testing.`;
   protected readonly lobbyPinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
+  protected readonly lobbyAudienceLabel = $localize`:@@stage.audienceDialog.count:Listening`;
   protected readonly lobbyLinkLabel = $localize`:@@stage.audienceDialog.link:Link`;
   protected readonly copyLinkLabel = $localize`:@@stage.audienceDialog.copyLink:Copy link`;
   protected readonly copiedLabel = $localize`:@@stage.audienceDialog.copied:Copied`;

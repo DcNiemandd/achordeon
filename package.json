@@ -5,7 +5,7 @@
   "private": true,
   "packageManager": "pnpm@11.4.0",
   "scripts": {
-    "prepare": "husky",
+    "prepare": "husky && node apps/app/tools/gen-supabase.mjs",
     "dev:app": "nx serve app",
     "dev:docs": "nx start docs",
     "build": "nx run-many -t build",
@@ -33,6 +33,7 @@
     "@fontsource-variable/roboto-mono": "5.2.9",
     "@lezer/highlight": "^1.2.3",
     "@ngrx/signals": "^21.1.1",
+    "@supabase/supabase-js": "^2.110.8",
     "@tonaljs/chord": "^6.1.2",
     "@tonaljs/note": "^4.12.1",
     "dexie": "^4.4.4",
