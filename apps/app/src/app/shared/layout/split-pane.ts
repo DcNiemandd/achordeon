@@ -169,6 +169,7 @@ const KEY_STEP = 0.02;
       touch-action: none;
     }
 
+    /* The seam: a full-height hairline that marks the boundary. */
     .resizer::after {
       content: '';
       position: absolute;
@@ -180,10 +181,41 @@ const KEY_STEP = 0.02;
       transition: background var(--duration-fast) var(--ease);
     }
 
+    /* The grip: two short vertical bars at the centre, so the divider reads as a
+       handle you can grab — an affordance that stands on its own rather than
+       relying on the cursor changing when you happen to be over the hairline. Two
+       stacked linear-gradients, each a 1px vertical line, pinned to the left and
+       right edges of a 3px-wide box. */
+    .resizer::before {
+      content: '';
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      translate: -50% -50%;
+      inline-size: 3px;
+      block-size: 22px;
+      background-image:
+        linear-gradient(var(--border-strong), var(--border-strong)),
+        linear-gradient(var(--border-strong), var(--border-strong));
+      background-size: 1px 100%;
+      background-position:
+        left center,
+        right center;
+      background-repeat: no-repeat;
+      z-index: 1;
+    }
+
     .resizer:hover::after,
     .resizer:focus-visible::after {
       background: var(--brand);
       inline-size: 2px;
+    }
+
+    .resizer:hover::before,
+    .resizer:focus-visible::before {
+      background-image:
+        linear-gradient(var(--brand), var(--brand)),
+        linear-gradient(var(--brand), var(--brand));
     }
   `,
 })
