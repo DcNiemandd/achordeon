@@ -30,9 +30,10 @@ function resolveAlign(
 ): { alignX: AlignX; alignY: AlignY } {
   if (override === 'center') return { alignX: 'center', alignY: 'middle' };
   if (override === 'top-left') return { alignX: 'left', alignY: 'top' };
+  // Default centre when a stored settings bag predates these keys (§4.1).
   return {
-    alignX: (settings.contentX as AlignX) ?? 'left',
-    alignY: (settings.contentY as AlignY) ?? 'top',
+    alignX: (settings.contentX as AlignX) ?? 'center',
+    alignY: (settings.contentY as AlignY) ?? 'middle',
   };
 }
 

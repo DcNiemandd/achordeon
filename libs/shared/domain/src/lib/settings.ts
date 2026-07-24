@@ -51,12 +51,13 @@ export const SETTINGS = {
   // the aspect ratio stays user-owned. The songbook's print margin ADDS to this
   // rather than overriding it, so it is NOT a songbook scope. See PRD-RENDERING §4.11
   contentX: {
-    default: 'left' as 'left' | 'center' | 'right',
+    default: 'center' as 'left' | 'center' | 'right',
     scopes: ['song'],
-  }, // horizontal anchor of the content in the render box; 'left' hugs the corner
-  // (§4.5). See PRD-RENDERING §4.1.
+  }, // horizontal anchor of the content in the render box. Default centre — a song
+  // that does not fill the page reads better centred than clinging to a corner.
+  // See PRD-RENDERING §4.1.
   contentY: {
-    default: 'top' as 'top' | 'middle' | 'bottom',
+    default: 'middle' as 'top' | 'middle' | 'bottom',
     scopes: ['song'],
   }, // vertical anchor; orthogonal to contentX. A songbook title page overrides
   // both to centre via RenderOpts.align (not a setting). See PRD-RENDERING §4.1.

@@ -80,6 +80,16 @@ export interface InsertRequest {
    * whatever word the caret happened to be sitting in.
    */
   readonly atLineEnd?: boolean;
+  /**
+   * With nothing selected, wrap the WORD the caret is inside rather than opening
+   * an empty pair.
+   *
+   * Bold and Italic want this: pressing Bold with the caret in the middle of a
+   * word means "make this word bold", not "type `**` here and start over". Only
+   * bites for a wrapping insert (`after` set) with no selection and a word under
+   * the caret; on whitespace it falls back to the empty pair.
+   */
+  readonly wrapsWord?: boolean;
 }
 
 /**

@@ -88,6 +88,16 @@ export const SNIPPETS = {
    * ready to type. Content-only and blocked inside a bracket — the asterisks are
    * literal in a chord and never reach the inline scan on a title line.
    */
-  bold: { before: '**', after: '**', caretOffset: 0 } satisfies InsertRequest,
-  italic: { before: '*', after: '*', caretOffset: 0 } satisfies InsertRequest,
+  bold: {
+    before: '**',
+    after: '**',
+    caretOffset: 0,
+    wrapsWord: true,
+  } satisfies InsertRequest,
+  italic: {
+    before: '*',
+    after: '*',
+    caretOffset: 0,
+    wrapsWord: true,
+  } satisfies InsertRequest,
 };
