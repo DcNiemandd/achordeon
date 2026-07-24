@@ -78,7 +78,10 @@ export class SettingsPresenter {
   private readonly _register = signal<RegisterState>(null);
   private readonly _reset = signal<ResetState>(null);
   private readonly _authError = signal<string | null>(null);
+  private readonly _deleting = signal(false);
   readonly driveOutcome = this._drive.asReadonly();
+  /** An account deletion is in flight — the confirm button stands down. */
+  readonly deleting = this._deleting.asReadonly();
   /** A Drive upload/download is in flight — the buttons stand down while it runs. */
   readonly driveBusy = this._driveBusy.asReadonly();
   /** Set to `confirm` when a registration (or added password) needs the email
@@ -189,6 +192,25 @@ export class SettingsPresenter {
 
   logOut(): Promise<void> {
     return this.auth.signOut();
+  }
+
+  /**
+   * Delete this account: wipe the local library and soft-delete the cloud profile,
+   * then reload to a clean, signed-out app. The cloud library rows are retained —
+   * signing back in reactivates the profile and syncs them back. On failure the
+   * error surfaces in `authError` and nothing local is touched.
+   */
+  async deleteAccount(): Promise<void> {
+    this._deleting.set(true);
+    this._authError.set(null);
+    try {
+      await this.auth.deleteAccount();
+      await this.backups.clearLocal();
+      location.reload();
+    } catch (e) {
+      this._authError.set(this.message(e));
+      this._deleting.set(false);
+    }
   }
 
   clearAuthError(): void {

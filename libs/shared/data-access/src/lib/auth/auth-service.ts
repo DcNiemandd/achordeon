@@ -179,6 +179,32 @@ export class AuthService {
   }
 
   /**
+   * Soft-delete the signed-in account and sign out.
+   *
+   * Only the `profiles` row is flagged (`deleted_at`) — the library rows
+   * (songs, songbooks) are LEFT in Supabase, retained. The `auth.users` login is
+   * deliberately NOT removed: the client cannot, and keeping it is what makes the
+   * delete recoverable. Signing in again with the same identity lands on the same
+   * `auth.users.id` → the same profile row, and `adopt` clears the flag on the way
+   * in (re-login IS the undelete), so the retained library syncs back down.
+   *
+   * The caller wipes this device's local copy separately — this is the cloud half.
+   */
+  async deleteAccount(): Promise<void> {
+    const client = await this.required();
+    const uid = this.user()?.id;
+    if (uid) {
+      const now = Date.now();
+      const { error } = await client
+        .from('profiles')
+        .update({ deleted_at: now, updated_at: now })
+        .eq('id', uid);
+      if (error) throw error;
+    }
+    await client.auth.signOut();
+  }
+
+  /**
    * The Google OAuth `provider_token`, or `null`. Lives on the session right
    * after an OAuth redirect and is gone after any reload (§6) — Drive sync reads
    * it and, when absent, re-runs the OAuth flow (Flow A) to mint a fresh one.
@@ -189,11 +215,31 @@ export class AuthService {
 
   // --- internals ------------------------------------------------------------
 
-  /** Take on a session (or its loss), then refresh the mirrored tier. */
+  /** Take on a session (or its loss), refresh the mirrored tier, and clear any
+   * soft-delete flag left by a prior `deleteAccount` (re-login is the undelete). */
   private async adopt(session: Session | null): Promise<void> {
     this._session.set(session);
     this._status.set(session ? 'signed-in' : 'signed-out');
     await this.refreshPlan();
+    await this.reactivateProfile();
+  }
+
+  /**
+   * Clear a `deleted_at` left on this account's profile by a prior soft-delete, so
+   * signing back in reactivates it. Scoped to rows that ARE flagged (`.not(... is
+   * null)`), so a normal sign-in does not bump `updated_at` and churn the sync.
+   * Best-effort: a failure here must never be the thing that blocks a sign-in.
+   */
+  private async reactivateProfile(): Promise<void> {
+    const uid = this.user()?.id;
+    if (uid === undefined) return;
+    const client = await this.supabase.client();
+    if (client === null) return;
+    await client
+      .from('profiles')
+      .update({ deleted_at: null, updated_at: Date.now() })
+      .eq('id', uid)
+      .not('deleted_at', 'is', null);
   }
 
   /** Mirror `profiles.plan` into the local signal. Defaults to `free` on any

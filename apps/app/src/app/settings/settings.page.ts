@@ -97,6 +97,15 @@ const MIN_PASSWORD = 8;
                 >
                   {{ logoutLabel }}
                 </button>
+                <button
+                  appButton
+                  variant="ghost"
+                  class="danger-btn"
+                  data-testid="delete-account"
+                  (click)="confirmDelete.set(true)"
+                >
+                  {{ deleteAccountLabel }}
+                </button>
               </div>
             }
             @default {
@@ -823,6 +832,38 @@ const MIN_PASSWORD = 8;
       </app-dialog>
     }
 
+    @if (confirmDelete()) {
+      <app-dialog
+        [title]="deleteConfirmTitle"
+        data-testid="delete-dialog"
+        (closed)="confirmDelete.set(false)"
+      >
+        <p class="warn">{{ deleteConfirmText }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="ghost"
+          data-testid="delete-cancel"
+          (click)="confirmDelete.set(false)"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          class="danger-btn"
+          [disabled]="presenter.deleting()"
+          data-testid="delete-confirm"
+          (click)="presenter.deleteAccount()"
+        >
+          {{ deleteConfirmButton }}
+        </button>
+      </app-dialog>
+    }
+
     @if (presenter.restoreOutcome() === 'failed') {
       <app-dialog
         [title]="restoreFailedTitle"
@@ -1121,6 +1162,12 @@ const MIN_PASSWORD = 8;
       color: var(--text-on-brand, #fff);
     }
 
+    /* A destructive action — coloured so "Delete account" reads apart from the
+       neutral logout/cancel beside it. */
+    .danger-btn {
+      color: var(--danger, #d13438);
+    }
+
     .text-input {
       padding: var(--space-2);
       border: 1px solid var(--border);
@@ -1213,6 +1260,10 @@ export class SettingsPage {
   /** Which auth dialog is open (null = none). Login and register are forms in
    * their own dialogs so validation has room and the section stays a summary. */
   protected readonly authDialog = signal<AuthDialog>(null);
+
+  /** The account-deletion confirm is open. A delete wipes this device's library
+   * and soft-deletes the cloud profile, so it never fires straight off the button. */
+  protected readonly confirmDelete = signal(false);
 
   // The one place the credential fields live while a dialog is open. Shared
   // across the dialogs because only one is ever open at a time.
@@ -1362,6 +1413,10 @@ export class SettingsPage {
   protected readonly registerLabel = $localize`:@@settings.account.register:Register`;
   protected readonly logoutLabel = $localize`:@@settings.account.logout:Log out`;
   protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google`;
+  protected readonly deleteAccountLabel = $localize`:@@settings.account.delete:Delete account`;
+  protected readonly deleteConfirmTitle = $localize`:@@settings.account.deleteTitle:Delete this account?`;
+  protected readonly deleteConfirmText = $localize`:@@settings.account.deleteText:This clears the library on this device and marks your cloud account deleted. Your cloud data is kept — sign in again with the same account to restore it. Anything on this device that has not synced is lost.`;
+  protected readonly deleteConfirmButton = $localize`:@@settings.account.deleteConfirm:Delete account`;
   protected readonly addPasswordLabel = $localize`:@@settings.account.addPassword:Add a password`;
 
   protected readonly loginTitle = $localize`:@@settings.account.loginTitle:Log in`;
