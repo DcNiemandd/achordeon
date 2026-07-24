@@ -324,29 +324,57 @@ export class SongEditor {
       return;
     }
 
+    const after = request.after ?? '';
+
     // Nothing selected, but the caret sits in a word and this insert wraps one:
-    // wrap the whole word (Bold on a word means "make THIS word bold"). A no-op
+    // act on the whole word (Bold on a word means "make THIS word bold"). A no-op
     // on whitespace, where `wordAt` returns null and we fall back to the pair.
     let start = from;
     let end = to;
+    let wrappedWord = false;
     if (from === to && request.wrapsWord) {
       const word = view.state.wordAt(from);
       if (word) {
+        // Already wrapped in exactly these markers → toggle them OFF, keeping the
+        // caret on the same character (it shifts left by the removed opener). This
+        // is what makes a second press undo the first.
+        const hasBefore =
+          request.before.length > 0 &&
+          word.from >= request.before.length &&
+          view.state.sliceDoc(word.from - request.before.length, word.from) ===
+            request.before;
+        const hasAfter =
+          view.state.sliceDoc(word.to, word.to + after.length) === after;
+        if (hasBefore && hasAfter) {
+          view.dispatch({
+            changes: [
+              { from: word.from - request.before.length, to: word.from },
+              { from: word.to, to: word.to + after.length },
+            ],
+            selection: { anchor: from - request.before.length },
+            scrollIntoView: true,
+          });
+          view.focus();
+          return;
+        }
         start = word.from;
         end = word.to;
+        wrappedWord = true;
       }
     }
 
     const selected = view.state.sliceDoc(start, end);
-    const text = request.before + selected + (request.after ?? '');
-    // With text selected (or a wrapped word), the wrapping is the point and the
-    // caret belongs after it. With none, `caretOffset` puts the caret where the
-    // next keystroke goes — between the brackets of an empty `[]`, not after them.
-    const caret =
-      start +
-      (selected === '' && request.caretOffset !== undefined
-        ? request.before.length + request.caretOffset
-        : text.length);
+    const text = request.before + selected + after;
+    // A wrapped word keeps the caret on the character it was on — the word only
+    // shifted right by the opener. A user SELECTION puts the caret after the
+    // wrapping (the wrap was the point). An empty pair uses `caretOffset` to land
+    // the caret where the next keystroke goes — between the brackets of `[]`.
+    const caret = wrappedWord
+      ? from + request.before.length
+      : start +
+        (selected === '' && request.caretOffset !== undefined
+          ? request.before.length + request.caretOffset
+          : text.length);
 
     view.dispatch({
       changes: { from: start, to: end, insert: text },
