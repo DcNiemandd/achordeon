@@ -118,4 +118,21 @@ describe('SyncService — non-destructive fuse on enable', () => {
     const sentIds = pushed.flatMap((p) => p.data.songs.map((s) => s.id));
     expect(sentIds).toContain('A');
   });
+
+  it('uploads the WHOLE library on enable, even past a stale watermark', async () => {
+    const sync = await setup([]);
+    // A watermark from an earlier cycle, ahead of every existing row.
+    await db.meta.put({ key: 'syncedAt:supabase', value: String(Date.now()) });
+    await db.songs.bulkPut([
+      song('A', { updatedAt: 10 }),
+      song('B', { updatedAt: 20 }),
+    ]);
+
+    await sync.setAutoSync(true);
+
+    // Turning sync on means "get my whole library up now" — both existing rows
+    // upload, not just ones edited after the stale watermark (which is none).
+    const sentIds = pushed.flatMap((p) => p.data.songs.map((s) => s.id)).sort();
+    expect(sentIds).toEqual(['A', 'B']);
+  });
 });

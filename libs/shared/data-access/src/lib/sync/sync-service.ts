@@ -167,8 +167,17 @@ export class SyncService {
   async setAutoSync(on: boolean): Promise<void> {
     this._autoSync.set(on);
     await this.db.meta.put({ key: META_AUTO_SYNC, value: on ? 'on' : 'off' });
-    if (on) await this.syncNow();
-    else await this.recomputeUnsynced();
+    if (on) {
+      // Turning sync ON means "get my whole library up there now", not "sync
+      // what changed since some past watermark". Reset the watermark to 0 so the
+      // cycle pushes EVERY local row (and pulls every remote one) — a full
+      // two-way fuse. Without this, a stale watermark from an earlier cycle
+      // leaves the existing library behind and only new edits ever upload.
+      await this.writeWatermark(0);
+      await this.syncNow();
+    } else {
+      await this.recomputeUnsynced();
+    }
   }
 
   // --- internals ------------------------------------------------------------
