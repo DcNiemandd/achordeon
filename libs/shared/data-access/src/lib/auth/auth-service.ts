@@ -222,9 +222,16 @@ export class AuthService {
     return client;
   }
 
-  /** Where OAuth / confirmation links return to — the app's own origin. */
+  /**
+   * Where OAuth / confirmation links return to — the exact page that triggered
+   * the flow, not the app root. Every auth command here is invoked from Settings,
+   * so returning to `origin + pathname` (query/hash dropped, so the token fragment
+   * Supabase consumes never accumulates) lands the user back on Settings, mid-task.
+   */
   private redirectTo(): string | undefined {
-    return typeof location === 'undefined' ? undefined : location.origin;
+    return typeof location === 'undefined'
+      ? undefined
+      : location.origin + location.pathname;
   }
 }
 

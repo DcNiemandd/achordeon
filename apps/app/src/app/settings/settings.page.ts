@@ -255,7 +255,7 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="!canDrive()"
+                    [disabled]="!canDrive() || presenter.driveBusy()"
                     data-testid="drive-upload"
                     (click)="presenter.driveUpload()"
                   >
@@ -265,7 +265,7 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="!canDrive()"
+                    [disabled]="!canDrive() || presenter.driveBusy()"
                     data-testid="drive-download"
                     (click)="presenter.driveDownload()"
                   >
@@ -285,6 +285,7 @@ const MIN_PASSWORD = 8;
                       <button
                         appButton
                         variant="ghost"
+                        [disabled]="presenter.driveBusy()"
                         data-testid="drive-force"
                         (click)="presenter.driveUpload(true)"
                       >

@@ -69,10 +69,13 @@ export class SettingsPresenter {
   readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
 
   private readonly _drive = signal<DriveOutcome | null>(null);
+  private readonly _driveBusy = signal(false);
   private readonly _register = signal<RegisterState>(null);
   private readonly _reset = signal<ResetState>(null);
   private readonly _authError = signal<string | null>(null);
   readonly driveOutcome = this._drive.asReadonly();
+  /** A Drive upload/download is in flight — the buttons stand down while it runs. */
+  readonly driveBusy = this._driveBusy.asReadonly();
   /** Set to `confirm` when a registration (or added password) needs the email
    * link clicked; `failed` on error — drives the confirmation dialog. */
   readonly registerState = this._register.asReadonly();
@@ -183,23 +186,29 @@ export class SettingsPresenter {
    * copy that moved ahead surfaces as a conflict the user can force past. */
   async driveUpload(force = false): Promise<void> {
     this._drive.set(null);
+    this._driveBusy.set(true);
     try {
       await this.sync.driveUpload({ force });
       this._drive.set({ kind: 'uploaded' });
     } catch (e) {
       this._drive.set(this.classifyDrive(e));
       if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+    } finally {
+      this._driveBusy.set(false);
     }
   }
 
   async driveDownload(): Promise<void> {
     this._drive.set(null);
+    this._driveBusy.set(true);
     try {
       const found = await this.sync.driveDownload();
       this._drive.set({ kind: found ? 'downloaded' : 'empty' });
     } catch (e) {
       this._drive.set(this.classifyDrive(e));
       if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+    } finally {
+      this._driveBusy.set(false);
     }
   }
 
