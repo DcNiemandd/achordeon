@@ -83,19 +83,6 @@ export const SNIPPETS = {
   escape: { before: '\\' } satisfies InsertRequest,
 
   /**
-   * The accidentals, as their ASCII source — `#` for sharp, `b` for flat.
-   *
-   * Written verbatim because that is what the chord grammar reads: a chord is
-   * `C#` / `Bb`, not the Unicode `♯`/`♭` (`theory.parseChord` never sees those).
-   * The buttons show `♯`/`♭` so a musician recognises them at a glance; the
-   * character they insert is the one that makes `[C#]` a real chord. Reached for
-   * inside a bracket while spelling a chord, so — unlike the `[`-chord button —
-   * they are NOT blocked inside one.
-   */
-  sharp: { before: '#' } satisfies InsertRequest,
-  flat: { before: 'b' } satisfies InsertRequest,
-
-  /**
    * Markdown emphasis around the selection (PARSER-GRAMMAR §Emphasis). `**` wraps
    * bold, `*` italic; with nothing selected the caret lands between the markers,
    * ready to type. Content-only and blocked inside a bracket — the asterisks are

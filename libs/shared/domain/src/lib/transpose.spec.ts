@@ -1,5 +1,5 @@
 import { FakeChordTheory } from './fake-chord-theory.fake';
-import { transposeContent } from './transpose';
+import { transposeChordAt, transposeContent } from './transpose';
 
 const theory = new FakeChordTheory();
 const shift = (content: string, semitones: number) =>
@@ -62,5 +62,39 @@ describe('transposeContent', () => {
     expect(shift(content, 2)).toBe(
       ['* My Song', 'Verse: la [D]la', 'la [A7]la'].join('\n'),
     );
+  });
+});
+
+describe('transposeChordAt — one chord under the caret (sharp/flat)', () => {
+  const at = (content: string, index: number, semitones: number) =>
+    transposeChordAt(content, index, semitones, theory);
+
+  it('sharps only the chord the caret is inside, leaving the rest', () => {
+    // Caret inside the second bracket ("[G]"): only it moves up a semitone.
+    const r = at('la [C]la [G]lo', 10, 1);
+    expect(r?.content).toBe('la [C]la [G#]lo');
+    // The new `]` index, so the caret can stay inside the (now longer) bracket.
+    expect(r?.bracketEnd).toBe(12);
+  });
+
+  it('flats the chord the caret is inside', () => {
+    expect(at('[C]', 1, -1)?.content).toBe('[B]');
+    expect(at('[E]', 2, -1)?.content).toBe('[Eb]');
+  });
+
+  it('counts the caret as inside from just after [ up to and including on ]', () => {
+    expect(at('[C]', 1, 1)?.content).toBe('[C#]'); // just after [
+    expect(at('[C]', 2, 1)?.content).toBe('[C#]'); // on the ]
+    expect(at('[C]', 0, 1)).toBeNull(); // on the [ — not yet inside
+    expect(at('[C]', 3, 1)).toBeNull(); // past the ] — no longer inside
+  });
+
+  it('moves every chord in a shared bracket together', () => {
+    expect(at('[C G]', 2, 1)?.content).toBe('[C# G#]');
+  });
+
+  it('returns null off any chord, and for a zero shift', () => {
+    expect(at('lala', 2, 1)).toBeNull();
+    expect(at('[C]', 1, 0)).toBeNull();
   });
 });

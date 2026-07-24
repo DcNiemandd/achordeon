@@ -96,3 +96,56 @@ export function transposeContent(
   }
   return out;
 }
+
+/**
+ * Transpose only the chord bracket the caret sits in, by `semitones`.
+ *
+ * The sharp/flat buttons: they raise or lower **one** chord — the one under the
+ * cursor — rather than the whole song, re-spelling it from the same direction
+ * table as {@link transposeContent} (up → sharps, down → flats). A caret counts
+ * as "in" a bracket when it is between its `[` and `]` (the same rule the editor's
+ * insert guard uses). Returns the rewritten content and the new index of that
+ * bracket's `]` (so the caret can stay inside it), or `null` when the caret is not
+ * in a chord bracket — nothing to change.
+ */
+export function transposeChordAt(
+  content: string,
+  index: number,
+  semitones: number,
+  theory: ChordTheory,
+): { content: string; bracketEnd: number } | null {
+  if (semitones === 0) {
+    return null;
+  }
+  const table = semitones > 0 ? UP : DOWN;
+
+  let i = 0;
+  while (i < content.length) {
+    const c = content[i];
+    if (c === '\\') {
+      i += 2; // a `\[` is a literal bracket, not one the caret can be "in"
+      continue;
+    }
+    if (c === '[') {
+      const close = findClosingBracket(content, i);
+      if (close === -1) {
+        i += 1;
+        continue;
+      }
+      if (i < index && index <= close) {
+        const inner = content.slice(i + 1, close);
+        const rewritten = inner.replace(/[^\s,]+/g, (token) =>
+          transposeToken(token, table, semitones, theory),
+        );
+        return {
+          content: content.slice(0, i + 1) + rewritten + content.slice(close),
+          bracketEnd: i + 1 + rewritten.length,
+        };
+      }
+      i = close + 1;
+      continue;
+    }
+    i += 1;
+  }
+  return null;
+}

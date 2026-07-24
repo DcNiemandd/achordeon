@@ -30,7 +30,11 @@ import {
 } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
-import { ChordTheory, findLabelDelimiter } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  findLabelDelimiter,
+  transposeChordAt,
+} from '@achordeon/shared/domain';
 import { achordeonHighlight, achordeonTags } from './highlight';
 import type {
   CaretContext,
@@ -335,6 +339,39 @@ export class SongEditor {
       changes: { from, to, insert: text },
       selection: { anchor: caret },
       scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  /**
+   * Raise (+1) or lower (−1) the ONE chord the caret is inside, re-spelling it —
+   * the sharp/flat buttons. A real source edit like transpose (it joins the undo
+   * history), but scoped to the bracket under the cursor. A no-op off any chord,
+   * which is why the buttons disable themselves off `caret().isInsideChord`.
+   */
+  transposeChordAtCaret(semitones: number): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const head = view.state.selection.main.head;
+    const result = transposeChordAt(
+      view.state.doc.toString(),
+      head,
+      semitones,
+      this.theory,
+    );
+    if (!result) {
+      view.focus();
+      return;
+    }
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: result.content },
+      // Keep the caret inside the bracket even if the chord got shorter (E→Eb
+      // grows, C#→C shrinks): clamp it to the bracket's new closing `]`.
+      selection: { anchor: Math.min(head, result.bracketEnd) },
+      scrollIntoView: true,
+      userEvent: 'input.transpose',
     });
     view.focus();
   }

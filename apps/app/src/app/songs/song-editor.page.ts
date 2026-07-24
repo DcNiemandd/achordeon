@@ -149,6 +149,38 @@ import { ReturnUrl } from './return-url';
                   <app-icon name="note" />
                   <app-icon class="transpose-badge" name="transposeDown" />
                 </button>
+
+                <!-- Sharp/flat raise or lower the ONE chord under the cursor, and
+                     so are enabled only while the caret is inside a chord — off a
+                     chord there is nothing for them to change. -->
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  class="accidental"
+                  [isIconOnly]="true"
+                  [disabled]="!editor().caret().isInsideChord"
+                  [attr.aria-label]="sharpLabel"
+                  [appTooltip]="sharpLabel"
+                  data-testid="chord-sharp"
+                  (click)="editor().transposeChordAtCaret(1)"
+                >
+                  ♯
+                </button>
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  class="accidental"
+                  [isIconOnly]="true"
+                  [disabled]="!editor().caret().isInsideChord"
+                  [attr.aria-label]="flatLabel"
+                  [appTooltip]="flatLabel"
+                  data-testid="chord-flat"
+                  (click)="editor().transposeChordAtCaret(-1)"
+                >
+                  ♭
+                </button>
               </div>
 
               <div
@@ -183,13 +215,16 @@ import { ReturnUrl } from './return-url';
               </div>
             </div>
 
+            <!-- These are plain actions, not code-editing commands, so they are
+                 borderless (ghost) — the bordered buttons on the left are the ones
+                 that write into the text. The same borderless set as the library
+                 list and the songbook detail. -->
             <div class="bar-actions">
-              <!-- Export the song as it stands. A picture, not the database —
-                   PNG or PDF, the same DownloadService the library list uses. -->
+              <!-- Download the song as it stands: a picture, PNG or PDF, the same
+                   DownloadService the library list uses. -->
               <button
                 appButton
                 type="button"
-                variant="secondary"
                 [isIconOnly]="true"
                 [attr.aria-label]="downloadLabel"
                 [appTooltip]="downloadLabel"
@@ -199,10 +234,23 @@ import { ReturnUrl } from './return-url';
                 <app-icon name="download" />
               </button>
 
+              <!-- Export the song as an Achordeon file: the database, not a
+                   picture — importing it back rebuilds the song. -->
               <button
                 appButton
                 type="button"
-                variant="secondary"
+                [isIconOnly]="true"
+                [attr.aria-label]="exportLabel"
+                [appTooltip]="exportLabel"
+                data-testid="editor-export"
+                (click)="presenter.exportSong()"
+              >
+                <app-icon name="export" />
+              </button>
+
+              <button
+                appButton
+                type="button"
                 class="settings"
                 [isIconOnly]="true"
                 [class.is-active]="presenter.isSettingsOpen()"
@@ -381,6 +429,14 @@ import { ReturnUrl } from './return-url';
       inset-inline-end: 0;
       color: var(--brand);
     }
+
+    /* The accidental buttons show their glyph as text, not an icon — ♯ and ♭ are
+       the mark, sized up to read at a button's scale. */
+    .accidental {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      line-height: 1;
+    }
   `,
 })
 export class SongEditorPage {
@@ -432,8 +488,11 @@ export class SongEditorPage {
   protected readonly historyGroupLabel = $localize`:@@editor.historyGroup:History`;
   protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
   protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
+  protected readonly sharpLabel = $localize`:@@editor.sharp:Raise this chord a semitone`;
+  protected readonly flatLabel = $localize`:@@editor.flat:Lower this chord a semitone`;
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
   protected readonly downloadLabel = $localize`:@@editor.download:Download`;
+  protected readonly exportLabel = $localize`:@@editor.export:Export`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 
@@ -472,23 +531,6 @@ export class SongEditorPage {
       glyph: '[ ]',
       label: $localize`:@@editor.insertChord:Chord`,
       snippet: SNIPPETS.chord,
-    },
-    {
-      // Sharp and flat sit next to the chord button because that is what they
-      // spell: an accidental is reached for mid-chord, inside the brackets. The
-      // glyph is the musical mark; the snippet writes the ASCII the grammar reads.
-      testid: 'insert-sharp',
-      icon: 'note',
-      glyph: '♯',
-      label: $localize`:@@editor.insertSharp:Sharp`,
-      snippet: SNIPPETS.sharp,
-    },
-    {
-      testid: 'insert-flat',
-      icon: 'note',
-      glyph: '♭',
-      label: $localize`:@@editor.insertFlat:Flat`,
-      snippet: SNIPPETS.flat,
     },
     {
       testid: 'insert-title',
