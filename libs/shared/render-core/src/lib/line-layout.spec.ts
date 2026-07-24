@@ -1,5 +1,6 @@
 import type { GlobalSettings, Line } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
+import type { TextMeasurer } from './text-measurer';
 import { DEFAULT_TUNING } from './tuning';
 import { createContext } from './context';
 import { layoutLine } from './line-layout';
@@ -15,6 +16,8 @@ const settings: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0,
+  contentX: 'left',
+  contentY: 'top',
   chordColor: '#123456',
   chordSize: 1,
 };
@@ -127,6 +130,81 @@ describe('layoutLine — hideChords is reflow-safe (§4.6)', () => {
     expect(hidden.items.find((i) => i.role === 'lyric')?.y).toBeCloseTo(
       shown.items.find((i) => i.role === 'lyric')?.y as number,
     );
+  });
+});
+
+describe('layoutLine — emphasis runs (§4.10 markdown)', () => {
+  const emph = (
+    text: string,
+    spans: Line['spans'],
+    chords: Line['chords'] = [],
+  ): Line => ({ text, chords, spans });
+
+  it('splits a lyric into one item per emphasis run, tagging italic', () => {
+    const r = layoutLine(
+      emph('abc', [{ start: 1, end: 2, italic: true }]),
+      ctx(),
+      0,
+    );
+    const lyrics = r.items.filter((i) => i.role === 'lyric');
+    expect(lyrics.map((i) => i.text)).toEqual(['a', 'b', 'c']);
+    expect(lyrics[1].style).toBe('italic');
+    expect(lyrics[1].weight).toBeUndefined();
+    // Monospace: the split does not move the glyphs — x's are the plain positions.
+    expect(lyrics.map((i) => i.x)).toEqual([0, 9.6, 19.2]);
+  });
+
+  it('tags a bold run and a bold+italic run', () => {
+    const r = layoutLine(
+      emph('xy', [
+        { start: 0, end: 1, bold: true },
+        { start: 1, end: 2, bold: true, italic: true },
+      ]),
+      ctx(),
+      0,
+    );
+    const lyrics = r.items.filter((i) => i.role === 'lyric');
+    expect(lyrics[0]).toMatchObject({ text: 'x', weight: 'bold' });
+    expect(lyrics[0].style).toBeUndefined();
+    expect(lyrics[1]).toMatchObject({
+      text: 'y',
+      weight: 'bold',
+      style: 'italic',
+    });
+  });
+
+  it('leaves a plain line as a single untagged lyric item', () => {
+    const r = layoutLine(line('abc'), ctx(), 0);
+    const lyrics = r.items.filter((i) => i.role === 'lyric');
+    expect(lyrics).toHaveLength(1);
+    expect(lyrics[0]).toMatchObject({ text: 'abc', x: 0 });
+    expect(lyrics[0].weight).toBeUndefined();
+    expect(lyrics[0].style).toBeUndefined();
+  });
+
+  it('measures each run in its own face when placing a later chord', () => {
+    // A measurer where bold glyphs are twice as wide proves the chord x sums each
+    // intervening run in its OWN face, not the plain one.
+    const wideBold: TextMeasurer = {
+      measure: (text, font) => ({
+        width: text.length * font.sizePx * (font.weight === 'bold' ? 1.2 : 0.6),
+        fontBoundingBoxAscent: font.sizePx * 0.8,
+        fontBoundingBoxDescent: font.sizePx * 0.2,
+      }),
+    };
+    const c = createContext(settings, wideBold, DEFAULT_TUNING, false);
+    const r = layoutLine(
+      {
+        text: 'abX',
+        chords: [{ raw: 'C', at: 2, valid: true }],
+        spans: [{ start: 0, end: 2, bold: true }],
+      },
+      c,
+      0,
+    );
+    const chord = r.items.find((i) => i.role === 'chord');
+    // Bold "ab" is 2 · 16 · 1.2 = 38.4 wide, not the plain 2 · 9.6 = 19.2.
+    expect(chord?.x).toBeCloseTo(2 * 16 * 1.2);
   });
 });
 

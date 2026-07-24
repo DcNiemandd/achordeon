@@ -15,7 +15,27 @@ import { createContext } from './context';
 import { layoutTitle } from './title-layout';
 import { layoutColumns } from './column-layout';
 import { parseAspectRatio } from './aspect';
-import { fitContent } from './fit';
+import { fitContent, type AlignX, type AlignY } from './fit';
+
+/**
+ * The content anchor for this render: the title-page override wins over the
+ * song's own `contentX`/`contentY`, which win over the `left`/`top` default.
+ *
+ * `opts.align` is only ever set for a page that is not a song (a songbook title
+ * page), so a real song always falls through to its settings.
+ */
+function resolveAlign(
+  settings: GlobalSettings,
+  override: RenderOpts['align'],
+): { alignX: AlignX; alignY: AlignY } {
+  if (override === 'center') return { alignX: 'center', alignY: 'middle' };
+  if (override === 'top-left') return { alignX: 'left', alignY: 'top' };
+  // Default centre when a stored settings bag predates these keys (§4.1).
+  return {
+    alignX: (settings.contentX as AlignX) ?? 'center',
+    alignY: (settings.contentY as AlignY) ?? 'middle',
+  };
+}
 
 /** Platform dependencies bound once (§5): the measurer, embedded fonts, tuning. */
 export interface LayoutConfig {
@@ -85,13 +105,15 @@ export function layoutCore(
   const contentH = bareH + pad * 2;
 
   const ratio = parseAspectRatio(settings.aspectRatio);
+  const { alignX, alignY } = resolveAlign(settings, opts.align);
   const { box, fit, origin } = fitContent(
     contentW,
     contentH,
     ratio,
     settings.scale,
     tuning.minBoxEm * tuning.baseSizePx,
-    opts.align,
+    alignX,
+    alignY,
   );
 
   return {
@@ -101,7 +123,7 @@ export function layoutCore(
     items,
     styles: ctx.styles,
     fonts: config.fonts
-      ? buildFontBook(ctx.styles, config.fonts)
+      ? buildFontBook(ctx.styles, config.fonts, items)
       : EMPTY_FONT_BOOK,
   };
 }

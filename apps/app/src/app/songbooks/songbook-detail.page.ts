@@ -129,9 +129,8 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                    is not a useful act, and the tooltip explains why. -->
               <a
                 appButton
-                variant="secondary"
                 [isIconOnly]="true"
-                [attr.routerLink]="
+                [routerLink]="
                   presenter.canPerform() ? ['/stage', presenter.id()] : null
                 "
                 [class.is-disabled]="!presenter.canPerform()"
@@ -174,7 +173,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               <button
                 appButton
                 type="button"
-                variant="secondary"
                 [isIconOnly]="true"
                 [class.is-active]="presenter.isSettingsOpen()"
                 [attr.aria-pressed]="presenter.isSettingsOpen()"

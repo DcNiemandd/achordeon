@@ -83,6 +83,10 @@ const ICONS = {
   tag: 'tag',
   pilcrow: 'pilcrow',
   backslash: 'slash',
+  // Markdown emphasis: the two marks everyone knows from every rich-text
+  // toolbar, so the button teaches nothing new — B is bold, I is italic.
+  bold: 'bold',
+  italic: 'italic',
   // song explorer (Epic 5)
   // `edit` opens the editor, `rename` retitles the library label — two different
   // jobs on the same row, so they must not look alike.
@@ -115,6 +119,14 @@ const ICONS = {
   // whole thing is draggable", which is exactly what we are not saying — the row
   // is a click target, and only this one strip of it starts a drag.
   drag: 'grip-vertical',
+  // Read-only summary list (Epic 9) and the paging chevrons.
+  list: 'list',
+  chevronLeft: 'chevron-left',
+  chevronRight: 'chevron-right',
+  // Performing / audience fullscreen (Epic 8/9): the four-corner expand, and its
+  // inward-pointing exit.
+  fullscreen: 'maximize',
+  fullscreenExit: 'minimize',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

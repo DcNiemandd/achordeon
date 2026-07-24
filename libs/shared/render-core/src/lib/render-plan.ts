@@ -15,6 +15,11 @@ export interface TextItem {
   role: TextRole; // → styles[role]
   rotate?: -90; // title CCW spine only (§4.5); absent = upright
   sizeScale?: number; // per-item multiple of styles[role].sizePx (bridge, §4.9); absent = 1
+  // Per-item emphasis overrides for markdown runs (§4.10): they replace the
+  // role's own weight/style when present, and pick a different embedded face of
+  // the SAME family. Absent = the role's style.
+  weight?: 'normal' | 'bold';
+  style?: 'normal' | 'italic';
 }
 
 export interface TextStyle {
@@ -50,12 +55,14 @@ export interface RenderOpts {
   /** Blank chord glyphs but keep their reserved rows (Audience, §4.6). */
   hideChords?: boolean;
   /**
-   * Where the content sits in the render box. Default `top-left` — a song hugs
-   * the corner (§4.5). `center` is for a songbook's title page, which is a page
-   * of the book rather than a song and belongs in the middle of its paper.
+   * A content-placement OVERRIDE for pages that are not songs. Default absent —
+   * a song hugs the corner (§4.5) unless its own `contentX`/`contentY` settings
+   * move it. `center` is for a songbook's title page, which is a page of the book
+   * rather than a song and belongs in the middle of its paper, regardless of any
+   * song-level setting (§5). `top-left` forces the corner.
    *
-   * An OPTION and not a setting: it is a fact about what is being rendered, not
-   * something the user tunes per song (§5).
+   * The per-song nine-position placement is a SETTING (`contentX`/`contentY`);
+   * this option exists only to override it for the title page.
    */
   align?: 'top-left' | 'center';
 }

@@ -85,6 +85,15 @@ export class AudiencePresenter {
     await this.viewer.leave();
   }
 
+  /**
+   * Manual re-sync: re-read the durable lobby row and apply it. The recovery path
+   * behind the bar's "Re-sync" button, for the rare case a viewer suspects it fell
+   * behind. Idempotent via the reducer's rev gate (ADR-0011).
+   */
+  async sync(): Promise<void> {
+    await this.viewer.requestSync();
+  }
+
   setSummaryQuery(q: string): void {
     this._summaryQuery.set(q);
   }

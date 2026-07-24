@@ -28,6 +28,11 @@ export const achordeonTags = {
   /** A bracket that is not a chord — `[Solo]`, `[x2]` — rendered verbatim. */
   annotation: Tag.define(),
   escape: Tag.define(),
+  /** The `*` markers of a markdown emphasis run. */
+  emphasis: Tag.define(),
+  italic: Tag.define(),
+  bold: Tag.define(),
+  bolditalic: Tag.define(),
 };
 
 /**
@@ -40,6 +45,10 @@ export const achordeonTags = {
  */
 interface HighlightState {
   bracketEnd: number | null;
+  /** Emphasis in force, toggled by `*` runs; reset at the start of every line
+   * (an unclosed run emphasises to line end, exactly as Phase 2 resolves it). */
+  italic: boolean;
+  bold: boolean;
 }
 
 /**
@@ -63,18 +72,35 @@ export function achordeonHighlight(
   const isChordToken = (token: string): boolean =>
     theory.parseChord(unescape(token)) !== null;
 
+  /** The tag for a stretch of text under the current emphasis, or null if plain. */
+  const emphasisTag = (state: HighlightState): string | null =>
+    state.bold && state.italic
+      ? 'bolditalic'
+      : state.bold
+        ? 'bold'
+        : state.italic
+          ? 'italic'
+          : null;
+
   const parser: StreamParser<HighlightState> = {
     name: 'achordeon',
 
-    startState: () => ({ bracketEnd: null }),
-    copyState: (state) => ({ bracketEnd: state.bracketEnd }),
+    startState: () => ({ bracketEnd: null, italic: false, bold: false }),
+    copyState: (state) => ({
+      bracketEnd: state.bracketEnd,
+      italic: state.italic,
+      bold: state.bold,
+    }),
 
     token(stream, state) {
       // A bracket never spans lines, so a live `bracketEnd` at the start of one
       // is stale — an offset into the previous line's text. Dropping it here
-      // stops that ever being read against the wrong string.
+      // stops that ever being read against the wrong string. Emphasis resets too:
+      // a run left open colours to end of line, and the next line starts plain.
       if (stream.sol()) {
         state.bracketEnd = null;
+        state.italic = false;
+        state.bold = false;
       }
 
       // --- inside a chord-bearing bracket: one token at a time (§Chord validity) ---
@@ -142,7 +168,7 @@ export function achordeonHighlight(
         const close = findClosingBracket(stream.string, stream.pos);
         if (close === -1) {
           stream.next();
-          return null; // unterminated — a literal bracket, not a chord
+          return emphasisTag(state); // unterminated — a literal bracket, not a chord
         }
         const inner = stream.string.slice(stream.pos + 1, close);
         // A bracket with no chord at all is a verbatim annotation — `[Solo]`,
@@ -159,10 +185,26 @@ export function achordeonHighlight(
         return 'chord';
       }
 
-      // Ordinary text: consume to the next thing that could matter.
+      // Markdown emphasis (§Phase 2): a run of one/two/three `*` toggles
+      // italic/bold/both; four or more is literal text. The markers colour as
+      // punctuation; the text between takes the current emphasis (below).
+      if (char === '*') {
+        let run = 0;
+        while (stream.peek() === '*') {
+          stream.next();
+          run += 1;
+        }
+        if (run > 3) return emphasisTag(state); // literal asterisks
+        if (run === 1 || run === 3) state.italic = !state.italic;
+        if (run === 2 || run === 3) state.bold = !state.bold;
+        return 'emphasis';
+      }
+
+      // Ordinary text: consume to the next thing that could matter, coloured by
+      // whatever emphasis is currently in force.
       stream.next();
-      stream.eatWhile(/[^\\[]/);
-      return null;
+      stream.eatWhile(/[^\\[*]/);
+      return emphasisTag(state);
     },
 
     tokenTable: {
@@ -172,6 +214,10 @@ export function achordeonHighlight(
       chord: achordeonTags.chord,
       annotation: achordeonTags.annotation,
       escape: achordeonTags.escape,
+      emphasis: achordeonTags.emphasis,
+      italic: achordeonTags.italic,
+      bold: achordeonTags.bold,
+      bolditalic: achordeonTags.bolditalic,
     },
   };
 

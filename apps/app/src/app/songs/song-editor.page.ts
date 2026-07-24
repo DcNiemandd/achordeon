@@ -14,6 +14,7 @@ import { Button, Dialog, Icon, Tooltip, type IconName } from '../primitives';
 import { Router, RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
@@ -40,6 +41,7 @@ import { ReturnUrl } from './return-url';
     SongEditor,
     SongRender,
     SettingsPanel,
+    DownloadDialog,
     Button,
     Dialog,
     Icon,
@@ -147,6 +149,38 @@ import { ReturnUrl } from './return-url';
                   <app-icon name="note" />
                   <app-icon class="transpose-badge" name="transposeDown" />
                 </button>
+
+                <!-- Sharp/flat raise or lower the ONE chord under the cursor, and
+                     so are enabled only while the caret is inside a chord — off a
+                     chord there is nothing for them to change. -->
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  class="accidental"
+                  [isIconOnly]="true"
+                  [disabled]="!editor().caret().isInsideChord"
+                  [attr.aria-label]="sharpLabel"
+                  [appTooltip]="sharpLabel"
+                  data-testid="chord-sharp"
+                  (click)="editor().transposeChordAtCaret(1)"
+                >
+                  ♯
+                </button>
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  class="accidental"
+                  [isIconOnly]="true"
+                  [disabled]="!editor().caret().isInsideChord"
+                  [attr.aria-label]="flatLabel"
+                  [appTooltip]="flatLabel"
+                  data-testid="chord-flat"
+                  (click)="editor().transposeChordAtCaret(-1)"
+                >
+                  ♭
+                </button>
               </div>
 
               <div
@@ -181,21 +215,54 @@ import { ReturnUrl } from './return-url';
               </div>
             </div>
 
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              class="settings"
-              [isIconOnly]="true"
-              [class.is-active]="presenter.isSettingsOpen()"
-              [attr.aria-pressed]="presenter.isSettingsOpen()"
-              [attr.aria-label]="settingsLabel"
-              [appTooltip]="settingsLabel"
-              data-testid="editor-settings"
-              (click)="presenter.toggleSettings()"
-            >
-              <app-icon name="settings" />
-            </button>
+            <!-- These are plain actions, not code-editing commands, so they are
+                 borderless (ghost) — the bordered buttons on the left are the ones
+                 that write into the text. The same borderless set as the library
+                 list and the songbook detail. -->
+            <div class="bar-actions">
+              <!-- Download the song as it stands: a picture, PNG or PDF, the same
+                   DownloadService the library list uses. -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="downloadLabel"
+                [appTooltip]="downloadLabel"
+                data-testid="editor-download"
+                (click)="presenter.openDownload()"
+              >
+                <app-icon name="download" />
+              </button>
+
+              <!-- Export the song as an Achordeon file: the database, not a
+                   picture — importing it back rebuilds the song. -->
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="exportLabel"
+                [appTooltip]="exportLabel"
+                data-testid="editor-export"
+                (click)="presenter.exportSong()"
+              >
+                <app-icon name="export" />
+              </button>
+
+              <button
+                appButton
+                type="button"
+                class="settings"
+                [isIconOnly]="true"
+                [class.is-active]="presenter.isSettingsOpen()"
+                [attr.aria-pressed]="presenter.isSettingsOpen()"
+                [attr.aria-label]="settingsLabel"
+                [appTooltip]="settingsLabel"
+                data-testid="editor-settings"
+                (click)="presenter.toggleSettings()"
+              >
+                <app-icon name="settings" />
+              </button>
+            </div>
           </div>
         </app-action-bar>
 
@@ -224,6 +291,17 @@ import { ReturnUrl } from './return-url';
               (changed)="presenter.patchSettings($event)"
             />
           </app-dialog>
+        }
+
+        <!-- The export sheet — one song, so it offers PNG or PDF (its count is
+             1). The same dialog the library list opens. -->
+        @if (presenter.isDownloadOpen()) {
+          <app-download-dialog
+            [count]="1"
+            [busy]="presenter.isDownloading()"
+            (chosen)="presenter.download($event)"
+            (closed)="presenter.closeDownload()"
+          />
         }
       </div>
 
@@ -322,10 +400,13 @@ import { ReturnUrl } from './return-url';
       color: var(--text-muted);
     }
 
-    /* Never squeezed by the commands, and pinned to the far end. */
-    .settings {
+    /* Download and settings ride together at the far end: never squeezed by the
+       commands, and staying level with the first row when the commands wrap. */
+    .bar-actions {
       flex: none;
       margin-inline-start: auto;
+      display: flex;
+      gap: var(--space-1);
     }
 
     /* The note is the subject, the arrow is the direction it moves — so the
@@ -347,6 +428,14 @@ import { ReturnUrl } from './return-url';
       inset-block-start: 1px;
       inset-inline-end: 0;
       color: var(--brand);
+    }
+
+    /* The accidental buttons show their glyph as text, not an icon — ♯ and ♭ are
+       the mark, sized up to read at a button's scale. */
+    .accidental {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      line-height: 1;
     }
   `,
 })
@@ -399,7 +488,11 @@ export class SongEditorPage {
   protected readonly historyGroupLabel = $localize`:@@editor.historyGroup:History`;
   protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
   protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
+  protected readonly sharpLabel = $localize`:@@editor.sharp:Raise this chord a semitone`;
+  protected readonly flatLabel = $localize`:@@editor.flat:Lower this chord a semitone`;
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
+  protected readonly downloadLabel = $localize`:@@editor.download:Download`;
+  protected readonly exportLabel = $localize`:@@editor.export:Export`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 
@@ -460,6 +553,26 @@ export class SongEditorPage {
       glyph: ':',
       label: $localize`:@@editor.insertLabel:Label`,
       snippet: SNIPPETS.label,
+    },
+    {
+      // Emphasis is content-only and cannot live in a chord: `**` on a title line
+      // is literal, and inside a bracket the asterisks are chord text.
+      testid: 'insert-bold',
+      icon: 'bold',
+      isContentOnly: true,
+      isBlockedInsideChord: true,
+      glyph: '**',
+      label: $localize`:@@editor.insertBold:Bold`,
+      snippet: SNIPPETS.bold,
+    },
+    {
+      testid: 'insert-italic',
+      icon: 'italic',
+      isContentOnly: true,
+      isBlockedInsideChord: true,
+      glyph: '*',
+      label: $localize`:@@editor.insertItalic:Italic`,
+      snippet: SNIPPETS.italic,
     },
     {
       // A block boundary is a blank line, which has no character to show — `↵`

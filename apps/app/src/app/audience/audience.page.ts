@@ -482,8 +482,9 @@ export class AudiencePage {
 
   constructor() {
     // The shell-side bar cannot reach the presenter (data-access); it asks the
-    // session to leave, which runs this.
+    // session to leave or re-sync, which runs these.
     this.session.registerLeave(() => this.exit());
+    this.session.registerSync(() => void this.presenter.sync());
 
     inject(DestroyRef).onDestroy(() => {
       void this.presenter.leave();

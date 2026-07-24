@@ -48,6 +48,10 @@ function familyAttr(family: string, fallback?: string): string {
 function emitItem(item: TextItem, plan: RenderPlan): string {
   const style = plan.styles[item.role];
   const size = style.sizePx * (item.sizeScale ?? 1);
+  // A markdown run overrides the role's weight/style; the family is unchanged, so
+  // the browser + the embedded `@font-face` pick the bold/italic face of it.
+  const weight = item.weight ?? style.weight;
+  const fontStyle = item.style ?? style.style;
   const attrs = [
     `x="${item.x}"`,
     `y="${item.y}"`,
@@ -62,11 +66,11 @@ function emitItem(item: TextItem, plan: RenderPlan): string {
     `xml:space="preserve"`,
     `font-family="${familyAttr(style.family, style.fallback)}"`,
     `font-size="${size}"`,
-    `font-weight="${style.weight}"`,
+    `font-weight="${weight}"`,
     `fill="${style.fill}"`,
   ];
-  if (style.style && style.style !== 'normal')
-    attrs.push(`font-style="${style.style}"`);
+  if (fontStyle && fontStyle !== 'normal')
+    attrs.push(`font-style="${fontStyle}"`);
   // CCW spine: rotate about the item's own anchor (§4.5).
   if (item.rotate)
     attrs.push(`transform="rotate(${item.rotate} ${item.x} ${item.y})"`);

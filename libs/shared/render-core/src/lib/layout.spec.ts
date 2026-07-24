@@ -12,6 +12,8 @@ const settings: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0,
+  contentX: 'left',
+  contentY: 'top',
   chordColor: '#000000',
   chordSize: 1,
 };
@@ -151,7 +153,7 @@ describe('layoutCore — assembly (§1, §5)', () => {
 
   it('asks the resolver for the faces the styles name', () => {
     const fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, {
-      normal: 'QUJD',
+      'normal-normal': 'QUJD',
     });
     const plan = layoutCore(
       ast({ title: 'T' }),

@@ -102,6 +102,17 @@ import { Fullscreen } from './fullscreen';
         <button
           type="button"
           class="item"
+          role="menuitem"
+          data-testid="audience-sync"
+          (click)="onSync()"
+        >
+          <app-icon name="reset" />
+          {{ syncLabel }}
+        </button>
+
+        <button
+          type="button"
+          class="item"
           role="menuitemcheckbox"
           [attr.aria-checked]="session.hideChords()"
           [class.is-active]="session.hideChords()"
@@ -207,6 +218,11 @@ export class AudienceBar {
     this.session.openLobby();
   }
 
+  protected onSync(): void {
+    this.closeMenu();
+    this.session.sync();
+  }
+
   protected onHideChords(): void {
     this.session.toggleHideChords();
   }
@@ -244,6 +260,7 @@ export class AudienceBar {
   protected readonly summaryLabel = $localize`:@@audience.summary:Song list`;
   protected readonly menuLabel = $localize`:@@stage.menu:More`;
   protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
+  protected readonly syncLabel = $localize`:@@audience.sync:Re-sync`;
   protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
   protected readonly leaveLabel = $localize`:@@audience.exit:Leave audience`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;

@@ -97,6 +97,71 @@ describe('phase2 — inline scan', () => {
     });
   });
 
+  describe('emphasis', () => {
+    it('reads one/two/three asterisks as italic/bold/both', () => {
+      expect(scan('*i*')).toEqual({
+        text: 'i',
+        chords: [],
+        spans: [{ start: 0, end: 1, italic: true }],
+      });
+      expect(scan('**b**')).toEqual({
+        text: 'b',
+        chords: [],
+        spans: [{ start: 0, end: 1, bold: true }],
+      });
+      expect(scan('***bi***')).toEqual({
+        text: 'bi',
+        chords: [],
+        spans: [{ start: 0, end: 2, bold: true, italic: true }],
+      });
+    });
+
+    it('emphasises a span in the middle of a line', () => {
+      expect(scan('a *b* c')).toEqual({
+        text: 'a b c',
+        chords: [],
+        spans: [{ start: 2, end: 3, italic: true }],
+      });
+    });
+
+    it('nests a different emphasis inside another', () => {
+      // Toggle model: bold opens, italic opens and closes inside it, bold closes.
+      expect(scan('**a *b* c**')).toEqual({
+        text: 'a b c',
+        chords: [],
+        spans: [
+          { start: 0, end: 2, bold: true },
+          { start: 2, end: 3, bold: true, italic: true },
+          { start: 3, end: 5, bold: true },
+        ],
+      });
+    });
+
+    it('closes an unclosed emphasis at end of line', () => {
+      expect(scan('*ab')).toEqual({
+        text: 'ab',
+        chords: [],
+        spans: [{ start: 0, end: 2, italic: true }],
+      });
+    });
+
+    it('treats four or more asterisks as literal', () => {
+      expect(scan('****x')).toEqual({ text: '****x', chords: [] });
+    });
+
+    it('keeps an escaped asterisk literal, with no emphasis', () => {
+      expect(scan('a\\*b\\*c')).toEqual({ text: 'a*b*c', chords: [] });
+    });
+
+    it('overlays emphasis and a chord independently', () => {
+      expect(scan('*[C]x*')).toEqual({
+        text: 'x',
+        chords: [{ raw: 'C', at: 0, valid: true }],
+        spans: [{ start: 0, end: 1, italic: true }],
+      });
+    });
+  });
+
   it('treats an unterminated bracket as a literal [', () => {
     expect(scan('do [re mi')).toEqual({ text: 'do [re mi', chords: [] });
   });

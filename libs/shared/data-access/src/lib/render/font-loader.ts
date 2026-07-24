@@ -21,28 +21,33 @@
 
 import { Injectable, signal, type Signal } from '@angular/core';
 import type {
+  FaceVariant,
   FontBook,
   FontFaceKey,
   FontResolver,
 } from '@achordeon/shared/render-core';
 
-/** The bundled files, by the family name the render names (§4.10 catalog). */
-const FONT_FILES: Record<string, Partial<Record<'normal' | 'bold', string>>> = {
+/** The bundled files, by the family name the render names (§4.10 catalog). Keyed
+ * by `${weight}-${style}`. Only the body family carries italic faces — markdown
+ * emphasis is a body-lyric thing; titles are never markdown-parsed. */
+const FONT_FILES: Record<string, Partial<Record<FaceVariant, string>>> = {
   'Roboto Mono': {
-    normal: 'fonts/RobotoMono-Regular.ttf',
-    bold: 'fonts/RobotoMono-Bold.ttf',
+    'normal-normal': 'fonts/RobotoMono-Regular.ttf',
+    'bold-normal': 'fonts/RobotoMono-Bold.ttf',
+    'normal-italic': 'fonts/RobotoMono-Italic.ttf',
+    'bold-italic': 'fonts/RobotoMono-BoldItalic.ttf',
   },
   'Crimson Text': {
-    normal: 'fonts/CrimsonText-Regular.ttf',
-    bold: 'fonts/CrimsonText-Bold.ttf',
+    'normal-normal': 'fonts/CrimsonText-Regular.ttf',
+    'bold-normal': 'fonts/CrimsonText-Bold.ttf',
   },
   Oswald: {
-    normal: 'fonts/Oswald-Regular.ttf',
-    bold: 'fonts/Oswald-Bold.ttf',
+    'normal-normal': 'fonts/Oswald-Regular.ttf',
+    'bold-normal': 'fonts/Oswald-Bold.ttf',
   },
   Caveat: {
-    normal: 'fonts/Caveat-Regular.ttf',
-    bold: 'fonts/Caveat-Bold.ttf',
+    'normal-normal': 'fonts/Caveat-Regular.ttf',
+    'bold-normal': 'fonts/Caveat-Bold.ttf',
   },
 };
 
@@ -92,7 +97,7 @@ export class FontLoader {
 
   /** Bytes for one face, or `undefined` if it has not (yet) been fetched. */
   lookup(face: FontFaceKey): string | undefined {
-    return face.style === 'normal' ? this.bytes.get(faceId(face)) : undefined;
+    return this.bytes.get(faceId(face));
   }
 
   /** The sync lookup `layout` takes — a snapshot of what is loaded right now. */
@@ -128,9 +133,15 @@ export class FontLoader {
     for (const family of new Set(families)) {
       const files = FONT_FILES[family];
       if (!files) continue; // a family we bundle no bytes for — CSS fallback only
-      for (const weight of ['normal', 'bold'] as const) {
-        const url = files[weight];
-        if (url) jobs.push(this.load({ family, weight, style: 'normal' }, url));
+      for (const [variant, url] of Object.entries(files) as [
+        FaceVariant,
+        string,
+      ][]) {
+        const [weight, style] = variant.split('-') as [
+          'normal' | 'bold',
+          'normal' | 'italic',
+        ];
+        jobs.push(this.load({ family, weight, style }, url));
       }
     }
     await Promise.all(jobs);

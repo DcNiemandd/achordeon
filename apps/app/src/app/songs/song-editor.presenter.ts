@@ -9,12 +9,16 @@ import {
   signal,
 } from '@angular/core';
 import {
+  DownloadService,
+  ExportService,
   ParserService,
   RenderService,
   SessionStore,
   SettingsStore,
   SongStore,
+  type SongFormat,
 } from '@achordeon/shared/data-access';
+import type { DownloadFormat } from '../shared/transfer';
 import {
   ChordTheory,
   resolveSettings,
@@ -50,6 +54,8 @@ export class SongEditorPresenter {
   private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
   private readonly theory = inject(ChordTheory);
+  private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -305,6 +311,64 @@ export class SongEditorPresenter {
     const next = transposeContent(this._content(), semitones, this.theory);
     if (next !== this._content()) {
       this.setContent(next);
+    }
+  }
+
+  /** Session-only, like the settings dialog: a transient sheet is not a place. */
+  private readonly _isDownloadOpen = signal(false);
+  /** True while a file is being generated — the dialog swaps its formats for a
+   * spinner and refuses to close mid-render. */
+  private readonly _isDownloading = signal(false);
+  readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
+  readonly isDownloading = this._isDownloading.asReadonly();
+
+  openDownload(): void {
+    this._isDownloadOpen.set(true);
+  }
+
+  closeDownload(): void {
+    // A render in flight owns the dialog until it finishes; there is nothing to
+    // cancel back to and the file is already being written.
+    if (!this._isDownloading()) {
+      this._isDownloadOpen.set(false);
+    }
+  }
+
+  /**
+   * Export the song being edited as a PNG or PDF (Epic 7 `DownloadService`).
+   *
+   * The last keystrokes are flushed first: `downloadSong` renders from the saved
+   * record, not this presenter's live signal, so an unsaved edit would export a
+   * song one debounce behind what is on screen.
+   */
+  /**
+   * Export the song being edited as an Achordeon `.json` file (the database, not
+   * a picture — the counterpart to `download`). Flushes the pending autosave
+   * first so the file holds what is on screen, not a debounce behind it.
+   */
+  async exportSong(): Promise<void> {
+    const song = this._song();
+    if (!song) {
+      return;
+    }
+    await this.flushSave();
+    await this.exporter.export({ songIds: [song.id] });
+  }
+
+  async download(format: DownloadFormat): Promise<void> {
+    const song = this._song();
+    if (!song || this._isDownloading()) {
+      return;
+    }
+    this._isDownloading.set(true);
+    await this.flushSave();
+    try {
+      // The dialog only offers png/pdf for one song (its count is 1), so the
+      // multi-song members of DownloadFormat never arrive here.
+      await this.downloads.downloadSong(song.id, format as SongFormat);
+    } finally {
+      this._isDownloading.set(false);
+      this._isDownloadOpen.set(false);
     }
   }
 }

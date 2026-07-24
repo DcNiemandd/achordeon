@@ -54,7 +54,7 @@ describe('fitContent — scale-to-fit (§4.1)', () => {
   });
 });
 
-describe('fitContent — alignment (Epic 7: the title page)', () => {
+describe('fitContent — alignment (nine positions + the title page)', () => {
   it('hugs the top-left corner by default, as a song does', () => {
     const { origin } = fitContent(100, 100, 1 / 2, 'auto');
     expect(origin).toEqual({ x: 0, y: 0 });
@@ -62,7 +62,15 @@ describe('fitContent — alignment (Epic 7: the title page)', () => {
 
   it('centres the content in the slack the ratio created', () => {
     // A square of content in a box twice as tall: the slack is all vertical.
-    const { box, origin } = fitContent(100, 100, 1 / 2, 'auto', 0, 'center');
+    const { box, origin } = fitContent(
+      100,
+      100,
+      1 / 2,
+      'auto',
+      0,
+      'center',
+      'middle',
+    );
     expect(box).toEqual({ width: 100, height: 200 });
     expect(origin).toEqual({ x: 0, y: 50 });
   });
@@ -70,7 +78,15 @@ describe('fitContent — alignment (Epic 7: the title page)', () => {
   it('centres in the slack the auto-fit floor created too', () => {
     // The floor grows the box around content that keeps its size — which is
     // precisely the case a title page is: three lines on a sheet of paper.
-    const { box, origin } = fitContent(20, 20, 1, 'auto', 200, 'center');
+    const { box, origin } = fitContent(
+      20,
+      20,
+      1,
+      'auto',
+      200,
+      'center',
+      'middle',
+    );
     expect(box).toEqual({ width: 200, height: 200 });
     expect(origin).toEqual({ x: 90, y: 90 });
   });
@@ -79,7 +95,29 @@ describe('fitContent — alignment (Epic 7: the title page)', () => {
     // A manual scale may overflow (§4.1, no clamp) and the floor does not apply
     // to it — so the box stays 50×50 around content drawn at 100×100. Centred,
     // that hangs 25 off each side instead of 50 off the bottom-right.
-    const { origin } = fitContent(50, 50, 1, 2, 200, 'center');
+    const { origin } = fitContent(50, 50, 1, 2, 200, 'center', 'middle');
     expect(origin).toEqual({ x: -25, y: -25 });
+  });
+
+  it('pushes to the far edge for right/bottom, moving the whole slack', () => {
+    // 100 of horizontal slack (box 200 wide around 100 of content): right sends
+    // all of it to the left of the content, bottom all of it above.
+    const { box, origin } = fitContent(
+      100,
+      100,
+      2,
+      'auto',
+      0,
+      'right',
+      'bottom',
+    );
+    expect(box).toEqual({ width: 200, height: 100 });
+    expect(origin).toEqual({ x: 100, y: 0 });
+  });
+
+  it('anchors each axis independently', () => {
+    // Left across, middle down: x stays home, y splits the vertical slack.
+    const { origin } = fitContent(100, 100, 1 / 2, 'auto', 0, 'left', 'middle');
+    expect(origin).toEqual({ x: 0, y: 50 });
   });
 });

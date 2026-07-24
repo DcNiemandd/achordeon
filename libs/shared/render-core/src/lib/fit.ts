@@ -10,14 +10,17 @@
 import type { GlobalSettings } from '@achordeon/shared/domain';
 
 /**
- * Where the scaled content sits inside the render box.
+ * Where the scaled content sits inside the render box, as two independent axes.
  *
- * `top-left` is the song's own answer (§4.5: the title block hugs the corner) and
- * the default everywhere. `center` exists for the one page that is not a song —
- * a songbook's **title page**, which is three lines on a sheet of paper and reads
- * as a mistake anywhere but the middle of it.
+ * `left` + `top` is the song's own answer (§4.5: the title block hugs the corner)
+ * and the default. The other positions are a per-song setting (`contentX` /
+ * `contentY`): a song that does not fill its page can be pushed to any of the nine
+ * anchor points instead of always clinging to the corner. A songbook's **title
+ * page** asks for `center` + `middle` through `RenderOpts.align`, overriding the
+ * setting for the one page that is not a song.
  */
-export type ContentAlign = 'top-left' | 'center';
+export type AlignX = 'left' | 'center' | 'right';
+export type AlignY = 'top' | 'middle' | 'bottom';
 
 export interface FitResult {
   box: { width: number; height: number };
@@ -53,7 +56,8 @@ export function fitContent(
   ratio: number,
   scale: GlobalSettings['scale'],
   minBox = 0,
-  align: ContentAlign = 'top-left',
+  alignX: AlignX = 'left',
+  alignY: AlignY = 'top',
 ): FitResult {
   const fit = parseScale(scale);
   const origin = { x: 0, y: 0 }; // hug top-left (§4.5)
@@ -84,12 +88,15 @@ export function fitContent(
     }
   }
 
-  // Centring happens after the floor has grown the box, because the slack it
-  // centres in is exactly what the floor just created.
-  if (align === 'center') {
-    origin.x = (box.width - contentW * fit) / 2;
-    origin.y = (box.height - contentH * fit) / 2;
-  }
+  // Placement happens after the floor has grown the box, because the slack the
+  // content is positioned within is exactly what the floor just created. Each
+  // axis independently: `left`/`top` stays at 0 (the default), `center`/`middle`
+  // splits the slack, `right`/`bottom` pushes to the far edge.
+  const slackX = box.width - contentW * fit;
+  const slackY = box.height - contentH * fit;
+  origin.x = alignX === 'center' ? slackX / 2 : alignX === 'right' ? slackX : 0;
+  origin.y =
+    alignY === 'middle' ? slackY / 2 : alignY === 'bottom' ? slackY : 0;
 
   return { box, fit, origin };
 }

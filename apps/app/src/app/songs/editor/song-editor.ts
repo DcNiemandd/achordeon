@@ -30,7 +30,11 @@ import {
 } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
-import { ChordTheory, findLabelDelimiter } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  findLabelDelimiter,
+  transposeChordAt,
+} from '@achordeon/shared/domain';
 import { achordeonHighlight, achordeonTags } from './highlight';
 import type {
   CaretContext,
@@ -320,21 +324,95 @@ export class SongEditor {
       return;
     }
 
-    const selected = view.state.sliceDoc(from, to);
-    const text = request.before + selected + (request.after ?? '');
-    // With text selected, the wrapping is the point and the caret belongs after
-    // it. With none, `caretOffset` puts the caret where the next keystroke goes —
-    // between the brackets of an empty `[]`, not after them.
-    const caret =
-      from +
-      (selected === '' && request.caretOffset !== undefined
-        ? request.before.length + request.caretOffset
-        : text.length);
+    const after = request.after ?? '';
+
+    // Nothing selected, but the caret sits in a word and this insert wraps one:
+    // act on the whole word (Bold on a word means "make THIS word bold"). A no-op
+    // on whitespace, where `wordAt` returns null and we fall back to the pair.
+    let start = from;
+    let end = to;
+    let wrappedWord = false;
+    if (from === to && request.wrapsWord) {
+      const word = view.state.wordAt(from);
+      if (word) {
+        // Already wrapped in exactly these markers → toggle them OFF, keeping the
+        // caret on the same character (it shifts left by the removed opener). This
+        // is what makes a second press undo the first.
+        const hasBefore =
+          request.before.length > 0 &&
+          word.from >= request.before.length &&
+          view.state.sliceDoc(word.from - request.before.length, word.from) ===
+            request.before;
+        const hasAfter =
+          view.state.sliceDoc(word.to, word.to + after.length) === after;
+        if (hasBefore && hasAfter) {
+          view.dispatch({
+            changes: [
+              { from: word.from - request.before.length, to: word.from },
+              { from: word.to, to: word.to + after.length },
+            ],
+            selection: { anchor: from - request.before.length },
+            scrollIntoView: true,
+          });
+          view.focus();
+          return;
+        }
+        start = word.from;
+        end = word.to;
+        wrappedWord = true;
+      }
+    }
+
+    const selected = view.state.sliceDoc(start, end);
+    const text = request.before + selected + after;
+    // A wrapped word keeps the caret on the character it was on — the word only
+    // shifted right by the opener. A user SELECTION puts the caret after the
+    // wrapping (the wrap was the point). An empty pair uses `caretOffset` to land
+    // the caret where the next keystroke goes — between the brackets of `[]`.
+    const caret = wrappedWord
+      ? from + request.before.length
+      : start +
+        (selected === '' && request.caretOffset !== undefined
+          ? request.before.length + request.caretOffset
+          : text.length);
 
     view.dispatch({
-      changes: { from, to, insert: text },
+      changes: { from: start, to: end, insert: text },
       selection: { anchor: caret },
       scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  /**
+   * Raise (+1) or lower (−1) the ONE chord the caret is inside, re-spelling it —
+   * the sharp/flat buttons. A real source edit like transpose (it joins the undo
+   * history), but scoped to the bracket under the cursor. A no-op off any chord,
+   * which is why the buttons disable themselves off `caret().isInsideChord`.
+   */
+  transposeChordAtCaret(semitones: number): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const head = view.state.selection.main.head;
+    const result = transposeChordAt(
+      view.state.doc.toString(),
+      head,
+      semitones,
+      this.theory,
+    );
+    if (!result) {
+      view.focus();
+      return;
+    }
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: result.content },
+      // Keep the caret inside the bracket even if the chord got shorter (E→Eb
+      // grows, C#→C shrinks): clamp it to the bracket's new closing `]`.
+      selection: { anchor: Math.min(head, result.bracketEnd) },
+      scrollIntoView: true,
+      userEvent: 'input.transpose',
     });
     view.focus();
   }
@@ -488,8 +566,13 @@ export class SongEditor {
       // `border-left-color`, not the logical `border-inline-start-color`, or it
       // sets a different property and loses the cascade.
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--text)' },
+      // A visible wash, not the 0.12-alpha `--brand-subtle`, which vanished on
+      // the dark surface — 28% of the brand reads as a highlight in both themes
+      // while the text under it stays legible.
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
-        { backgroundColor: 'var(--brand-subtle)' },
+        {
+          backgroundColor: 'color-mix(in srgb, var(--brand) 28%, transparent)',
+        },
       // A warning is an underline, not a red wall: the text stays readable.
       '.cm-lintRange-warning': {
         backgroundImage: 'none',
@@ -555,6 +638,16 @@ export class SongEditor {
         fontStyle: 'italic',
       },
       { tag: achordeonTags.escape, color: 'var(--text-faint)' },
+      // Emphasis: the text shows the style it will render in, and the `*` markers
+      // are dimmed so they read as syntax around it.
+      { tag: achordeonTags.emphasis, color: 'var(--text-faint)' },
+      { tag: achordeonTags.italic, fontStyle: 'italic' },
+      { tag: achordeonTags.bold, fontWeight: '700' },
+      {
+        tag: achordeonTags.bolditalic,
+        fontStyle: 'italic',
+        fontWeight: '700',
+      },
     ]);
   }
 
