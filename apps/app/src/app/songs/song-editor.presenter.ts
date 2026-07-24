@@ -16,6 +16,7 @@ import {
   SessionStore,
   SettingsStore,
   SongStore,
+  SyncService,
   type SongFormat,
 } from '@achordeon/shared/data-access';
 import type { DownloadFormat } from '../shared/transfer';
@@ -56,6 +57,7 @@ export class SongEditorPresenter {
   private readonly theory = inject(ChordTheory);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly sync = inject(SyncService);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -295,6 +297,9 @@ export class SongEditorPresenter {
     // The explorer's window is sorted and filtered by things that just moved —
     // the name's neighbours, `changed`, the searched title.
     await this.songs.refresh();
+    // A save is one of the coarse sync boundaries (ADR-0004) — schedule a
+    // debounced push. No-op unless automatic sync is active.
+    this.sync.pushSoon();
   }
 
   /**
