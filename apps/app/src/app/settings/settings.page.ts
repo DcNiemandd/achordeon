@@ -55,9 +55,12 @@ const MIN_PASSWORD = 8;
             @case ('signed-in') {
               <p class="account-line" data-testid="account-email">
                 {{ signedInAs }} <strong>{{ presenter.email() }}</strong>
-                @if (presenter.isPro()) {
-                  <span class="pro-badge">{{ proLabel }}</span>
-                }
+                <span
+                  class="tier-badge"
+                  [class.is-pro]="presenter.isPro()"
+                  data-testid="tier-badge"
+                  >{{ presenter.isPro() ? proLabel : freeLabel }}</span
+                >
               </p>
 
               <p class="method-line" data-testid="account-methods">
@@ -870,10 +873,13 @@ const MIN_PASSWORD = 8;
       gap: var(--space-3);
     }
 
+    /* Copied verbatim from app-settings-panel's .section-title so the render
+       section and the hand-built ones share one title style (item 3). */
     .heading {
       margin: 0;
-      font-size: var(--text-sm);
-      color: var(--text-muted);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-faint);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -1025,11 +1031,11 @@ const MIN_PASSWORD = 8;
     }
 
     /* A settings row: label + (?) help on one line, the control beneath — the
-       same shape app-settings-panel gives every render setting. */
+       same shape (and gap) app-settings-panel's .row gives every render setting. */
     .setting {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-1);
       align-items: flex-start;
     }
 
@@ -1083,15 +1089,23 @@ const MIN_PASSWORD = 8;
       color: var(--text-muted);
     }
 
-    .pro-badge {
+    /* The tier flag — always shown (item 1). Neutral for Free, brand for Pro. */
+    .tier-badge {
       margin-inline-start: var(--space-2);
       padding: 2px var(--space-2);
       border-radius: var(--space-1);
-      background: var(--premium-glow, var(--brand));
-      color: var(--text-on-brand, #fff);
+      background: var(--surface-sunken, var(--surface));
+      border: 1px solid var(--border);
+      color: var(--text-muted);
       font-size: var(--text-xs);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+    }
+
+    .tier-badge.is-pro {
+      background: var(--premium-glow, var(--brand));
+      border-color: transparent;
+      color: var(--text-on-brand, #fff);
     }
 
     .text-input {
@@ -1308,6 +1322,7 @@ export class SettingsPage {
   protected readonly accountUnavailable = $localize`:@@settings.account.unavailable:Sign-in and cloud sync are unavailable in this build. Your library works and is saved on this device.`;
   protected readonly signedInAs = $localize`:@@settings.account.signedInAs:Signed in as`;
   protected readonly proLabel = $localize`:@@settings.account.pro:Premium`;
+  protected readonly freeLabel = $localize`:@@settings.account.free:Free`;
   protected readonly methodsLabel = $localize`:@@settings.account.methods:Sign-in methods:`;
   protected readonly googleWord = $localize`:@@settings.account.googleWord:Google`;
   protected readonly passwordWord = $localize`:@@settings.account.passwordWord:Email & password`;
