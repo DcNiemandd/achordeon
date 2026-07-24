@@ -170,18 +170,190 @@ import { SettingsPresenter } from './settings.presenter';
           </div>
         </section>
 
+        <!-- Account (Epic 10). Login gates cloud sync ONLY — the library above
+             works signed out. Unavailable builds (no backend) say so. -->
         <section class="section">
-          <h2 class="heading">{{ syncHeading }}</h2>
-          <!-- Decoration over a WORKING control, never a disabled one: tierGuard is
-             highlight-and-tooltip during testing, not a hard block. -->
-          <app-premium [label]="autoSyncLabel">
-            <button appButton variant="secondary" data-testid="auto-sync">
-              {{ autoSyncLabel }}
-            </button>
-          </app-premium>
+          <h2 class="heading">{{ accountHeading }}</h2>
+
+          @switch (presenter.authStatus()) {
+            @case ('unavailable') {
+              <p class="backup-help">{{ accountUnavailable }}</p>
+            }
+            @case ('signed-in') {
+              <p class="account-line" data-testid="account-email">
+                {{ signedInAs }} <strong>{{ presenter.email() }}</strong>
+                @if (presenter.isPro()) {
+                  <span class="pro-badge">{{ proLabel }}</span>
+                }
+              </p>
+
+              <div class="backup-actions">
+                @if (!presenter.hasGoogle()) {
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="link-google"
+                    (click)="presenter.linkGoogle()"
+                  >
+                    {{ linkGoogleLabel }}
+                  </button>
+                }
+                <button
+                  appButton
+                  variant="ghost"
+                  data-testid="sign-out"
+                  (click)="presenter.signOut()"
+                >
+                  {{ signOutLabel }}
+                </button>
+              </div>
+            }
+            @default {
+              <button
+                appButton
+                variant="secondary"
+                data-testid="sign-in-google"
+                (click)="presenter.signInGoogle()"
+              >
+                {{ googleLabel }}
+              </button>
+
+              <div class="cred">
+                <input
+                  #emailInput
+                  class="text-input"
+                  type="email"
+                  autocomplete="email"
+                  [placeholder]="emailPlaceholder"
+                  [attr.aria-label]="emailPlaceholder"
+                  data-testid="email"
+                />
+                <input
+                  #pwInput
+                  class="text-input"
+                  type="password"
+                  autocomplete="current-password"
+                  [placeholder]="passwordPlaceholder"
+                  [attr.aria-label]="passwordPlaceholder"
+                  data-testid="password"
+                />
+                <div class="backup-actions">
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="sign-in"
+                    (click)="presenter.signIn(emailInput.value, pwInput.value)"
+                  >
+                    {{ signInLabel }}
+                  </button>
+                  <button
+                    appButton
+                    variant="ghost"
+                    data-testid="sign-up"
+                    (click)="presenter.signUp(emailInput.value, pwInput.value)"
+                  >
+                    {{ signUpLabel }}
+                  </button>
+                </div>
+              </div>
+
+              @if (presenter.authError()) {
+                <p class="warn" data-testid="auth-error">{{ authErrorText }}</p>
+              }
+            }
+          }
         </section>
+
+        <!-- Sync (Epic 10). Automatic Supabase sync is enabled by the paid tier;
+             manual Drive backup is for everyone signed into Google. -->
+        @if (presenter.authStatus() !== 'unavailable') {
+          <section class="section">
+            <h2 class="heading">{{ syncHeading }}</h2>
+
+            <!-- Decoration over a WORKING control, never a disabled one: tierGuard
+               is highlight-and-tooltip during testing, not a hard block. -->
+            <app-premium [label]="autoSyncLabel">
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  class="check"
+                  [checked]="presenter.autoSync()"
+                  data-testid="auto-sync"
+                  (change)="onAutoSync($event)"
+                />
+                <span>
+                  <span class="check-label">{{ autoSyncLabel }}</span>
+                  <span class="check-help">{{ autoSyncHelp }}</span>
+                </span>
+              </label>
+            </app-premium>
+
+            @if (presenter.hasUnsynced()) {
+              <p class="unsynced" data-testid="unsynced">{{ unsyncedText }}</p>
+            }
+
+            @if (presenter.authStatus() === 'signed-in') {
+              <p class="backup-help">{{ driveHelp }}</p>
+              <div class="backup-actions">
+                <button
+                  appButton
+                  variant="secondary"
+                  data-testid="drive-upload"
+                  (click)="presenter.driveUpload()"
+                >
+                  <app-icon name="download" />
+                  {{ driveUploadLabel }}
+                </button>
+                <button
+                  appButton
+                  variant="secondary"
+                  data-testid="drive-download"
+                  (click)="presenter.driveDownload()"
+                >
+                  <app-icon name="import" />
+                  {{ driveDownloadLabel }}
+                </button>
+              </div>
+              @if (driveMessage(); as message) {
+                <p class="backup-help" data-testid="drive-status">
+                  {{ message }}
+                  @if (presenter.driveOutcome()?.kind === 'conflict') {
+                    <button
+                      appButton
+                      variant="ghost"
+                      data-testid="drive-force"
+                      (click)="presenter.driveUpload(true)"
+                    >
+                      {{ driveForceLabel }}
+                    </button>
+                  }
+                </p>
+              }
+            }
+          </section>
+        }
       </div>
     </div>
+
+    @if (presenter.signUpState() === 'confirm') {
+      <app-dialog
+        [title]="confirmEmailTitle"
+        data-testid="confirm-dialog"
+        (closed)="presenter.dismissSignUp()"
+      >
+        <p>{{ confirmEmailText }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="confirm-close"
+          (click)="presenter.dismissSignUp()"
+        >
+          {{ okLabel }}
+        </button>
+      </app-dialog>
+    }
 
     @if (pendingRestore(); as file) {
       <app-dialog
@@ -353,6 +525,46 @@ import { SettingsPresenter } from './settings.presenter';
       margin: 0 0 var(--space-2);
     }
 
+    .account-line {
+      margin: 0 0 var(--space-3);
+      font-size: var(--text-sm);
+      color: var(--text);
+    }
+
+    .pro-badge {
+      margin-inline-start: var(--space-2);
+      padding: 2px var(--space-2);
+      border-radius: var(--space-1);
+      background: var(--premium-glow, var(--brand));
+      color: var(--text-on-brand, #fff);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .cred {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-block-start: var(--space-3);
+      max-inline-size: 320px;
+    }
+
+    .text-input {
+      padding: var(--space-2);
+      border: 1px solid var(--border);
+      border-radius: var(--space-1);
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .unsynced {
+      margin: var(--space-2) 0 0;
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
     /* The real control behind Restore. Not display:none, which makes it
        unfocusable and, in some engines, unclickable from script. */
     .file {
@@ -411,6 +623,61 @@ export class SettingsPage {
   }
   protected readonly syncHeading = $localize`:@@settings.sync:Sync`;
   protected readonly autoSyncLabel = $localize`:@@settings.autoSync:Automatic sync`;
+  protected readonly autoSyncHelp = $localize`:@@settings.autoSync.help:Keep this library backed up to the cloud and pulled to your other devices.`;
+
+  protected onAutoSync(event: Event): void {
+    void this.presenter.setAutoSync((event.target as HTMLInputElement).checked);
+  }
+
+  // --- Account & sync (Epic 10) ---------------------------------------------
+  protected readonly accountHeading = $localize`:@@settings.account:Account`;
+  protected readonly accountUnavailable = $localize`:@@settings.account.unavailable:Sign-in and cloud sync are unavailable in this build. Your library works and is saved on this device.`;
+  protected readonly signedInAs = $localize`:@@settings.account.signedInAs:Signed in as`;
+  protected readonly proLabel = $localize`:@@settings.account.pro:Premium`;
+  protected readonly googleLabel = $localize`:@@settings.account.google:Continue with Google`;
+  protected readonly emailPlaceholder = $localize`:@@settings.account.email:Email`;
+  protected readonly passwordPlaceholder = $localize`:@@settings.account.password:Password`;
+  protected readonly signInLabel = $localize`:@@settings.account.signIn:Sign in`;
+  protected readonly signUpLabel = $localize`:@@settings.account.signUp:Create account`;
+  protected readonly signOutLabel = $localize`:@@settings.account.signOut:Sign out`;
+  protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google & connect Drive`;
+  protected readonly authErrorText = $localize`:@@settings.account.error:That did not work. Check your email and password and try again.`;
+  protected readonly confirmEmailTitle = $localize`:@@settings.account.confirmTitle:Check your inbox`;
+  protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — you are not signed in until you do.`;
+
+  protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
+  protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. Upload replaces the Drive copy; download merges it in.`;
+  protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
+  protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
+  protected readonly driveForceLabel = $localize`:@@settings.drive.force:Overwrite anyway`;
+
+  private readonly driveUploaded = $localize`:@@settings.drive.uploaded:Uploaded to Drive.`;
+  private readonly driveDownloaded = $localize`:@@settings.drive.downloaded:Downloaded from Drive.`;
+  private readonly driveEmpty = $localize`:@@settings.drive.empty:No Drive backup found yet.`;
+  private readonly driveConflict = $localize`:@@settings.drive.conflict:The Drive backup changed since you last synced.`;
+  private readonly driveReauth = $localize`:@@settings.drive.reauth:Reconnecting to Google…`;
+  private readonly driveFailed = $localize`:@@settings.drive.failed:That did not work. Try again.`;
+
+  /** The status line under the Drive buttons for the last push/pull. */
+  protected driveMessage(): string | null {
+    const outcome = this.presenter.driveOutcome();
+    switch (outcome?.kind) {
+      case 'uploaded':
+        return this.driveUploaded;
+      case 'downloaded':
+        return this.driveDownloaded;
+      case 'empty':
+        return this.driveEmpty;
+      case 'conflict':
+        return this.driveConflict;
+      case 'reauth':
+        return this.driveReauth;
+      case 'failed':
+        return this.driveFailed;
+      default:
+        return null;
+    }
+  }
 
   protected readonly themes = [
     { value: 'system' as const, label: $localize`:@@theme.system:System` },

@@ -3,14 +3,30 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
+  AuthService,
   BackupService,
+  DriveAuthRequiredError,
+  DriveConflictError,
   SettingsStore,
+  SyncService,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
 import { UiStore } from '../shared/layout';
 
 /** How a restore ended, for the page to say so. */
 export type RestoreOutcome = 'done' | 'failed';
+
+/** How a Drive push/pull ended — the account section's status line. */
+export type DriveOutcome =
+  | { kind: 'uploaded' }
+  | { kind: 'downloaded' }
+  | { kind: 'empty' } // download found no file yet
+  | { kind: 'conflict' } // Drive moved ahead; offer to overwrite
+  | { kind: 'reauth' } // token lapsed; a re-connect is under way
+  | { kind: 'failed' };
+
+/** A sign-up that needs the confirmation link clicked before it is a session. */
+export type SignUpState = 'confirm' | 'failed' | null;
 
 /**
  * The only thing in this feature that knows the business layer exists.
@@ -29,10 +45,133 @@ export class SettingsPresenter {
    */
   private readonly ui = inject(UiStore);
   private readonly backups = inject(BackupService);
+  private readonly auth = inject(AuthService);
+  private readonly sync = inject(SyncService);
 
   readonly theme = this.store.theme;
   readonly language = this.store.language;
   readonly isSplitShared = this.ui.isSplitShared;
+
+  // --- Account & sync (Epic 10) --------------------------------------------
+  readonly authStatus = this.auth.status;
+  readonly email = this.auth.email;
+  readonly isPro = this.auth.isPro;
+  readonly hasGoogle = this.auth.hasGoogle;
+  readonly hasPassword = this.auth.hasPassword;
+  readonly autoSync = this.sync.autoSync;
+  readonly hasUnsynced = this.sync.hasUnsynced;
+  readonly syncStatus = this.sync.status;
+  /** Automatic sync needs the paid tier; the toggle is decoration over it while
+   * signed out or free (tierGuard is highlight-not-block during testing). */
+  readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
+
+  private readonly _drive = signal<DriveOutcome | null>(null);
+  private readonly _signUp = signal<SignUpState>(null);
+  private readonly _authError = signal(false);
+  readonly driveOutcome = this._drive.asReadonly();
+  readonly signUpState = this._signUp.asReadonly();
+  readonly authError = this._authError.asReadonly();
+
+  async signInGoogle(): Promise<void> {
+    this._authError.set(false);
+    try {
+      await this.auth.signInWithGoogle();
+    } catch {
+      this._authError.set(true);
+    }
+  }
+
+  async signIn(email: string, password: string): Promise<void> {
+    this._authError.set(false);
+    try {
+      await this.auth.signInWithPassword(email, password);
+    } catch {
+      this._authError.set(true);
+    }
+  }
+
+  async signUp(email: string, password: string): Promise<void> {
+    this._signUp.set(null);
+    try {
+      const { needsConfirmation } = await this.auth.signUpWithPassword(
+        email,
+        password,
+      );
+      this._signUp.set(needsConfirmation ? 'confirm' : null);
+    } catch {
+      this._signUp.set('failed');
+    }
+  }
+
+  /** Add a sign-in method to the current account (ADR-0009: attach, never merge).
+   * Google links Drive at the same time — Drive rides that identity. */
+  linkGoogle(): Promise<void> {
+    return this.auth.linkGoogle(true).catch(() => this._authError.set(true));
+  }
+
+  async addPassword(email: string, password: string): Promise<void> {
+    this._authError.set(false);
+    try {
+      await this.auth.addPassword(email, password);
+      this._signUp.set('confirm'); // the new email must be confirmed
+    } catch {
+      this._authError.set(true);
+    }
+  }
+
+  signOut(): Promise<void> {
+    return this.auth.signOut();
+  }
+
+  setAutoSync(on: boolean): Promise<void> {
+    return this.sync.setAutoSync(on);
+  }
+
+  /** "Upload to Drive". A lapsed token routes to a re-connect (Flow A); a Drive
+   * copy that moved ahead surfaces as a conflict the user can force past. */
+  async driveUpload(force = false): Promise<void> {
+    this._drive.set(null);
+    try {
+      await this.sync.driveUpload({ force });
+      this._drive.set({ kind: 'uploaded' });
+    } catch (e) {
+      this._drive.set(this.classifyDrive(e));
+      if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+    }
+  }
+
+  async driveDownload(): Promise<void> {
+    this._drive.set(null);
+    try {
+      const found = await this.sync.driveDownload();
+      this._drive.set({ kind: found ? 'downloaded' : 'empty' });
+    } catch (e) {
+      this._drive.set(this.classifyDrive(e));
+      if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+    }
+  }
+
+  dismissDrive(): void {
+    this._drive.set(null);
+  }
+
+  dismissSignUp(): void {
+    this._signUp.set(null);
+  }
+
+  private classifyDrive(e: unknown): DriveOutcome {
+    if (e instanceof DriveConflictError) return { kind: 'conflict' };
+    if (e instanceof DriveAuthRequiredError) return { kind: 'reauth' };
+    return { kind: 'failed' };
+  }
+
+  /** Re-run Google OAuth with the Drive scope — the token is gone after any
+   * reload (§6), so a redirect mints a fresh one and returns here. */
+  private reconnectDrive(): Promise<void> {
+    return this.auth
+      .signInWithGoogle(true)
+      .catch(() => this._authError.set(true));
+  }
 
   private readonly _isBusy = signal(false);
   private readonly _restore = signal<RestoreOutcome | null>(null);
