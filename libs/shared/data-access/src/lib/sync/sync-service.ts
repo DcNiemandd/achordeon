@@ -140,11 +140,20 @@ export class SyncService {
 
   // --- Manual Drive (all users, two buttons) --------------------------------
 
-  /** "Upload to Drive": write the whole local library. `force` overwrites past
-   * the conflict guard (the user said yes to the warning). */
+  /**
+   * "Upload to Drive": write the whole library, non-destructively. The existing
+   * Drive copy is pulled and merged into the local snapshot first (per-row LWW,
+   * the same rule the auto/download paths use), so an upload can never drop rows
+   * that live only in the Drive backup — another device's edits we never pulled.
+   * The uploaded file is always a superset, so `force` is moot on the happy path;
+   * it stays wired for the conflict UI. A missing token throws through as before.
+   */
   async driveUpload(opts: { force?: boolean } = {}): Promise<void> {
-    const snapshot = await this.driveBackend.snapshot();
-    await this.driveBackend.upload(snapshot, opts);
+    const local = await this.driveBackend.snapshot();
+    const remote = await this.driveBackend.pull();
+    const data =
+      remote === null ? local.data : mergeSnapshots(local.data, remote.data);
+    await this.driveBackend.upload({ ...local, data }, opts);
   }
 
   /**
