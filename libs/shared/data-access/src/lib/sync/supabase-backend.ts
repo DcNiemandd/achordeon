@@ -51,6 +51,15 @@ export class SupabaseSyncBackend implements SyncBackend {
         .maybeSingle(),
     ]);
 
+    // A FAILED query is not an empty remote. Swallowing the error (`data ?? []`)
+    // would let the cycle proceed on a false "remote has nothing" — harmless for
+    // the merge (it is additive) but it would advance the watermark past rows it
+    // never actually saw, so a later pull would skip them. Abort instead: a
+    // caught error leaves the watermark untouched and the next sync retries.
+    if (songs.error) throw songs.error;
+    if (songbooks.error) throw songbooks.error;
+    if (profile.error) throw profile.error;
+
     const songRows = (songs.data ?? []) as SongRow[];
     const bookRows = (songbooks.data ?? []) as SongbookRow[];
 
@@ -64,6 +73,7 @@ export class SupabaseSyncBackend implements SyncBackend {
         .from('songbook_songs')
         .select('*')
         .in('songbook_id', bookIds);
+      if (entries.error) throw entries.error;
       entryRows = (entries.data ?? []) as SongbookSongRow[];
     }
 

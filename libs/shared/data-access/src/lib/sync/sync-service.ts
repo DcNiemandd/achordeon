@@ -9,11 +9,7 @@
 // additive, so an unconfigured or signed-out app behaves exactly as before.
 
 import { Injectable, computed, inject, signal } from '@angular/core';
-import {
-  mergeSnapshots,
-  type SnapshotData,
-  type SnapshotEnvelope,
-} from '@achordeon/shared/domain';
+import { mergeSnapshots, type SnapshotData } from '@achordeon/shared/domain';
 import { AuthService } from '../auth/auth-service';
 import { snapshotFromDb } from '../persistence/gateway';
 import { ACHORDEON_DB } from '../stores/repositories';
