@@ -61,3 +61,18 @@ export interface LobbyPayload {
   readonly summary: readonly LobbySummaryRow[];
   readonly currentIndex: number;
 }
+
+/**
+ * A payload stamped with its server-owned revision — the shape that flows over
+ * every transport (the durable `lobbies` row, a `postgres_changes` event, a
+ * Realtime Broadcast). The viewer keeps the highest `rev` it has applied and
+ * ignores anything not newer, so a lost, duplicated or out-of-order update is
+ * harmless and all three transports feed one reducer.
+ *
+ * `rev` is allocated by the database (`lobby_publish`), not the host, so it stays
+ * monotonic even when a reloaded host resumes a lobby it no longer remembers.
+ */
+export interface LobbyUpdate {
+  readonly rev: number;
+  readonly payload: LobbyPayload;
+}

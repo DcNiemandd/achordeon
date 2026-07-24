@@ -18,6 +18,7 @@ export class AudienceSession {
   private readonly _isLobbyOpen = signal(false);
   private readonly _hideChords = signal(false);
   private leaveHandler: (() => void) | null = null;
+  private syncHandler: (() => void) | null = null;
 
   /** True while the viewer is joined and on screen — the shell draws the bar then. */
   readonly isMounted = this._isMounted.asReadonly();
@@ -62,6 +63,20 @@ export class AudienceSession {
 
   leave(): void {
     this.leaveHandler?.();
+  }
+
+  /**
+   * A manual re-sync, registered by the page the same way as `leave`: the durable
+   * lobby row is re-read and applied, so a viewer who suspects it fell behind can
+   * catch up on demand. The rev gate makes it idempotent — nothing changes if the
+   * viewer is already current.
+   */
+  registerSync(handler: () => void): void {
+    this.syncHandler = handler;
+  }
+
+  sync(): void {
+    this.syncHandler?.();
   }
 
   /** Drop transient panel state when the view unmounts. */

@@ -4,7 +4,10 @@ Date: 2026-06-27
 
 ## Status
 
-Accepted
+Accepted. **Partially superseded by ADR-0011:** lobby state is now a durable,
+rev-versioned `lobbies` row (source of truth), and Presence/Broadcast are no
+longer authoritative. The channel-per-PIN, the audience count over Presence, and
+the PIN format below are unchanged.
 
 ## Context
 

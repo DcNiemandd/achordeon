@@ -49,6 +49,7 @@ class FakeViewer {
   readonly audienceCount = signal(0);
   readonly join = jest.fn(async () => undefined);
   readonly leave = jest.fn(async () => undefined);
+  readonly requestSync = jest.fn(async () => undefined);
 }
 
 // The renderer's decisions are not under test here — only that the presenter
@@ -165,5 +166,10 @@ describe('AudiencePresenter', () => {
     expect(viewer.join).toHaveBeenCalledWith('ABCDE');
     await presenter.leave();
     expect(viewer.leave).toHaveBeenCalled();
+  });
+
+  it('re-reads the durable row on manual sync', async () => {
+    await presenter.sync();
+    expect(viewer.requestSync).toHaveBeenCalled();
   });
 });

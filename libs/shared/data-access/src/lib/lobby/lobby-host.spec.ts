@@ -1,4 +1,4 @@
-// LobbyHost — Epic 9 (host debounce + channel lifecycle)
+// LobbyHost — Epic 9 (host debounce + channel lifecycle + durable publish)
 
 import { TestBed } from '@angular/core/testing';
 import type { LobbyPayload, Song } from '@achordeon/shared/domain';
@@ -40,13 +40,21 @@ class FakeChannel {
 describe('LobbyHost', () => {
   let channel: FakeChannel;
   let host: LobbyHost;
+  let rpc: jest.Mock;
 
   beforeEach(() => {
     jest.useFakeTimers();
     channel = new FakeChannel();
+    let rev = 0;
+    // The durable-publish RPC hands back a server-owned, monotonic rev.
+    rpc = jest.fn(async (fn: string) => {
+      if (fn === 'lobby_publish') return { data: (rev += 1), error: null };
+      return { data: null, error: null };
+    });
     const client = {
       channel: jest.fn(() => channel),
       removeChannel: jest.fn(async () => undefined),
+      rpc,
     };
     TestBed.configureTestingModule({
       providers: [
@@ -65,43 +73,54 @@ describe('LobbyHost', () => {
     jest.useRealTimers();
   });
 
-  it('opens immediately and tracks the first payload', async () => {
+  it('opens immediately, tracks liveness, and publishes the first payload', async () => {
     await host.sync('ABCDE', makePayload('s1'));
 
-    expect(channel.track).toHaveBeenCalledTimes(1);
-    expect(channel.track.mock.calls[0][0]).toMatchObject({
-      song: { id: 's1' },
+    // Presence carries only liveness now — the payload rides the row + broadcast.
+    expect(channel.track).toHaveBeenCalledWith({ role: 'host' });
+    expect(rpc).toHaveBeenCalledWith('lobby_publish', {
+      p_pin: 'ABCDE',
+      p_payload: expect.objectContaining({
+        song: expect.objectContaining({ id: 's1' }),
+      }),
+    });
+    expect(channel.send.mock.calls[0][0]).toMatchObject({
+      event: 'song',
+      payload: { rev: 1, payload: { song: { id: 's1' } } },
     });
     expect(host.status()).toBe('hosting');
   });
 
   it('debounces rapid same-PIN changes to just the one landed on', async () => {
-    await host.sync('ABCDE', makePayload('s1')); // opens + tracks s1
-    channel.track.mockClear();
+    await host.sync('ABCDE', makePayload('s1')); // opens + publishes s1
+    rpc.mockClear();
     channel.send.mockClear();
 
-    // Tap through the book fast — no push should happen yet.
+    // Tap through the book fast — no publish should happen yet.
     await host.sync('ABCDE', makePayload('s2'));
     await host.sync('ABCDE', makePayload('s3'));
     await host.sync('ABCDE', makePayload('s4'));
+    expect(rpc).not.toHaveBeenCalled();
     expect(channel.send).not.toHaveBeenCalled();
 
-    // Settle: exactly one push, carrying the last payload.
-    jest.advanceTimersByTime(200);
+    // Settle: exactly one publish + broadcast, carrying the last payload.
+    await jest.advanceTimersByTimeAsync(200);
+    expect(rpc).toHaveBeenCalledTimes(1);
     expect(channel.send).toHaveBeenCalledTimes(1);
-    expect(channel.track).toHaveBeenCalledTimes(1);
     expect(channel.send.mock.calls[0][0]).toMatchObject({
-      payload: { song: { id: 's4' } },
+      payload: { payload: { song: { id: 's4' } } },
     });
   });
 
-  it('cancels a pending push when the lobby closes', async () => {
+  it('cancels a pending publish and ends the row when the lobby closes', async () => {
     await host.sync('ABCDE', makePayload('s1'));
-    await host.sync('ABCDE', makePayload('s2')); // schedules a push
+    await host.sync('ABCDE', makePayload('s2')); // schedules a publish
+    channel.send.mockClear();
     await host.close();
 
-    jest.advanceTimersByTime(200);
+    await jest.advanceTimersByTimeAsync(200);
     expect(channel.send).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('lobby_end', { p_pin: 'ABCDE' });
     expect(host.status()).toBe('idle');
   });
 });
