@@ -1190,7 +1190,7 @@ export class SettingsPage {
   protected readonly autoSyncReq = $localize`:@@settings.autoSync.requires:Available on a Premium account.`;
   protected readonly driveHeading = $localize`:@@settings.drive.heading:Google Drive backup`;
   protected readonly aboutDrive = $localize`:@@settings.drive.about:About Google Drive backup`;
-  protected readonly driveReq = $localize`:@@settings.drive.requires:Sign in with Google to back up to Drive.`;
+  protected readonly driveReq = $localize`:@@settings.drive.requires:Add Google to your account to back up to Drive.`;
 
   protected onAutoSync(event: Event): void {
     void this.presenter.setAutoSync((event.target as HTMLInputElement).checked);
@@ -1349,7 +1349,7 @@ export class SettingsPage {
   protected readonly loginLabel = $localize`:@@settings.account.login:Log in`;
   protected readonly registerLabel = $localize`:@@settings.account.register:Register`;
   protected readonly logoutLabel = $localize`:@@settings.account.logout:Log out`;
-  protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google & connect Drive`;
+  protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google`;
   protected readonly addPasswordLabel = $localize`:@@settings.account.addPassword:Add a password`;
 
   protected readonly loginTitle = $localize`:@@settings.account.loginTitle:Log in`;
@@ -1370,7 +1370,7 @@ export class SettingsPage {
   protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
-  protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. Upload replaces the Drive copy; download merges it in.`;
+  protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. The first backup asks Google for Drive permission. Upload replaces the Drive copy; download merges it in.`;
   protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
   protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
   protected readonly driveForceLabel = $localize`:@@settings.drive.force:Overwrite anyway`;

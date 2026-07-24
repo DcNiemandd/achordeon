@@ -1,7 +1,7 @@
 // Settings presenter — Epic 13
 // Spec: PRD-UI-SHELL.md §3 (the seam)
 
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import {
   AuthService,
   BackupService,
@@ -30,6 +30,11 @@ export type RegisterState = 'confirm' | 'failed' | null;
 
 /** Outcome of a password-reset request. */
 export type ResetState = 'sent' | 'failed' | null;
+
+/** A Drive action interrupted by a Google re-auth redirect, stashed across the
+ * reload so it can finish on return (Flow A) — the re-auth costs one click. */
+type PendingDrive = 'upload' | 'upload-force' | 'download';
+const PENDING_DRIVE_KEY = 'achordeon:pendingDrive';
 
 /**
  * The only thing in this feature that knows the business layer exists.
@@ -84,6 +89,26 @@ export class SettingsPresenter {
   /** The last auth failure message for the open dialog, or `null`. */
   readonly authError = this._authError.asReadonly();
 
+  /** One-shot latch so an auto-resume runs at most once per page load. */
+  private resumed = false;
+
+  constructor() {
+    // Flow A double-click fix: a Drive action that hit a missing token stashed
+    // itself and redirected to Google. The redirect lands back on Settings with
+    // a fresh `provider_token`; the moment it appears, finish what the user
+    // originally clicked instead of making them click again.
+    effect(() => {
+      const token = this.auth.providerToken();
+      if (this.resumed || token === null) return;
+      const pending = this.readPending();
+      if (pending === null) return;
+      this.resumed = true;
+      this.clearPending();
+      if (pending === 'download') void this.driveDownload(true);
+      else void this.driveUpload(pending === 'upload-force', true);
+    });
+  }
+
   logInGoogle(): Promise<void> {
     this._authError.set(null);
     return this.auth
@@ -137,12 +162,14 @@ export class SettingsPresenter {
     }
   }
 
-  /** Add a login method to the current account (ADR-0009: attach, never merge).
-   * Google links Drive at the same time — Drive rides that identity. */
+  /** Add Google as a login method to the current account (ADR-0009: attach, never
+   * merge). Deliberately does NOT request `drive.file` — signing in and granting
+   * Drive are split, so a login stays a login. Drive scope is asked lazily on the
+   * first Drive action (Flow A, `reconnectDrive`). */
   linkGoogle(): Promise<void> {
     this._authError.set(null);
     return this.auth
-      .linkGoogle(true)
+      .linkGoogle(false)
       .catch((e) => this._authError.set(this.message(e)));
   }
 
@@ -184,7 +211,7 @@ export class SettingsPresenter {
 
   /** "Upload to Drive". A lapsed token routes to a re-connect (Flow A); a Drive
    * copy that moved ahead surfaces as a conflict the user can force past. */
-  async driveUpload(force = false): Promise<void> {
+  async driveUpload(force = false, resuming = false): Promise<void> {
     this._drive.set(null);
     this._driveBusy.set(true);
     try {
@@ -192,13 +219,13 @@ export class SettingsPresenter {
       this._drive.set({ kind: 'uploaded' });
     } catch (e) {
       this._drive.set(this.classifyDrive(e));
-      if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+      await this.onDriveAuth(e, resuming, force ? 'upload-force' : 'upload');
     } finally {
       this._driveBusy.set(false);
     }
   }
 
-  async driveDownload(): Promise<void> {
+  async driveDownload(resuming = false): Promise<void> {
     this._drive.set(null);
     this._driveBusy.set(true);
     try {
@@ -206,7 +233,7 @@ export class SettingsPresenter {
       this._drive.set({ kind: found ? 'downloaded' : 'empty' });
     } catch (e) {
       this._drive.set(this.classifyDrive(e));
-      if (e instanceof DriveAuthRequiredError) await this.reconnectDrive();
+      await this.onDriveAuth(e, resuming, 'download');
     } finally {
       this._driveBusy.set(false);
     }
@@ -226,12 +253,50 @@ export class SettingsPresenter {
     return { kind: 'failed' };
   }
 
+  /**
+   * A Drive call reported a missing token. Unless we are already the resumed run
+   * (guard against a redirect loop if the grant never yields a token), stash what
+   * the user was doing and redirect to Google for the Drive scope — the `effect`
+   * in the constructor finishes it on return.
+   */
+  private async onDriveAuth(
+    e: unknown,
+    resuming: boolean,
+    action: PendingDrive,
+  ): Promise<void> {
+    if (!(e instanceof DriveAuthRequiredError) || resuming) return;
+    this.writePending(action);
+    await this.reconnectDrive();
+  }
+
   /** Re-run Google OAuth with the Drive scope — the token is gone after any
-   * reload (§6), so a redirect mints a fresh one and returns here. */
+   * reload (§6), so a redirect mints a fresh one and returns here. This is the
+   * only path that asks for `drive.file`: sign-in and Drive are split, so the
+   * scope is requested lazily, before the first backup. */
   private reconnectDrive(): Promise<void> {
     return this.auth
       .signInWithGoogle(true)
       .catch((e) => this._authError.set(this.message(e)));
+  }
+
+  private readPending(): PendingDrive | null {
+    if (typeof sessionStorage === 'undefined') return null;
+    const v = sessionStorage.getItem(PENDING_DRIVE_KEY);
+    return v === 'upload' || v === 'upload-force' || v === 'download'
+      ? v
+      : null;
+  }
+
+  private writePending(action: PendingDrive): void {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(PENDING_DRIVE_KEY, action);
+    }
+  }
+
+  private clearPending(): void {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(PENDING_DRIVE_KEY);
+    }
   }
 
   private readonly _isBusy = signal(false);
