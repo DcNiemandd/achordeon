@@ -30,6 +30,211 @@ import { SettingsPresenter } from './settings.presenter';
          against the left. -->
     <div class="body">
       <div class="content">
+        <!-- Account (Epic 10). Login gates cloud sync ONLY — the library below
+             works signed out. Unavailable builds (no backend) say so. -->
+        <section class="section">
+          <h2 class="heading">{{ accountHeading }}</h2>
+
+          @switch (presenter.authStatus()) {
+            @case ('unavailable') {
+              <p class="backup-help">{{ accountUnavailable }}</p>
+            }
+            @case ('signed-in') {
+              <p class="account-line" data-testid="account-email">
+                {{ signedInAs }} <strong>{{ presenter.email() }}</strong>
+                @if (presenter.isPro()) {
+                  <span class="pro-badge">{{ proLabel }}</span>
+                }
+              </p>
+
+              <div class="backup-actions">
+                @if (!presenter.hasGoogle()) {
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="link-google"
+                    (click)="presenter.linkGoogle()"
+                  >
+                    {{ linkGoogleLabel }}
+                  </button>
+                }
+                <button
+                  appButton
+                  variant="ghost"
+                  data-testid="logout"
+                  (click)="presenter.logOut()"
+                >
+                  {{ logoutLabel }}
+                </button>
+              </div>
+            }
+            @default {
+              <button
+                appButton
+                variant="secondary"
+                data-testid="login-google"
+                (click)="presenter.logInGoogle()"
+              >
+                {{ googleLabel }}
+              </button>
+
+              <div class="cred">
+                <input
+                  #emailInput
+                  class="text-input"
+                  type="email"
+                  autocomplete="email"
+                  [placeholder]="emailPlaceholder"
+                  [attr.aria-label]="emailPlaceholder"
+                  data-testid="email"
+                />
+                <input
+                  #pwInput
+                  class="text-input"
+                  type="password"
+                  autocomplete="current-password"
+                  [placeholder]="passwordPlaceholder"
+                  [attr.aria-label]="passwordPlaceholder"
+                  data-testid="password"
+                />
+                <div class="backup-actions">
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="login"
+                    (click)="presenter.logIn(emailInput.value, pwInput.value)"
+                  >
+                    {{ loginLabel }}
+                  </button>
+                  <button
+                    appButton
+                    variant="ghost"
+                    data-testid="register"
+                    (click)="
+                      presenter.register(emailInput.value, pwInput.value)
+                    "
+                  >
+                    {{ registerLabel }}
+                  </button>
+                </div>
+              </div>
+
+              @if (presenter.authError()) {
+                <p class="warn" data-testid="auth-error">{{ authErrorText }}</p>
+              }
+            }
+          }
+        </section>
+
+        <!-- Sync (Epic 10). Automatic Supabase sync is enabled by the paid tier;
+             manual Drive backup is for everyone signed into Google. -->
+        @if (presenter.authStatus() !== 'unavailable') {
+          <section class="section">
+            <h2 class="heading">{{ syncHeading }}</h2>
+
+            <!-- Decoration over a WORKING control, never a disabled one: tierGuard
+               is highlight-and-tooltip during testing, not a hard block. -->
+            <app-premium [label]="autoSyncLabel">
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  class="check"
+                  [checked]="presenter.autoSync()"
+                  data-testid="auto-sync"
+                  (change)="onAutoSync($event)"
+                />
+                <span>
+                  <span class="check-label">{{ autoSyncLabel }}</span>
+                  <span class="check-help">{{ autoSyncHelp }}</span>
+                </span>
+              </label>
+            </app-premium>
+
+            @if (presenter.hasUnsynced()) {
+              <p class="unsynced" data-testid="unsynced">{{ unsyncedText }}</p>
+            }
+
+            @if (presenter.authStatus() === 'signed-in') {
+              <p class="backup-help">{{ driveHelp }}</p>
+              <div class="backup-actions">
+                <button
+                  appButton
+                  variant="secondary"
+                  data-testid="drive-upload"
+                  (click)="presenter.driveUpload()"
+                >
+                  <app-icon name="download" />
+                  {{ driveUploadLabel }}
+                </button>
+                <button
+                  appButton
+                  variant="secondary"
+                  data-testid="drive-download"
+                  (click)="presenter.driveDownload()"
+                >
+                  <app-icon name="import" />
+                  {{ driveDownloadLabel }}
+                </button>
+              </div>
+              @if (driveMessage(); as message) {
+                <p class="backup-help" data-testid="drive-status">
+                  {{ message }}
+                  @if (presenter.driveOutcome()?.kind === 'conflict') {
+                    <button
+                      appButton
+                      variant="ghost"
+                      data-testid="drive-force"
+                      (click)="presenter.driveUpload(true)"
+                    >
+                      {{ driveForceLabel }}
+                    </button>
+                  }
+                </p>
+              }
+            }
+          </section>
+        }
+
+        <!-- Whole-database backup (#11 — the UI Epic 4 left unbuilt). Distinct
+           from Export: this is the entire library, verbatim, and Restore
+           REPLACES everything. So Restore confirms first. -->
+        <section class="section">
+          <h2 class="heading">{{ backupHeading }}</h2>
+          <p class="backup-help">{{ backupHelp }}</p>
+          <div class="backup-actions">
+            <button
+              appButton
+              variant="secondary"
+              [disabled]="presenter.isBusy()"
+              data-testid="backup"
+              (click)="presenter.backup()"
+            >
+              <app-icon name="download" />
+              {{ backupButton }}
+            </button>
+            <button
+              appButton
+              variant="secondary"
+              [disabled]="presenter.isBusy()"
+              data-testid="restore"
+              (click)="restoreInput.click()"
+            >
+              <app-icon name="import" />
+              {{ restoreButton }}
+            </button>
+            <input
+              #restoreInput
+              class="file"
+              type="file"
+              accept="application/json,.json"
+              tabindex="-1"
+              aria-hidden="true"
+              data-testid="restore-input"
+              (change)="onRestoreFilePicked($event)"
+            />
+          </div>
+        </section>
+
         <section class="section">
           <h2 class="heading">{{ appHeading }}</h2>
           <div class="choices" role="group" [attr.aria-label]="themeHeading">
@@ -129,217 +334,14 @@ import { SettingsPresenter } from './settings.presenter';
             <p class="coming-note">{{ comingNote }}</p>
           </div>
         </section>
-
-        <!-- Whole-database backup (#11 — the UI Epic 4 left unbuilt). Distinct
-           from Export: this is the entire library, verbatim, and Restore
-           REPLACES everything. So Restore confirms first. -->
-        <section class="section">
-          <h2 class="heading">{{ backupHeading }}</h2>
-          <p class="backup-help">{{ backupHelp }}</p>
-          <div class="backup-actions">
-            <button
-              appButton
-              variant="secondary"
-              [disabled]="presenter.isBusy()"
-              data-testid="backup"
-              (click)="presenter.backup()"
-            >
-              <app-icon name="download" />
-              {{ backupButton }}
-            </button>
-            <button
-              appButton
-              variant="secondary"
-              [disabled]="presenter.isBusy()"
-              data-testid="restore"
-              (click)="restoreInput.click()"
-            >
-              <app-icon name="import" />
-              {{ restoreButton }}
-            </button>
-            <input
-              #restoreInput
-              class="file"
-              type="file"
-              accept="application/json,.json"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="restore-input"
-              (change)="onRestoreFilePicked($event)"
-            />
-          </div>
-        </section>
-
-        <!-- Account (Epic 10). Login gates cloud sync ONLY — the library above
-             works signed out. Unavailable builds (no backend) say so. -->
-        <section class="section">
-          <h2 class="heading">{{ accountHeading }}</h2>
-
-          @switch (presenter.authStatus()) {
-            @case ('unavailable') {
-              <p class="backup-help">{{ accountUnavailable }}</p>
-            }
-            @case ('signed-in') {
-              <p class="account-line" data-testid="account-email">
-                {{ signedInAs }} <strong>{{ presenter.email() }}</strong>
-                @if (presenter.isPro()) {
-                  <span class="pro-badge">{{ proLabel }}</span>
-                }
-              </p>
-
-              <div class="backup-actions">
-                @if (!presenter.hasGoogle()) {
-                  <button
-                    appButton
-                    variant="secondary"
-                    data-testid="link-google"
-                    (click)="presenter.linkGoogle()"
-                  >
-                    {{ linkGoogleLabel }}
-                  </button>
-                }
-                <button
-                  appButton
-                  variant="ghost"
-                  data-testid="sign-out"
-                  (click)="presenter.signOut()"
-                >
-                  {{ signOutLabel }}
-                </button>
-              </div>
-            }
-            @default {
-              <button
-                appButton
-                variant="secondary"
-                data-testid="sign-in-google"
-                (click)="presenter.signInGoogle()"
-              >
-                {{ googleLabel }}
-              </button>
-
-              <div class="cred">
-                <input
-                  #emailInput
-                  class="text-input"
-                  type="email"
-                  autocomplete="email"
-                  [placeholder]="emailPlaceholder"
-                  [attr.aria-label]="emailPlaceholder"
-                  data-testid="email"
-                />
-                <input
-                  #pwInput
-                  class="text-input"
-                  type="password"
-                  autocomplete="current-password"
-                  [placeholder]="passwordPlaceholder"
-                  [attr.aria-label]="passwordPlaceholder"
-                  data-testid="password"
-                />
-                <div class="backup-actions">
-                  <button
-                    appButton
-                    variant="secondary"
-                    data-testid="sign-in"
-                    (click)="presenter.signIn(emailInput.value, pwInput.value)"
-                  >
-                    {{ signInLabel }}
-                  </button>
-                  <button
-                    appButton
-                    variant="ghost"
-                    data-testid="sign-up"
-                    (click)="presenter.signUp(emailInput.value, pwInput.value)"
-                  >
-                    {{ signUpLabel }}
-                  </button>
-                </div>
-              </div>
-
-              @if (presenter.authError()) {
-                <p class="warn" data-testid="auth-error">{{ authErrorText }}</p>
-              }
-            }
-          }
-        </section>
-
-        <!-- Sync (Epic 10). Automatic Supabase sync is enabled by the paid tier;
-             manual Drive backup is for everyone signed into Google. -->
-        @if (presenter.authStatus() !== 'unavailable') {
-          <section class="section">
-            <h2 class="heading">{{ syncHeading }}</h2>
-
-            <!-- Decoration over a WORKING control, never a disabled one: tierGuard
-               is highlight-and-tooltip during testing, not a hard block. -->
-            <app-premium [label]="autoSyncLabel">
-              <label class="check-row">
-                <input
-                  type="checkbox"
-                  class="check"
-                  [checked]="presenter.autoSync()"
-                  data-testid="auto-sync"
-                  (change)="onAutoSync($event)"
-                />
-                <span>
-                  <span class="check-label">{{ autoSyncLabel }}</span>
-                  <span class="check-help">{{ autoSyncHelp }}</span>
-                </span>
-              </label>
-            </app-premium>
-
-            @if (presenter.hasUnsynced()) {
-              <p class="unsynced" data-testid="unsynced">{{ unsyncedText }}</p>
-            }
-
-            @if (presenter.authStatus() === 'signed-in') {
-              <p class="backup-help">{{ driveHelp }}</p>
-              <div class="backup-actions">
-                <button
-                  appButton
-                  variant="secondary"
-                  data-testid="drive-upload"
-                  (click)="presenter.driveUpload()"
-                >
-                  <app-icon name="download" />
-                  {{ driveUploadLabel }}
-                </button>
-                <button
-                  appButton
-                  variant="secondary"
-                  data-testid="drive-download"
-                  (click)="presenter.driveDownload()"
-                >
-                  <app-icon name="import" />
-                  {{ driveDownloadLabel }}
-                </button>
-              </div>
-              @if (driveMessage(); as message) {
-                <p class="backup-help" data-testid="drive-status">
-                  {{ message }}
-                  @if (presenter.driveOutcome()?.kind === 'conflict') {
-                    <button
-                      appButton
-                      variant="ghost"
-                      data-testid="drive-force"
-                      (click)="presenter.driveUpload(true)"
-                    >
-                      {{ driveForceLabel }}
-                    </button>
-                  }
-                </p>
-              }
-            }
-          </section>
-        }
       </div>
     </div>
 
-    @if (presenter.signUpState() === 'confirm') {
+    @if (presenter.registerState() === 'confirm') {
       <app-dialog
         [title]="confirmEmailTitle"
         data-testid="confirm-dialog"
-        (closed)="presenter.dismissSignUp()"
+        (closed)="presenter.dismissRegister()"
       >
         <p>{{ confirmEmailText }}</p>
         <button
@@ -348,7 +350,7 @@ import { SettingsPresenter } from './settings.presenter';
           type="button"
           variant="primary"
           data-testid="confirm-close"
-          (click)="presenter.dismissSignUp()"
+          (click)="presenter.dismissRegister()"
         >
           {{ okLabel }}
         </button>
@@ -637,9 +639,9 @@ export class SettingsPage {
   protected readonly googleLabel = $localize`:@@settings.account.google:Continue with Google`;
   protected readonly emailPlaceholder = $localize`:@@settings.account.email:Email`;
   protected readonly passwordPlaceholder = $localize`:@@settings.account.password:Password`;
-  protected readonly signInLabel = $localize`:@@settings.account.signIn:Sign in`;
-  protected readonly signUpLabel = $localize`:@@settings.account.signUp:Create account`;
-  protected readonly signOutLabel = $localize`:@@settings.account.signOut:Sign out`;
+  protected readonly loginLabel = $localize`:@@settings.account.login:Log in`;
+  protected readonly registerLabel = $localize`:@@settings.account.register:Register`;
+  protected readonly logoutLabel = $localize`:@@settings.account.logout:Log out`;
   protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google & connect Drive`;
   protected readonly authErrorText = $localize`:@@settings.account.error:That did not work. Check your email and password and try again.`;
   protected readonly confirmEmailTitle = $localize`:@@settings.account.confirmTitle:Check your inbox`;

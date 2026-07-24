@@ -286,22 +286,22 @@
           <context context-type="linenumber">639</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.signIn" datatype="html">
-        <source>Sign in</source>
+      <trans-unit id="settings.account.login" datatype="html">
+        <source>Log in</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
           <context context-type="linenumber">640</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.signUp" datatype="html">
-        <source>Create account</source>
+      <trans-unit id="settings.account.register" datatype="html">
+        <source>Register</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
           <context context-type="linenumber">641</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.signOut" datatype="html">
-        <source>Sign out</source>
+      <trans-unit id="settings.account.logout" datatype="html">
+        <source>Log out</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
           <context context-type="linenumber">642</context>
@@ -2225,7 +2225,7 @@
         <source>All songs</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/songbooks/songbook-detail.presenter.ts</context>
-          <context context-type="linenumber">97</context>
+          <context context-type="linenumber">99</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/songbooks/songbooks.presenter.ts</context>
@@ -2244,7 +2244,7 @@
         <source>Missing song</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/songbooks/songbook-detail.presenter.ts</context>
-          <context context-type="linenumber">327</context>
+          <context context-type="linenumber">330</context>
         </context-group>
       </trans-unit>
       <trans-unit id="songbooks.title" datatype="html">

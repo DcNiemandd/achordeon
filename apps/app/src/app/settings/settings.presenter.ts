@@ -25,8 +25,8 @@ export type DriveOutcome =
   | { kind: 'reauth' } // token lapsed; a re-connect is under way
   | { kind: 'failed' };
 
-/** A sign-up that needs the confirmation link clicked before it is a session. */
-export type SignUpState = 'confirm' | 'failed' | null;
+/** A registration that needs the confirmation link clicked before it is a session. */
+export type RegisterState = 'confirm' | 'failed' | null;
 
 /**
  * The only thing in this feature that knows the business layer exists.
@@ -66,13 +66,13 @@ export class SettingsPresenter {
   readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
 
   private readonly _drive = signal<DriveOutcome | null>(null);
-  private readonly _signUp = signal<SignUpState>(null);
+  private readonly _register = signal<RegisterState>(null);
   private readonly _authError = signal(false);
   readonly driveOutcome = this._drive.asReadonly();
-  readonly signUpState = this._signUp.asReadonly();
+  readonly registerState = this._register.asReadonly();
   readonly authError = this._authError.asReadonly();
 
-  async signInGoogle(): Promise<void> {
+  async logInGoogle(): Promise<void> {
     this._authError.set(false);
     try {
       await this.auth.signInWithGoogle();
@@ -81,7 +81,7 @@ export class SettingsPresenter {
     }
   }
 
-  async signIn(email: string, password: string): Promise<void> {
+  async logIn(email: string, password: string): Promise<void> {
     this._authError.set(false);
     try {
       await this.auth.signInWithPassword(email, password);
@@ -90,20 +90,20 @@ export class SettingsPresenter {
     }
   }
 
-  async signUp(email: string, password: string): Promise<void> {
-    this._signUp.set(null);
+  async register(email: string, password: string): Promise<void> {
+    this._register.set(null);
     try {
       const { needsConfirmation } = await this.auth.signUpWithPassword(
         email,
         password,
       );
-      this._signUp.set(needsConfirmation ? 'confirm' : null);
+      this._register.set(needsConfirmation ? 'confirm' : null);
     } catch {
-      this._signUp.set('failed');
+      this._register.set('failed');
     }
   }
 
-  /** Add a sign-in method to the current account (ADR-0009: attach, never merge).
+  /** Add a login method to the current account (ADR-0009: attach, never merge).
    * Google links Drive at the same time — Drive rides that identity. */
   linkGoogle(): Promise<void> {
     return this.auth.linkGoogle(true).catch(() => this._authError.set(true));
@@ -113,13 +113,13 @@ export class SettingsPresenter {
     this._authError.set(false);
     try {
       await this.auth.addPassword(email, password);
-      this._signUp.set('confirm'); // the new email must be confirmed
+      this._register.set('confirm'); // the new email must be confirmed
     } catch {
       this._authError.set(true);
     }
   }
 
-  signOut(): Promise<void> {
+  logOut(): Promise<void> {
     return this.auth.signOut();
   }
 
@@ -155,8 +155,8 @@ export class SettingsPresenter {
     this._drive.set(null);
   }
 
-  dismissSignUp(): void {
-    this._signUp.set(null);
+  dismissRegister(): void {
+    this._register.set(null);
   }
 
   private classifyDrive(e: unknown): DriveOutcome {
