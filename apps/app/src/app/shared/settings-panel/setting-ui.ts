@@ -144,6 +144,41 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     group: 'page',
     control: { kind: 'stepper', min: 0, max: 4, step: 0.25 },
   },
+  contentX: {
+    label: $localize`:@@setting.contentX:Horizontal`,
+    help: $localize`:@@setting.contentX.help:Where the song sits across the page when it does not fill the width. Left hugs the corner.`,
+    group: 'page',
+    control: {
+      kind: 'choice',
+      options: [
+        { value: 'left', label: $localize`:@@setting.contentX.left:Left` },
+        {
+          value: 'center',
+          label: $localize`:@@setting.contentX.center:Center`,
+        },
+        { value: 'right', label: $localize`:@@setting.contentX.right:Right` },
+      ],
+    },
+  },
+  contentY: {
+    label: $localize`:@@setting.contentY:Vertical`,
+    help: $localize`:@@setting.contentY.help:Where the song sits down the page when it does not fill the height. Top hugs the corner.`,
+    group: 'page',
+    control: {
+      kind: 'choice',
+      options: [
+        { value: 'top', label: $localize`:@@setting.contentY.top:Top` },
+        {
+          value: 'middle',
+          label: $localize`:@@setting.contentY.middle:Middle`,
+        },
+        {
+          value: 'bottom',
+          label: $localize`:@@setting.contentY.bottom:Bottom`,
+        },
+      ],
+    },
+  },
   titleFont: {
     label: $localize`:@@setting.titleFont:Font`,
     help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,

@@ -13,6 +13,8 @@ const baseGlobal: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0.5,
+  contentX: 'left',
+  contentY: 'top',
   chordColor: '#000',
   chordSize: 1,
 };

@@ -15,6 +15,8 @@ const settings: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0,
+  contentX: 'left',
+  contentY: 'top',
   chordColor: '#123456',
   chordSize: 1,
 };
