@@ -440,6 +440,23 @@ export class SongEditorPage {
       snippet: SNIPPETS.chord,
     },
     {
+      // Sharp and flat sit next to the chord button because that is what they
+      // spell: an accidental is reached for mid-chord, inside the brackets. The
+      // glyph is the musical mark; the snippet writes the ASCII the grammar reads.
+      testid: 'insert-sharp',
+      icon: 'note',
+      glyph: '♯',
+      label: $localize`:@@editor.insertSharp:Sharp`,
+      snippet: SNIPPETS.sharp,
+    },
+    {
+      testid: 'insert-flat',
+      icon: 'note',
+      glyph: '♭',
+      label: $localize`:@@editor.insertFlat:Flat`,
+      snippet: SNIPPETS.flat,
+    },
+    {
       testid: 'insert-title',
       icon: 'heading1',
       glyph: '*',
