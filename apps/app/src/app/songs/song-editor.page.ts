@@ -14,6 +14,7 @@ import { Button, Dialog, Icon, Tooltip, type IconName } from '../primitives';
 import { Router, RouterLink } from '@angular/router';
 import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
@@ -40,6 +41,7 @@ import { ReturnUrl } from './return-url';
     SongEditor,
     SongRender,
     SettingsPanel,
+    DownloadDialog,
     Button,
     Dialog,
     Icon,
@@ -181,21 +183,38 @@ import { ReturnUrl } from './return-url';
               </div>
             </div>
 
-            <button
-              appButton
-              type="button"
-              variant="secondary"
-              class="settings"
-              [isIconOnly]="true"
-              [class.is-active]="presenter.isSettingsOpen()"
-              [attr.aria-pressed]="presenter.isSettingsOpen()"
-              [attr.aria-label]="settingsLabel"
-              [appTooltip]="settingsLabel"
-              data-testid="editor-settings"
-              (click)="presenter.toggleSettings()"
-            >
-              <app-icon name="settings" />
-            </button>
+            <div class="bar-actions">
+              <!-- Export the song as it stands. A picture, not the database —
+                   PNG or PDF, the same DownloadService the library list uses. -->
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [isIconOnly]="true"
+                [attr.aria-label]="downloadLabel"
+                [appTooltip]="downloadLabel"
+                data-testid="editor-download"
+                (click)="presenter.openDownload()"
+              >
+                <app-icon name="download" />
+              </button>
+
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="settings"
+                [isIconOnly]="true"
+                [class.is-active]="presenter.isSettingsOpen()"
+                [attr.aria-pressed]="presenter.isSettingsOpen()"
+                [attr.aria-label]="settingsLabel"
+                [appTooltip]="settingsLabel"
+                data-testid="editor-settings"
+                (click)="presenter.toggleSettings()"
+              >
+                <app-icon name="settings" />
+              </button>
+            </div>
           </div>
         </app-action-bar>
 
@@ -224,6 +243,17 @@ import { ReturnUrl } from './return-url';
               (changed)="presenter.patchSettings($event)"
             />
           </app-dialog>
+        }
+
+        <!-- The export sheet — one song, so it offers PNG or PDF (its count is
+             1). The same dialog the library list opens. -->
+        @if (presenter.isDownloadOpen()) {
+          <app-download-dialog
+            [count]="1"
+            [busy]="presenter.isDownloading()"
+            (chosen)="presenter.download($event)"
+            (closed)="presenter.closeDownload()"
+          />
         }
       </div>
 
@@ -322,10 +352,13 @@ import { ReturnUrl } from './return-url';
       color: var(--text-muted);
     }
 
-    /* Never squeezed by the commands, and pinned to the far end. */
-    .settings {
+    /* Download and settings ride together at the far end: never squeezed by the
+       commands, and staying level with the first row when the commands wrap. */
+    .bar-actions {
       flex: none;
       margin-inline-start: auto;
+      display: flex;
+      gap: var(--space-1);
     }
 
     /* The note is the subject, the arrow is the direction it moves — so the
@@ -400,6 +433,7 @@ export class SongEditorPage {
   protected readonly transposeUpLabel = $localize`:@@editor.transposeUp:Transpose up a semitone`;
   protected readonly transposeDownLabel = $localize`:@@editor.transposeDown:Transpose down a semitone`;
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
+  protected readonly downloadLabel = $localize`:@@editor.download:Download`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 
