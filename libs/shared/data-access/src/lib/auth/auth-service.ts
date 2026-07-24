@@ -163,6 +163,16 @@ export class AuthService {
     if (error) throw error;
   }
 
+  /** Send a password-reset email. The link returns to the app, where the user
+   * sets a new password (Supabase drives the recovery session). */
+  async resetPassword(email: string): Promise<void> {
+    const client = await this.required();
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: this.redirectTo(),
+    });
+    if (error) throw error;
+  }
+
   async signOut(): Promise<void> {
     const client = await this.supabase.client();
     await client?.auth.signOut();

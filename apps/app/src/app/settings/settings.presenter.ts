@@ -28,6 +28,9 @@ export type DriveOutcome =
 /** A registration that needs the confirmation link clicked before it is a session. */
 export type RegisterState = 'confirm' | 'failed' | null;
 
+/** Outcome of a password-reset request. */
+export type ResetState = 'sent' | 'failed' | null;
+
 /**
  * The only thing in this feature that knows the business layer exists.
  *
@@ -67,60 +70,109 @@ export class SettingsPresenter {
 
   private readonly _drive = signal<DriveOutcome | null>(null);
   private readonly _register = signal<RegisterState>(null);
-  private readonly _authError = signal(false);
+  private readonly _reset = signal<ResetState>(null);
+  private readonly _authError = signal<string | null>(null);
   readonly driveOutcome = this._drive.asReadonly();
+  /** Set to `confirm` when a registration (or added password) needs the email
+   * link clicked; `failed` on error — drives the confirmation dialog. */
   readonly registerState = this._register.asReadonly();
+  /** Whether a password-reset email was sent (or failed). */
+  readonly resetState = this._reset.asReadonly();
+  /** The last auth failure message for the open dialog, or `null`. */
   readonly authError = this._authError.asReadonly();
 
-  async logInGoogle(): Promise<void> {
-    this._authError.set(false);
-    try {
-      await this.auth.signInWithGoogle();
-    } catch {
-      this._authError.set(true);
-    }
+  logInGoogle(): Promise<void> {
+    this._authError.set(null);
+    return this.auth
+      .signInWithGoogle()
+      .catch((e) => this._authError.set(this.message(e)));
   }
 
-  async logIn(email: string, password: string): Promise<void> {
-    this._authError.set(false);
+  /** @returns true on a session; false leaves `authError` set for the dialog. */
+  async logIn(email: string, password: string): Promise<boolean> {
+    this._authError.set(null);
     try {
       await this.auth.signInWithPassword(email, password);
-    } catch {
-      this._authError.set(true);
+      return true;
+    } catch (e) {
+      this._authError.set(this.message(e));
+      return false;
     }
   }
 
-  async register(email: string, password: string): Promise<void> {
+  /**
+   * Register a new email/password account. On success the caller closes the form
+   * and the confirmation dialog opens (email confirmation is required, ADR-0009).
+   * @returns true if the sign-up was accepted.
+   */
+  async register(email: string, password: string): Promise<boolean> {
+    this._authError.set(null);
     this._register.set(null);
     try {
-      const { needsConfirmation } = await this.auth.signUpWithPassword(
-        email,
-        password,
-      );
-      this._register.set(needsConfirmation ? 'confirm' : null);
-    } catch {
-      this._register.set('failed');
+      await this.auth.signUpWithPassword(email, password);
+      this._register.set('confirm');
+      return true;
+    } catch (e) {
+      this._authError.set(this.message(e));
+      return false;
+    }
+  }
+
+  /** Send a password-reset link. `resetState` becomes `sent` on success (the
+   * page swaps the forgot form for a confirmation) or `failed` on error.
+   * @returns true if the email was sent. */
+  async resetPassword(email: string): Promise<boolean> {
+    this._authError.set(null);
+    try {
+      await this.auth.resetPassword(email);
+      this._reset.set('sent');
+      return true;
+    } catch (e) {
+      this._reset.set('failed');
+      this._authError.set(this.message(e));
+      return false;
     }
   }
 
   /** Add a login method to the current account (ADR-0009: attach, never merge).
    * Google links Drive at the same time — Drive rides that identity. */
   linkGoogle(): Promise<void> {
-    return this.auth.linkGoogle(true).catch(() => this._authError.set(true));
+    this._authError.set(null);
+    return this.auth
+      .linkGoogle(true)
+      .catch((e) => this._authError.set(this.message(e)));
   }
 
-  async addPassword(email: string, password: string): Promise<void> {
-    this._authError.set(false);
+  /** Attach an email/password method to the signed-in account. @returns true if
+   * accepted; the new email must then be confirmed. */
+  async addPassword(email: string, password: string): Promise<boolean> {
+    this._authError.set(null);
     try {
       await this.auth.addPassword(email, password);
-      this._register.set('confirm'); // the new email must be confirmed
-    } catch {
-      this._authError.set(true);
+      this._register.set('confirm');
+      return true;
+    } catch (e) {
+      this._authError.set(this.message(e));
+      return false;
     }
   }
 
   logOut(): Promise<void> {
     return this.auth.signOut();
+  }
+
+  clearAuthError(): void {
+    this._authError.set(null);
+  }
+
+  dismissReset(): void {
+    this._reset.set(null);
+  }
+
+  /** The backend's own message, or `''` so the page shows its generic copy — the
+   * presenter holds no user-facing strings ($localize stays in the component). */
+  private message(e: unknown): string {
+    return e instanceof Error && e.message ? e.message : '';
   }
 
   setAutoSync(on: boolean): Promise<void> {
@@ -170,7 +222,7 @@ export class SettingsPresenter {
   private reconnectDrive(): Promise<void> {
     return this.auth
       .signInWithGoogle(true)
-      .catch(() => this._authError.set(true));
+      .catch((e) => this._authError.set(this.message(e)));
   }
 
   private readonly _isBusy = signal(false);

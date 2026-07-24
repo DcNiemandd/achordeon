@@ -7,6 +7,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -14,6 +15,18 @@ import { Button, Dialog, Icon, Premium } from '../primitives';
 import { ActionBar, BackNavigation } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter } from './settings.presenter';
+
+/** Which credential dialog is open. Login and register are separate forms so
+ * each has room for its own validation (a register with only one password field
+ * was the bug this replaces). */
+type AuthDialog = 'login' | 'register' | 'forgot' | 'addPassword' | null;
+
+/** A pragmatic email shape check — the real proof is the confirmation email
+ * (ADR-0009), so this only catches obvious typos before a round-trip. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Supabase's default minimum; mirrored here so the form can say so up front. */
+const MIN_PASSWORD = 8;
 
 @Component({
   selector: 'app-settings-page',
@@ -30,8 +43,8 @@ import { SettingsPresenter } from './settings.presenter';
          against the left. -->
     <div class="body">
       <div class="content">
-        <!-- Account (Epic 10). Login gates cloud sync ONLY — the library below
-             works signed out. Unavailable builds (no backend) say so. -->
+        <!-- Account (Epic 10). Login gates cloud sync ONLY — the library works
+             signed out (apps/docs/docs/settings.mdx §Profile). -->
         <section class="section">
           <h2 class="heading">{{ accountHeading }}</h2>
 
@@ -47,6 +60,11 @@ import { SettingsPresenter } from './settings.presenter';
                 }
               </p>
 
+              <p class="method-line" data-testid="account-methods">
+                {{ methodsLabel }}
+                <strong>{{ methodsSummary() }}</strong>
+              </p>
+
               <div class="backup-actions">
                 @if (!presenter.hasGoogle()) {
                   <button
@@ -56,6 +74,16 @@ import { SettingsPresenter } from './settings.presenter';
                     (click)="presenter.linkGoogle()"
                   >
                     {{ linkGoogleLabel }}
+                  </button>
+                }
+                @if (!presenter.hasPassword()) {
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="add-password"
+                    (click)="openAddPassword()"
+                  >
+                    {{ addPasswordLabel }}
                   </button>
                 }
                 <button
@@ -69,59 +97,62 @@ import { SettingsPresenter } from './settings.presenter';
               </div>
             }
             @default {
-              <button
-                appButton
-                variant="secondary"
-                data-testid="login-google"
-                (click)="presenter.logInGoogle()"
-              >
-                {{ googleLabel }}
-              </button>
+              <!-- What signing in actually buys, straight from the docs: login is
+                   optional and for sync only; the tier decides how far it reaches. -->
+              <div class="profile-note">
+                <p>{{ profileIntro }}</p>
+                <ul class="tiers">
+                  <li>
+                    <strong>{{ tierNoneLabel }}</strong> — {{ tierNoneText }}
+                  </li>
+                  <li>
+                    <strong>{{ tierFreeLabel }}</strong> — {{ tierFreeText }}
+                  </li>
+                  <li>
+                    <strong>{{ tierPremiumLabel }}</strong> —
+                    {{ tierPremiumText }}
+                  </li>
+                </ul>
+                <p class="privacy-note">{{ privacyNote }}</p>
+              </div>
 
-              <div class="cred">
-                <input
-                  #emailInput
-                  class="text-input"
-                  type="email"
-                  autocomplete="email"
-                  [placeholder]="emailPlaceholder"
-                  [attr.aria-label]="emailPlaceholder"
-                  data-testid="email"
-                />
-                <input
-                  #pwInput
-                  class="text-input"
-                  type="password"
-                  autocomplete="current-password"
-                  [placeholder]="passwordPlaceholder"
-                  [attr.aria-label]="passwordPlaceholder"
-                  data-testid="password"
-                />
-                <div class="backup-actions">
+              <div class="auth-methods">
+                <div class="auth-method">
+                  <h3 class="sub-heading">{{ googleHeading }}</h3>
+                  <p class="check-help">{{ googleHelp }}</p>
                   <button
                     appButton
                     variant="secondary"
-                    data-testid="login"
-                    (click)="presenter.logIn(emailInput.value, pwInput.value)"
+                    data-testid="login-google"
+                    (click)="presenter.logInGoogle()"
                   >
-                    {{ loginLabel }}
-                  </button>
-                  <button
-                    appButton
-                    variant="ghost"
-                    data-testid="register"
-                    (click)="
-                      presenter.register(emailInput.value, pwInput.value)
-                    "
-                  >
-                    {{ registerLabel }}
+                    {{ googleLabel }}
                   </button>
                 </div>
-              </div>
 
-              @if (presenter.authError()) {
-                <p class="warn" data-testid="auth-error">{{ authErrorText }}</p>
-              }
+                <div class="auth-method">
+                  <h3 class="sub-heading">{{ emailHeading }}</h3>
+                  <p class="check-help">{{ emailHelp }}</p>
+                  <div class="backup-actions">
+                    <button
+                      appButton
+                      variant="secondary"
+                      data-testid="open-login"
+                      (click)="openLogin()"
+                    >
+                      {{ loginLabel }}
+                    </button>
+                    <button
+                      appButton
+                      variant="ghost"
+                      data-testid="open-register"
+                      (click)="openRegister()"
+                    >
+                      {{ registerLabel }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             }
           }
         </section>
@@ -337,6 +368,303 @@ import { SettingsPresenter } from './settings.presenter';
       </div>
     </div>
 
+    @if (authDialog() === 'login') {
+      <app-dialog
+        [title]="loginTitle"
+        data-testid="login-dialog"
+        (closed)="closeAuthDialog()"
+      >
+        <div class="dialog-form">
+          <input
+            #le
+            class="text-input"
+            type="email"
+            autocomplete="email"
+            [placeholder]="emailPlaceholder"
+            [attr.aria-label]="emailPlaceholder"
+            [value]="fEmail()"
+            (input)="fEmail.set(le.value)"
+            data-testid="login-email"
+          />
+          <input
+            #lp
+            class="text-input"
+            type="password"
+            autocomplete="current-password"
+            [placeholder]="passwordPlaceholder"
+            [attr.aria-label]="passwordPlaceholder"
+            [value]="fPassword()"
+            (input)="fPassword.set(lp.value)"
+            (keydown.enter)="submitLogin()"
+            data-testid="login-password"
+          />
+          <button
+            type="button"
+            class="link-btn"
+            data-testid="forgot-open"
+            (click)="openForgot()"
+          >
+            {{ forgotLink }}
+          </button>
+          @if (presenter.authError() !== null) {
+            <p class="warn" data-testid="login-error">
+              {{ presenter.authError() || genericAuthError }}
+            </p>
+          }
+        </div>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="ghost"
+          data-testid="login-cancel"
+          (click)="closeAuthDialog()"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="login-submit"
+          [disabled]="!canLogin()"
+          (click)="submitLogin()"
+        >
+          {{ loginLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    @if (authDialog() === 'register') {
+      <app-dialog
+        [title]="registerTitle"
+        data-testid="register-dialog"
+        (closed)="closeAuthDialog()"
+      >
+        <div class="dialog-form">
+          <input
+            #re
+            class="text-input"
+            type="email"
+            autocomplete="email"
+            [placeholder]="emailPlaceholder"
+            [attr.aria-label]="emailPlaceholder"
+            [value]="fEmail()"
+            (input)="fEmail.set(re.value)"
+            data-testid="register-email"
+          />
+          @if (fEmail() && !emailValid()) {
+            <p class="field-hint">{{ emailInvalidHint }}</p>
+          }
+          <input
+            #rp
+            class="text-input"
+            type="password"
+            autocomplete="new-password"
+            [placeholder]="passwordPlaceholder"
+            [attr.aria-label]="passwordPlaceholder"
+            [value]="fPassword()"
+            (input)="fPassword.set(rp.value)"
+            data-testid="register-password"
+          />
+          @if (fPassword() && !passwordValid()) {
+            <p class="field-hint">{{ passwordHint }}</p>
+          }
+          <input
+            #rc
+            class="text-input"
+            type="password"
+            autocomplete="new-password"
+            [placeholder]="confirmPlaceholder"
+            [attr.aria-label]="confirmPlaceholder"
+            [value]="fConfirm()"
+            (input)="fConfirm.set(rc.value)"
+            data-testid="register-confirm"
+          />
+          @if (fConfirm() && !confirmValid()) {
+            <p class="field-hint">{{ confirmHint }}</p>
+          }
+          @if (presenter.authError() !== null) {
+            <p class="warn" data-testid="register-error">
+              {{ presenter.authError() || genericAuthError }}
+            </p>
+          }
+        </div>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="ghost"
+          data-testid="register-cancel"
+          (click)="closeAuthDialog()"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="register-submit"
+          [disabled]="!canRegister()"
+          (click)="submitRegister()"
+        >
+          {{ registerLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    @if (authDialog() === 'forgot') {
+      <app-dialog
+        [title]="forgotTitle"
+        data-testid="forgot-dialog"
+        (closed)="closeAuthDialog()"
+      >
+        <div class="dialog-form">
+          <p class="check-help">{{ forgotText }}</p>
+          <input
+            #fe
+            class="text-input"
+            type="email"
+            autocomplete="email"
+            [placeholder]="emailPlaceholder"
+            [attr.aria-label]="emailPlaceholder"
+            [value]="fEmail()"
+            (input)="fEmail.set(fe.value)"
+            (keydown.enter)="submitForgot()"
+            data-testid="forgot-email"
+          />
+          @if (presenter.authError() !== null) {
+            <p class="warn" data-testid="forgot-error">
+              {{ presenter.authError() || genericAuthError }}
+            </p>
+          }
+        </div>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="ghost"
+          data-testid="forgot-cancel"
+          (click)="closeAuthDialog()"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="forgot-submit"
+          [disabled]="!emailValid()"
+          (click)="submitForgot()"
+        >
+          {{ forgotSubmitLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    @if (presenter.resetState() === 'sent') {
+      <app-dialog
+        [title]="forgotTitle"
+        data-testid="forgot-sent-dialog"
+        (closed)="presenter.dismissReset()"
+      >
+        <p data-testid="forgot-sent">{{ forgotSentText }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="forgot-close"
+          (click)="presenter.dismissReset()"
+        >
+          {{ okLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    @if (authDialog() === 'addPassword') {
+      <app-dialog
+        [title]="addPasswordTitle"
+        data-testid="add-password-dialog"
+        (closed)="closeAuthDialog()"
+      >
+        <div class="dialog-form">
+          <p class="check-help">{{ addPasswordText }}</p>
+          <input
+            #ae
+            class="text-input"
+            type="email"
+            autocomplete="email"
+            [placeholder]="emailPlaceholder"
+            [attr.aria-label]="emailPlaceholder"
+            [value]="fEmail()"
+            (input)="fEmail.set(ae.value)"
+            data-testid="add-password-email"
+          />
+          @if (fEmail() && !emailValid()) {
+            <p class="field-hint">{{ emailInvalidHint }}</p>
+          }
+          <input
+            #ap
+            class="text-input"
+            type="password"
+            autocomplete="new-password"
+            [placeholder]="passwordPlaceholder"
+            [attr.aria-label]="passwordPlaceholder"
+            [value]="fPassword()"
+            (input)="fPassword.set(ap.value)"
+            data-testid="add-password-password"
+          />
+          @if (fPassword() && !passwordValid()) {
+            <p class="field-hint">{{ passwordHint }}</p>
+          }
+          <input
+            #ac
+            class="text-input"
+            type="password"
+            autocomplete="new-password"
+            [placeholder]="confirmPlaceholder"
+            [attr.aria-label]="confirmPlaceholder"
+            [value]="fConfirm()"
+            (input)="fConfirm.set(ac.value)"
+            data-testid="add-password-confirm"
+          />
+          @if (fConfirm() && !confirmValid()) {
+            <p class="field-hint">{{ confirmHint }}</p>
+          }
+          @if (presenter.authError() !== null) {
+            <p class="warn" data-testid="add-password-error">
+              {{ presenter.authError() || genericAuthError }}
+            </p>
+          }
+        </div>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="ghost"
+          data-testid="add-password-cancel"
+          (click)="closeAuthDialog()"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="add-password-submit"
+          [disabled]="!canRegister()"
+          (click)="submitAddPassword()"
+        >
+          {{ addPasswordLabel }}
+        </button>
+      </app-dialog>
+    }
+
     @if (presenter.registerState() === 'confirm') {
       <app-dialog
         [title]="confirmEmailTitle"
@@ -528,9 +856,91 @@ import { SettingsPresenter } from './settings.presenter';
     }
 
     .account-line {
-      margin: 0 0 var(--space-3);
+      margin: 0 0 var(--space-2);
       font-size: var(--text-sm);
       color: var(--text);
+    }
+
+    .method-line {
+      margin: 0 0 var(--space-3);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+
+    .profile-note {
+      margin-block-end: var(--space-4);
+      padding: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--space-2);
+      background: var(--surface-sunken, var(--surface));
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
+    .profile-note > p {
+      margin: 0 0 var(--space-2);
+    }
+
+    .tiers {
+      margin: 0 0 var(--space-2);
+      padding-inline-start: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .tiers strong {
+      color: var(--text);
+    }
+
+    .privacy-note {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
+    .auth-methods {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .auth-method {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      align-items: flex-start;
+    }
+
+    .sub-heading {
+      margin: 0;
+      font-size: var(--text-sm);
+      color: var(--text);
+    }
+
+    .dialog-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      min-inline-size: min(320px, 70vw);
+    }
+
+    .link-btn {
+      align-self: flex-start;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--brand);
+      font: inherit;
+      font-size: var(--text-xs);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .field-hint {
+      margin: calc(-1 * var(--space-1)) 0 0;
+      font-size: var(--text-xs);
+      color: var(--text-muted);
     }
 
     .pro-badge {
@@ -632,20 +1042,170 @@ export class SettingsPage {
   }
 
   // --- Account & sync (Epic 10) ---------------------------------------------
+
+  /** Which auth dialog is open (null = none). Login and register are forms in
+   * their own dialogs so validation has room and the section stays a summary. */
+  protected readonly authDialog = signal<AuthDialog>(null);
+
+  // The one place the credential fields live while a dialog is open. Shared
+  // across the dialogs because only one is ever open at a time.
+  protected readonly fEmail = signal('');
+  protected readonly fPassword = signal('');
+  protected readonly fConfirm = signal('');
+
+  protected readonly emailValid = computed(() =>
+    EMAIL_RE.test(this.fEmail().trim()),
+  );
+  protected readonly passwordValid = computed(
+    () => this.fPassword().length >= MIN_PASSWORD,
+  );
+  protected readonly confirmValid = computed(
+    () => this.fConfirm().length > 0 && this.fConfirm() === this.fPassword(),
+  );
+  /** Login only needs a well-formed email and a non-empty password (the length
+   * rule is the server's to enforce on an existing account). */
+  protected readonly canLogin = computed(
+    () => this.emailValid() && this.fPassword().length > 0,
+  );
+  /** Register / add-password need all three fields valid and matching. */
+  protected readonly canRegister = computed(
+    () => this.emailValid() && this.passwordValid() && this.confirmValid(),
+  );
+
+  /** A short, screen-reader-friendly summary of the linked login methods. */
+  protected methodsSummary(): string {
+    const parts: string[] = [];
+    if (this.presenter.hasGoogle()) parts.push(this.googleWord);
+    if (this.presenter.hasPassword()) parts.push(this.passwordWord);
+    return parts.join(', ') || this.methodsNone;
+  }
+
+  protected openLogin(): void {
+    this.resetForm('login');
+  }
+
+  protected openRegister(): void {
+    this.resetForm('register');
+  }
+
+  /** Forgot flow reuses the email already typed (if any) and does not wipe it. */
+  protected openForgot(): void {
+    this.presenter.clearAuthError();
+    this.presenter.dismissReset();
+    this.authDialog.set('forgot');
+  }
+
+  protected openAddPassword(): void {
+    this.resetForm('addPassword');
+    this.fEmail.set(this.presenter.email() ?? '');
+  }
+
+  protected closeAuthDialog(): void {
+    this.authDialog.set(null);
+    this.fEmail.set('');
+    this.fPassword.set('');
+    this.fConfirm.set('');
+    this.presenter.clearAuthError();
+    this.presenter.dismissReset();
+  }
+
+  protected async submitLogin(): Promise<void> {
+    if (!this.canLogin()) return;
+    const ok = await this.presenter.logIn(
+      this.fEmail().trim(),
+      this.fPassword(),
+    );
+    if (ok) this.closeAuthDialog();
+  }
+
+  protected async submitRegister(): Promise<void> {
+    if (!this.canRegister()) return;
+    const ok = await this.presenter.register(
+      this.fEmail().trim(),
+      this.fPassword(),
+    );
+    // On success the confirmation dialog takes over (email must be confirmed).
+    if (ok) this.closeAuthDialog();
+  }
+
+  protected async submitForgot(): Promise<void> {
+    if (!this.emailValid()) return;
+    const ok = await this.presenter.resetPassword(this.fEmail().trim());
+    // Close the form (but keep `resetState`), so the "sent" confirmation dialog
+    // takes its place. A failure leaves the form open with its error line.
+    if (ok) {
+      this.authDialog.set(null);
+      this.fEmail.set('');
+    }
+  }
+
+  protected async submitAddPassword(): Promise<void> {
+    if (!this.canRegister()) return;
+    const ok = await this.presenter.addPassword(
+      this.fEmail().trim(),
+      this.fPassword(),
+    );
+    if (ok) this.closeAuthDialog();
+  }
+
+  private resetForm(dialog: AuthDialog): void {
+    this.fEmail.set('');
+    this.fPassword.set('');
+    this.fConfirm.set('');
+    this.presenter.clearAuthError();
+    this.presenter.dismissReset();
+    this.authDialog.set(dialog);
+  }
+
   protected readonly accountHeading = $localize`:@@settings.account:Account`;
   protected readonly accountUnavailable = $localize`:@@settings.account.unavailable:Sign-in and cloud sync are unavailable in this build. Your library works and is saved on this device.`;
   protected readonly signedInAs = $localize`:@@settings.account.signedInAs:Signed in as`;
   protected readonly proLabel = $localize`:@@settings.account.pro:Premium`;
+  protected readonly methodsLabel = $localize`:@@settings.account.methods:Sign-in methods:`;
+  protected readonly googleWord = $localize`:@@settings.account.googleWord:Google`;
+  protected readonly passwordWord = $localize`:@@settings.account.passwordWord:Email & password`;
+  protected readonly methodsNone = $localize`:@@settings.account.methodsNone:none`;
+
+  // Profile note — the tier story, from apps/docs/docs/settings.mdx §Profile.
+  protected readonly profileIntro = $localize`:@@settings.account.profileIntro:Achordeon works fully offline — you never need an account. Signing in is only to keep your library in sync:`;
+  protected readonly tierNoneLabel = $localize`:@@settings.account.tierNone:Without an account`;
+  protected readonly tierNoneText = $localize`:@@settings.account.tierNoneText:back up and restore your whole library as a file (below).`;
+  protected readonly tierFreeLabel = $localize`:@@settings.account.tierFree:Free`;
+  protected readonly tierFreeText = $localize`:@@settings.account.tierFreeText:manual one-file backup to your own Google Drive.`;
+  protected readonly tierPremiumLabel = $localize`:@@settings.account.tierPremium:Premium`;
+  protected readonly tierPremiumText = $localize`:@@settings.account.tierPremiumText:automatic cloud sync across your devices, plus hosting an Audience.`;
+  protected readonly privacyNote = $localize`:@@settings.account.privacy:One library per browser — anyone using this browser sees your songs. Sign-in is for sync, not privacy.`;
+
+  protected readonly googleHeading = $localize`:@@settings.account.googleHeading:Google`;
+  protected readonly googleHelp = $localize`:@@settings.account.googleHelp:One tap. Also connects Google Drive for backup.`;
   protected readonly googleLabel = $localize`:@@settings.account.google:Continue with Google`;
+  protected readonly emailHeading = $localize`:@@settings.account.emailHeading:Email & password`;
+  protected readonly emailHelp = $localize`:@@settings.account.emailHelp:Use an email address instead of Google.`;
   protected readonly emailPlaceholder = $localize`:@@settings.account.email:Email`;
   protected readonly passwordPlaceholder = $localize`:@@settings.account.password:Password`;
+  protected readonly confirmPlaceholder = $localize`:@@settings.account.confirm:Confirm password`;
   protected readonly loginLabel = $localize`:@@settings.account.login:Log in`;
   protected readonly registerLabel = $localize`:@@settings.account.register:Register`;
   protected readonly logoutLabel = $localize`:@@settings.account.logout:Log out`;
   protected readonly linkGoogleLabel = $localize`:@@settings.account.linkGoogle:Add Google & connect Drive`;
-  protected readonly authErrorText = $localize`:@@settings.account.error:That did not work. Check your email and password and try again.`;
+  protected readonly addPasswordLabel = $localize`:@@settings.account.addPassword:Add a password`;
+
+  protected readonly loginTitle = $localize`:@@settings.account.loginTitle:Log in`;
+  protected readonly registerTitle = $localize`:@@settings.account.registerTitle:Create your account`;
+  protected readonly forgotLink = $localize`:@@settings.account.forgotLink:Forgot your password?`;
+  protected readonly forgotTitle = $localize`:@@settings.account.forgotTitle:Reset your password`;
+  protected readonly forgotText = $localize`:@@settings.account.forgotText:Enter your email and we'll send a link to set a new password.`;
+  protected readonly forgotSubmitLabel = $localize`:@@settings.account.forgotSubmit:Send reset link`;
+  protected readonly forgotSentText = $localize`:@@settings.account.forgotSent:Check your inbox for the reset link.`;
+  protected readonly addPasswordTitle = $localize`:@@settings.account.addPasswordTitle:Add a password`;
+  protected readonly addPasswordText = $localize`:@@settings.account.addPasswordText:Set an email and password you can also log in with. You'll need to confirm the email.`;
+
+  protected readonly emailInvalidHint = $localize`:@@settings.account.emailInvalid:Enter a valid email address.`;
+  protected readonly passwordHint = $localize`:@@settings.account.passwordRule:Use at least 8 characters.`;
+  protected readonly confirmHint = $localize`:@@settings.account.confirmRule:Passwords do not match.`;
+  protected readonly genericAuthError = $localize`:@@settings.account.error:That did not work. Please try again.`;
   protected readonly confirmEmailTitle = $localize`:@@settings.account.confirmTitle:Check your inbox`;
-  protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — you are not signed in until you do.`;
+  protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
   protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. Upload replaces the Drive copy; download merges it in.`;
