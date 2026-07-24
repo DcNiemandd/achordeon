@@ -178,15 +178,16 @@ const MIN_PASSWORD = 8;
             }
           }
 
-          <!-- Sync + Backup are subsections OF the account (Epic 10): both are
-               "what an account does with your library", so they live under it.
-               Every method is shown at every account state; the ones whose
-               prerequisite is missing are DISABLED, with a line saying what
-               unlocks them (item 7) — never hidden, so the reach is legible. -->
-          @if (presenter.authStatus() !== 'unavailable') {
-            <div class="subsection">
-              <h3 class="sub-title">{{ syncHeading }}</h3>
+          <!-- Sync is a subsection OF the account (Epic 10): every way to get the
+               library onto another device lives here. The online methods (auto
+               sync, Drive) need an account and are hidden when the build has no
+               backend; Manual backup is the no-account method, nested below and
+               always available. Prerequisite-missing controls are DISABLED with a
+               line saying what unlocks them (item 7) — never hidden. -->
+          <div class="subsection">
+            <h3 class="sub-title">{{ syncHeading }}</h3>
 
+            @if (presenter.authStatus() !== 'unavailable') {
               <!-- Automatic cloud sync — Premium. Shown always; the control is
                    disabled until a signed-in Premium account is present. -->
               <div class="setting">
@@ -295,58 +296,60 @@ const MIN_PASSWORD = 8;
                   </p>
                 }
               </div>
-            </div>
-          }
+            }
 
-          <!-- File backup — the no-account method, works everywhere. Distinct
-               from Export: the entire library, verbatim; Restore REPLACES it. -->
-          <div class="subsection">
-            <div class="head">
-              <h3 class="sub-title heading-inline">{{ backupHeading }}</h3>
-              <button
-                appButton
-                type="button"
-                class="help"
-                [isIconOnly]="true"
-                [appTooltip]="backupHelp"
-                appTooltipTrigger="click"
-                [attr.aria-label]="aboutBackup"
-                data-testid="help-backup"
-              >
-                <app-icon name="help" />
-              </button>
-            </div>
-            <div class="backup-actions">
-              <button
-                appButton
-                variant="secondary"
-                [disabled]="presenter.isBusy()"
-                data-testid="backup"
-                (click)="presenter.backup()"
-              >
-                <app-icon name="download" />
-                {{ backupButton }}
-              </button>
-              <button
-                appButton
-                variant="secondary"
-                [disabled]="presenter.isBusy()"
-                data-testid="restore"
-                (click)="restoreInput.click()"
-              >
-                <app-icon name="import" />
-                {{ restoreButton }}
-              </button>
-              <input
-                #restoreInput
-                class="file"
-                type="file"
-                accept="application/json,.json"
-                tabindex="-1"
-                aria-hidden="true"
-                data-testid="restore-input"
-                (change)="onRestoreFilePicked($event)"
-              />
+            <!-- Manual backup — the no-account method, works everywhere. Nested
+                 under Sync so every "move my library elsewhere" tool sits
+                 together. Distinct from Export: the entire library, verbatim;
+                 Restore REPLACES it. -->
+            <div class="sub-block">
+              <div class="head">
+                <h4 class="sub-block-title">{{ backupHeading }}</h4>
+                <button
+                  appButton
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="backupHelp"
+                  appTooltipTrigger="click"
+                  [attr.aria-label]="aboutBackup"
+                  data-testid="help-backup"
+                >
+                  <app-icon name="help" />
+                </button>
+              </div>
+              <div class="backup-actions">
+                <button
+                  appButton
+                  variant="secondary"
+                  [disabled]="presenter.isBusy()"
+                  data-testid="backup"
+                  (click)="presenter.backup()"
+                >
+                  <app-icon name="download" />
+                  {{ backupButton }}
+                </button>
+                <button
+                  appButton
+                  variant="secondary"
+                  [disabled]="presenter.isBusy()"
+                  data-testid="restore"
+                  (click)="restoreInput.click()"
+                >
+                  <app-icon name="import" />
+                  {{ restoreButton }}
+                </button>
+                <input
+                  #restoreInput
+                  class="file"
+                  type="file"
+                  accept="application/json,.json"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  data-testid="restore-input"
+                  (change)="onRestoreFilePicked($event)"
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -904,6 +907,21 @@ const MIN_PASSWORD = 8;
       letter-spacing: 0.06em;
     }
 
+    /* A block nested one level below a subsection (e.g. Manual backup under
+       Sync): its own gap, indented under the subsection's controls. */
+    .sub-block {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .sub-block-title {
+      margin: 0;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text);
+    }
+
     /* What unlocks a disabled sync method (item 7). */
     .requirement {
       margin: 0;
@@ -1049,12 +1067,6 @@ const MIN_PASSWORD = 8;
     .head .label {
       font-size: var(--text-sm);
       color: var(--text);
-    }
-
-    /* A section title that shares its line with a (?) — cancels the block
-       heading's bottom margin so the row stays centred. */
-    .heading-inline {
-      margin: 0;
     }
 
     /* The (?) trigger, sized to sit quietly beside a label (from the panel). */
@@ -1428,7 +1440,7 @@ export class SettingsPage {
    * everything, so it never fires straight off the file picker. */
   protected readonly pendingRestore = this._pendingRestore.asReadonly();
 
-  protected readonly backupHeading = $localize`:@@settings.backup:Backup`;
+  protected readonly backupHeading = $localize`:@@settings.backup:Manual backup`;
   protected readonly aboutBackup = $localize`:@@settings.backup.about:About backup`;
   protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
