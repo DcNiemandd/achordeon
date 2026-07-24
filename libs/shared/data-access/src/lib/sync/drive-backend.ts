@@ -8,11 +8,11 @@
 // after any reload (§6); when it is missing this throws `DriveAuthRequiredError`
 // and the caller re-runs the OAuth flow (Flow A).
 
-import { Injectable, inject } from '@angular/core';
 import {
   SCHEMA_VERSION,
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
+import { Injectable, inject } from '@angular/core';
 import { AuthService } from '../auth/auth-service';
 import { readDeviceId } from '../persistence/gateway';
 import { ACHORDEON_DB } from '../stores/repositories';
@@ -194,7 +194,8 @@ export class DriveSyncBackend implements SyncBackend {
 /** A 401 means the token lapsed → route to re-auth; anything else is a real
  * failure carrying Drive's own message. */
 async function driveError(res: Response): Promise<Error> {
-  if (res.status === 401) return new DriveAuthRequiredError();
+  if (res.status === 401 || res.status === 403)
+    return new DriveAuthRequiredError();
   const text = await res.text().catch(() => '');
   return new Error(`Drive request failed (${res.status}): ${text}`);
 }
