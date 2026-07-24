@@ -130,7 +130,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               <a
                 appButton
                 [isIconOnly]="true"
-                [attr.routerLink]="
+                [routerLink]="
                   presenter.canPerform() ? ['/stage', presenter.id()] : null
                 "
                 [class.is-disabled]="!presenter.canPerform()"
