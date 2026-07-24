@@ -97,22 +97,18 @@ const MIN_PASSWORD = 8;
               </div>
             }
             @default {
-              <!-- One sentence in the open, the tier detail behind the (?) hint —
-                   the same title + help pattern the render panel uses. -->
+              <!-- One sentence in the open; the tier/privacy detail is a
+                   paragraph, so it lives in the docs, not a cramped tooltip. -->
               <p class="setting-note">
                 {{ accountWhy }}
-                <button
-                  appButton
-                  type="button"
-                  class="help"
-                  [isIconOnly]="true"
-                  [appTooltip]="accountHelp"
-                  appTooltipTrigger="click"
-                  [attr.aria-label]="accountAbout"
-                  data-testid="account-help"
+                <a
+                  class="doc-link"
+                  [href]="docsUrl"
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="account-docs"
+                  >{{ learnMore }}</a
                 >
-                  <app-icon name="help" />
-                </button>
               </p>
 
               <div class="setting">
@@ -178,53 +174,64 @@ const MIN_PASSWORD = 8;
               </div>
             }
           }
-        </section>
 
-        <!-- Sync (Epic 10). Automatic Supabase sync is enabled by the paid tier;
-             manual Drive backup is for everyone signed into Google. -->
-        @if (presenter.authStatus() !== 'unavailable') {
-          <section class="section">
-            <h2 class="heading">{{ syncHeading }}</h2>
+          <!-- Sync + Backup are subsections OF the account (Epic 10): both are
+               "what an account does with your library", so they live under it.
+               Every method is shown at every account state; the ones whose
+               prerequisite is missing are DISABLED, with a line saying what
+               unlocks them (item 7) — never hidden, so the reach is legible. -->
+          @if (presenter.authStatus() !== 'unavailable') {
+            <div class="subsection">
+              <h3 class="sub-title">{{ syncHeading }}</h3>
 
-            <div class="setting">
-              <div class="head">
-                <span class="label">{{ autoSyncLabel }}</span>
-                <button
-                  appButton
-                  type="button"
-                  class="help"
-                  [isIconOnly]="true"
-                  [appTooltip]="autoSyncHelp"
-                  appTooltipTrigger="click"
-                  [attr.aria-label]="aboutAutoSync"
-                  data-testid="help-auto-sync"
-                >
-                  <app-icon name="help" />
-                </button>
+              <!-- Automatic cloud sync — Premium. Shown always; the control is
+                   disabled until a signed-in Premium account is present. -->
+              <div class="setting">
+                <div class="head">
+                  <span class="label">{{ autoSyncLabel }}</span>
+                  <button
+                    appButton
+                    type="button"
+                    class="help"
+                    [isIconOnly]="true"
+                    [appTooltip]="autoSyncHelp"
+                    appTooltipTrigger="click"
+                    [attr.aria-label]="aboutAutoSync"
+                    data-testid="help-auto-sync"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
+                <app-premium [label]="autoSyncLabel">
+                  <label
+                    class="check-row"
+                    [class.is-disabled]="!presenter.canAutoSync()"
+                  >
+                    <input
+                      type="checkbox"
+                      class="check"
+                      [checked]="presenter.autoSync()"
+                      [disabled]="!presenter.canAutoSync()"
+                      data-testid="auto-sync"
+                      (change)="onAutoSync($event)"
+                    />
+                    <span class="check-label">{{ autoSyncOnLabel }}</span>
+                  </label>
+                </app-premium>
+                @if (!presenter.canAutoSync()) {
+                  <p class="requirement" data-testid="auto-sync-req">
+                    {{ autoSyncReq }}
+                  </p>
+                }
+                @if (presenter.hasUnsynced()) {
+                  <p class="unsynced" data-testid="unsynced">
+                    {{ unsyncedText }}
+                  </p>
+                }
               </div>
-              <!-- Decoration over a WORKING control, never a disabled one:
-                   tierGuard is highlight-and-tooltip during testing, not a block. -->
-              <app-premium [label]="autoSyncLabel">
-                <label class="check-row">
-                  <input
-                    type="checkbox"
-                    class="check"
-                    [checked]="presenter.autoSync()"
-                    data-testid="auto-sync"
-                    (change)="onAutoSync($event)"
-                  />
-                  <span class="check-label">{{ autoSyncOnLabel }}</span>
-                </label>
-              </app-premium>
 
-              @if (presenter.hasUnsynced()) {
-                <p class="unsynced" data-testid="unsynced">
-                  {{ unsyncedText }}
-                </p>
-              }
-            </div>
-
-            @if (presenter.authStatus() === 'signed-in') {
+              <!-- Manual Google Drive backup — needs a Google login (Drive rides
+                   the Google identity, ADR-0009). Shown always; disabled until. -->
               <div class="setting">
                 <div class="head">
                   <span class="label">{{ driveHeading }}</span>
@@ -245,6 +252,7 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
+                    [disabled]="!canDrive()"
                     data-testid="drive-upload"
                     (click)="presenter.driveUpload()"
                   >
@@ -254,6 +262,7 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
+                    [disabled]="!canDrive()"
                     data-testid="drive-download"
                     (click)="presenter.driveDownload()"
                   >
@@ -261,6 +270,11 @@ const MIN_PASSWORD = 8;
                     {{ driveDownloadLabel }}
                   </button>
                 </div>
+                @if (!canDrive()) {
+                  <p class="requirement" data-testid="drive-req">
+                    {{ driveReq }}
+                  </p>
+                }
                 @if (driveMessage(); as message) {
                   <p class="backup-help" data-testid="drive-status">
                     {{ message }}
@@ -277,60 +291,59 @@ const MIN_PASSWORD = 8;
                   </p>
                 }
               </div>
-            }
-          </section>
-        }
+            </div>
+          }
 
-        <!-- Whole-database backup (#11 — the UI Epic 4 left unbuilt). Distinct
-           from Export: this is the entire library, verbatim, and Restore
-           REPLACES everything. So Restore confirms first. -->
-        <section class="section">
-          <div class="head">
-            <h2 class="heading heading-inline">{{ backupHeading }}</h2>
-            <button
-              appButton
-              type="button"
-              class="help"
-              [isIconOnly]="true"
-              [appTooltip]="backupHelp"
-              appTooltipTrigger="click"
-              [attr.aria-label]="aboutBackup"
-              data-testid="help-backup"
-            >
-              <app-icon name="help" />
-            </button>
-          </div>
-          <div class="backup-actions">
-            <button
-              appButton
-              variant="secondary"
-              [disabled]="presenter.isBusy()"
-              data-testid="backup"
-              (click)="presenter.backup()"
-            >
-              <app-icon name="download" />
-              {{ backupButton }}
-            </button>
-            <button
-              appButton
-              variant="secondary"
-              [disabled]="presenter.isBusy()"
-              data-testid="restore"
-              (click)="restoreInput.click()"
-            >
-              <app-icon name="import" />
-              {{ restoreButton }}
-            </button>
-            <input
-              #restoreInput
-              class="file"
-              type="file"
-              accept="application/json,.json"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="restore-input"
-              (change)="onRestoreFilePicked($event)"
-            />
+          <!-- File backup — the no-account method, works everywhere. Distinct
+               from Export: the entire library, verbatim; Restore REPLACES it. -->
+          <div class="subsection">
+            <div class="head">
+              <h3 class="sub-title heading-inline">{{ backupHeading }}</h3>
+              <button
+                appButton
+                type="button"
+                class="help"
+                [isIconOnly]="true"
+                [appTooltip]="backupHelp"
+                appTooltipTrigger="click"
+                [attr.aria-label]="aboutBackup"
+                data-testid="help-backup"
+              >
+                <app-icon name="help" />
+              </button>
+            </div>
+            <div class="backup-actions">
+              <button
+                appButton
+                variant="secondary"
+                [disabled]="presenter.isBusy()"
+                data-testid="backup"
+                (click)="presenter.backup()"
+              >
+                <app-icon name="download" />
+                {{ backupButton }}
+              </button>
+              <button
+                appButton
+                variant="secondary"
+                [disabled]="presenter.isBusy()"
+                data-testid="restore"
+                (click)="restoreInput.click()"
+              >
+                <app-icon name="import" />
+                {{ restoreButton }}
+              </button>
+              <input
+                #restoreInput
+                class="file"
+                type="file"
+                accept="application/json,.json"
+                tabindex="-1"
+                aria-hidden="true"
+                data-testid="restore-input"
+                (change)="onRestoreFilePicked($event)"
+              />
+            </div>
           </div>
         </section>
 
@@ -465,6 +478,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="emailPlaceholder"
             [value]="fEmail()"
             (input)="fEmail.set(le.value)"
+            (keydown.enter)="submitLogin()"
             data-testid="login-email"
           />
           <input
@@ -533,6 +547,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="emailPlaceholder"
             [value]="fEmail()"
             (input)="fEmail.set(re.value)"
+            (keydown.enter)="submitRegister()"
             data-testid="register-email"
           />
           @if (fEmail() && !emailValid()) {
@@ -547,6 +562,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="passwordPlaceholder"
             [value]="fPassword()"
             (input)="fPassword.set(rp.value)"
+            (keydown.enter)="submitRegister()"
             data-testid="register-password"
           />
           @if (fPassword() && !passwordValid()) {
@@ -561,6 +577,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="confirmPlaceholder"
             [value]="fConfirm()"
             (input)="fConfirm.set(rc.value)"
+            (keydown.enter)="submitRegister()"
             data-testid="register-confirm"
           />
           @if (fConfirm() && !confirmValid()) {
@@ -683,6 +700,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="emailPlaceholder"
             [value]="fEmail()"
             (input)="fEmail.set(ae.value)"
+            (keydown.enter)="submitAddPassword()"
             data-testid="add-password-email"
           />
           @if (fEmail() && !emailValid()) {
@@ -697,6 +715,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="passwordPlaceholder"
             [value]="fPassword()"
             (input)="fPassword.set(ap.value)"
+            (keydown.enter)="submitAddPassword()"
             data-testid="add-password-password"
           />
           @if (fPassword() && !passwordValid()) {
@@ -711,6 +730,7 @@ const MIN_PASSWORD = 8;
             [attr.aria-label]="confirmPlaceholder"
             [value]="fConfirm()"
             (input)="fConfirm.set(ac.value)"
+            (keydown.enter)="submitAddPassword()"
             data-testid="add-password-confirm"
           />
           @if (fConfirm() && !confirmValid()) {
@@ -841,12 +861,57 @@ const MIN_PASSWORD = 8;
       margin-inline: auto;
     }
 
+    /* Every section lays itself out the same way — a column with one gap — so
+       the render panel and the hand-built sections read alike (item 3): no
+       section relies on ad-hoc margins between its title and its controls. */
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
     .heading {
-      margin: 0 0 var(--space-2);
+      margin: 0;
       font-size: var(--text-sm);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
+    }
+
+    /* Sync / Backup sit UNDER the account (item 2): separated by a rule and the
+       same internal gap, titled a level down from the section heading. */
+    .subsection {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      padding-block-start: var(--space-3);
+      border-block-start: 1px solid var(--border);
+    }
+
+    .sub-title {
+      margin: 0;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* What unlocks a disabled sync method (item 7). */
+    .requirement {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+
+    .check-row.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .doc-link {
+      color: var(--brand);
+      white-space: nowrap;
     }
 
     .choices {
@@ -948,12 +1013,13 @@ const MIN_PASSWORD = 8;
       color: var(--text-muted);
     }
 
-    /* One sentence + its (?) hint, matching the render panel's head row. */
+    /* One sentence + a docs link, on the section's own gap (no ad-hoc margin). */
     .setting-note {
       display: flex;
-      align-items: center;
-      gap: 2px;
-      margin: 0 0 var(--space-4);
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: var(--space-1);
+      margin: 0;
       font-size: var(--text-sm);
       color: var(--text-muted);
     }
@@ -965,11 +1031,6 @@ const MIN_PASSWORD = 8;
       flex-direction: column;
       gap: var(--space-2);
       align-items: flex-start;
-    }
-
-    /* A section can carry more than one setting row. */
-    .section > .setting + .setting {
-      margin-block-start: var(--space-4);
     }
 
     .head {
@@ -1111,8 +1172,10 @@ export class SettingsPage {
   protected readonly autoSyncOnLabel = $localize`:@@settings.autoSync.on:Sync automatically`;
   protected readonly autoSyncHelp = $localize`:@@settings.autoSync.help:Keep this library backed up to the cloud and pulled to your other devices.`;
   protected readonly aboutAutoSync = $localize`:@@settings.autoSync.about:About automatic sync`;
+  protected readonly autoSyncReq = $localize`:@@settings.autoSync.requires:Available on a Premium account.`;
   protected readonly driveHeading = $localize`:@@settings.drive.heading:Google Drive backup`;
   protected readonly aboutDrive = $localize`:@@settings.drive.about:About Google Drive backup`;
+  protected readonly driveReq = $localize`:@@settings.drive.requires:Sign in with Google to back up to Drive.`;
 
   protected onAutoSync(event: Event): void {
     void this.presenter.setAutoSync((event.target as HTMLInputElement).checked);
@@ -1147,6 +1210,13 @@ export class SettingsPage {
   /** Register / add-password need all three fields valid and matching. */
   protected readonly canRegister = computed(
     () => this.emailValid() && this.passwordValid() && this.confirmValid(),
+  );
+
+  /** Drive backup rides the Google identity (ADR-0009): it needs a signed-in
+   * account that has Google linked. Shown always, enabled only then (item 7). */
+  protected readonly canDrive = computed(
+    () =>
+      this.presenter.authStatus() === 'signed-in' && this.presenter.hasGoogle(),
   );
 
   /** A short, screen-reader-friendly summary of the linked login methods. */
@@ -1243,10 +1313,12 @@ export class SettingsPage {
   protected readonly passwordWord = $localize`:@@settings.account.passwordWord:Email & password`;
   protected readonly methodsNone = $localize`:@@settings.account.methodsNone:none`;
 
-  // One sentence in the open; the tier detail + privacy note live behind the (?).
+  // One sentence in the open; the tier/privacy detail is a paragraph, so it
+  // lives in the docs (linked) rather than a cramped tooltip.
   protected readonly accountWhy = $localize`:@@settings.account.why:Sign in to keep your library synced across your devices.`;
-  protected readonly accountHelp = $localize`:@@settings.account.help:Achordeon works fully offline — an account only syncs your library. Without one you back up to a file; Free adds one-file backup to your Google Drive; Premium adds automatic cloud sync across devices and hosting an Audience. One library per browser — sign-in is for sync, not privacy.`;
-  protected readonly accountAbout = $localize`:@@settings.account.about:About accounts`;
+  protected readonly learnMore = $localize`:@@settings.account.learnMore:Learn more`;
+  /** The published docs (apps/docs, GitHub Pages) — the account & sync guide. */
+  protected readonly docsUrl = 'https://dcniemandd.github.io/achordeon/';
   protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;
   protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
