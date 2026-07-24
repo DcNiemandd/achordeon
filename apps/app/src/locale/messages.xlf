@@ -171,616 +171,644 @@
         <source>Settings</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1025</context>
+          <context context-type="linenumber">1094</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.app" datatype="html">
         <source>Application</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1026</context>
+          <context context-type="linenumber">1095</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.theme" datatype="html">
         <source>Theme</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1027</context>
+          <context context-type="linenumber">1096</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.rendering" datatype="html">
         <source>Rendering</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1028</context>
+          <context context-type="linenumber">1097</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.panels" datatype="html">
         <source>Panels</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1029</context>
+          <context context-type="linenumber">1098</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.splitShared" datatype="html">
         <source>One panel size everywhere</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1030</context>
+          <context context-type="linenumber">1099</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.splitShared.on" datatype="html">
+        <source>Use one panel size everywhere</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1100</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.splitShared.help" datatype="html">
         <source>Off: each module remembers how you sized its panels.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1031</context>
+          <context context-type="linenumber">1101</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.splitShared.about" datatype="html">
+        <source>About panel sizing</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1102</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.sync" datatype="html">
         <source>Sync</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1036</context>
+          <context context-type="linenumber">1107</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.autoSync" datatype="html">
         <source>Automatic sync</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1037</context>
+          <context context-type="linenumber">1108</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.autoSync.on" datatype="html">
+        <source>Sync automatically</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1109</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.autoSync.help" datatype="html">
         <source>Keep this library backed up to the cloud and pulled to your other devices.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1038</context>
+          <context context-type="linenumber">1110</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.autoSync.about" datatype="html">
+        <source>About automatic sync</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1111</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.drive.heading" datatype="html">
+        <source>Google Drive backup</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1112</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.drive.about" datatype="html">
+        <source>About Google Drive backup</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1113</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account" datatype="html">
         <source>Account</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1157</context>
+          <context context-type="linenumber">1235</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.unavailable" datatype="html">
         <source>Sign-in and cloud sync are unavailable in this build. Your library works and is saved on this device.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1158</context>
+          <context context-type="linenumber">1236</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.signedInAs" datatype="html">
         <source>Signed in as</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1159</context>
+          <context context-type="linenumber">1237</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.pro" datatype="html">
         <source>Premium</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1160</context>
+          <context context-type="linenumber">1238</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.methods" datatype="html">
         <source>Sign-in methods:</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1161</context>
+          <context context-type="linenumber">1239</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.googleWord" datatype="html">
         <source>Google</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1162</context>
+          <context context-type="linenumber">1240</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.passwordWord" datatype="html">
         <source>Email &amp; password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1163</context>
+          <context context-type="linenumber">1241</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.methodsNone" datatype="html">
         <source>none</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1164</context>
+          <context context-type="linenumber">1242</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.profileIntro" datatype="html">
-        <source>Achordeon works fully offline — you never need an account. Signing in is only to keep your library in sync:</source>
+      <trans-unit id="settings.account.why" datatype="html">
+        <source>Sign in to keep your library synced across your devices.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1167</context>
+          <context context-type="linenumber">1245</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.tierNone" datatype="html">
-        <source>Without an account</source>
+      <trans-unit id="settings.account.help" datatype="html">
+        <source>Achordeon works fully offline — an account only syncs your library. Without one you back up to a file; Free adds one-file backup to your Google Drive; Premium adds automatic cloud sync across devices and hosting an Audience. One library per browser — sign-in is for sync, not privacy.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1168</context>
+          <context context-type="linenumber">1246</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.tierNoneText" datatype="html">
-        <source>back up and restore your whole library as a file (below).</source>
+      <trans-unit id="settings.account.about" datatype="html">
+        <source>About accounts</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1169</context>
+          <context context-type="linenumber">1247</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.tierFree" datatype="html">
-        <source>Free</source>
+      <trans-unit id="settings.account.aboutGoogle" datatype="html">
+        <source>About signing in with Google</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1170</context>
+          <context context-type="linenumber">1248</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="settings.account.tierFreeText" datatype="html">
-        <source>manual one-file backup to your own Google Drive.</source>
+      <trans-unit id="settings.account.aboutEmail" datatype="html">
+        <source>About email sign-in</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1171</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="settings.account.tierPremium" datatype="html">
-        <source>Premium</source>
-        <context-group purpose="location">
-          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1172</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="settings.account.tierPremiumText" datatype="html">
-        <source>automatic cloud sync across your devices, plus hosting an Audience.</source>
-        <context-group purpose="location">
-          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1173</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="settings.account.privacy" datatype="html">
-        <source>One library per browser — anyone using this browser sees your songs. Sign-in is for sync, not privacy.</source>
-        <context-group purpose="location">
-          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1174</context>
+          <context context-type="linenumber">1249</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.googleHeading" datatype="html">
         <source>Google</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1176</context>
+          <context context-type="linenumber">1251</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.googleHelp" datatype="html">
         <source>One tap. Also connects Google Drive for backup.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1177</context>
+          <context context-type="linenumber">1252</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.google" datatype="html">
         <source>Continue with Google</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1178</context>
+          <context context-type="linenumber">1253</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.emailHeading" datatype="html">
         <source>Email &amp; password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1179</context>
+          <context context-type="linenumber">1254</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.emailHelp" datatype="html">
         <source>Use an email address instead of Google.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1180</context>
+          <context context-type="linenumber">1255</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.email" datatype="html">
         <source>Email</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1181</context>
+          <context context-type="linenumber">1256</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.password" datatype="html">
         <source>Password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1182</context>
+          <context context-type="linenumber">1257</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.confirm" datatype="html">
         <source>Confirm password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1183</context>
+          <context context-type="linenumber">1258</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.login" datatype="html">
         <source>Log in</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1184</context>
+          <context context-type="linenumber">1259</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.register" datatype="html">
         <source>Register</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1185</context>
+          <context context-type="linenumber">1260</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.logout" datatype="html">
         <source>Log out</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1186</context>
+          <context context-type="linenumber">1261</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.linkGoogle" datatype="html">
         <source>Add Google &amp; connect Drive</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1187</context>
+          <context context-type="linenumber">1262</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.addPassword" datatype="html">
         <source>Add a password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1188</context>
+          <context context-type="linenumber">1263</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.loginTitle" datatype="html">
         <source>Log in</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1190</context>
+          <context context-type="linenumber">1265</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.registerTitle" datatype="html">
         <source>Create your account</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1191</context>
+          <context context-type="linenumber">1266</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.forgotLink" datatype="html">
         <source>Forgot your password?</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1192</context>
+          <context context-type="linenumber">1267</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.forgotTitle" datatype="html">
         <source>Reset your password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1193</context>
+          <context context-type="linenumber">1268</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.forgotText" datatype="html">
         <source>Enter your email and we&apos;ll send a link to set a new password.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1194</context>
+          <context context-type="linenumber">1269</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.forgotSubmit" datatype="html">
         <source>Send reset link</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1195</context>
+          <context context-type="linenumber">1270</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.forgotSent" datatype="html">
         <source>Check your inbox for the reset link.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1196</context>
+          <context context-type="linenumber">1271</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.addPasswordTitle" datatype="html">
         <source>Add a password</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1197</context>
+          <context context-type="linenumber">1272</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.addPasswordText" datatype="html">
         <source>Set an email and password you can also log in with. You&apos;ll need to confirm the email.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1198</context>
+          <context context-type="linenumber">1273</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.emailInvalid" datatype="html">
         <source>Enter a valid email address.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1200</context>
+          <context context-type="linenumber">1275</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.passwordRule" datatype="html">
         <source>Use at least 8 characters.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1201</context>
+          <context context-type="linenumber">1276</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.confirmRule" datatype="html">
         <source>Passwords do not match.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1202</context>
+          <context context-type="linenumber">1277</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.error" datatype="html">
         <source>That did not work. Please try again.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1203</context>
+          <context context-type="linenumber">1278</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.confirmTitle" datatype="html">
         <source>Check your inbox</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1204</context>
+          <context context-type="linenumber">1279</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.account.confirmText" datatype="html">
         <source>We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1205</context>
+          <context context-type="linenumber">1280</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.sync.unsynced" datatype="html">
         <source>Some changes have not reached the cloud yet.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1207</context>
+          <context context-type="linenumber">1282</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.help" datatype="html">
         <source>Manual Google Drive backup — one file you can see. Upload replaces the Drive copy; download merges it in.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1208</context>
+          <context context-type="linenumber">1283</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.upload" datatype="html">
         <source>Upload to Drive</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1209</context>
+          <context context-type="linenumber">1284</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.download" datatype="html">
         <source>Download from Drive</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1210</context>
+          <context context-type="linenumber">1285</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.force" datatype="html">
         <source>Overwrite anyway</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1211</context>
+          <context context-type="linenumber">1286</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.uploaded" datatype="html">
         <source>Uploaded to Drive.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1213</context>
+          <context context-type="linenumber">1288</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.downloaded" datatype="html">
         <source>Downloaded from Drive.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1214</context>
+          <context context-type="linenumber">1289</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.empty" datatype="html">
         <source>No Drive backup found yet.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1215</context>
+          <context context-type="linenumber">1290</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.conflict" datatype="html">
         <source>The Drive backup changed since you last synced.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1216</context>
+          <context context-type="linenumber">1291</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.reauth" datatype="html">
         <source>Reconnecting to Google…</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1217</context>
+          <context context-type="linenumber">1292</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.drive.failed" datatype="html">
         <source>That did not work. Try again.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1218</context>
+          <context context-type="linenumber">1293</context>
         </context-group>
       </trans-unit>
       <trans-unit id="theme.system" datatype="html">
         <source>System</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1242</context>
+          <context context-type="linenumber">1317</context>
         </context-group>
       </trans-unit>
       <trans-unit id="theme.light" datatype="html">
         <source>Light</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1243</context>
+          <context context-type="linenumber">1318</context>
         </context-group>
       </trans-unit>
       <trans-unit id="theme.dark" datatype="html">
         <source>Dark</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1244</context>
+          <context context-type="linenumber">1319</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.coming" datatype="html">
         <source>Coming soon</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1248</context>
+          <context context-type="linenumber">1323</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.coming.note" datatype="html">
         <source>These are not available yet.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1249</context>
+          <context context-type="linenumber">1324</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.notation" datatype="html">
         <source>Chord notation</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1250</context>
+          <context context-type="linenumber">1325</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.notation.help" datatype="html">
         <source>English (C, D, B) or German (with H for B natural, B for B♭).</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1251</context>
+          <context context-type="linenumber">1326</context>
         </context-group>
       </trans-unit>
       <trans-unit id="notation.english" datatype="html">
         <source>English</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1253</context>
+          <context context-type="linenumber">1328</context>
         </context-group>
       </trans-unit>
       <trans-unit id="notation.german" datatype="html">
         <source>German</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1254</context>
+          <context context-type="linenumber">1329</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.fontLibrary" datatype="html">
         <source>Font library</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1256</context>
+          <context context-type="linenumber">1331</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.fontLibrary.help" datatype="html">
         <source>Add your own fonts to use in titles and lyrics.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1257</context>
+          <context context-type="linenumber">1332</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.fontLibrary.button" datatype="html">
         <source>Manage fonts</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1258</context>
+          <context context-type="linenumber">1333</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.backup" datatype="html">
         <source>Backup</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1266</context>
+          <context context-type="linenumber">1341</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="settings.backup.about" datatype="html">
+        <source>About backup</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
+          <context context-type="linenumber">1342</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.backup.help" datatype="html">
         <source>Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1267</context>
+          <context context-type="linenumber">1343</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.backup.save" datatype="html">
         <source>Back up to a file</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1268</context>
+          <context context-type="linenumber">1344</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.backup.restore" datatype="html">
         <source>Restore from a file</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1269</context>
+          <context context-type="linenumber">1345</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.title" datatype="html">
         <source>Restore this backup?</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1270</context>
+          <context context-type="linenumber">1346</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.text" datatype="html">
         <source>This replaces your entire current library with the backup. Anything not in the file is lost.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1271</context>
+          <context context-type="linenumber">1347</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.confirm" datatype="html">
         <source>Restore</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1272</context>
+          <context context-type="linenumber">1348</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.cancel" datatype="html">
         <source>Cancel</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1273</context>
+          <context context-type="linenumber">1349</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.failedTitle" datatype="html">
         <source>That backup could not be restored</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1274</context>
+          <context context-type="linenumber">1350</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.restore.failedText" datatype="html">
         <source>It is not an Achordeon backup file, or it is damaged. Your library is unchanged.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1275</context>
+          <context context-type="linenumber">1351</context>
         </context-group>
       </trans-unit>
       <trans-unit id="settings.ok" datatype="html">
         <source>OK</source>
         <context-group purpose="location">
           <context context-type="sourcefile">apps/app/src/app/settings/settings.page.ts</context>
-          <context context-type="linenumber">1276</context>
+          <context context-type="linenumber">1352</context>
         </context-group>
       </trans-unit>
       <trans-unit id="actionBar.label" datatype="html">

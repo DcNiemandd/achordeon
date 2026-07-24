@@ -11,7 +11,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Button, Dialog, Icon, Premium } from '../primitives';
+import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { ActionBar, BackNavigation } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter } from './settings.presenter';
@@ -33,7 +33,7 @@ const MIN_PASSWORD = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SettingsPresenter],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
-  imports: [ActionBar, SettingsPanel, Button, Dialog, Icon, Premium],
+  imports: [ActionBar, SettingsPanel, Button, Dialog, Icon, Premium, Tooltip],
   template: `
     <app-action-bar [title]="title" />
 
@@ -97,60 +97,83 @@ const MIN_PASSWORD = 8;
               </div>
             }
             @default {
-              <!-- What signing in actually buys, straight from the docs: login is
-                   optional and for sync only; the tier decides how far it reaches. -->
-              <div class="profile-note">
-                <p>{{ profileIntro }}</p>
-                <ul class="tiers">
-                  <li>
-                    <strong>{{ tierNoneLabel }}</strong> — {{ tierNoneText }}
-                  </li>
-                  <li>
-                    <strong>{{ tierFreeLabel }}</strong> — {{ tierFreeText }}
-                  </li>
-                  <li>
-                    <strong>{{ tierPremiumLabel }}</strong> —
-                    {{ tierPremiumText }}
-                  </li>
-                </ul>
-                <p class="privacy-note">{{ privacyNote }}</p>
+              <!-- One sentence in the open, the tier detail behind the (?) hint —
+                   the same title + help pattern the render panel uses. -->
+              <p class="setting-note">
+                {{ accountWhy }}
+                <button
+                  appButton
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="accountHelp"
+                  appTooltipTrigger="click"
+                  [attr.aria-label]="accountAbout"
+                  data-testid="account-help"
+                >
+                  <app-icon name="help" />
+                </button>
+              </p>
+
+              <div class="setting">
+                <div class="head">
+                  <span class="label">{{ googleHeading }}</span>
+                  <button
+                    appButton
+                    type="button"
+                    class="help"
+                    [isIconOnly]="true"
+                    [appTooltip]="googleHelp"
+                    appTooltipTrigger="click"
+                    [attr.aria-label]="aboutGoogle"
+                    data-testid="help-google"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
+                <button
+                  appButton
+                  variant="secondary"
+                  data-testid="login-google"
+                  (click)="presenter.logInGoogle()"
+                >
+                  {{ googleLabel }}
+                </button>
               </div>
 
-              <div class="auth-methods">
-                <div class="auth-method">
-                  <h3 class="sub-heading">{{ googleHeading }}</h3>
-                  <p class="check-help">{{ googleHelp }}</p>
+              <div class="setting">
+                <div class="head">
+                  <span class="label">{{ emailHeading }}</span>
+                  <button
+                    appButton
+                    type="button"
+                    class="help"
+                    [isIconOnly]="true"
+                    [appTooltip]="emailHelp"
+                    appTooltipTrigger="click"
+                    [attr.aria-label]="aboutEmail"
+                    data-testid="help-email"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
+                <div class="backup-actions">
                   <button
                     appButton
                     variant="secondary"
-                    data-testid="login-google"
-                    (click)="presenter.logInGoogle()"
+                    data-testid="open-login"
+                    (click)="openLogin()"
                   >
-                    {{ googleLabel }}
+                    {{ loginLabel }}
                   </button>
-                </div>
-
-                <div class="auth-method">
-                  <h3 class="sub-heading">{{ emailHeading }}</h3>
-                  <p class="check-help">{{ emailHelp }}</p>
-                  <div class="backup-actions">
-                    <button
-                      appButton
-                      variant="secondary"
-                      data-testid="open-login"
-                      (click)="openLogin()"
-                    >
-                      {{ loginLabel }}
-                    </button>
-                    <button
-                      appButton
-                      variant="ghost"
-                      data-testid="open-register"
-                      (click)="openRegister()"
-                    >
-                      {{ registerLabel }}
-                    </button>
-                  </div>
+                  <button
+                    appButton
+                    variant="ghost"
+                    data-testid="open-register"
+                    (click)="openRegister()"
+                  >
+                    {{ registerLabel }}
+                  </button>
                 </div>
               </div>
             }
@@ -163,65 +186,97 @@ const MIN_PASSWORD = 8;
           <section class="section">
             <h2 class="heading">{{ syncHeading }}</h2>
 
-            <!-- Decoration over a WORKING control, never a disabled one: tierGuard
-               is highlight-and-tooltip during testing, not a hard block. -->
-            <app-premium [label]="autoSyncLabel">
-              <label class="check-row">
-                <input
-                  type="checkbox"
-                  class="check"
-                  [checked]="presenter.autoSync()"
-                  data-testid="auto-sync"
-                  (change)="onAutoSync($event)"
-                />
-                <span>
-                  <span class="check-label">{{ autoSyncLabel }}</span>
-                  <span class="check-help">{{ autoSyncHelp }}</span>
-                </span>
-              </label>
-            </app-premium>
-
-            @if (presenter.hasUnsynced()) {
-              <p class="unsynced" data-testid="unsynced">{{ unsyncedText }}</p>
-            }
-
-            @if (presenter.authStatus() === 'signed-in') {
-              <p class="backup-help">{{ driveHelp }}</p>
-              <div class="backup-actions">
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ autoSyncLabel }}</span>
                 <button
                   appButton
-                  variant="secondary"
-                  data-testid="drive-upload"
-                  (click)="presenter.driveUpload()"
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="autoSyncHelp"
+                  appTooltipTrigger="click"
+                  [attr.aria-label]="aboutAutoSync"
+                  data-testid="help-auto-sync"
                 >
-                  <app-icon name="download" />
-                  {{ driveUploadLabel }}
-                </button>
-                <button
-                  appButton
-                  variant="secondary"
-                  data-testid="drive-download"
-                  (click)="presenter.driveDownload()"
-                >
-                  <app-icon name="import" />
-                  {{ driveDownloadLabel }}
+                  <app-icon name="help" />
                 </button>
               </div>
-              @if (driveMessage(); as message) {
-                <p class="backup-help" data-testid="drive-status">
-                  {{ message }}
-                  @if (presenter.driveOutcome()?.kind === 'conflict') {
-                    <button
-                      appButton
-                      variant="ghost"
-                      data-testid="drive-force"
-                      (click)="presenter.driveUpload(true)"
-                    >
-                      {{ driveForceLabel }}
-                    </button>
-                  }
+              <!-- Decoration over a WORKING control, never a disabled one:
+                   tierGuard is highlight-and-tooltip during testing, not a block. -->
+              <app-premium [label]="autoSyncLabel">
+                <label class="check-row">
+                  <input
+                    type="checkbox"
+                    class="check"
+                    [checked]="presenter.autoSync()"
+                    data-testid="auto-sync"
+                    (change)="onAutoSync($event)"
+                  />
+                  <span class="check-label">{{ autoSyncOnLabel }}</span>
+                </label>
+              </app-premium>
+
+              @if (presenter.hasUnsynced()) {
+                <p class="unsynced" data-testid="unsynced">
+                  {{ unsyncedText }}
                 </p>
               }
+            </div>
+
+            @if (presenter.authStatus() === 'signed-in') {
+              <div class="setting">
+                <div class="head">
+                  <span class="label">{{ driveHeading }}</span>
+                  <button
+                    appButton
+                    type="button"
+                    class="help"
+                    [isIconOnly]="true"
+                    [appTooltip]="driveHelp"
+                    appTooltipTrigger="click"
+                    [attr.aria-label]="aboutDrive"
+                    data-testid="help-drive"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
+                <div class="backup-actions">
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="drive-upload"
+                    (click)="presenter.driveUpload()"
+                  >
+                    <app-icon name="download" />
+                    {{ driveUploadLabel }}
+                  </button>
+                  <button
+                    appButton
+                    variant="secondary"
+                    data-testid="drive-download"
+                    (click)="presenter.driveDownload()"
+                  >
+                    <app-icon name="import" />
+                    {{ driveDownloadLabel }}
+                  </button>
+                </div>
+                @if (driveMessage(); as message) {
+                  <p class="backup-help" data-testid="drive-status">
+                    {{ message }}
+                    @if (presenter.driveOutcome()?.kind === 'conflict') {
+                      <button
+                        appButton
+                        variant="ghost"
+                        data-testid="drive-force"
+                        (click)="presenter.driveUpload(true)"
+                      >
+                        {{ driveForceLabel }}
+                      </button>
+                    }
+                  </p>
+                }
+              </div>
             }
           </section>
         }
@@ -230,8 +285,21 @@ const MIN_PASSWORD = 8;
            from Export: this is the entire library, verbatim, and Restore
            REPLACES everything. So Restore confirms first. -->
         <section class="section">
-          <h2 class="heading">{{ backupHeading }}</h2>
-          <p class="backup-help">{{ backupHelp }}</p>
+          <div class="head">
+            <h2 class="heading heading-inline">{{ backupHeading }}</h2>
+            <button
+              appButton
+              type="button"
+              class="help"
+              [isIconOnly]="true"
+              [appTooltip]="backupHelp"
+              appTooltipTrigger="click"
+              [attr.aria-label]="aboutBackup"
+              data-testid="help-backup"
+            >
+              <app-icon name="help" />
+            </button>
+          </div>
           <div class="backup-actions">
             <button
               appButton
@@ -286,22 +354,35 @@ const MIN_PASSWORD = 8;
 
         <section class="section">
           <h2 class="heading">{{ panelsHeading }}</h2>
-          <!-- A checkbox, not a segmented pair: it is one fact that is either
-             true or false, and "Linked / Not linked" would be two words for
-             the same switch. -->
-          <label class="check-row">
-            <input
-              type="checkbox"
-              class="check"
-              [checked]="presenter.isSplitShared()"
-              data-testid="split-shared"
-              (change)="onSplitShared($event)"
-            />
-            <span>
-              <span class="check-label">{{ splitSharedLabel }}</span>
-              <span class="check-help">{{ splitSharedHelp }}</span>
-            </span>
-          </label>
+          <div class="setting">
+            <div class="head">
+              <span class="label">{{ splitSharedLabel }}</span>
+              <button
+                appButton
+                type="button"
+                class="help"
+                [isIconOnly]="true"
+                [appTooltip]="splitSharedHelp"
+                appTooltipTrigger="click"
+                [attr.aria-label]="aboutSplitShared"
+                data-testid="help-split-shared"
+              >
+                <app-icon name="help" />
+              </button>
+            </div>
+            <!-- A checkbox, not a segmented pair: one fact that is either true or
+                 false; "Linked / Not linked" would be two words for one switch. -->
+            <label class="check-row">
+              <input
+                type="checkbox"
+                class="check"
+                [checked]="presenter.isSplitShared()"
+                data-testid="split-shared"
+                (change)="onSplitShared($event)"
+              />
+              <span class="check-label">{{ splitSharedOnLabel }}</span>
+            </label>
+          </div>
         </section>
 
         <section class="section">
@@ -867,55 +948,53 @@ const MIN_PASSWORD = 8;
       color: var(--text-muted);
     }
 
-    .profile-note {
-      margin-block-end: var(--space-4);
-      padding: var(--space-3);
-      border: 1px solid var(--border);
-      border-radius: var(--space-2);
-      background: var(--surface-sunken, var(--surface));
+    /* One sentence + its (?) hint, matching the render panel's head row. */
+    .setting-note {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin: 0 0 var(--space-4);
       font-size: var(--text-sm);
       color: var(--text-muted);
     }
 
-    .profile-note > p {
-      margin: 0 0 var(--space-2);
-    }
-
-    .tiers {
-      margin: 0 0 var(--space-2);
-      padding-inline-start: var(--space-4);
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-    }
-
-    .tiers strong {
-      color: var(--text);
-    }
-
-    .privacy-note {
-      margin: 0;
-      font-size: var(--text-xs);
-      color: var(--text-faint);
-    }
-
-    .auth-methods {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-    }
-
-    .auth-method {
+    /* A settings row: label + (?) help on one line, the control beneath — the
+       same shape app-settings-panel gives every render setting. */
+    .setting {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
       align-items: flex-start;
     }
 
-    .sub-heading {
-      margin: 0;
+    /* A section can carry more than one setting row. */
+    .section > .setting + .setting {
+      margin-block-start: var(--space-4);
+    }
+
+    .head {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .head .label {
       font-size: var(--text-sm);
       color: var(--text);
+    }
+
+    /* A section title that shares its line with a (?) — cancels the block
+       heading's bottom margin so the row stays centred. */
+    .heading-inline {
+      margin: 0;
+    }
+
+    /* The (?) trigger, sized to sit quietly beside a label (from the panel). */
+    .help {
+      --icon-size: 13px;
+      block-size: 18px;
+      min-inline-size: 18px;
+      color: var(--text-faint);
     }
 
     .dialog-form {
@@ -952,14 +1031,6 @@ const MIN_PASSWORD = 8;
       font-size: var(--text-xs);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-    }
-
-    .cred {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin-block-start: var(--space-3);
-      max-inline-size: 320px;
     }
 
     .text-input {
@@ -1028,14 +1099,20 @@ export class SettingsPage {
   protected readonly renderHeading = $localize`:@@settings.rendering:Rendering`;
   protected readonly panelsHeading = $localize`:@@settings.panels:Panels`;
   protected readonly splitSharedLabel = $localize`:@@settings.splitShared:One panel size everywhere`;
+  protected readonly splitSharedOnLabel = $localize`:@@settings.splitShared.on:Use one panel size everywhere`;
   protected readonly splitSharedHelp = $localize`:@@settings.splitShared.help:Off: each module remembers how you sized its panels.`;
+  protected readonly aboutSplitShared = $localize`:@@settings.splitShared.about:About panel sizing`;
 
   protected onSplitShared(event: Event): void {
     this.presenter.setSplitShared((event.target as HTMLInputElement).checked);
   }
   protected readonly syncHeading = $localize`:@@settings.sync:Sync`;
   protected readonly autoSyncLabel = $localize`:@@settings.autoSync:Automatic sync`;
+  protected readonly autoSyncOnLabel = $localize`:@@settings.autoSync.on:Sync automatically`;
   protected readonly autoSyncHelp = $localize`:@@settings.autoSync.help:Keep this library backed up to the cloud and pulled to your other devices.`;
+  protected readonly aboutAutoSync = $localize`:@@settings.autoSync.about:About automatic sync`;
+  protected readonly driveHeading = $localize`:@@settings.drive.heading:Google Drive backup`;
+  protected readonly aboutDrive = $localize`:@@settings.drive.about:About Google Drive backup`;
 
   protected onAutoSync(event: Event): void {
     void this.presenter.setAutoSync((event.target as HTMLInputElement).checked);
@@ -1166,15 +1243,12 @@ export class SettingsPage {
   protected readonly passwordWord = $localize`:@@settings.account.passwordWord:Email & password`;
   protected readonly methodsNone = $localize`:@@settings.account.methodsNone:none`;
 
-  // Profile note — the tier story, from apps/docs/docs/settings.mdx §Profile.
-  protected readonly profileIntro = $localize`:@@settings.account.profileIntro:Achordeon works fully offline — you never need an account. Signing in is only to keep your library in sync:`;
-  protected readonly tierNoneLabel = $localize`:@@settings.account.tierNone:Without an account`;
-  protected readonly tierNoneText = $localize`:@@settings.account.tierNoneText:back up and restore your whole library as a file (below).`;
-  protected readonly tierFreeLabel = $localize`:@@settings.account.tierFree:Free`;
-  protected readonly tierFreeText = $localize`:@@settings.account.tierFreeText:manual one-file backup to your own Google Drive.`;
-  protected readonly tierPremiumLabel = $localize`:@@settings.account.tierPremium:Premium`;
-  protected readonly tierPremiumText = $localize`:@@settings.account.tierPremiumText:automatic cloud sync across your devices, plus hosting an Audience.`;
-  protected readonly privacyNote = $localize`:@@settings.account.privacy:One library per browser — anyone using this browser sees your songs. Sign-in is for sync, not privacy.`;
+  // One sentence in the open; the tier detail + privacy note live behind the (?).
+  protected readonly accountWhy = $localize`:@@settings.account.why:Sign in to keep your library synced across your devices.`;
+  protected readonly accountHelp = $localize`:@@settings.account.help:Achordeon works fully offline — an account only syncs your library. Without one you back up to a file; Free adds one-file backup to your Google Drive; Premium adds automatic cloud sync across devices and hosting an Audience. One library per browser — sign-in is for sync, not privacy.`;
+  protected readonly accountAbout = $localize`:@@settings.account.about:About accounts`;
+  protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;
+  protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
   protected readonly googleHeading = $localize`:@@settings.account.googleHeading:Google`;
   protected readonly googleHelp = $localize`:@@settings.account.googleHelp:One tap. Also connects Google Drive for backup.`;
@@ -1267,6 +1341,7 @@ export class SettingsPage {
   protected readonly pendingRestore = this._pendingRestore.asReadonly();
 
   protected readonly backupHeading = $localize`:@@settings.backup:Backup`;
+  protected readonly aboutBackup = $localize`:@@settings.backup.about:About backup`;
   protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
   protected readonly restoreButton = $localize`:@@settings.backup.restore:Restore from a file`;
