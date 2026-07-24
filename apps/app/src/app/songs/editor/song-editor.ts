@@ -324,19 +324,32 @@ export class SongEditor {
       return;
     }
 
-    const selected = view.state.sliceDoc(from, to);
+    // Nothing selected, but the caret sits in a word and this insert wraps one:
+    // wrap the whole word (Bold on a word means "make THIS word bold"). A no-op
+    // on whitespace, where `wordAt` returns null and we fall back to the pair.
+    let start = from;
+    let end = to;
+    if (from === to && request.wrapsWord) {
+      const word = view.state.wordAt(from);
+      if (word) {
+        start = word.from;
+        end = word.to;
+      }
+    }
+
+    const selected = view.state.sliceDoc(start, end);
     const text = request.before + selected + (request.after ?? '');
-    // With text selected, the wrapping is the point and the caret belongs after
-    // it. With none, `caretOffset` puts the caret where the next keystroke goes —
-    // between the brackets of an empty `[]`, not after them.
+    // With text selected (or a wrapped word), the wrapping is the point and the
+    // caret belongs after it. With none, `caretOffset` puts the caret where the
+    // next keystroke goes — between the brackets of an empty `[]`, not after them.
     const caret =
-      from +
+      start +
       (selected === '' && request.caretOffset !== undefined
         ? request.before.length + request.caretOffset
         : text.length);
 
     view.dispatch({
-      changes: { from, to, insert: text },
+      changes: { from: start, to: end, insert: text },
       selection: { anchor: caret },
       scrollIntoView: true,
     });
@@ -525,8 +538,13 @@ export class SongEditor {
       // `border-left-color`, not the logical `border-inline-start-color`, or it
       // sets a different property and loses the cascade.
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--text)' },
+      // A visible wash, not the 0.12-alpha `--brand-subtle`, which vanished on
+      // the dark surface — 28% of the brand reads as a highlight in both themes
+      // while the text under it stays legible.
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
-        { backgroundColor: 'var(--brand-subtle)' },
+        {
+          backgroundColor: 'color-mix(in srgb, var(--brand) 28%, transparent)',
+        },
       // A warning is an underline, not a red wall: the text stays readable.
       '.cm-lintRange-warning': {
         backgroundImage: 'none',
