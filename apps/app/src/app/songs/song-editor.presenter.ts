@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import {
   DownloadService,
+  ExportService,
   ParserService,
   RenderService,
   SessionStore,
@@ -54,6 +55,7 @@ export class SongEditorPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly theory = inject(ChordTheory);
   private readonly downloads = inject(DownloadService);
+  private readonly exporter = inject(ExportService);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -339,6 +341,20 @@ export class SongEditorPresenter {
    * record, not this presenter's live signal, so an unsaved edit would export a
    * song one debounce behind what is on screen.
    */
+  /**
+   * Export the song being edited as an Achordeon `.json` file (the database, not
+   * a picture — the counterpart to `download`). Flushes the pending autosave
+   * first so the file holds what is on screen, not a debounce behind it.
+   */
+  async exportSong(): Promise<void> {
+    const song = this._song();
+    if (!song) {
+      return;
+    }
+    await this.flushSave();
+    await this.exporter.export({ songIds: [song.id] });
+  }
+
   async download(format: DownloadFormat): Promise<void> {
     const song = this._song();
     if (!song || this._isDownloading()) {
