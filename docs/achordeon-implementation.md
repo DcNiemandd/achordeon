@@ -770,22 +770,58 @@ propagation, tier flag, and the load-bearing unsynced-leave warning.
 
 ### Subtasks
 
-- [ ] Supabase Auth: Google OAuth sign-in; session persistence; tier read from
+- [x] Supabase Auth: Google OAuth sign-in; session persistence; tier read from
       `profiles.plan`.
-- [ ] Provider linking: add-method-only (Google via `linkIdentity`, password via
+- [x] Provider linking: add-method-only (Google via `linkIdentity`, password via
       `updateUser`); email confirmation required; no merge / no unlink in v1.
-- [ ] `SyncBackend` port + `SyncService` orchestration (push/pull; subscribe is a
+- [x] `SyncBackend` port + `SyncService` orchestration (push/pull; subscribe is a
       future no-op).
-- [ ] Drive backend: two manual buttons (upload/download), `drive.file` scope, one
+- [x] Drive backend: two manual buttons (upload/download), `drive.file` scope, one
       `achordeon-backup.json`, whole-file LWW with a modifiedTime guard, Flow A
       token re-auth.
-- [ ] Supabase backend: relational schema (`profiles`, `songs`, `songbooks`,
+- [x] Supabase backend: relational schema (`profiles`, `songs`, `songbooks`,
       `songbook_songs`) + RLS per `auth.uid()`; tombstones via `deleted_at`.
-- [ ] Sync mechanics: coarse boundary push (editor save/close, reorder commit,
+- [x] Sync mechanics: coarse boundary push (editor save/close, reorder commit,
       app blur), debounced safety net, pull-on-launch/focus, per-row LWW.
-- [ ] Auto-sync user toggle (enabled by `pro`, switchable off ≠ logged out).
-- [ ] Warn-before-leaving when local changes haven't reached the cloud
-      (`beforeunload` + in-app route guard).
+- [x] Auto-sync user toggle (enabled by `pro`, switchable off ≠ logged out).
+- [x] Warn-before-leaving when local changes haven't reached the cloud
+      (`beforeunload` + flush-on-blur — see below on the "route guard").
+
+### Landed — what implementation changed
+
+Corrections and choices the build forced, recorded so they aren't re-litigated:
+
+- **Per-row LWW is a pure domain function** (`mergeRecords`/`mergeSnapshots`), not
+  logic buried in a backend. A tombstone is not special-cased — `softDelete` bumps
+  `updatedAt`, so a delete is simply the newest write and wins by the same rule,
+  which is what makes a delete propagate instead of an old live copy resurrecting
+  it. Ties keep local, so the merge is idempotent.
+- **The shared Supabase client now persists the session.** Epic 9 built it with
+  `persistSession: false` (the viewer path is anonymous). Auth needs the opposite,
+  and there is one client (one socket) — flipping it on also lights up
+  `auth.uid()` for the lobby-events insert-by-owner policy Epic 9 had to leave
+  denied. Both facts point at one client, not two.
+- **Sync timestamps are `bigint` epoch-ms, not `timestamptz`.** `updated_at` is
+  the _client's_ LWW clock (the value carried in the Snapshot); a server `now()`
+  would be a second, disagreeing clock. The lobby tables use `timestamptz` because
+  those times are server-generated — the opposite case.
+- **`profiles` carries `record_id`** (the local `User.id`) so a pull can rebuild
+  the local user row for the LWW merge — the account is keyed by `auth.uid()`, but
+  the client record has its own uuid, and losing it would make the user table
+  un-mergeable. `plan` is never written from the client (dashboard/webhook only).
+- **The "in-app route guard" is `flush()` on blur, not a `CanDeactivate`.** In a
+  local-first SPA no in-app navigation loses data (it is already in IndexedDB), so
+  trapping the user on a route would be user-hostile for no safety gain. The real
+  leave is tab close/reload — `beforeunload` — and blur pushes before any of it,
+  so the honest reading of the requirement is a flush + an unload warning.
+- **Two-device-different-email is still a dead end** (ADR-0009, accepted): no
+  merge op, so the escape hatch stays Export → Import. Not re-solved here.
+
+**Deferred (wired, not exercised end-to-end):** live Google OAuth and Drive REST
+need real credentials — the code paths exist and typecheck, but no automated test
+drives a real Google grant. Supabase realtime `subscribe` stays a future no-op
+(ADR-0004). The monetization webhook that flips `plan` to `pro` is out of scope;
+flip it in the dashboard for now.
 
 ---
 
