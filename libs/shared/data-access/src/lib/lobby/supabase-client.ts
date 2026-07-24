@@ -56,9 +56,17 @@ export class SupabaseService {
     this.clientPromise ??= (async () => {
       const { createClient } = await import('@supabase/supabase-js');
       return createClient(config.url, config.anonKey, {
-        // No session persistence: the Audience path is anonymous, and hosting
-        // rides whatever auth Epic 10 later adds. Realtime needs no stored token.
-        auth: { persistSession: false, autoRefreshToken: false },
+        // Session persistence is ON (Epic 10): auth keeps the user logged into
+        // Achordeon across reloads (PRD-INFRASTRUCTURE.md §5) and its `auth.uid()`
+        // is what the paid-tier sync RLS and the lobby-events insert-by-owner
+        // policy fence on. The Audience *viewer* path is still anonymous — it
+        // simply has no session to persist — so sharing this one client (one
+        // socket) across auth, sync and lobby is correct.
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
       });
     })();
     return this.clientPromise;

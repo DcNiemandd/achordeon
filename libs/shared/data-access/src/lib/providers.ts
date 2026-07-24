@@ -11,6 +11,8 @@ import { ChordTheory } from '@achordeon/shared/domain';
 import { TonalChordTheory } from './tonal-chord-theory/tonal-chord-theory';
 import { ACHORDEON_DB } from './stores/repositories';
 import { seedDatabase } from './persistence/seed';
+import { AuthService } from './auth/auth-service';
+import { SyncService } from './sync/sync-service';
 
 /**
  * Bind the ports `shared/domain` declares to the adapters that implement them.
@@ -48,5 +50,23 @@ export function provideSeedOnDemand(): EnvironmentProviders {
       return;
     }
     await seedDatabase(inject(ACHORDEON_DB));
+  });
+}
+
+/**
+ * Start the account + sync layer at boot (Epic 10).
+ *
+ * `AuthService.init` reads the persisted session first, then `SyncService.init`
+ * loads the toggle, wires the focus/blur handoff moments, and does a first pull.
+ * Both degrade to no-ops without a backend or a session, so this is safe to run
+ * on every build — the offline-only app simply finds nothing to do. Sync never
+ * blocks the shell, so the initializer does not await it: a slow or failed pull
+ * must not hold up first paint.
+ */
+export function provideAchordeonSync(): EnvironmentProviders {
+  return provideAppInitializer(() => {
+    const auth = inject(AuthService);
+    const sync = inject(SyncService);
+    void auth.init().then(() => sync.init());
   });
 }

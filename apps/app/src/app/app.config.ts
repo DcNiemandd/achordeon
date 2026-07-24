@@ -7,6 +7,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import {
   SUPABASE_CONFIG,
   provideAchordeonData,
+  provideAchordeonSync,
   provideSeedOnDemand,
 } from '@achordeon/shared/data-access';
 import { appRoutes } from './app.routes';
@@ -26,5 +27,7 @@ export const appConfig: ApplicationConfig = {
     provideSeedOnDemand(),
     // Audience/lobby backend (ADR-0003). `null`/empty url → offline-only build.
     { provide: SUPABASE_CONFIG, useValue: SUPABASE?.url ? SUPABASE : null },
+    // Account + cloud sync (Epic 10). No-op without a backend or a session.
+    provideAchordeonSync(),
   ],
 };
