@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { SettingsStore } from '@achordeon/shared/data-access';
-import { Shell, ThemeApplier } from './shared/layout';
+import { SettingsStore, SyncService } from '@achordeon/shared/data-access';
+import { Shell, ThemeApplier, WarnUnsynced } from './shared/layout';
 
 /**
  * The root: mount the shell and connect the theme.
@@ -26,5 +26,11 @@ export class App {
     // live in app/shared under the import ladder. This is where the two meet.
     const settings = inject(SettingsStore);
     inject(ThemeApplier).connect(() => settings.theme());
+
+    // The unsynced-leave guard (ADR-0004) — wired here for the same reason as
+    // the theme: WarnUnsynced takes an accessor so it stays under the import
+    // ladder, and this shell is where it meets SyncService.
+    const sync = inject(SyncService);
+    inject(WarnUnsynced).connect(() => sync.hasUnsynced());
   }
 }

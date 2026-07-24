@@ -1,0 +1,107 @@
+import type { Song, Songbook, User } from '@achordeon/shared/domain';
+import {
+  profileToUser,
+  rowToSong,
+  rowToSongbook,
+  songToRow,
+  songbookEntryRows,
+  songbookToRow,
+  userToProfilePatch,
+  type ProfileRow,
+} from './supabase-mapping';
+
+function song(over: Partial<Song> = {}): Song {
+  return {
+    id: 's1',
+    createdAt: 10,
+    updatedAt: 20,
+    deletedAt: null,
+    name: 'Song',
+    content: '* Title\nlyric',
+    favorite: true,
+    settings: { columns: 2 },
+    cache: { title: 'Title', subtitle: '' },
+    ...over,
+  };
+}
+
+function songbook(over: Partial<Songbook> = {}): Songbook {
+  return {
+    id: 'b1',
+    createdAt: 1,
+    updatedAt: 2,
+    deletedAt: null,
+    name: 'Book',
+    title: 'T',
+    subtitle: 'S',
+    author: 'A',
+    settings: { columns: 1 },
+    entries: ['s1', 's2', 's1'],
+    ...over,
+  };
+}
+
+describe('song row mapping', () => {
+  it('round-trips a song through the row shape', () => {
+    expect(rowToSong(songToRow(song()))).toEqual(song());
+  });
+
+  it('carries the tombstone', () => {
+    const dead = song({ deletedAt: 99 });
+    expect(songToRow(dead).deleted_at).toBe(99);
+    expect(rowToSong(songToRow(dead)).deletedAt).toBe(99);
+  });
+});
+
+describe('songbook row mapping', () => {
+  it('flattens entries into positioned rows, preserving repeats and order', () => {
+    expect(songbookEntryRows(songbook())).toEqual([
+      { songbook_id: 'b1', song_id: 's1', position: 0 },
+      { songbook_id: 'b1', song_id: 's2', position: 1 },
+      { songbook_id: 'b1', song_id: 's1', position: 2 },
+    ]);
+  });
+
+  it('folds unordered join rows back into the entry order', () => {
+    const book = songbook();
+    const shuffled = [...songbookEntryRows(book)].reverse();
+    // Join rows from another songbook must not leak in.
+    const foreign = { songbook_id: 'other', song_id: 'x', position: 0 };
+    const back = rowToSongbook(songbookToRow(book), [...shuffled, foreign]);
+    expect(back).toEqual(book);
+  });
+});
+
+describe('profile ⇄ user mapping', () => {
+  const user: User = {
+    id: 'u-local',
+    createdAt: 5,
+    updatedAt: 6,
+    deletedAt: null,
+    username: 'me',
+    planCache: 'free',
+    settings: {} as User['settings'],
+  };
+
+  it('keeps the local record id so a pull round-trips the user', () => {
+    const patch = userToProfilePatch(user);
+    const row: ProfileRow = { id: 'auth-uid', plan: 'pro', ...patch };
+    const back = profileToUser(row);
+    expect(back?.id).toBe('u-local');
+    expect(back?.planCache).toBe('pro'); // plan mirrors into planCache
+  });
+
+  it('returns null for a profile never pushed (no record_id)', () => {
+    const row: ProfileRow = {
+      id: 'auth-uid',
+      plan: 'free',
+      record_id: null,
+      username: '',
+      settings: {} as User['settings'],
+      created_at: 0,
+      updated_at: 0,
+      deleted_at: null,
+    };
+    expect(profileToUser(row)).toBeNull();
+  });
+});

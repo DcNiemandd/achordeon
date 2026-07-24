@@ -11,6 +11,7 @@ import {
   SettingsStore,
   SongStore,
   SongbookStore,
+  SyncService,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
@@ -55,6 +56,7 @@ import {
 export class SongbookDetailPresenter {
   private readonly books = inject(SongbookStore);
   private readonly songs = inject(SongStore);
+  private readonly sync = inject(SyncService);
   private readonly session = inject(SessionStore);
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
@@ -268,6 +270,7 @@ export class SongbookDetailPresenter {
         updatedAt: Date.now(),
       });
       await this.songs.refresh();
+      this.sync.pushSoon();
     }
   }
 
@@ -639,6 +642,9 @@ export class SongbookDetailPresenter {
     const updated: Songbook = { ...book, ...changes, updatedAt: Date.now() };
     this._book.set(updated);
     await this.books.upsert(updated);
+    // A reorder / metadata / settings commit is a coarse sync boundary
+    // (ADR-0004) — schedule a debounced push. No-op unless sync is active.
+    this.sync.pushSoon();
   }
 
   /** The library, in the virtual book's own order — see `_entrySort`. */

@@ -43,4 +43,28 @@ export class BackupService {
   async restore(file: Blob): Promise<void> {
     await importDbBlob(this.db, file);
   }
+
+  /**
+   * Wipe this device's copy of the library — every table cleared, `meta` included
+   * (the deviceId regenerates on next read). The "delete this device" half of
+   * account deletion; the cloud copy is untouched, so a later sign-in syncs it
+   * back. The caller reloads afterwards for a clean, freshly-booted app.
+   */
+  async clearLocal(): Promise<void> {
+    await this.db.transaction(
+      'rw',
+      this.db.user,
+      this.db.songs,
+      this.db.songbooks,
+      this.db.meta,
+      async () => {
+        await Promise.all([
+          this.db.user.clear(),
+          this.db.songs.clear(),
+          this.db.songbooks.clear(),
+          this.db.meta.clear(),
+        ]);
+      },
+    );
+  }
 }

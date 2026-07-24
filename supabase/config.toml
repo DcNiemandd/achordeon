@@ -37,7 +37,26 @@ site_url = "http://127.0.0.1:4200"
 additional_redirect_urls = ["http://127.0.0.1:4200"]
 jwt_expiry = 3600
 enable_signup = true
+# Epic 10 (ADR-0009): the user may deliberately add a second sign-in method to
+# the account they are logged into (`linkIdentity` / `updateUser`). Automatic
+# same-verified-email linking is on regardless — it cannot be disabled — so this
+# flag only unlocks the *explicit* add-a-method flow surfaced in Settings.
+enable_manual_linking = true
 
 [auth.email]
 enable_signup = true
-enable_confirmations = false
+# Email confirmation is REQUIRED, not a UX preference (ADR-0009): an unconfirmed
+# email/password identity grants no session and never auto-links, which is the
+# precondition that makes add-method linking safe against account-takeover.
+# Locally the confirmation mail lands in Inbucket (port 54324).
+enable_confirmations = true
+
+# Google is the first-class provider (PRD-INFRASTRUCTURE.md §5): OAuth sign-in and
+# the carrier for "Connect Drive" (the `drive.file` scope rides this identity,
+# ADR-0009). Secrets come from the environment so none sit in the repo; locally,
+# leaving them unset just means the Google button no-ops until real credentials
+# are supplied.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"

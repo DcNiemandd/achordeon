@@ -1,6 +1,7 @@
 export * from './lib/entities';
 export * from './lib/settings';
 export * from './lib/snapshot';
+export * from './lib/sync-merge';
 export * from './lib/migration';
 export * from './lib/import-plan';
 export * from './lib/lobby';
