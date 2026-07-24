@@ -513,6 +513,26 @@ export class SongEditorPage {
       snippet: SNIPPETS.label,
     },
     {
+      // Emphasis is content-only and cannot live in a chord: `**` on a title line
+      // is literal, and inside a bracket the asterisks are chord text.
+      testid: 'insert-bold',
+      icon: 'bold',
+      isContentOnly: true,
+      isBlockedInsideChord: true,
+      glyph: '**',
+      label: $localize`:@@editor.insertBold:Bold`,
+      snippet: SNIPPETS.bold,
+    },
+    {
+      testid: 'insert-italic',
+      icon: 'italic',
+      isContentOnly: true,
+      isBlockedInsideChord: true,
+      glyph: '*',
+      label: $localize`:@@editor.insertItalic:Italic`,
+      snippet: SNIPPETS.italic,
+    },
+    {
       // A block boundary is a blank line, which has no character to show — `↵`
       // stands in for it, being the key you would press to make one.
       testid: 'insert-block',

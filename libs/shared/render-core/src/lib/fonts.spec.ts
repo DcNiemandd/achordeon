@@ -71,10 +71,39 @@ describe('buildFontBook', () => {
     const book = buildFontBook(styles(), () => undefined);
     expect(book).toEqual([]);
   });
+
+  it('adds the faces a markdown item overrides to, beyond the role styles', () => {
+    // A `*italic*` lyric item names the italic face of the lyric family — which
+    // no role style carries — so the book must gain it or the PDF has no bytes.
+    const resolve = singleFamilyResolver('Body', {
+      'normal-normal': 'R',
+      'normal-italic': 'I',
+      'bold-italic': 'BI',
+    });
+    const book = buildFontBook(styles(), resolve, [
+      { text: 'x', x: 0, y: 0, role: 'lyric', style: 'italic' },
+      { text: 'y', x: 0, y: 0, role: 'lyric', weight: 'bold', style: 'italic' },
+    ]);
+    expect(book).toContainEqual({
+      family: 'Body',
+      weight: 'normal',
+      style: 'italic',
+      base64: 'I',
+    });
+    expect(book).toContainEqual({
+      family: 'Body',
+      weight: 'bold',
+      style: 'italic',
+      base64: 'BI',
+    });
+  });
 });
 
 describe('singleFamilyResolver', () => {
-  const resolve = singleFamilyResolver('Body', { normal: 'R', bold: 'B' });
+  const resolve = singleFamilyResolver('Body', {
+    'normal-normal': 'R',
+    'bold-normal': 'B',
+  });
 
   it('answers its own family, per weight', () => {
     expect(resolve({ family: 'Body', weight: 'bold', style: 'normal' })).toBe(

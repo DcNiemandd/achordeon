@@ -10,11 +10,9 @@ import type { InsertRequest } from './editor-model';
  * produces the *shape* and leaves the words to the user — `[]` with the caret
  * inside, never `[C]` with a chord they did not choose.
  *
- * **No bold/italic button.** PRD-UI-SHELL.md §4 sketches `[B][I]` in this bar,
- * and CONTEXT.md lists them under the insert buttons — but Phase 2 markdown is
- * not implemented (PRD-RENDERING §4.10 defers italic), so `*bold*` would render
- * as literal asterisks today. A button that writes syntax the renderer ignores
- * teaches the user a lie. They land with markdown.
+ * **Bold and italic** (PRD-UI-SHELL.md §4's `[B][I]`) write markdown emphasis now
+ * that Phase 2 parses it and the renderer draws it in a real embedded face — no
+ * longer syntax the renderer ignores.
  */
 /**
  * Any title/subtitle marker already on the line.
@@ -96,4 +94,13 @@ export const SNIPPETS = {
    */
   sharp: { before: '#' } satisfies InsertRequest,
   flat: { before: 'b' } satisfies InsertRequest,
+
+  /**
+   * Markdown emphasis around the selection (PARSER-GRAMMAR §Emphasis). `**` wraps
+   * bold, `*` italic; with nothing selected the caret lands between the markers,
+   * ready to type. Content-only and blocked inside a bracket — the asterisks are
+   * literal in a chord and never reach the inline scan on a title line.
+   */
+  bold: { before: '**', after: '**', caretOffset: 0 } satisfies InsertRequest,
+  italic: { before: '*', after: '*', caretOffset: 0 } satisfies InsertRequest,
 };

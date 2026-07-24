@@ -555,6 +555,16 @@ export class SongEditor {
         fontStyle: 'italic',
       },
       { tag: achordeonTags.escape, color: 'var(--text-faint)' },
+      // Emphasis: the text shows the style it will render in, and the `*` markers
+      // are dimmed so they read as syntax around it.
+      { tag: achordeonTags.emphasis, color: 'var(--text-faint)' },
+      { tag: achordeonTags.italic, fontStyle: 'italic' },
+      { tag: achordeonTags.bold, fontWeight: '700' },
+      {
+        tag: achordeonTags.bolditalic,
+        fontStyle: 'italic',
+        fontWeight: '700',
+      },
     ]);
   }
 

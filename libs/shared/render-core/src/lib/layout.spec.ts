@@ -153,7 +153,7 @@ describe('layoutCore — assembly (§1, §5)', () => {
 
   it('asks the resolver for the faces the styles name', () => {
     const fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, {
-      normal: 'QUJD',
+      'normal-normal': 'QUJD',
     });
     const plan = layoutCore(
       ast({ title: 'T' }),

@@ -8,9 +8,67 @@
 // chord-only line distribution, the per-line chord row, and the base-unit
 // vertical slot heights.
 
-import type { Line, ChordAnchor } from '@achordeon/shared/domain';
+import type { Line, ChordAnchor, Span } from '@achordeon/shared/domain';
 import type { TextItem } from './render-plan';
+import type { FontSpec } from './text-measurer';
 import { toFontSpec, type LayoutContext } from './context';
+
+/** The emphasis in force at one character — the spans are non-overlapping. */
+function emphasisAt(
+  spans: Span[] | undefined,
+  index: number,
+): { bold: boolean; italic: boolean } {
+  let bold = false;
+  let italic = false;
+  if (spans) {
+    for (const span of spans) {
+      if (index >= span.start && index < span.end) {
+        if (span.bold) bold = true;
+        if (span.italic) italic = true;
+      }
+    }
+  }
+  return { bold, italic };
+}
+
+interface StyledRun {
+  start: number;
+  end: number;
+  text: string;
+  bold: boolean;
+  italic: boolean;
+}
+
+/** Split a line's text into maximal runs of one emphasis (§4.10 markdown). */
+function styledRuns(text: string, spans: Span[] | undefined): StyledRun[] {
+  const runs: StyledRun[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const { bold, italic } = emphasisAt(spans, i);
+    let j = i + 1;
+    while (j < text.length) {
+      const next = emphasisAt(spans, j);
+      if (next.bold !== bold || next.italic !== italic) break;
+      j += 1;
+    }
+    runs.push({ start: i, end: j, text: text.slice(i, j), bold, italic });
+    i = j;
+  }
+  return runs;
+}
+
+/** The base lyric font with a run's emphasis applied (a different embedded face). */
+function runFont(
+  base: FontSpec,
+  run: { bold: boolean; italic: boolean },
+): FontSpec {
+  if (!run.bold && !run.italic) return base;
+  return {
+    ...base,
+    weight: run.bold ? 'bold' : base.weight,
+    style: run.italic ? 'italic' : base.style,
+  };
+}
 
 export interface LineLayout {
   items: TextItem[];
@@ -71,25 +129,49 @@ export function layoutLine(
   const items: TextItem[] = [];
   let width = lineOrigin;
 
-  if (line.text.length > 0) {
-    items.push({
-      text: line.text,
-      x: lineOrigin,
+  // The lyric is drawn as one item per emphasis run, so a bold/italic stretch
+  // takes its own (wider) face. A plain line is one run — identical to before.
+  const runs = styledRuns(line.text, line.spans);
+  const runX: number[] = []; // left x of each run, in line space
+  let cursor = lineOrigin;
+  for (const run of runs) {
+    runX.push(cursor);
+    const item: TextItem = {
+      text: run.text,
+      x: cursor,
       y: lyricBaseline,
       role: 'lyric',
-    });
-    width = Math.max(
-      width,
-      lineOrigin + ctx.measure.measure(line.text, lyricFont).width,
-    );
+    };
+    if (run.bold) item.weight = 'bold';
+    if (run.italic) item.style = 'italic';
+    items.push(item);
+    cursor += ctx.measure.measure(run.text, runFont(lyricFont, run)).width;
   }
+  width = Math.max(width, cursor);
+
+  // The x of a character index, summing each intervening run in its own face —
+  // a bold stretch before the anchor is wider than the plain measure would say.
+  const xAt = (at: number): number => {
+    for (let r = 0; r < runs.length; r++) {
+      const run = runs[r];
+      if (at <= run.start) return runX[r];
+      if (at < run.end) {
+        return (
+          runX[r] +
+          ctx.measure.measure(
+            line.text.slice(run.start, at),
+            runFont(lyricFont, run),
+          ).width
+        );
+      }
+    }
+    return cursor; // at === text.length (or beyond) → past the last glyph
+  };
 
   for (const group of groupByIndex(line.chords, tuning.sameIndexJoiner)) {
     // Left-edge-at-anchor: the chord's left edge sits at the left edge of the
     // anchored character; `at === text.length` floats it past the last glyph.
-    const x =
-      lineOrigin +
-      ctx.measure.measure(line.text.slice(0, group.at), lyricFont).width;
+    const x = xAt(group.at);
     width = Math.max(
       width,
       x + ctx.measure.measure(group.text, chordFont).width,

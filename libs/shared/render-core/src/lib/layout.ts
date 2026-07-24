@@ -122,7 +122,7 @@ export function layoutCore(
     items,
     styles: ctx.styles,
     fonts: config.fonts
-      ? buildFontBook(ctx.styles, config.fonts)
+      ? buildFontBook(ctx.styles, config.fonts, items)
       : EMPTY_FONT_BOOK,
   };
 }

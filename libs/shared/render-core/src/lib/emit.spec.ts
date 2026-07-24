@@ -22,7 +22,9 @@ const settings: GlobalSettings = {
 const measure = createFakeMeasurer();
 const plan = (
   over: Partial<SongAst> = {},
-  fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, { normal: 'QUJD' }),
+  fonts = singleFamilyResolver(DEFAULT_TUNING.fontFamily, {
+    'normal-normal': 'QUJD',
+  }),
 ): RenderPlan =>
   layoutCore(
     { blocks: [], warnings: [], ...over },
@@ -64,6 +66,27 @@ describe('emit — SVG shell (§1, §5)', () => {
     const svg = emit(plan(song));
     const chord = svg.match(/<text[^>]*>C<\/text>/)?.[0] ?? '';
     expect(chord).toContain('fill="#aa0000"');
+  });
+
+  it('applies a markdown item’s own weight and style over the role’s', () => {
+    const svg = emit(
+      plan({
+        blocks: [
+          {
+            lines: [
+              {
+                text: 'bi',
+                chords: [],
+                spans: [{ start: 0, end: 2, bold: true, italic: true }],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const node = svg.match(/<text[^>]*>bi<\/text>/)?.[0] ?? '';
+    expect(node).toContain('font-weight="bold"');
+    expect(node).toContain('font-style="italic"');
   });
 });
 

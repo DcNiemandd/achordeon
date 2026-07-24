@@ -15,6 +15,11 @@ export interface TextItem {
   role: TextRole; // → styles[role]
   rotate?: -90; // title CCW spine only (§4.5); absent = upright
   sizeScale?: number; // per-item multiple of styles[role].sizePx (bridge, §4.9); absent = 1
+  // Per-item emphasis overrides for markdown runs (§4.10): they replace the
+  // role's own weight/style when present, and pick a different embedded face of
+  // the SAME family. Absent = the role's style.
+  weight?: 'normal' | 'bold';
+  style?: 'normal' | 'italic';
 }
 
 export interface TextStyle {

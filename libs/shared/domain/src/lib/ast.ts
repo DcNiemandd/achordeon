@@ -13,12 +13,27 @@ export interface ChordAnchor {
 }
 
 /**
+ * An emphasis run over a line's `text`, `[start, end)` in character indices —
+ * the Phase-2 markdown overlay (`*i*`, `**b**`, `***bi***`). Like chords, the
+ * markers are consumed from `text`; a span only ever carries the flags that are
+ * on, so a plain stretch of text has no span at all.
+ */
+export interface Span {
+  start: number; // inclusive index into text
+  end: number; // exclusive
+  bold?: boolean;
+  italic?: boolean;
+}
+
+/**
  * One rendered line: a clean `text` string with chords overlaid by index.
- * Brackets are removed and escapes resolved in `text`.
+ * Brackets are removed and escapes resolved in `text`. `spans` overlay emphasis
+ * by index the same way — absent when the line has none.
  */
 export interface Line {
   text: string; // final rendered characters
   chords: ChordAnchor[]; // overlay by index; same-index groups allowed, kept in order
+  spans?: Span[]; // emphasis overlay by index; absent when the line is plain
 }
 
 /**
