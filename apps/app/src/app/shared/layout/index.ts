@@ -11,7 +11,12 @@ export { ActionBar } from './action-bar';
 export { AppUpdate } from './app-update';
 export type { UpdatePrompt } from './app-update';
 export { UpdateNotice } from './update-notice';
-export { Localization } from './localization';
+export {
+  LANGUAGES,
+  Localization,
+  SOURCE_LANGUAGE,
+  chosenLanguage,
+} from './localization';
 export type { Language } from './localization';
 export { TierGuard } from './tier-guard';
 export type { PremiumFeature } from './tier-guard';

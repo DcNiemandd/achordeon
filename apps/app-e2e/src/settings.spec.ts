@@ -238,9 +238,11 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
 
 // --- Language (Epic 11 ▸ i18n) -----------------------------------------------
 //
-// Each locale is its own build under its own sub-path, so the switch is a
-// navigation. What matters is that it goes to the right place, keeps the route,
-// and sticks — the translated strings themselves are the catalog's business.
+// One bundle, translations loaded at boot (PRD-INFRASTRUCTURE.md §11), so a switch
+// is a reload of the same URL — and the proof that it worked is that a translated
+// string comes back in Czech. `settings.language` is translated; the rest of the
+// catalog is still English, and falls back to it, which is the point of shipping a
+// language before it is finished.
 test.describe('language', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -248,9 +250,7 @@ test.describe('language', () => {
     await expect(page.getByTestId('settings-panel')).toBeVisible();
   });
 
-  test('marks the language the running build was made for', async ({
-    page,
-  }) => {
+  test('marks the language the app booted in', async ({ page }) => {
     await expect(page.getByTestId('language-en')).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -259,6 +259,7 @@ test.describe('language', () => {
       'aria-pressed',
       'false',
     );
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   });
 
   test('choosing the language already running spends no reload', async ({
@@ -273,17 +274,29 @@ test.describe('language', () => {
     ).resolves.toBe('en');
   });
 
-  test('switching goes to the locale sub-path and keeps the route', async ({
+  test('switching reloads the same URL into the other language', async ({
     page,
   }) => {
-    // The dev server only builds one locale, so the Czech sub-path 404s here —
-    // the assertion is about the URL that was requested, which is the part this
-    // app owns. (`--configuration=cs` serves the other side of it.)
+    const before = page.url();
     await page.getByTestId('language-cs').click();
 
-    await expect(page).toHaveURL(/\/achordeon\/app\/cs\/settings/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+    expect(page.url()).toBe(before);
     await expect(
       page.evaluate(() => localStorage.getItem('achordeon.language')),
     ).resolves.toBe('cs');
+
+    // The translated string arrived from locale/cs.json before the first render.
+    await expect(page.getByTestId('language-heading')).toHaveText('Jazyk');
+    // An untranslated one falls back to English rather than rendering empty.
+    await expect(page.getByTestId('theme-system')).toHaveText('System');
+  });
+
+  test('the choice survives a fresh load', async ({ page }) => {
+    await page.getByTestId('language-cs').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+
+    await page.goto('songs');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
   });
 });

@@ -73,50 +73,11 @@
         }
       })();
     </script>
-    <script>
-      // Locale routing (PRD-INFRASTRUCTURE.md §11). Each locale is its own build
-      // under its own sub-path, so "which language" is decided *before* Angular
-      // exists — here, by redirecting.
-      //
-      // Two inputs, in order:
-      //   1. `achordeon.language` — the choice made in Settings. It wins always,
-      //      so a bookmark to the English URL still opens in Czech. Written by
-      //      Localization.switchTo(), which then lands on the sub-path below.
-      //   2. `navigator.language` — only on the very first visit (the FLAG), so a
-      //      user who deliberately navigated to /cs/ is never dragged back.
-      (function () {
-        try {
-          var FLAG = 'achordeon-app-locale-init';
-          var SUPPORTED = __ACHORDEON_LOCALES__;
-          var DEFAULT = __ACHORDEON_DEFAULT_LOCALE__;
-          var BASE = __ACHORDEON_BASE_HREF__;
-          var path = location.pathname;
-          if (path.indexOf(BASE) !== 0) return;
-          var seg = path.slice(BASE.length).split('/')[0];
-          var current = SUPPORTED.indexOf(seg) >= 0 ? seg : DEFAULT;
-          var target = null;
-          var chosen = localStorage.getItem('achordeon.language');
-          if (SUPPORTED.indexOf(chosen) >= 0) {
-            target = chosen;
-          } else if (!localStorage.getItem(FLAG)) {
-            localStorage.setItem(FLAG, '1');
-            var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
-            if (SUPPORTED.indexOf(nav) >= 0) target = nav;
-          }
-          if (target === null || target === current) return;
-          var tail = path.slice(
-            BASE.length + (current === DEFAULT ? 0 : current.length + 1),
-          );
-          var dest =
-            BASE +
-            (target === DEFAULT ? '' : target + '/') +
-            tail +
-            location.search +
-            location.hash;
-          location.replace(dest);
-        } catch (e) {}
-      })();
-    </script>
+    <!-- No locale script here, deliberately: the language is chosen in `main.ts`
+         (PRD-INFRASTRUCTURE.md §11 — one bundle, translations loaded at runtime),
+         so there is nothing to decide before the app loads and no sub-path to
+         redirect to. `lang` above is the source language; `main.ts` restamps it
+         when it boots into another one. -->
   </head>
   <body>
     <app-root></app-root>

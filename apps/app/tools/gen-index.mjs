@@ -1,16 +1,11 @@
 // Generates `src/index.html` from `src/index.html.template`.
 //
-// Two jobs, both needing something only the build config knows:
-//
-//   - **locale routing** — the sub-path list, the default locale and the deploy
-//     base href, read straight out of `project.json`, so the pre-boot redirect
-//     script can never disagree with the build that produced it;
-//   - **the CSP** (PRD-INFRASTRUCTURE.md §7) — GitHub Pages cannot send response
-//     headers, so the policy rides in a `<meta http-equiv>`, and a meta policy has
-//     no nonce mechanism. Each inline script is therefore allowed by the **sha256
-//     of its own body**, computed here from the finished script text. Edit a
-//     script in the template and its hash follows; there is nothing to keep in
-//     step by hand, which is the only way a hash-based policy stays true.
+// One job: **the CSP** (PRD-INFRASTRUCTURE.md §7). GitHub Pages cannot send
+// response headers, so the policy rides in a `<meta http-equiv>`, and a meta
+// policy has no nonce mechanism. Each inline script is therefore allowed by the
+// **sha256 of its own body**, computed here from the finished script text. Edit a
+// script in the template and its hash follows; there is nothing to keep in step by
+// hand, which is the only way a hash-based policy stays true.
 //
 // Pass `--dev` for the two allowances the dev-server needs (its websocket, and
 // `unsafe-eval` for the reload client). The policy is otherwise identical, so a
@@ -25,30 +20,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(here, '..');
 const isDev = process.argv.includes('--dev');
 
-const projectJson = JSON.parse(
-  readFileSync(resolve(projectRoot, 'project.json'), 'utf8'),
-);
-
-const i18n = projectJson.i18n ?? {};
-const defaultLocale = i18n.sourceLocale?.code ?? 'en';
-const locales = [defaultLocale, ...Object.keys(i18n.locales ?? {})];
-const baseHref = projectJson.targets?.build?.options?.baseHref ?? '/';
-
 const template = readFileSync(
   resolve(projectRoot, 'src/index.html.template'),
   'utf8',
 );
 
-// Placeholders first: the locale script's body ends up in the CSP hash, so it has
-// to be its final text before anything is hashed.
-const filled = template
-  .replaceAll('__ACHORDEON_LOCALES__', JSON.stringify(locales))
-  .replaceAll('__ACHORDEON_DEFAULT_LOCALE__', JSON.stringify(defaultLocale))
-  .replaceAll('__ACHORDEON_BASE_HREF__', JSON.stringify(baseHref));
-
 writeFileSync(
   resolve(projectRoot, 'src/index.html'),
-  filled.replace('__ACHORDEON_CSP__', cspMeta(filled)),
+  template.replace('__ACHORDEON_CSP__', cspMeta(template)),
 );
 
 // --- CSP ---------------------------------------------------------------------

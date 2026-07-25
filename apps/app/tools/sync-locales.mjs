@@ -1,117 +1,120 @@
-// Syncs each translation catalog against the extracted source catalog.
+// Merges the freshly extracted source catalog into each translation catalog.
 //
-// `ng extract-i18n` writes `messages.xlf` (the source, EN) and nothing else — it
+// `ng extract-i18n` writes `messages.json` (the source, EN) and nothing else — it
 // has no notion of merging into an existing translation. So after every extraction
-// the Czech catalog is stale in three ways at once: new messages are absent,
-// deleted ones linger, and changed source text sits under an old translation.
+// each catalog is stale in three ways at once: new messages are absent, deleted
+// ones linger, and a message whose English text changed still carries the old
+// translation.
 //
 // This is that merge, and only that merge:
 //
-//   - a unit in the source but not in the catalog is **added, with no `<target>`**
-//     (an empty target would be indistinguishable from a real translation, and the
-//     build's "No translation found" warning is the only thing that tells the
-//     truth about what is left to do);
-//   - a unit whose `<source>` changed keeps its `<target>` but is flagged
-//     `state="needs-translation"`, because a translation of text that has since
-//     been reworded is a guess;
-//   - a unit no longer in the source is dropped;
-//   - everything else — the wording — is left exactly as the translator wrote it.
+//   - a message in the source but not in the catalog is **added as `null`** — not
+//     as a copy of the English, which would be indistinguishable from a real
+//     translation and would silently ship as "translated";
+//   - a message whose English changed keeps its translation but is listed under
+//     `stale`, because a translation of text that has since been reworded is a
+//     guess and only a human can say whether it still holds;
+//   - a message no longer in the source is dropped;
+//   - the wording itself is never touched.
 //
-// Run: `node tools/sync-locales.mjs` from apps/app (or `nx run app:sync-locales`).
+// The catalogs are discovered, not configured: every `src/locale/*.json` except
+// `messages.json` is one. Adding a language = adding `xx.json` here and `'xx'` to
+// LANGUAGES in `app/shared/layout/localization.ts` — and `check-locales.mjs` fails
+// the build if those two ever disagree.
+//
+// Run: `node tools/sync-locales.mjs` (or `nx run app:sync-locales`, which extracts
+// first).
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = resolve(here, '..');
+const LOCALE_DIR = resolve(here, '../src/locale');
+
+/** The extracted source catalog. Every other `*.json` beside it is a translation. */
+const SOURCE_FILE = 'messages.json';
 
 function main() {
-  const projectJson = JSON.parse(
-    readFileSync(resolve(projectRoot, 'project.json'), 'utf8'),
-  );
-  const source = readFileSync(
-    resolve(projectRoot, 'src/locale/messages.xlf'),
-    'utf8',
-  );
-  const units = parseUnits(source);
+  const source = readCatalog(SOURCE_FILE).translations;
 
-  for (const [code, locale] of Object.entries(
-    projectJson.i18n?.locales ?? {},
-  )) {
-    const path = resolve(projectRoot, '../..', locale.translation);
-    const existing = new Map(
-      Object.entries(parseUnits(readFileSync(path, 'utf8'))),
-    );
+  for (const file of catalogFiles()) {
+    const language = file.replace(/\.json$/, '');
+    const catalog = readCatalog(file);
+    const previous = catalog.translations ?? {};
+    // What the English said when each translation was written. Without it there is
+    // no way to tell "translated" from "translated against text that has since
+    // changed" — the difference between a catalog you can trust and one you can
+    // only hope about. It lives in a sidecar because it is **authoring data**: the
+    // catalog itself is fetched by every user of that language, and shipping the
+    // English twice to a Czech reader is 24 kB of nothing.
+    const against = readSidecar(language);
 
-    let added = 0;
-    let stale = 0;
-    const merged = Object.entries(units).map(([id, unit]) => {
-      const previous = existing.get(id);
-      if (previous === undefined) {
-        added++;
-        return withoutTarget(unit.xml);
+    const translations = {};
+    const sources = {};
+    const stale = [];
+    let untranslated = 0;
+
+    for (const [id, english] of Object.entries(source)) {
+      const translated = previous[id] ?? null;
+      translations[id] = translated;
+      if (translated === null) {
+        untranslated++;
+        continue;
       }
-      const target = targetOf(previous.xml);
-      if (target === null) return withoutTarget(unit.xml);
-      if (previous.source !== unit.source) stale++;
-      // Source line numbers move constantly, so the *source* unit is the skeleton
-      // and only the target is carried over.
-      return withTarget(unit.xml, target, previous.source !== unit.source);
-    });
+      sources[id] = english;
+      if (against[id] !== undefined && against[id] !== english) stale.push(id);
+    }
 
-    writeFileSync(path, wrap(source, code, merged));
-    const dropped = [...existing.keys()].filter((id) => !(id in units)).length;
+    const dropped = Object.keys(previous).filter(
+      (id) => !(id in source),
+    ).length;
+
+    write(file, {
+      locale: catalog.locale,
+      ...(catalog.draft === undefined ? {} : { draft: catalog.draft }),
+      ...(stale.length > 0 ? { stale } : {}),
+      translations,
+    });
+    write(`${language}.sources.json`, sources);
+
     console.log(
-      `${locale.translation}: ${merged.length} units (+${added} new, ${stale} need re-translation, -${dropped} removed)`,
+      `${file}: ${Object.keys(source).length} messages ` +
+        `(${untranslated} untranslated, ${stale.length} to re-check, -${dropped} removed)`,
     );
   }
 }
 
-// --- xlf, the three shapes we need -------------------------------------------
-
-/** `{ [id]: { xml, source } }` for every `<trans-unit>` in a catalog. */
-function parseUnits(xml) {
-  const units = {};
-  for (const [unit] of xml.matchAll(/<trans-unit\b[\s\S]*?<\/trans-unit>/g)) {
-    const id = unit.match(/<trans-unit id="([^"]*)"/)?.[1];
-    if (id === undefined) continue;
-    units[id] = { xml: unit, source: sourceOf(unit) ?? '' };
-  }
-  return units;
-}
-
-const sourceOf = (unit) => unit.match(/<source>([\s\S]*?)<\/source>/)?.[1];
-const targetOf = (unit) =>
-  unit.match(/<target[^>]*>([\s\S]*?)<\/target>/)?.[1] ?? null;
-
-/** The source unit, untranslated — the extractor's own output, unchanged. */
-function withoutTarget(unit) {
-  return unit.replace(/\s*<target[^>]*>[\s\S]*?<\/target>/, '');
-}
-
-/** The source unit carrying a translation, right after its `<source>`. */
-function withTarget(unit, target, needsWork) {
-  const state = needsWork ? ' state="needs-translation"' : '';
-  return withoutTarget(unit).replace(
-    /(<source>[\s\S]*?<\/source>)/,
-    `$1\n        <target${state}>${target}</target>`,
+function write(name, data) {
+  writeFileSync(
+    resolve(LOCALE_DIR, name),
+    `${JSON.stringify(data, null, 2)}\n`,
   );
 }
 
-/** The source file's own header and footer, retargeted at `code`. */
-function wrap(sourceXml, code, units) {
-  const [head] = sourceXml.split('<trans-unit');
-  return `${head
-    .replace(/ target-language="[^"]*"/, '')
-    .replace(
-      /(source-language="[^"]*")/,
-      `$1 target-language="${code}"`,
-    )}${units.join('\n      ')}
-    </body>
-  </file>
-</xliff>
-`;
+/** The English each existing translation was written against, or `{}` the first
+ * time round — a catalog with no sidecar yet is simply taken at its word. */
+function readSidecar(language) {
+  try {
+    return readCatalog(`${language}.sources.json`);
+  } catch {
+    return {};
+  }
+}
+
+function catalogFiles() {
+  return readdirSync(LOCALE_DIR)
+    .filter(
+      (name) =>
+        name.endsWith('.json') &&
+        name !== SOURCE_FILE &&
+        !name.endsWith('.sources.json'),
+    )
+    .sort();
+}
+
+function readCatalog(name) {
+  return JSON.parse(readFileSync(resolve(LOCALE_DIR, name), 'utf8'));
 }
 
 main();

@@ -13,6 +13,7 @@
           "/favicon.ico",
           "/icons/**",
           "/media/**",
+          "/locale/*.json",
           "/*.css",
           "/*.js"
         ]

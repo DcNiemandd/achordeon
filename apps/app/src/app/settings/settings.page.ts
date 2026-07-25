@@ -388,13 +388,16 @@ const MIN_PASSWORD = 8;
             </div>
           </div>
 
-          <!-- Language (Epic 11 ▸ i18n). Each locale is its own build under its
-               own sub-path, so choosing one navigates: the page reloads into that
-               build, on the same route. The hint says so, because a control that
-               reloads the app without warning is a control that feels broken. -->
+          <!-- Language (Epic 11 ▸ i18n). At runtime a message is translated once,
+               on first encounter, so a language change cannot be re-rendered into a
+               running app: choosing one reloads, on the same URL. The hint says so,
+               because a control that reloads the app without warning is a control
+               that feels broken. -->
           <div class="setting">
             <div class="head">
-              <span class="label">{{ languageHeading }}</span>
+              <span class="label" data-testid="language-heading">{{
+                languageHeading
+              }}</span>
               <button
                 appButton
                 type="button"
