@@ -1072,9 +1072,8 @@ the security posture.
 - [x] Update strategy: gentle dismissible "update available" affordance (never
       silent reload mid-performance); forced refuse-and-update path for newer
       `schemaVersion`; recovery on unrecoverable SW.
-- [x] i18n: `@angular/localize`, EN + CS; language switch persists in Settings +
-      reloads. **Compile-time per-locale builds, not runtime `loadTranslations`** —
-      see below.
+- [x] i18n: `@angular/localize` runtime mode, EN + CS, one bundle; language switch
+      persists in Settings + reloads.
 - [x] Security: CSP via meta + SRI on third-party scripts; enforce no-`innerHTML`
       for rendered content; shortest-lived sync tokens.
 
@@ -1082,17 +1081,34 @@ the security posture.
 
 Corrections and choices the build forced, recorded so they aren't re-litigated:
 
-- **i18n is compile-time per-locale, not runtime `loadTranslations`.** PRD §11
-  decided runtime mode to avoid a per-locale GitHub Pages build; the app was
-  already built the other way (`project.json` `i18n.locales`, `cs` under its own
-  sub-path, `--localize`), and that way is kept. It costs one extra build output
-  and buys a bundle with no translation payload, no boot-time fetch, and messages
-  that cannot appear untranslated for a frame. The **URL is the language**, which is
-  why `Localization` (app/shared/layout) switches language by _navigating_: it
-  carries the current route across, writes `achordeon.language`, and the pre-boot
-  script in `index.html.template` honours that key on every load — so a bookmark to
-  the English URL still opens in Czech. `SettingsStore.language` is seeded from
-  `LOCALE_ID`, i.e. from the build that is actually running.
+- **i18n went back to §11's runtime mode, and the numbers for both are on record.**
+  The app had been built the other way (per-locale `--localize`, `cs` under its own
+  sub-path), which is where the measurements come from: two locales cost 8.05 s cold
+  against 5.80 s for one — the compile happens once and only the inlining repeats,
+  so the "per-locale GitHub Pages build" §11 was avoiding was never the expensive
+  part. What it does cost is **8.3 MB of artifact against 4.4 MB**, and — new
+  information, because Epic 11 is what added the service worker — **a second SW
+  scope**, so switching language re-downloads a 2.9 MB shell instead of fetching a
+  15 kB catalog. Runtime mode's own price is now measured too: the initial bundle
+  goes **678 kB → 742 kB** raw (180 → 199 kB transferred), because every message id
+  and the `$localize` call survive into the bundle instead of being inlined away.
+  One cache and 4 MB less deploy for 19 kB on every load: taken.
+  - **`main.ts` awaits the catalog before `bootstrapApplication`.** A message is
+    translated on _first encounter_, so anything that renders before the catalog
+    lands stays English permanently. English itself fetches nothing — it is the
+    source text already in the bundle.
+  - **A failed catalog fetch is not fatal.** An English app is a working app;
+    refusing to boot over a 15 kB file would turn cosmetic into broken.
+  - **`null` means untranslated**, and those keys are dropped before
+    `loadTranslations` — so an unfinished language falls back to English per message
+    and is safe to ship. `"draft": true` in a catalog is what keeps the gate below
+    off its back until it is finished.
+  - **`LOCALE_ID` and `<html lang>` are set by hand now** (the per-locale build used
+    to), and Czech locale data is a lazy import in the same branch as the catalog:
+    `LOCALE_ID: 'cs'` with no registered data makes the first `DatePipe` throw, and
+    it would throw for Czech users only.
+  - The pre-boot locale redirect script is **gone** — one URL, one bundle — and with
+    it the locale argument to `tools/spa-github-404.mjs`.
 - **`tierGuard` is a control gate, not a route guard.** There is no Premium-only
   _place_: joining an Audience is free (only hosting is Premium), and automatic sync
   is a toggle inside a section everyone uses. So `TierGuard` holds the feature
@@ -1143,12 +1159,26 @@ false`). Angular ships the stylesheet as `media="print"` plus an inline
 - **`Tooltip` treats empty text as "no tooltip".** A directive cannot be applied
   conditionally, and `<app-premium>` needs exactly that — so an empty string is now
   the off switch instead of an empty panel.
+- **`i18nMissingTranslation: "error"` does not exist in runtime mode**, so it was
+  rebuilt as `tools/check-locales.mjs`. That option belongs to compile-time
+  _inlining_ — the CLI can only complain while it is substituting a translation into
+  a bundle. At runtime a missing key silently falls back to English, which looks like
+  a working app and reaches production unnoticed. The gate fails the build on four
+  things: a `$localize`/`i18n=` id the source catalog has never seen (found by
+  scanning the code, not by re-extracting — a full build is too expensive to run as a
+  precondition of one), an untranslated message, a translation whose English has
+  since changed, and a mismatch between the catalogs on disk and `LANGUAGES` in the
+  code. Wired to `build`, **not** to `serve`: a target's `dependsOn` does not reach
+  the dev-server's in-process build, so it is strict where it ships and silent where
+  you work.
 - **`ng extract-i18n` cannot merge**, so `tools/sync-locales.mjs` does: it rebuilds
-  each translation catalog from the freshly extracted source, keeps the wording,
-  flags a unit whose source text changed as `needs-translation`, drops units that no
-  longer exist, and leaves new ones with **no `<target>`** so the build's "No
-  translation found" warning stays honest. `nx run app:sync-locales` runs extraction
-  and the merge together.
+  each catalog from the freshly extracted source, keeps the wording, drops messages
+  that no longer exist, and adds new ones as **`null`** rather than as a copy of the
+  English — a copy is indistinguishable from a real translation and would ship as
+  one. Staleness needs the English each translation was written against, which lives
+  in a `xx.sources.json` **sidecar**: it is authoring data, and shipping the English
+  a second time to a Czech reader is 24 kB of nothing. `nx run app:sync-locales` runs
+  extraction and the merge together.
 - **The app icons and favicon are generated** by `tools/gen-app-icons.mjs` from one
   description — the SVGs, the PNG install icons, the maskable cut and the `.ico`
   (16/32/48, with a bolder cut of the mark, because six thin rows are a smudge at
