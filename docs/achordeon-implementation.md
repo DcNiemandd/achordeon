@@ -1060,22 +1060,99 @@ the security posture.
 
 ### Subtasks
 
-- [ ] Router config: lazy feature routes per module + default redirect. (The nav
+- [x] Router config: lazy feature routes per module + default redirect. (The nav
       shell itself — rail, mobile bar, split, theme — is **Epic 13**.)
-- [ ] `tierGuard` as highlight+tooltip (not a hard block) during testing. (The
+- [x] `tierGuard` as highlight+tooltip (not a hard block) during testing. (The
       `<app-premium>` marker itself is **Epic 13** — it's a tooltip consumer; this
       subtask is only the guard + deciding which controls wear it.)
-- [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
+- [x] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
       the app shell; Audience + sync stay network paths. **Fonts: precache the
       body face only** (`fonts/RobotoMono-*.ttf`) — Epic 7 already fetches the
       three title faces on first use, so the config only has to not undo that.
-- [ ] Update strategy: gentle dismissible "update available" affordance (never
+- [x] Update strategy: gentle dismissible "update available" affordance (never
       silent reload mid-performance); forced refuse-and-update path for newer
       `schemaVersion`; recovery on unrecoverable SW.
-- [ ] i18n: `@angular/localize` runtime mode, EN + CS, one bundle; language switch
-      persists in Settings + reloads.
-- [ ] Security: CSP via meta + SRI on third-party scripts; enforce no-`innerHTML`
+- [x] i18n: `@angular/localize`, EN + CS; language switch persists in Settings +
+      reloads. **Compile-time per-locale builds, not runtime `loadTranslations`** —
+      see below.
+- [x] Security: CSP via meta + SRI on third-party scripts; enforce no-`innerHTML`
       for rendered content; shortest-lived sync tokens.
+
+### Landed — what implementation changed
+
+Corrections and choices the build forced, recorded so they aren't re-litigated:
+
+- **i18n is compile-time per-locale, not runtime `loadTranslations`.** PRD §11
+  decided runtime mode to avoid a per-locale GitHub Pages build; the app was
+  already built the other way (`project.json` `i18n.locales`, `cs` under its own
+  sub-path, `--localize`), and that way is kept. It costs one extra build output
+  and buys a bundle with no translation payload, no boot-time fetch, and messages
+  that cannot appear untranslated for a frame. The **URL is the language**, which is
+  why `Localization` (app/shared/layout) switches language by _navigating_: it
+  carries the current route across, writes `achordeon.language`, and the pre-boot
+  script in `index.html.template` honours that key on every load — so a bookmark to
+  the English URL still opens in Czech. `SettingsStore.language` is seeded from
+  `LOCALE_ID`, i.e. from the build that is actually running.
+- **`tierGuard` is a control gate, not a route guard.** There is no Premium-only
+  _place_: joining an Audience is free (only hosting is Premium), and automatic sync
+  is a toggle inside a section everyone uses. So `TierGuard` holds the feature
+  registry, the tier accessor and the one `IS_TESTING` switch, and the two Premium
+  controls read it — `app.routes.ts` records why the route table has no guard.
+  `<app-premium>` gained an `isMarked` input as a result: a Premium user is no
+  longer shown their own features as upsells.
+- **`bootstrap()` (the ADR-0007 boot gateway) was never wired.** It existed from
+  Epic 1 and nothing called it, so no local migration ran and a `refuse` could not
+  reach the UI — while Epic 11 owns the forced-update path that a refusal depends
+  on. Now an awaited app initializer (`provideAchordeonBoot`) runs it before any
+  store reads a row and publishes the verdict on `BootGate`.
+- **The Drive pull did not migrate either.** ADR-0007 says all four ingest paths
+  funnel through `migrate()`; Drive returned its JSON straight to the per-row LWW
+  merge, which would have fused rows of a shape this build cannot read and written
+  them back stripped. `SyncService.ingest()` is now that seam for both cloud paths,
+  and a refusal latches `BootGate` → the blocking prompt. Import does the same.
+- **`AppUpdate` avoids `SwUpdate`'s RxJS surface.** `checkForUpdate()` and
+  `activateUpdate()` are promises, which covers the gentle path and the forced one;
+  only `unrecoverable` has no promise form, so it gets a single `subscribe` with no
+  operators — the same concession the lobby makes for `channel.subscribe`.
+- **The CSP is generated, not hand-written.** A meta-tag policy has no nonce, so
+  each inline script in `index.html.template` is allowed by the **sha256 of its own
+  body**, computed by `tools/gen-index.mjs` from the finished text. A `--dev` flag
+  adds the dev-server's websocket and `unsafe-eval`; `gen-index-dev` is what
+  `serve` depends on. The same script is the SRI guard: a `<script src>` pointing
+  off-origin without `integrity` + `crossorigin` fails the build.
+- **Critical-CSS inlining had to be switched off** (`optimization.styles.inlineCritical:
+false`). Angular ships the stylesheet as `media="print"` plus an inline
+  `onload="this.media='all'"` — an inline event handler, which the CSP blocks, and
+  the page would then paint with only the inlined subset forever. The whole sheet is
+  ~8 kB, so a plain blocking link is cheaper than an exception in the policy.
+- **The Supabase session is persisted without its Google tokens.** `persistSession`
+  writes the whole session object, `provider_token` and `provider_refresh_token`
+  included — which is exactly what §7 says must never sit in the browser, and the
+  opposite of what `AuthService.providerToken()` claimed ("gone after any reload").
+  A storage adapter in `supabase-client.ts` strips both on write; the live signal
+  still has the token for the page that minted it, which is where Drive uses it.
+- **Prefetching the app shell means prefetching every chunk.** `/*.js` in
+  `ngsw-config.json` covers the lazy chunks too (editor, jsPDF, fflate), because
+  "works offline" has to include opening the editor and exporting a PDF offline —
+  not just booting. The title faces stay `lazy`/`lazy` so Epic 7's fetch-on-first-use
+  is untouched, and Audience + sync appear in no asset or data group at all.
+- **The theme did not survive a reload.** `ThemeApplier`'s `localStorage` cache was
+  write-only: the pre-paint script stamped `dark`, then the store came up at its
+  `'system'` default and the first effect _removed_ the attribute. The root shell
+  now seeds `SettingsStore` from `ThemeApplier.cached()`.
+- **`Tooltip` treats empty text as "no tooltip".** A directive cannot be applied
+  conditionally, and `<app-premium>` needs exactly that — so an empty string is now
+  the off switch instead of an empty panel.
+- **`ng extract-i18n` cannot merge**, so `tools/sync-locales.mjs` does: it rebuilds
+  each translation catalog from the freshly extracted source, keeps the wording,
+  flags a unit whose source text changed as `needs-translation`, drops units that no
+  longer exist, and leaves new ones with **no `<target>`** so the build's "No
+  translation found" warning stays honest. `nx run app:sync-locales` runs extraction
+  and the merge together.
+- **The app icons and favicon are generated** by `tools/gen-app-icons.mjs` from one
+  description — the SVGs, the PNG install icons, the maskable cut and the `.ico`
+  (16/32/48, with a bolder cut of the mark, because six thin rows are a smudge at
+  16px). The mark is a **placeholder**, not a designed logo.
 
 ---
 
@@ -1097,7 +1174,9 @@ cascade), plus the manual export/import entry points.
       (drives the Google link if absent).
 - [ ] Sync controls: Drive upload/download buttons, premium auto-sync toggle,
       manual export/import entry points.
-- [ ] Application: theme (system/light/dark), language (EN/CS).
+- [x] Application: theme (system/light/dark), language (EN/CS). _Landed with Epic
+      11 — the language control is the switch that owns the locale sub-paths, so it
+      shipped with the i18n it drives._
 - [ ] Rendering: GUI for the **global** render defaults (the registry's Global
       scope) — mount `<app-settings-panel [scope]="'global'">` from **Epic 13**; the
       panel is built once and reused at Song/Songbook scope. Don't rebuild it here.
