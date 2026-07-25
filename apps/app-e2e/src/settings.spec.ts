@@ -235,3 +235,55 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('restore-error-dialog')).toBeVisible();
   });
 });
+
+// --- Language (Epic 11 ▸ i18n) -----------------------------------------------
+//
+// Each locale is its own build under its own sub-path, so the switch is a
+// navigation. What matters is that it goes to the right place, keeps the route,
+// and sticks — the translated strings themselves are the catalog's business.
+test.describe('language', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('settings');
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+  });
+
+  test('marks the language the running build was made for', async ({
+    page,
+  }) => {
+    await expect(page.getByTestId('language-en')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.getByTestId('language-cs')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  test('choosing the language already running spends no reload', async ({
+    page,
+  }) => {
+    await page.getByTestId('language-en').click();
+
+    // Still here, still on settings — and the choice is now explicit.
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+    await expect(
+      page.evaluate(() => localStorage.getItem('achordeon.language')),
+    ).resolves.toBe('en');
+  });
+
+  test('switching goes to the locale sub-path and keeps the route', async ({
+    page,
+  }) => {
+    // The dev server only builds one locale, so the Czech sub-path 404s here —
+    // the assertion is about the URL that was requested, which is the part this
+    // app owns. (`--configuration=cs` serves the other side of it.)
+    await page.getByTestId('language-cs').click();
+
+    await expect(page).toHaveURL(/\/achordeon\/app\/cs\/settings/);
+    await expect(
+      page.evaluate(() => localStorage.getItem('achordeon.language')),
+    ).resolves.toBe('cs');
+  });
+});

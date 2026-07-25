@@ -12,6 +12,16 @@ import { Route } from '@angular/router';
  * The full route table (`/songs/:id/edit`, `/songbooks/:id`,
  * `/stage/:songbookId`, `/audience/:pin`) lands with the features that own it;
  * Epic 13 wires only the module roots the frame needs.
+ *
+ * **No `tierGuard` here, deliberately** (PRD-INFRASTRUCTURE.md §10). Tier gating
+ * in this app is per-**control**, not per-place: hosting a lobby is Premium but
+ * *joining* one is free, so `/audience/*` cannot be gated; automatic sync is
+ * Premium but the Sync section it lives in is not. There is no Premium-only route
+ * to keep anyone out of, and a guard on a route nobody is excluded from would be
+ * a comment pretending to be code. The gate itself lives in `TierGuard`
+ * (`app/shared/layout`), which the two Premium controls read — and whose
+ * `isAllowed` is the predicate a route guard would call the day a paid-only
+ * *place* exists.
  */
 export const appRoutes: Route[] = [
   { path: '', pathMatch: 'full', redirectTo: 'songs' },

@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <title>app</title>
     <base href="/" />
+    <!-- Content Security Policy, generated. GitHub Pages cannot set response
+         headers, so the policy has to ride in a meta tag (PRD-INFRASTRUCTURE.md
+         §7) — and because it does, the inline scripts below need their sha256 in
+         `script-src`. `tools/gen-index.mjs` hashes whatever is in this file and
+         writes the finished policy here, so editing a script below can never
+         silently break it. -->
+    __ACHORDEON_CSP__
     <!-- interactive-widget=resizes-content: when the on-screen keyboard opens,
          shrink the layout above it instead of letting it overlay content. That
          is what keeps the editor and the Source/Render switcher usable with the
@@ -13,7 +20,20 @@
       name="viewport"
       content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
     />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!-- Both are generated from one description by tools/gen-app-icons.mjs. The
+         .ico carries the 16/32/48 cuts for the tab strip; the SVG is what a
+         browser that prefers vector will take instead. -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+    <!-- The PWA half of "install the app and use it offline" (Epic 11). The
+         manifest is what makes the app installable; the service worker (wired in
+         app.config.ts) is what makes it run offline. Relative URLs so one
+         manifest serves every locale sub-path — `./` resolves to the sub-path the
+         manifest itself was fetched from. -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#c13515" />
+    <!-- iOS ignores the manifest icons for "Add to Home Screen". -->
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <script>
       // Pre-paint theme stamp (PRD-UI-SHELL.md §6). Angular boots after first
       // paint, so without this a dark-mode user gets a white flash. Mirrors
@@ -54,11 +74,19 @@
       })();
     </script>
     <script>
+      // Locale routing (PRD-INFRASTRUCTURE.md §11). Each locale is its own build
+      // under its own sub-path, so "which language" is decided *before* Angular
+      // exists — here, by redirecting.
+      //
+      // Two inputs, in order:
+      //   1. `achordeon.language` — the choice made in Settings. It wins always,
+      //      so a bookmark to the English URL still opens in Czech. Written by
+      //      Localization.switchTo(), which then lands on the sub-path below.
+      //   2. `navigator.language` — only on the very first visit (the FLAG), so a
+      //      user who deliberately navigated to /cs/ is never dragged back.
       (function () {
         try {
           var FLAG = 'achordeon-app-locale-init';
-          if (localStorage.getItem(FLAG)) return;
-          localStorage.setItem(FLAG, '1');
           var SUPPORTED = __ACHORDEON_LOCALES__;
           var DEFAULT = __ACHORDEON_DEFAULT_LOCALE__;
           var BASE = __ACHORDEON_BASE_HREF__;
@@ -66,11 +94,25 @@
           if (path.indexOf(BASE) !== 0) return;
           var seg = path.slice(BASE.length).split('/')[0];
           var current = SUPPORTED.indexOf(seg) >= 0 ? seg : DEFAULT;
-          var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
-          var target = SUPPORTED.indexOf(nav) >= 0 ? nav : DEFAULT;
-          if (target === current) return;
-          var tail = path.slice(BASE.length + (current === DEFAULT ? 0 : current.length + 1));
-          var dest = BASE + (target === DEFAULT ? '' : target + '/') + tail + location.search + location.hash;
+          var target = null;
+          var chosen = localStorage.getItem('achordeon.language');
+          if (SUPPORTED.indexOf(chosen) >= 0) {
+            target = chosen;
+          } else if (!localStorage.getItem(FLAG)) {
+            localStorage.setItem(FLAG, '1');
+            var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
+            if (SUPPORTED.indexOf(nav) >= 0) target = nav;
+          }
+          if (target === null || target === current) return;
+          var tail = path.slice(
+            BASE.length + (current === DEFAULT ? 0 : current.length + 1),
+          );
+          var dest =
+            BASE +
+            (target === DEFAULT ? '' : target + '/') +
+            tail +
+            location.search +
+            location.hash;
           location.replace(dest);
         } catch (e) {}
       })();

@@ -11,7 +11,12 @@ import {
   SyncService,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
-import { UiStore } from '../shared/layout';
+import {
+  Localization,
+  TierGuard,
+  UiStore,
+  type Language,
+} from '../shared/layout';
 
 /** How a restore ended, for the page to say so. */
 export type RestoreOutcome = 'done' | 'failed';
@@ -52,6 +57,10 @@ export class SettingsPresenter {
    * the seam the presenter exists to hide.
    */
   private readonly ui = inject(UiStore);
+  /** Owns the locale sub-paths — switching language is a navigation, not a
+   * setting the running bundle can honour (PRD-INFRASTRUCTURE.md §11). */
+  private readonly localization = inject(Localization);
+  private readonly tier = inject(TierGuard);
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
@@ -72,6 +81,11 @@ export class SettingsPresenter {
   /** Automatic sync needs the paid tier; the toggle is decoration over it while
    * signed out or free (tierGuard is highlight-not-block during testing). */
   readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
+  /** Whether the auto-sync toggle wears the Premium marker — the gate decides, so
+   * a Premium user is not sold what they already have. */
+  readonly marksAutoSyncPremium = computed(() =>
+    this.tier.isMarked('auto-sync'),
+  );
 
   private readonly _drive = signal<DriveOutcome | null>(null);
   private readonly _driveBusy = signal(false);
@@ -335,6 +349,17 @@ export class SettingsPresenter {
 
   setTheme(theme: ThemeChoice): void {
     this.store.setTheme(theme);
+  }
+
+  /**
+   * Choose the UI language. The store is set first so the page is momentarily
+   * consistent, then `Localization` navigates to that locale's build — which is
+   * what actually changes the language, and is why this returns nothing useful:
+   * by the time it matters, this document is on its way out (PRD §11).
+   */
+  setLanguage(language: Language): void {
+    this.store.setLanguage(language);
+    this.localization.switchTo(language);
   }
 
   setSplitShared(isShared: boolean): void {

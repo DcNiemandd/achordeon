@@ -26,6 +26,7 @@ import {
   BlankPage,
   Fullscreen,
   StageSession,
+  TierGuard,
   Viewport,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
@@ -289,7 +290,11 @@ const SWIPE_THRESHOLD_PX = 60;
           }
           @if (session.audienceState() === 'create') {
             <!-- Premium indicator lives in the dialog, not on the bar button. -->
-            <app-premium [label]="createLobbyLabel" dialog-actions>
+            <app-premium
+              [label]="createLobbyLabel"
+              [isMarked]="tier.isMarked('audience-host')"
+              dialog-actions
+            >
               <button
                 appButton
                 type="button"
@@ -302,13 +307,19 @@ const SWIPE_THRESHOLD_PX = 60;
             </app-premium>
           }
 
-          @if (session.audienceState() === 'active') {
+          @if (
+            session.audienceState() === 'active' &&
+            tier.isMarked('audience-host')
+          ) {
             <!-- Gold tint marks the lobby as a Premium feature, the same
-                 language the premium glow speaks elsewhere (§5.3). -->
+                 language the premium glow speaks elsewhere (§5.3). Not shown to
+                 someone who already pays — they are not the audience for it. -->
             <p class="premium-note" data-testid="stage-lobby-premium">
               <app-icon name="favorite" [isFilled]="true" />
               {{ lobbyPremiumNote }}
             </p>
+          }
+          @if (session.audienceState() === 'active') {
             <dl class="lobby-info">
               <dt>{{ lobbyPinLabel }}</dt>
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
@@ -627,6 +638,9 @@ const SWIPE_THRESHOLD_PX = 60;
 export class StagePerformPage {
   protected readonly presenter = inject(StagePerformPresenter);
   protected readonly session = inject(StageSession);
+  /** Hosting a lobby is the Premium feature here (PRD-INFRASTRUCTURE.md §10) —
+   * marked, never blocked, and not marked at all for someone who pays. */
+  protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
   private readonly router = inject(Router);

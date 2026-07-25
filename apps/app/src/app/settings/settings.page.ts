@@ -215,7 +215,10 @@ const MIN_PASSWORD = 8;
                     <app-icon name="help" />
                   </button>
                 </div>
-                <app-premium [label]="autoSyncLabel">
+                <app-premium
+                  [label]="autoSyncLabel"
+                  [isMarked]="presenter.marksAutoSyncPremium()"
+                >
                   <label
                     class="check-row"
                     [class.is-disabled]="!presenter.canAutoSync()"
@@ -365,19 +368,64 @@ const MIN_PASSWORD = 8;
 
         <section class="section">
           <h2 class="heading">{{ appHeading }}</h2>
-          <div class="choices" role="group" [attr.aria-label]="themeHeading">
-            @for (option of themes; track option.value) {
+          <div class="setting">
+            <div class="head">
+              <span class="label">{{ themeHeading }}</span>
+            </div>
+            <div class="choices" role="group" [attr.aria-label]="themeHeading">
+              @for (option of themes; track option.value) {
+                <button
+                  appButton
+                  variant="ghost"
+                  [class.is-active]="presenter.theme() === option.value"
+                  [attr.aria-pressed]="presenter.theme() === option.value"
+                  [attr.data-testid]="'theme-' + option.value"
+                  (click)="presenter.setTheme(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Language (Epic 11 ▸ i18n). Each locale is its own build under its
+               own sub-path, so choosing one navigates: the page reloads into that
+               build, on the same route. The hint says so, because a control that
+               reloads the app without warning is a control that feels broken. -->
+          <div class="setting">
+            <div class="head">
+              <span class="label">{{ languageHeading }}</span>
               <button
                 appButton
-                variant="ghost"
-                [class.is-active]="presenter.theme() === option.value"
-                [attr.aria-pressed]="presenter.theme() === option.value"
-                [attr.data-testid]="'theme-' + option.value"
-                (click)="presenter.setTheme(option.value)"
+                type="button"
+                class="help"
+                [isIconOnly]="true"
+                [appTooltip]="languageHelp"
+                appTooltipTrigger="click"
+                [attr.aria-label]="aboutLanguage"
+                data-testid="help-language"
               >
-                {{ option.label }}
+                <app-icon name="help" />
               </button>
-            }
+            </div>
+            <div
+              class="choices"
+              role="group"
+              [attr.aria-label]="languageHeading"
+            >
+              @for (option of languages; track option.value) {
+                <button
+                  appButton
+                  variant="ghost"
+                  [class.is-active]="presenter.language() === option.value"
+                  [attr.aria-pressed]="presenter.language() === option.value"
+                  [attr.data-testid]="'language-' + option.value"
+                  (click)="presenter.setLanguage(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
           </div>
         </section>
 
@@ -1231,6 +1279,9 @@ export class SettingsPage {
   protected readonly title = $localize`:@@settings.title:Settings`;
   protected readonly appHeading = $localize`:@@settings.app:Application`;
   protected readonly themeHeading = $localize`:@@settings.theme:Theme`;
+  protected readonly languageHeading = $localize`:@@settings.language:Language`;
+  protected readonly languageHelp = $localize`:@@settings.language.help:Achordeon reloads to switch language, and stays on the page you are on.`;
+  protected readonly aboutLanguage = $localize`:@@settings.language.about:About the language setting`;
   protected readonly renderHeading = $localize`:@@settings.rendering:Rendering`;
   protected readonly panelsHeading = $localize`:@@settings.panels:Panels`;
   protected readonly splitSharedLabel = $localize`:@@settings.splitShared:One panel size everywhere`;
@@ -1474,6 +1525,16 @@ export class SettingsPage {
     { value: 'system' as const, label: $localize`:@@theme.system:System` },
     { value: 'light' as const, label: $localize`:@@theme.light:Light` },
     { value: 'dark' as const, label: $localize`:@@theme.dark:Dark` },
+  ];
+
+  /**
+   * Each label is in **its own language**, not in the UI's — a Czech name for
+   * Czech is the one label a user looking for Czech can find in an English UI. So
+   * these two are deliberately not translated.
+   */
+  protected readonly languages = [
+    { value: 'en' as const, label: 'English' },
+    { value: 'cs' as const, label: 'Čeština' },
   ];
 
   // --- Stub settings (#1) — placeholders, disabled, not wired ---------------

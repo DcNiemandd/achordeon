@@ -29,6 +29,20 @@
         "cwd": "apps/app"
       }
     },
+    "gen-index-dev": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/index.html.template",
+        "{projectRoot}/project.json",
+        "{projectRoot}/tools/gen-index.mjs"
+      ],
+      "outputs": ["{projectRoot}/src/index.html"],
+      "options": {
+        "command": "node tools/gen-index.mjs --dev",
+        "cwd": "apps/app"
+      }
+    },
     "gen-supabase": {
       "executor": "nx:run-commands",
       "cache": false,
@@ -62,6 +76,12 @@
       },
       "configurations": {
         "production": {
+          "serviceWorker": "apps/app/ngsw-config.json",
+          "optimization": {
+            "scripts": true,
+            "fonts": true,
+            "styles": { "minify": true, "inlineCritical": false }
+          },
           "budgets": [
             {
               "type": "initial",
@@ -92,7 +112,7 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
-      "dependsOn": ["gen-index", "gen-supabase"],
+      "dependsOn": ["gen-index-dev", "gen-supabase"],
       "configurations": {
         "production": {
           "buildTarget": "app:build:production"
@@ -113,6 +133,15 @@
         "buildTarget": "app:build",
         "outputPath": "apps/app/src/locale",
         "format": "xlf"
+      }
+    },
+    "sync-locales": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["extract-i18n"],
+      "options": {
+        "command": "node tools/sync-locales.mjs",
+        "cwd": "apps/app"
       }
     },
     "lint": {

@@ -10,6 +10,7 @@ export * from './lib/persistence/memory-entity-source';
 export * from './lib/persistence/paging';
 export * from './lib/persistence/paged-repository';
 export * from './lib/persistence/gateway';
+export * from './lib/persistence/boot-gate';
 export * from './lib/persistence/seed';
 export * from './lib/persistence/snapshot-blob';
 export * from './lib/download/page-geometry';

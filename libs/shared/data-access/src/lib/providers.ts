@@ -10,6 +10,8 @@ import {
 import { ChordTheory } from '@achordeon/shared/domain';
 import { TonalChordTheory } from './tonal-chord-theory/tonal-chord-theory';
 import { ACHORDEON_DB } from './stores/repositories';
+import { BootGate } from './persistence/boot-gate';
+import { bootstrap } from './persistence/gateway';
 import { seedDatabase } from './persistence/seed';
 import { AuthService } from './auth/auth-service';
 import { SyncService } from './sync/sync-service';
@@ -25,6 +27,26 @@ import { SyncService } from './sync/sync-service';
  */
 export function provideAchordeonData(): Provider[] {
   return [{ provide: ChordTheory, useClass: TonalChordTheory }];
+}
+
+/**
+ * Run the ADR-0007 ingest gateway over the local database before anything reads a
+ * row, and publish what it found.
+ *
+ * **Awaited on purpose.** The whole point of the gateway is that runtime code only
+ * ever sees the current shape: if a list query ran first, it would read rows the
+ * migration is about to rewrite. First paint waits for one read of the library and
+ * (rarely) one rewrite — the one-time cost ADR-0007 accepts in exchange for having
+ * no version checks scattered through the stores.
+ *
+ * A `refuse` leaves the database untouched and surfaces as `BootGate.mustUpdate`,
+ * which the shell turns into the blocking update prompt (Epic 11).
+ */
+export function provideAchordeonBoot(): EnvironmentProviders {
+  return provideAppInitializer(async () => {
+    const gate = inject(BootGate);
+    gate.publish(await bootstrap(inject(ACHORDEON_DB)));
+  });
 }
 
 /**

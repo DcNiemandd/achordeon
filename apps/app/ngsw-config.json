@@ -1,0 +1,42 @@
+{
+  "$schema": "../../node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app-shell",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/index.html",
+          "/manifest.webmanifest",
+          "/favicon.ico",
+          "/icons/**",
+          "/media/**",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "body-face",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/fonts/RobotoMono-*.ttf", "/fonts/OFL.txt"]
+      }
+    },
+    {
+      "name": "title-faces",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": [
+          "/fonts/Caveat-*.ttf",
+          "/fonts/CrimsonText-*.ttf",
+          "/fonts/Oswald-*.ttf"
+        ]
+      }
+    }
+  ]
+}

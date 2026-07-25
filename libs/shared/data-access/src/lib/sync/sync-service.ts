@@ -9,8 +9,14 @@
 // additive, so an unconfigured or signed-out app behaves exactly as before.
 
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { mergeSnapshots, type SnapshotData } from '@achordeon/shared/domain';
+import {
+  migrate,
+  mergeSnapshots,
+  type SnapshotData,
+  type SnapshotEnvelope,
+} from '@achordeon/shared/domain';
 import { AuthService } from '../auth/auth-service';
+import { BootGate, SchemaTooNewError } from '../persistence/boot-gate';
 import { snapshotFromDb } from '../persistence/gateway';
 import { ACHORDEON_DB } from '../stores/repositories';
 import { SongStore } from '../stores/song-store';
@@ -37,6 +43,8 @@ export class SyncService {
   private readonly songs = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly settings = inject(SettingsStore);
+  /** Where "this app is older than the data it was handed" is latched (ADR-0007). */
+  private readonly boot = inject(BootGate);
 
   private readonly _status = signal<SyncStatus>('idle');
   private readonly _lastError = signal<unknown>(null);
@@ -117,7 +125,7 @@ export class SyncService {
       const watermark = await this.readWatermark();
       const local = await snapshotFromDb(this.db);
 
-      const remote = await this.supabaseBackend.pull(watermark);
+      const remote = this.ingest(await this.supabaseBackend.pull(watermark));
       if (remote !== null) {
         const merged = mergeSnapshots(local.data, remote.data);
         await this.applyToDb(merged);
@@ -150,7 +158,7 @@ export class SyncService {
    */
   async driveUpload(opts: { force?: boolean } = {}): Promise<void> {
     const local = await this.driveBackend.snapshot();
-    const remote = await this.driveBackend.pull();
+    const remote = this.ingest(await this.driveBackend.pull());
     const data =
       remote === null ? local.data : mergeSnapshots(local.data, remote.data);
     await this.driveBackend.upload({ ...local, data }, opts);
@@ -161,7 +169,7 @@ export class SyncService {
    * same rule the auto path uses). Returns false if there is no file yet.
    */
   async driveDownload(): Promise<boolean> {
-    const remote = await this.driveBackend.pull();
+    const remote = this.ingest(await this.driveBackend.pull());
     if (remote === null) return false;
     const local = await snapshotFromDb(this.db);
     const merged = mergeSnapshots(local.data, remote.data);
@@ -190,6 +198,31 @@ export class SyncService {
   }
 
   // --- internals ------------------------------------------------------------
+
+  /**
+   * The ADR-0007 gateway on the two cloud paths: **every** inbound envelope is
+   * migrated before a single row of it is read, and one written by a newer
+   * breaking build is refused rather than guessed at.
+   *
+   * A refusal latches `BootGate` (which raises the blocking update prompt) and
+   * throws, so the caller cannot accidentally carry on with the un-migrated
+   * snapshot. Merging is per-row LWW, which would have happily fused rows of a
+   * shape this build does not understand — silent loss, the exact failure ADR-0007
+   * exists to prevent.
+   *
+   * The Supabase path assembles its envelope from typed columns and stamps it at
+   * the current version, so it cannot refuse today; it goes through here anyway,
+   * because the day that stops being true is the day this is needed.
+   */
+  private ingest(remote: SnapshotEnvelope | null): SnapshotEnvelope | null {
+    if (remote === null) return null;
+    const { snapshot, status } = migrate(remote);
+    if (status === 'refuse') {
+      this.boot.refuseIngest();
+      throw new SchemaTooNewError();
+    }
+    return snapshot;
+  }
 
   /** Upsert merged rows into the local tables (no clear — the merge already
    * reconciled everything, so this is a plain write-through). */
