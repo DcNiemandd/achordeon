@@ -1,0 +1,28 @@
+-- Epic 12 ▸ fix — the account row's upsert needs UPDATE on `profiles.id`.
+--
+-- `20260724170000_sync_grants.sql` granted `authenticated` every profile column
+-- it may write and deliberately withheld `plan`, because the tier is server-owned.
+-- It withheld `id` too — which reads as the same caution and is not the same
+-- thing: `id` is the conflict key, and PostgREST puts EVERY column of the payload
+-- into the `do update set` list, the key included. So each push sent
+--
+--   insert into profiles (id, record_id, …) values (…)
+--   on conflict (id) do update set id = excluded.id, record_id = excluded.record_id, …
+--
+-- and Postgres refused it for want of UPDATE on that one column: 42501, which
+-- reaches the browser as `POST /rest/v1/profiles → 403 Forbidden`. The row is
+-- minted by the `on_auth_user_created` trigger, so it always exists and the push
+-- always takes the `do update` branch — this failed on every sync of every
+-- account, from the first one.
+--
+-- The damage is wider than the row. `pushProfile` is the last step of a push that
+-- throws as a unit, so `profiles.settings` — the global render defaults — never
+-- reached the cloud at all, and `hasUnsynced()` could never clear. Songs and
+-- songbooks were untouched by it: they hold table-wide grants.
+--
+-- Granting UPDATE on `id` opens nothing. The policy still checks
+-- `with check (id = auth.uid())` against the new row, so the only value a user
+-- can write into their own `id` is the one already there, and re-pointing the row
+-- at another account is refused by RLS rather than by the grant. `plan` stays
+-- withheld — that is the grant that was doing the real work.
+grant update (id) on public.profiles to authenticated;
