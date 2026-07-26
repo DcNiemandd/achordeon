@@ -106,7 +106,26 @@ export class SettingsStore {
     this._language.set(language);
   }
 
+  /**
+   * Be told when a global change has been written to the account row.
+   *
+   * The sync layer's cue: a changed default is a synced row like a saved song, so
+   * it has to reach the cloud the same way — `SyncService` registers `pushSoon`
+   * here at boot. It is a listener rather than a call into `SyncService` because
+   * the dependency only runs one way (sync reads this store to reflect a pull);
+   * calling back the other way would close the circle. Same shape as
+   * `WarnUnsynced.connect` / `ThemeApplier.connect`, one layer down.
+   *
+   * Fired after the write lands, not when the signal moves: the listener's first
+   * act is to look at the row.
+   */
+  onSaved(listener: () => void): void {
+    this.listeners.push(listener);
+  }
+
   // --- write-back -------------------------------------------------------------
+
+  private readonly listeners: (() => void)[] = [];
 
   /** The tail of the write chain — see `persist`. */
   private writing: Promise<void> = Promise.resolve();
@@ -151,7 +170,12 @@ export class SettingsStore {
     } catch {
       // Storage said no (private mode, quota, a closed database). The in-memory
       // bag is still correct for this session; nothing above needs to know.
+      return;
     }
+    // Outside the try, and only once the row is really there: a listener that
+    // pushes has nothing to push if the write failed, and one that throws is a
+    // bug in the listener, not "storage said no".
+    for (const listener of this.listeners) listener();
   }
 }
 

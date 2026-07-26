@@ -84,6 +84,12 @@ export class SyncService {
 
     await this.recomputeUnsynced();
 
+    // A changed global default is a synced row like a saved song, so it is a push
+    // boundary like a saved song (ADR-0004). Without this a preference reached the
+    // cloud only when some *other* edit happened to trigger a cycle — and the
+    // "unsynced" flag stayed stale in the meantime, since nothing recounted.
+    this.settings.onSaved(() => this.pushSoon());
+
     if (typeof window !== 'undefined') {
       // The handoff moment: the other device opening is when a pull matters.
       window.addEventListener('focus', () => void this.syncNow());
@@ -143,6 +149,15 @@ export class SyncService {
     } catch (e) {
       this._status.set('error');
       this._lastError.set(e);
+      // Nothing landed, so "unsynced" is whatever the rows say — not whatever the
+      // last cycle that *did* land left behind. Turning sync on and having the
+      // very first cycle fail is the case: the watermark was reset to 0, so every
+      // row is unsynced, and without this the flag would still read false.
+      try {
+        await this.recomputeUnsynced();
+      } catch {
+        // The local database is unreadable too; leave the flag where it was.
+      }
     }
   }
 

@@ -17,6 +17,7 @@ const baseGlobal: GlobalSettings = {
   contentY: 'top',
   chordColor: '#000',
   chordSize: 1,
+  notation: 'english',
 };
 
 describe('resolveSettings', () => {

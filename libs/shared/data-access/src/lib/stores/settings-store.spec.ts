@@ -133,4 +133,33 @@ describe('SettingsStore', () => {
     await expect(store.setGlobal({ columns: 2 })).resolves.toBeUndefined();
     expect(store.global().columns).toBe(2);
   });
+
+  it('tells its listeners once the row is written', async () => {
+    const store = make();
+    const seen: (number | undefined)[] = [];
+    // Reading the row is the whole point of being told, so record what a listener
+    // actually finds there — not merely that it was called.
+    store.onSaved(() => {
+      void users
+        .get(LOCAL_USER_ID)
+        .then((row) => seen.push(row?.settings.columns));
+    });
+
+    await store.setGlobal({ columns: 2 });
+    await store.setGlobal({ columns: 3 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(seen).toEqual([2, 3]);
+  });
+
+  it('does not tell them about a write that failed', async () => {
+    const store = make();
+    let told = 0;
+    store.onSaved(() => told++);
+    users.put = () => Promise.reject(new Error('quota'));
+
+    await store.setGlobal({ columns: 2 });
+
+    expect(told).toBe(0);
+  });
 });

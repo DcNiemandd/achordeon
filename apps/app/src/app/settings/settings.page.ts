@@ -557,38 +557,15 @@ const MIN_PASSWORD = 8;
         <!-- Stubs for what is coming, shown so the shape of the app is honest but
            marked and disabled so nothing pretends to work (#1). They are UI-only
            placeholders — not wired to the settings cascade — because turning them
-           into live settings means changing what existing chord symbols mean and
-           embedding uploaded font bytes, both their own pieces of work. -->
+           into live settings means embedding uploaded font bytes, its own piece of
+           work. (Chord notation used to sit here; it is a real registry row now,
+           and the render panel above draws it like any other setting.) -->
         <section class="section is-coming">
           <h2 class="heading">
             {{ comingHeading }}
             <span class="heading-note">{{ comingNote }}</span>
           </h2>
           <div class="group">
-            <div class="setting">
-              <div class="head">
-                <span class="label">{{ notationLabel }}</span>
-              </div>
-              <p class="hint">{{ notationHelp }}</p>
-              <div
-                class="choices"
-                role="group"
-                [attr.aria-label]="notationLabel"
-              >
-                @for (option of notations; track option.value) {
-                  <button
-                    appButton
-                    variant="ghost"
-                    disabled
-                    [class.is-active]="option.value === 'english'"
-                    [attr.data-testid]="'notation-' + option.value"
-                  >
-                    {{ option.label }}
-                  </button>
-                }
-              </div>
-            </div>
-
             <div class="setting">
               <div class="head">
                 <span class="label">{{ fontLibraryLabel }}</span>
@@ -1688,12 +1665,6 @@ export class SettingsPage {
   // --- Stub settings (#1) — placeholders, disabled, not wired ---------------
   protected readonly comingHeading = $localize`:@@settings.coming:Coming soon`;
   protected readonly comingNote = $localize`:@@settings.coming.note:These are not available yet.`;
-  protected readonly notationLabel = $localize`:@@settings.notation:Chord notation`;
-  protected readonly notationHelp = $localize`:@@settings.notation.help:English (C, D, B) or German (with H for B natural, B for B♭).`;
-  protected readonly notations = [
-    { value: 'english', label: $localize`:@@notation.english:English` },
-    { value: 'german', label: $localize`:@@notation.german:German` },
-  ];
   protected readonly fontLibraryLabel = $localize`:@@settings.fontLibrary:Font library`;
   protected readonly fontLibraryHelp = $localize`:@@settings.fontLibrary.help:Add your own fonts to use in titles and lyrics.`;
   protected readonly fontLibraryButton = $localize`:@@settings.fontLibrary.button:Manage fonts`;

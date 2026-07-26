@@ -1337,6 +1337,60 @@ time — a reload issued in the same millisecond as the click will beat IndexedD
 to disk, which is a real (millisecond-wide) window for a user who closes the tab
 mid-click and an unreal one for a test with no human delay in front of it.
 
+**Also fixed: every sync cycle failed the moment settings started saving.** With
+the account row finally being written, the push finally had one to send — and
+`profiles.record_id` was a `uuid` column, while the row's id is the constant
+`local-user`. Postgres refused it, the push is one transaction so the whole cycle
+went with it, and because `recomputeUnsynced` only ran on the success path the
+"you have unsynced changes" flag latched true forever. Which the user meets as a
+`beforeunload` prompt on every single reload, for the rest of the install's life.
+
+- **`record_id` is `text` now** (`20260726000000_profile_record_id_text.sql`).
+  Nothing joins on it or casts it: it is the client's own id, echoed back so a
+  pull can rebuild the row for the merge, and the client's id space has always
+  included sentinels (`local-user`, `all-songs`). Fixing the column rather than
+  the constant also heals every install that already has the row — an id change
+  would have needed a repair pass, and one for the Drive backups too.
+- **A failed cycle recounts.** `hasUnsynced` used to keep whatever the last cycle
+  that _did_ land left behind, which is wrong in both directions: stale-true is
+  the unreloadable tab, and stale-false hides real work after `setAutoSync(true)`
+  resets the watermark and the first cycle fails.
+
+**Also landed: a changed default reaches the cloud on its own.** It used to reach
+it only if some _other_ edit happened to trigger a cycle first. `SettingsStore`
+now announces a written row (`onSaved`) and `SyncService` registers `pushSoon`
+there at boot — a listener rather than a call into the sync layer, because the
+dependency runs the other way and calling back would close the circle. So a
+preference is a push boundary like a saved song, it counts toward the unsynced
+warning, and it rides the paths the account row was already on: Supabase
+`profiles.settings` for a paid account, the Drive backup file, and the whole-
+database Backup file. Selective **export** still leaves the row out on purpose —
+a file you send someone must not re-base their library on your defaults.
+
+Not synced, and deliberately: **theme and language**. Both are settings on this
+page, but both are device preferences a shared account should not impose — a dark
+phone and a light desktop is a setup, not a bug — and both have a home that has to
+be readable before the app boots (a pre-paint localStorage cache; the URL). Say
+the word and they become two more columns.
+
+**Epic 12 also brought a setting of its own: `notation`** (`english | german`,
+scopes songbook + song), the one row PRD-DOMAIN-MODEL parked. German prints B
+natural as `H` and B♭ as `B`.
+
+- **It spells the page; it does not rewrite the song.** `respellChords` runs over
+  the AST at the top of the render and `content` is never touched. Letting a
+  preference decide what a stored symbol _means_ would make the same file sound
+  different on two devices, and the next transpose would bake the difference in.
+  The two halves that do change meaning — strict German input, German transpose
+  output — stay parked, and PARSER-GRAMMAR §Notation now says which is which.
+- **One seam: `RenderService.layout`.** Not the parser, so the editor keeps
+  showing the source as written; not each caller, so screen, PNG, PDF and the
+  songbook exports cannot disagree about what a chord is called.
+- **English is the identity.** It means "as you typed it", so no existing song
+  renders differently than it did yesterday — including one already written with
+  `H`, which has been a valid chord since Epic 2 and still is under either
+  setting.
+
 **Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
 tests (`audience-fullscreen` never becomes visible). They fail identically on the
 branch head; left alone so the fix is reviewable on its own.

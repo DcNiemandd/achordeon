@@ -14,6 +14,7 @@ const globalSettings: GlobalSettings = {
   contentY: 'top',
   chordColor: '#000',
   chordSize: 1,
+  notation: 'english',
 };
 
 function baseSnapshot(

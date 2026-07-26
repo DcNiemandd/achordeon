@@ -13,7 +13,13 @@ import {
   type RenderOpts,
   type RenderPlan,
 } from '@achordeon/shared/render-core';
-import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  respellChords,
+  type ChordNotation,
+  type GlobalSettings,
+  type SongAst,
+} from '@achordeon/shared/domain';
 import { BODY_FAMILY, FontLoader } from './font-loader';
 
 /**
@@ -56,6 +62,14 @@ export class RenderService {
    * chose and no others.
    */
   private readonly fontLoader = inject(FontLoader);
+
+  /**
+   * Only to spell chords (`notation`). The renderer asks no theory question
+   * of its own — it draws what the AST says — but "what is this chord called in
+   * German" is a naming question, and naming is the last thing that happens
+   * before a symbol is drawn.
+   */
+  private readonly theory = inject(ChordTheory);
 
   private readonly layoutWith: Layout = createLayout(this.measurer, {
     fonts: this.fontLoader.resolver,
@@ -102,7 +116,18 @@ export class RenderService {
     // first render of a serif-titled song legitimately has no bytes for it. Ask
     // now, re-render when it lands — which the epoch above makes automatic.
     void this.fontLoader.ensure(familiesFor(settings));
-    return this.layoutWith(ast, settings, opts);
+    // The one place chords are named (see `respellChords`). Here rather than in
+    // the parser so the editor keeps showing the source as written, and here
+    // rather than in each caller so screen, PNG, PDF and the songbook exports
+    // cannot disagree. `?? 'english'` for a settings bag written before the key
+    // existed — the reader is never handed an incomplete cascade, but tests and
+    // hand-built bags are a different matter.
+    const notation = (settings.notation ?? 'english') as ChordNotation;
+    return this.layoutWith(
+      respellChords(ast, notation, this.theory),
+      settings,
+      opts,
+    );
   }
 
   /**

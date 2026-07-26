@@ -260,10 +260,23 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
   test('the coming-soon settings are shown but disabled', async ({ page }) => {
     // Present, so the shape of the app is honest — but not operable, so nothing
     // pretends to work.
-    await expect(page.getByTestId('notation-german')).toBeVisible();
-    await expect(page.getByTestId('notation-german')).toBeDisabled();
     await expect(page.getByTestId('font-library')).toBeVisible();
     await expect(page.getByTestId('font-library')).toBeDisabled();
+  });
+
+  // Chord notation used to be one of the stubs above. It is a registry row now,
+  // so it appears in the render panel and works like every other setting — which
+  // is the assertion: it is no longer disabled, and it is no longer down there.
+  test('chord notation is a real setting, not a coming-soon stub', async ({
+    page,
+  }) => {
+    const german = page
+      .getByTestId('setting-notation')
+      .getByTestId('notation-german');
+    await expect(german).toBeEnabled();
+
+    await german.click();
+    await expect(page.getByTestId('reset-notation')).toBeVisible();
   });
 
   test('backs the whole library up to a file', async ({ page }) => {

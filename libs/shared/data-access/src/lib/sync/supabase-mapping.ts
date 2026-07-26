@@ -53,7 +53,10 @@ export interface SongbookSongRow {
 export interface ProfileRow {
   id: string; // = auth.uid()
   plan: 'free' | 'pro';
-  record_id: string | null; // the local `User.id`, so a pull round-trips it
+  // The local `User.id`, so a pull round-trips it. `text`, not `uuid`: the account
+  // row is a singleton whose id is the constant `LOCAL_USER_ID` — a string a uuid
+  // generator cannot mint, and one a `uuid` column will not take.
+  record_id: string | null;
   username: string;
   settings: GlobalSettings;
   created_at: number;

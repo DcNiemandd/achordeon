@@ -20,19 +20,34 @@
 export const ESCAPABLE = new Set([':', '*', '[', ']', '\\', ' ']);
 
 /**
+ * Which language chord note names are spelled in.
+ *
+ * A **rendering** choice, resolved through the settings cascade like any other
+ * (ADR-0006) and applied by `respellChords` (notation.ts). Reading is unaffected:
+ * `toEnglishNotation` accepts `H` whatever this says, so no song stops parsing
+ * because of it.
+ */
+export type ChordNotation = 'english' | 'german';
+
+/**
  * Rewrite German note names to English, so the one English-based chord engine
  * recognises them (ADR-0008: the engine is quarantined; notation policy is the
  * domain's).
  *
- * **Today: `H` → `B` natural, and nothing else.** This is the common *mixed*
- * convention — `B` stays B natural and `H` is simply the extra name for it — so
- * no English chord changes meaning and `[H]` stops reading as a grey annotation.
- * It rewrites a **leading** `H` (the root) and an `H` right after the `/` (the
- * bass); a quality never starts with a note letter, so the middle is untouched.
+ * **Reading, not writing** — the `notation` setting spells chords on the way
+ * *out* (notation.ts); this is the way *in*, and it is unconditional. `H` → `B`
+ * natural, and nothing else: the common *mixed* convention, where `B` stays B
+ * natural and `H` is simply the extra name for it, so no English chord changes
+ * meaning and `[H]` never reads as a grey annotation. It rewrites a **leading**
+ * `H` (the root) and an `H` right after the `/` (the bass); a quality never
+ * starts with a note letter, so the middle is untouched.
  *
- * **Deferred (a notation *mode*, not this):** strict German where `B` means B♭,
- * and the solfège spellings `Cis`/`Des`/`As`/`Es`. Those change what existing
- * symbols mean, so they belong behind a per-song/global setting, not here.
+ * That the two halves are asymmetric is the point: what a source file *means*
+ * must not depend on a preference, or the same song would sound different on two
+ * devices and a transpose would bake the difference in.
+ *
+ * **Still deferred:** the solfège spellings `Cis`/`Des`/`As`/`Es`, and strict
+ * German where a bare `B` in the *source* means B♭.
  *
  * One helper, shared by every `ChordTheory` (the tonal adapter and the fake), so
  * the two can never drift on which symbols are valid.
