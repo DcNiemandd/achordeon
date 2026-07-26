@@ -2,6 +2,7 @@
   "locale": "cs",
   "draft": true,
   "translations": {
+    "audience.documentTitle": null,
     "audience.joinHeading": null,
     "audience.joinHint": null,
     "audience.pinPlaceholder": null,
@@ -224,6 +225,7 @@
     "explorer.moveEnd": null,
     "explorer.favorite": null,
     "explorer.unfavorite": null,
+    "explorer.perform": null,
     "explorer.edit": null,
     "explorer.rename": null,
     "explorer.duplicate": null,
@@ -250,6 +252,7 @@
     "explorer.renameRow": null,
     "explorer.duplicateRow": null,
     "explorer.deleteRow": null,
+    "explorer.performRow": null,
     "explorer.downloadRow": null,
     "explorer.exportRow": null,
     "explorer.moreRow": null,

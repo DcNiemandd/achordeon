@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "translations": {
+    "audience.documentTitle": "Watching",
     "audience.joinHeading": "Join an audience",
     "audience.joinHint": "Enter the PIN the performer is showing, or scan their QR code.",
     "audience.pinPlaceholder": "PIN",
@@ -223,6 +224,7 @@
     "explorer.moveEnd": "Move to the end",
     "explorer.favorite": "Add to favorites",
     "explorer.unfavorite": "Remove from favorites",
+    "explorer.perform": "Perform",
     "explorer.edit": "Edit",
     "explorer.rename": "Rename",
     "explorer.duplicate": "Duplicate",
@@ -249,6 +251,7 @@
     "explorer.renameRow": "Rename {$name}",
     "explorer.duplicateRow": "Duplicate {$name}",
     "explorer.deleteRow": "Delete {$name}",
+    "explorer.performRow": "Perform {$name}",
     "explorer.downloadRow": "Download {$name}",
     "explorer.exportRow": "Export {$name}",
     "explorer.moreRow": "More actions for {$name}",

@@ -99,6 +99,7 @@ import {
           [emptyText]="emptyText"
           (activated)="presenter.select($event)"
           (opened)="presenter.open($event)"
+          (performed)="presenter.perform($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (downloaded)="presenter.openDownloadRow($event)"

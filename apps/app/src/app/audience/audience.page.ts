@@ -28,6 +28,7 @@ import {
   AudienceBar,
   AudienceSession,
   BlankPage,
+  DocumentTitle,
   Fullscreen,
   Viewport,
 } from '../shared/layout';
@@ -486,6 +487,16 @@ export class AudiencePage {
     this.session.registerLeave(() => this.exit());
     this.session.registerSync(() => void this.presenter.sync());
 
+    // The tab names the act, the way performing does — but only while there is a
+    // performance to be watching. The PIN prompt is the Audience *module*, so the
+    // claim goes empty there and `DocumentTitle` falls back to the module title;
+    // that fallback is exactly what it is for.
+    inject(DestroyRef).onDestroy(
+      inject(DocumentTitle).claim(() =>
+        this.view() === 'render' ? this.watchingTitle : '',
+      ),
+    );
+
     inject(DestroyRef).onDestroy(() => {
       void this.presenter.leave();
       void this.fullscreen.exit();
@@ -549,6 +560,9 @@ export class AudiencePage {
       this.session.closeSummary();
     }
   }
+
+  /** What the browser tab says while following a lobby: "Watching - Achordeon". */
+  private readonly watchingTitle = $localize`:@@audience.documentTitle:Watching`;
 
   protected readonly joinHeading = $localize`:@@audience.joinHeading:Join an audience`;
   protected readonly joinHint = $localize`:@@audience.joinHint:Enter the PIN the performer is showing, or scan their QR code.`;

@@ -380,6 +380,26 @@ const ARM_MOVE_TOLERANCE = 8;
             class="row-actions"
             [class.is-menu-open]="openMenuRow() === row.id"
           >
+            <!-- Perform, and first: a songbook exists to be played, so this is
+                 the everyday act and the rest of the row is administration. NOT
+                 gated on isReadOnly — All songs is read-only and is exactly what
+                 someone reaches for when a performance was not planned. Primary
+                 tint rather than a plain icon button, the same weight the stage
+                 picker gives it. -->
+            @if (capabilities().canPerform && !row.isEmpty) {
+              <button
+                appButton
+                type="button"
+                variant="primary"
+                [isIconOnly]="true"
+                [attr.aria-label]="performRowLabel(row)"
+                [appTooltip]="PERFORM"
+                [attr.data-testid]="'perform-' + row.id"
+                (click)="performed.emit(row.id)"
+              >
+                <app-icon name="stage" />
+              </button>
+            }
             <!-- A read-only row has no record to open — the virtual All songs
                  book, which is downloaded and previewed but never opened into an
                  editable view (its order is chosen at download, not here). -->
@@ -1077,6 +1097,9 @@ export class SongExplorer {
    * never a library row. A different act from `deleted`, which destroys.
    */
   readonly removed = output<string[]>();
+  /** Take this songbook to the stage (Epic 8). The list names the book; where
+   * `/stage/:id` lives is the page's business. */
+  readonly performed = output<string>();
   /** Download / export this one row (Epic 7). A picture for a player, a file
    * for a computer — the page decides which service answers. */
   readonly downloaded = output<string>();
@@ -1212,6 +1235,7 @@ export class SongExplorer {
    */
   protected readonly FAVORITE = $localize`:@@explorer.favorite:Add to favorites`;
   protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
+  protected readonly PERFORM = $localize`:@@explorer.perform:Perform`;
   protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
   protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
   protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
@@ -1493,6 +1517,10 @@ export class SongExplorer {
 
   protected deleteRowLabel(row: SongRow): string {
     return $localize`:@@explorer.deleteRow:Delete ${row.name}:name:`;
+  }
+
+  protected performRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.performRow:Perform ${row.name}:name:`;
   }
 
   protected downloadRowLabel(row: SongRow): string {

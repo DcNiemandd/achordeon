@@ -102,6 +102,9 @@ export class SongbooksPresenter {
       isFavorite: false,
       // No record behind it: nothing to rename, nothing to delete.
       isReadOnly: true,
+      // An empty library has nothing to perform, so the row's Perform disappears
+      // — the same answer the stage picker gives an empty book.
+      isEmpty: this._librarySize() === 0,
       hint: ALL_SONGS_HINT,
     },
     ...this.store.live().map((book, index) => ({
@@ -111,6 +114,7 @@ export class SongbooksPresenter {
       title: this.countLabel(book.entries.length),
       subtitle: '',
       isFavorite: false,
+      isEmpty: book.entries.length === 0,
     })),
   ]);
 
@@ -191,6 +195,17 @@ export class SongbooksPresenter {
 
   open(id: string): void {
     void this.router.navigate(['/songbooks', id]);
+  }
+
+  /**
+   * Take this songbook to the stage — Epic 8's "Perform shortcut from
+   * Songbooks", and the reason you do not have to go to the Stage module and find
+   * the book again in a second list. Straight to `/stage/:id`, which is the same
+   * navigation the picker makes; `StageSession.start` decides whether that is a
+   * new performance or a resumed one.
+   */
+  perform(id: string): void {
+    void this.router.navigate(['/stage', id]);
   }
 
   /** A new songbook is empty and opens straight away — you made it to fill it. */

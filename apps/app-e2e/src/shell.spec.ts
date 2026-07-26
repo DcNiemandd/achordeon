@@ -110,6 +110,33 @@ test.describe('navigation', () => {
   });
 });
 
+// What the tab says, module by module. The document cases (a song, a songbook,
+// performing, watching) are covered where those screens are.
+test.describe('document title', () => {
+  test('names the app first, then the module you are in', async ({ page }) => {
+    for (const [route, module] of [
+      ['songs', 'Songs'],
+      ['songbooks', 'Songbooks'],
+      ['stage', 'Stage'],
+      ['audience', 'Audience'],
+      ['settings', 'Settings'],
+    ]) {
+      await page.goto(route);
+      await expect(page).toHaveTitle(`Achordeon - ${module}`);
+    }
+  });
+
+  // The bare /audience route is the PIN prompt — the module, not an act. Only a
+  // joined viewer is "Watching".
+  test('the audience PIN prompt is the module, not an act', async ({
+    page,
+  }) => {
+    await page.goto('audience');
+    await expect(page.getByTestId('audience-join')).toBeVisible();
+    await expect(page).toHaveTitle('Achordeon - Audience');
+  });
+});
+
 test.describe('fullscreen mode', () => {
   test('audience keeps the normal frame — chrome is a mode, not a route', async ({
     page,

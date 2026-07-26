@@ -686,12 +686,12 @@ Audience (Epic 9).
 
 ### Subtasks
 
-- [ ] Songbook picker → performing mode; "Perform" shortcut from Songbooks.
-- [ ] One-song view with prev/next (disabled at ends; empty songbook can't be
+- [x] Songbook picker → performing mode; "Perform" shortcut from Songbooks.
+- [x] One-song view with prev/next (disabled at ends; empty songbook can't be
       performed).
-- [ ] Summary list (compact, search-only) to jump to a song.
+- [x] Summary list (compact, search-only) to jump to a song.
 - [x] Swipe navigation + fullscreen (tap toggles navbar, no dedicated tap zone).
-- [ ] "Create an audience" entry point (wires into Epic 9).
+- [x] "Create an audience" entry point (wires into Epic 9).
 
 ### Landed — the swipe did not work on a phone
 
@@ -836,9 +836,38 @@ of each:
   it is worse than the module title it replaces a tick later.
 - **`index.html.template` carries the plain `Achordeon`** — what the tab says
   before Angular has booted, and what a bookmark of the app root keeps.
-- **`/audience/:pin` is left at the module title** (`Achordeon - Audience`). It is
-  neither a file nor the performing side, and the four rules do not name it. See
-  the question at the end.
+- **A joined viewer is `Watching - Achordeon`** — performing's shape, for the same
+  reason: what the tab belongs to is the act. The claim is keyed on the page's own
+  `view()`, so it goes **empty on the PIN prompt** and the fallback to
+  `Achordeon - Audience` covers it. `/audience` is the module; only a live lobby
+  is an act.
+
+### Landed — the four boxes Epic 8 never ticked
+
+Everything but the swipe was built and left unchecked. Three of the four were
+simply true and are ticked; the fourth was half true, so the missing half was
+built rather than ticked over.
+
+- **There was no "Perform" shortcut from Songbooks.** You had to go to the Stage
+  module and find the same book again in a second list. The songbook list is the
+  explorer's fourth capability set, so this is a **fifth capability**
+  (`canPerform`, on for that mount alone): a song is performed as part of a book,
+  and a slot inside one is already in the book you would be performing.
+- **It is the row's first action, and the primary tint** — the same weight the
+  stage picker gives it. A songbook exists to be played; everything else on the
+  row is administration.
+- **Not gated on `isReadOnly`.** All songs is read-only and is exactly what
+  someone reaches for when a performance was not planned, the same call Epic 7's
+  fourth pass made for download and export.
+- **An empty songbook has no Perform button at all**, and that needed a second
+  per-row fact (`SongRow.isEmpty`) beside `isReadOnly` — "this row holds nothing"
+  is the same kind of thing only the row can know. Hidden rather than greyed out,
+  because the picker's own answer to an empty book is to hide the row: a
+  greyed-out control trains you to click it anyway. Absent means "holds
+  something", which is right for a song.
+- The presenter navigates to `/stage/:id`, the picker's own navigation —
+  `StageSession.start` is what decides whether that is a new performance or the
+  resumed one, so a shortcut cannot disagree with the picker about it.
 
 ---
 
