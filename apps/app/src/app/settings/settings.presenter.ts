@@ -15,6 +15,7 @@ import {
   Localization,
   TierGuard,
   UiStore,
+  WarnUnsynced,
   type Language,
 } from '../shared/layout';
 
@@ -64,6 +65,13 @@ export class SettingsPresenter {
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
+  /**
+   * Every way this page leaves the running app goes through here — the two
+   * reloads below and the two Google redirects. All four are things the user
+   * asked for, so none of them may raise the "you have unsynced changes" prompt
+   * (see `WarnUnsynced.expectUnload`).
+   */
+  private readonly unload = inject(WarnUnsynced);
 
   readonly theme = this.store.theme;
   readonly language = this.store.language;
@@ -129,6 +137,7 @@ export class SettingsPresenter {
 
   logInGoogle(): Promise<void> {
     this._authError.set(null);
+    this.unload.expectUnload(); // OAuth navigates away — the user's own doing
     return this.auth
       .signInWithGoogle()
       .catch((e) => this._authError.set(this.message(e)));
@@ -186,6 +195,7 @@ export class SettingsPresenter {
    * first Drive action (Flow A, `reconnectDrive`). */
   linkGoogle(): Promise<void> {
     this._authError.set(null);
+    this.unload.expectUnload();
     return this.auth
       .linkGoogle(false)
       .catch((e) => this._authError.set(this.message(e)));
@@ -221,7 +231,7 @@ export class SettingsPresenter {
     try {
       await this.auth.deleteAccount();
       await this.backups.clearLocal();
-      location.reload();
+      this.unload.reload();
     } catch (e) {
       this._authError.set(this.message(e));
       this._deleting.set(false);
@@ -311,6 +321,7 @@ export class SettingsPresenter {
    * only path that asks for `drive.file`: sign-in and Drive are split, so the
    * scope is requested lazily, before the first backup. */
   private reconnectDrive(): Promise<void> {
+    this.unload.expectUnload();
     return this.auth
       .signInWithGoogle(true)
       .catch((e) => this._authError.set(this.message(e)));
@@ -393,7 +404,7 @@ export class SettingsPresenter {
     try {
       await this.backups.restore(file);
       this._restore.set('done');
-      location.reload();
+      this.unload.reload();
     } catch {
       this._restore.set('failed');
     } finally {

@@ -1,7 +1,8 @@
 // Language switching — Epic 11 ▸ i18n
 // Spec: PRD-INFRASTRUCTURE.md §11 (runtime `@angular/localize`, one bundle)
 
-import { DOCUMENT, Injectable, LOCALE_ID, inject } from '@angular/core';
+import { Injectable, LOCALE_ID, inject } from '@angular/core';
+import { WarnUnsynced } from './warn-unsynced';
 
 /** The UI languages (PRD §11). A new one needs a catalog in `src/locale` — see
  * `tools/check-locales.mjs`, which fails the build if the two disagree. */
@@ -51,7 +52,7 @@ export function chosenLanguage(): Language {
  */
 @Injectable({ providedIn: 'root' })
 export class Localization {
-  private readonly document = inject(DOCUMENT);
+  private readonly unload = inject(WarnUnsynced);
 
   /**
    * The language the running app was booted with. `LOCALE_ID` is provided in
@@ -67,11 +68,16 @@ export class Localization {
    * every boot. Choosing the language already running is a no-op beyond recording
    * it — it may have been an auto-detected guess until now, and a guess that has
    * been confirmed should stop being a guess.
+   *
+   * Through `WarnUnsynced` rather than `location.reload()` directly: this reload
+   * is the app's, so the leave-warning must not fire. A user who picks a language
+   * and is asked whether they really want to leave has been asked about something
+   * they did not do.
    */
   switchTo(language: Language): void {
     write(language);
     if (language === this.current) return;
-    this.document.defaultView?.location.reload();
+    this.unload.reload();
   }
 }
 

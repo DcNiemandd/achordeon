@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
+import { WarnUnsynced } from './warn-unsynced';
 
 /**
  * Which update conversation the app is having, worst first:
@@ -49,6 +50,7 @@ export class AppUpdate {
   private readonly sw = inject(SwUpdate);
   private readonly appRef = inject(ApplicationRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly unload = inject(WarnUnsynced);
 
   private readonly _available = signal(false);
   private readonly _required = signal(false);
@@ -141,7 +143,9 @@ export class AppUpdate {
       // A failed activation still leaves a reload as the useful next move: the
       // fresh load re-registers the worker from scratch.
     } finally {
-      location.reload();
+      // The user pressed Update; being asked whether they meant to leave is a
+      // second question nobody asked (see `WarnUnsynced.expectUnload`).
+      this.unload.reload();
     }
   }
 }

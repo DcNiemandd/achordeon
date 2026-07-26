@@ -1356,6 +1356,20 @@ went with it, and because `recomputeUnsynced` only ran on the success path the
   the unreloadable tab, and stale-false hides real work after `setAutoSync(true)`
   resets the watermark and the first cycle fails.
 
+**Also fixed: the app warned about its own reloads.** Switching language reloads
+(runtime `$localize` caches each message on first use, so §11 chose the reload),
+and the leave-warning fired on it — as it did on restoring a backup, deleting an
+account, taking an update, and heading off to Google. The warning answers "you
+are leaving and the other device will not have this"; none of those is that. The
+user asked for the thing that is happening, the work is safe in IndexedDB, and
+`SyncService.init` pushes it on the next boot. Being asked to confirm leaving a
+page you never chose to leave only teaches you to dismiss the one prompt that
+matters. `WarnUnsynced` now owns both sides of the question — `reload()` is the
+single way the app reloads itself, so a fifth caller cannot forget the first
+half, and `expectUnload()` covers the OAuth redirects it cannot wrap. Armed, not
+permanent: a sign-in that throws before it can redirect re-arms the guard after
+five seconds instead of disarming it for the session.
+
 **Also landed: a changed default reaches the cloud on its own.** It used to reach
 it only if some _other_ edit happened to trigger a cycle first. `SettingsStore`
 now announces a written row (`onSaved`) and `SyncService` registers `pushSoon`
