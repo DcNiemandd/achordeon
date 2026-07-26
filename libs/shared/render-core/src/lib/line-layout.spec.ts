@@ -20,6 +20,7 @@ const settings: GlobalSettings = {
   contentY: 'top',
   chordColor: '#123456',
   chordSize: 1,
+  notation: 'english',
 };
 
 const ctx = (hideChords = false) =>

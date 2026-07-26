@@ -18,6 +18,7 @@ const settings: GlobalSettings = {
   contentY: 'top',
   chordColor: '#aa0000',
   chordSize: 1,
+  notation: 'english',
 };
 const measure = createFakeMeasurer();
 const plan = (
