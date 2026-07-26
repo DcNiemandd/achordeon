@@ -1,9 +1,14 @@
 # Prompt
 
 ```
-i want you to implement the work even thought i told you not to before. I want you to commit witht your signature. I want you to use @docs and @docs/achordeon-implementation.md specificaly. If you have questions, leave them at the end and continue with different work.
+i want you to implement the work even thought i told you not to before. I want you to commit without your signature. I want you to use @docs and @docs/achordeon-implementation.md specificaly. If you have questions, leave them at the end and continue with different work.
 
-implement epic 8
+- the performance session should survive page reload, now it dies. I also want it to survive multiple minutes to an hour when the perfomer's phone is locked or away from the tab
+- I want to set the title of the page:
+1. staticly it should be "Achordeon"
+2. in module it should say "Achordeon - ${MODULE}"
+3. in song/songbook "${NAME_OF_THE_FILE} - Achordeon"
+4. performing: "Performing - Achordeon"
 ```
 
 # Plan: Achordeon implementation
@@ -715,6 +720,125 @@ pointerdown/move/up and passes happily against the broken build. Only
 `Input.dispatchTouchEvent` goes through Chromium's real input pipeline, where
 `touch-action` and the gesture recogniser apply. Verified by reverting the fix:
 the spec goes red.
+
+### Landed — the performance survives the page, not just the route
+
+Epic 8 called the session "persistent" and meant it across **modules**: leave
+`/stage/:id` for the library and the performance is still there on the way back.
+That was half the requirement. The other half is the one a stage actually
+produces: a phone locks between songs, or the OS reclaims a backgrounded tab, and
+what comes back is a fresh document with an empty root injector. The book was
+restored (it is in the URL) and everything else was not — the performance
+restarted at song 1 and the lobby PIN was gone, while the durable `lobbies` row
+(ADR-0011) was still holding the audience open with nobody publishing to it.
+
+- **`StageSession` mirrors itself to `localStorage`** — `{ bookId, index,
+lobbyPin, savedAt }`, written from each mutator and read at construction. That
+  is deliberately the whole record and nothing else: `isMounted` stays in memory
+  because whether the view is on screen is a fact about _this_ document, and a
+  stale `true` would draw the stage bar over the library. `localStorage` for
+  `UiStore`'s reason — the index has to be readable **synchronously**, before the
+  route asks for it — and device-local for the split ratio's reason: which song a
+  phone on stage is showing is not a fact about the account.
+- **A reload takes the same path as a route re-entry.** `start(bookId)` is
+  already idempotent on the same book, and after hydration the stored book _is_
+  the one off the URL, so a reload is the early return and the stored index
+  stands. Nothing new had to know about reloads.
+- **Twelve hours, then it is last night's.** A performance is an event: the tab
+  that comes back an hour later is the same gig, the one that comes back tomorrow
+  is not — and resuming also resurrects the PIN and re-publishes to it. Twelve
+  covers any single evening and cannot span two. `savedAt` is refreshed on every
+  change, so the window is "since you last touched it".
+- **`setTotal` clamps the index.** A song deleted between sessions makes a stored
+  index unreachable, and an index past the end renders a blank page inside a book
+  the view insists is not empty. Landing on the last song is the honest answer to
+  "the song you were on is gone".
+- **Fullscreen is still session-only, and that is not an oversight.** The
+  Fullscreen API needs a user gesture, so a flag that claimed to restore it would
+  be a flag that lies (`UiStore` already records this). One tap gets it back.
+
+**The lobby heals itself instead of assuming its socket lasted.** A frozen tab's
+websocket is closed under it, and a frozen tab runs no timers and gets no events,
+so neither lobby service noticed. What woke up was a `RealtimeChannel` that still
+accepted `send` and delivered nothing: the host broadcast page turns into a
+channel with nobody in it, and viewers sat three songs behind. `LobbyWake`
+(`lobby/lobby-connection.ts`) asks the two questions a suspension raises —
+"did this tab just wake" (`visibilitychange`), "did the network come back"
+(`online`) — plus a 30 s watchdog for the quiet version, a venue's wifi dropping
+while the screen is on. Both sides answer it:
+
+- **The host re-joins and re-publishes the _held_ song**, not the one the lobby
+  opened with — which is why `LobbyHost` now keeps the payload past the publish.
+  Re-publishing is safe precisely because the row owns `rev`: the viewers' reducer
+  applies it once, and a viewer already on that song sees nothing happen.
+- **A repair must not go through `close()`.** `close()` calls `lobby_end`, so
+  reusing it would make a viewer watching the row see the lobby end and un-end a
+  moment later — a flicker out of a repair. `dropChannel()` is the half of it that
+  a re-join needs, and `open()` gained an `isFresh` flag so the analytics count
+  performances rather than sleeps.
+- **The viewer's `resume` is the Re-sync button, automatic.** A joined channel
+  needs only a re-read (the rev gate makes it idempotent); a closed one is
+  re-subscribed **without** resetting `appliedRev`, the payload or the status —
+  `join`'s reset would blank the song being read while the socket came back and
+  then re-render it, which is a flicker inside a repair again. Its Presence key is
+  minted once per join and reused, or a lobby's audience count would climb every
+  time a phone woke up.
+- **A reload while off the stage route leaves the lobby hostless until you go
+  back.** The channel's driver is the route-scoped presenter (Epic 9's note on
+  why), and a fresh document has no presenter until `/stage/:id` mounts again.
+  The audience is not stranded — the durable row still holds the current song —
+  and re-entering performing re-attaches. Fixing it properly means a second
+  driver for one host, which Epic 9 argued against on purpose.
+
+**Fixed on the way, and it was the reason the reload work looked broken: the exit
+cross could not exit.** `presenter.open()` reads the session's own `bookId` on its
+first line, and it was called straight from an `effect` — so the effect took that
+read as a dependency, and `end()`, whose whole job is to clear `bookId`,
+re-triggered the effect that immediately set it back. `/stage` then saw a live
+session and bounced into it (`StagePresenter.load` does that by design). The
+performance was un-endable, which a _persisted_ one would have made permanent.
+`untracked` is the fix: an effect here means "the route param changed, load it",
+and what the load reads on the way is not a reason to run again.
+
+- **The song editor had the identical trap, with worse stakes.**
+  `SongEditorPresenter.load` reads the store's entity list to find the song
+  before it falls back to a fetch, so the effect re-ran on **every** store change
+  — including the autosave's own write-back, which then re-set `_content` from the
+  saved row and would discard whatever had been typed since. Same one-line fix.
+  Both are covered by the suites that already exist (`editor.spec.ts` is green
+  either way; `stage.spec.ts` gained the test that catches the exit).
+
+### Landed — the tab says where you are
+
+`<title>` was still the CLI's `app`. Three shapes, and the word order is the point
+of each:
+
+- **A module** — `Achordeon - Songs`. You are in the app, looking at one of its
+  places, and a tab strip full of them should read by the app.
+- **A song or a songbook** — `Down by the River - Achordeon`. You are looking at a
+  _document_, and its own name is what you are hunting for among fifteen tabs.
+- **Performing** — `Performing - Achordeon`. A document again in shape, but the
+  thing worth naming is the act: the songbook's name is already on screen, and
+  what a performer glancing at a tab strip needs to find is the performance.
+
+- **The module is read off the URL; a document's name cannot be.** `DocumentTitle`
+  matches `ALL_NAV_ITEMS` against `Router.lastSuccessfulNavigation` — the same
+  no-RxJS read `ModuleSwitcher` already makes. A name lives in a record the shell
+  may not load (`shared/**` must not touch a store), so the **page claims** the
+  title and hands over an accessor; because that accessor is read inside a
+  computed, a rename from the editor's title field lands in the tab with nobody
+  wiring it. Three pages claim: the editor, the songbook detail, and performing.
+- **A claim releases only if it is still ours.** The next page can claim before
+  the last one has finished tearing down, and a late release would otherwise wipe
+  the new page's title.
+- **An empty claimed name falls back to the module.** A song's name arrives an
+  IndexedDB read after the route does, and `- Achordeon` with a hole in front of
+  it is worse than the module title it replaces a tick later.
+- **`index.html.template` carries the plain `Achordeon`** — what the tab says
+  before Angular has booted, and what a bookmark of the app root keeps.
+- **`/audience/:pin` is left at the module title** (`Achordeon - Audience`). It is
+  neither a file nor the performing side, and the four rules do not name it. See
+  the question at the end.
 
 ---
 

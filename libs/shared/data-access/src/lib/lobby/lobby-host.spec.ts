@@ -22,7 +22,10 @@ function makePayload(songId: string): LobbyPayload {
 }
 
 // A fake Realtime channel that records track/send and subscribes synchronously.
+// `state` is what `isChannelJoined` reads: 'joined' while the socket is up,
+// 'closed' after the tab was frozen out from under it.
 class FakeChannel {
+  state = 'closed';
   readonly track = jest.fn(async () => 'ok');
   readonly send = jest.fn(async () => 'ok');
   presenceState() {
@@ -32,6 +35,7 @@ class FakeChannel {
     return this;
   }
   subscribe(cb: (status: string) => void) {
+    this.state = 'joined';
     cb('SUBSCRIBED');
     return this;
   }
@@ -41,10 +45,12 @@ describe('LobbyHost', () => {
   let channel: FakeChannel;
   let host: LobbyHost;
   let rpc: jest.Mock;
+  let openedChannels: FakeChannel[];
 
   beforeEach(() => {
     jest.useFakeTimers();
     channel = new FakeChannel();
+    openedChannels = [];
     let rev = 0;
     // The durable-publish RPC hands back a server-owned, monotonic rev.
     rpc = jest.fn(async (fn: string) => {
@@ -52,7 +58,13 @@ describe('LobbyHost', () => {
       return { data: null, error: null };
     });
     const client = {
-      channel: jest.fn(() => channel),
+      // A re-join asks for a fresh channel; the first one is `channel` so the
+      // existing tests keep their handle on it.
+      channel: jest.fn(() => {
+        const next = openedChannels.length === 0 ? channel : new FakeChannel();
+        openedChannels.push(next);
+        return next;
+      }),
       removeChannel: jest.fn(async () => undefined),
       rpc,
     };
@@ -122,5 +134,73 @@ describe('LobbyHost', () => {
     expect(channel.send).not.toHaveBeenCalled();
     expect(rpc).toHaveBeenCalledWith('lobby_end', { p_pin: 'ABCDE' });
     expect(host.status()).toBe('idle');
+  });
+
+  // The failure this answers is silent: a frozen tab's socket is closed under it,
+  // and what wakes up is a channel object that still accepts `send` and reaches
+  // nobody.
+  describe('after the tab was asleep', () => {
+    it('re-joins a channel that closed, and re-publishes the held song', async () => {
+      await host.sync('ABCDE', makePayload('s1'));
+      await host.sync('ABCDE', makePayload('s7'));
+      await jest.advanceTimersByTimeAsync(200);
+      rpc.mockClear();
+
+      channel.state = 'closed'; // the socket went with the lock screen
+      await host.resume();
+
+      const rejoined = openedChannels[1];
+      expect(rejoined).toBeDefined();
+      expect(rejoined.track).toHaveBeenCalledWith({ role: 'host' });
+      // The song the performer is actually on, not the one the lobby opened with.
+      expect(rpc).toHaveBeenCalledWith('lobby_publish', {
+        p_pin: 'ABCDE',
+        p_payload: expect.objectContaining({
+          song: expect.objectContaining({ id: 's7' }),
+        }),
+      });
+      expect(host.status()).toBe('hosting');
+    });
+
+    // `close()` would have marked the row ended, and a viewer watching the row
+    // would see the lobby end and un-end a moment later — a flicker out of a
+    // repair.
+    it('does not end the lobby to repair it', async () => {
+      await host.sync('ABCDE', makePayload('s1'));
+      rpc.mockClear();
+
+      channel.state = 'closed';
+      await host.resume();
+
+      expect(rpc).not.toHaveBeenCalledWith('lobby_end', expect.anything());
+    });
+
+    it('leaves a channel that is still joined alone', async () => {
+      await host.sync('ABCDE', makePayload('s1'));
+      rpc.mockClear();
+
+      await host.resume(); // state is 'joined' — nothing is wrong
+
+      expect(openedChannels).toHaveLength(1);
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when there is no lobby', async () => {
+      await host.resume();
+
+      expect(openedChannels).toHaveLength(0);
+      expect(host.status()).toBe('idle');
+    });
+
+    // The wiring, not just the method: becoming visible is what calls it.
+    it('heals on becoming visible again', async () => {
+      await host.sync('ABCDE', makePayload('s1'));
+      channel.state = 'closed';
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(openedChannels).toHaveLength(2);
+    });
   });
 });

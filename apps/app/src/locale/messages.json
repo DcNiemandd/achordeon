@@ -425,6 +425,7 @@
     "songs.newName": "New song",
     "songs.copyName": "{$name} (copy)",
     "stage.closeSummary": "Close song list",
+    "stage.documentTitle": "Performing",
     "stage.emptySongbook": "This songbook has no songs.",
     "stage.audienceDialog.title": "Create an audience",
     "stage.audienceDialog.info": "Share the code or link with your audience so they can follow along on their devices.",

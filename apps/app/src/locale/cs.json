@@ -426,6 +426,7 @@
     "songs.newName": null,
     "songs.copyName": null,
     "stage.closeSummary": null,
+    "stage.documentTitle": null,
     "stage.emptySongbook": null,
     "stage.audienceDialog.title": null,
     "stage.audienceDialog.info": null,

@@ -10,6 +10,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
@@ -24,6 +25,7 @@ import {
 } from '../primitives';
 import {
   BlankPage,
+  DocumentTitle,
   Fullscreen,
   StageSession,
   TierGuard,
@@ -691,8 +693,23 @@ export class StagePerformPage {
     // The shell draws the stage controls while this view is on screen.
     this.session.enterView();
 
+    // The tab names the act, not the book: the songbook's name is already on
+    // screen, and what a performer glancing at a tab strip needs to find is the
+    // performance.
+    destroyRef.onDestroy(
+      inject(DocumentTitle).claim(() => this.performingTitle),
+    );
+
+    // `untracked`, and the exit cross is why. `open()` reads the session's own
+    // `bookId` on its first line (`start` is idempotent on the same book), so a
+    // plain effect took that read as a dependency — and `end()`, which clears
+    // `bookId`, re-triggered the effect that immediately set it back. The
+    // performance could not be ended: `/stage` saw a live session and bounced
+    // straight back into it. An effect's job here is "the route param changed,
+    // load it"; what the load reads on the way is not a reason to run again.
     effect(() => {
-      void this.presenter.open(this.songbookId());
+      const id = this.songbookId();
+      untracked(() => void this.presenter.open(id));
     });
   }
 
@@ -806,6 +823,8 @@ export class StagePerformPage {
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
+  /** What the browser tab says while a performance is on: "Performing - Achordeon". */
+  private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;
 
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;

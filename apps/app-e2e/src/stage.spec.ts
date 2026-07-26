@@ -89,6 +89,52 @@ async function swipe(page: Page, direction: 'left' | 'right'): Promise<void> {
   await cdp.detach();
 }
 
+test.describe('stage — the performance survives the page', () => {
+  test('a reload comes back on the same song, not at the top of the book', async ({
+    page,
+  }) => {
+    const id = await seedBook(page);
+    await page.goto(`stage/${id}`);
+    await expect(page.getByTestId('stage-prev')).toBeDisabled();
+
+    await page.getByTestId('stage-next').click();
+    await expect(page.getByTestId('stage-prev')).toBeEnabled();
+
+    // The real event: a phone's tab discarded while locked, then re-created.
+    await page.reload();
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+
+    // Prev is only enabled off the first song, so this IS "we came back on song 2".
+    await expect(page.getByTestId('stage-prev')).toBeEnabled();
+  });
+
+  test('the exit cross ends it — a reload afterwards does not resume', async ({
+    page,
+  }) => {
+    const id = await seedBook(page);
+    await page.goto(`stage/${id}`);
+    await page.getByTestId('stage-next').click();
+    await expect(page.getByTestId('stage-prev')).toBeEnabled();
+
+    await page.getByTestId('stage-exit').click();
+    await expect(page.getByTestId('stage-list')).toBeVisible();
+
+    await page.goto(`stage/${id}`);
+    await expect(page.getByTestId('stage-prev')).toBeDisabled();
+  });
+
+  test('the tab says what you are doing', async ({ page }) => {
+    const id = await seedBook(page);
+    await expect(page).toHaveTitle('Achordeon - Songs');
+
+    await page.goto('songbooks');
+    await expect(page).toHaveTitle('Achordeon - Songbooks');
+
+    await page.goto(`stage/${id}`);
+    await expect(page).toHaveTitle('Performing - Achordeon');
+  });
+});
+
 test.describe('stage — swiping turns the page', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: COMPACT });
 

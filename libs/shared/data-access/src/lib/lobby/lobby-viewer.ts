@@ -11,11 +11,17 @@
 // Because every update is reduced by `rev`, a lost, duplicated or out-of-order
 // event is harmless — the worst case self-heals on the next event or a re-read.
 // Presence is used only for the live audience count.
+//
+// A viewer also **heals on waking** (`resume`, driven by `LobbyWake`): a phone in
+// a pocket for most of a set has missed every event in between, so becoming
+// visible re-reads the row and re-joins the channel if the socket went with it.
+// The manual Re-sync button is the same act, asked for by hand.
 
 import { Injectable, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { LobbyPayload, LobbyUpdate } from '@achordeon/shared/domain';
 import { SupabaseService } from './supabase-client';
+import { LobbyWake, isChannelJoined } from './lobby-connection';
 
 export type LobbyViewerStatus =
   | 'idle' // not joined
@@ -50,11 +56,27 @@ export class LobbyViewer {
 
   private channel: RealtimeChannel | null = null;
   private currentPin = '';
+  /**
+   * This viewer's Presence key, minted once per join and **reused on a re-join**:
+   * a fresh key would be counted as a second viewer for as long as the old entry
+   * took to expire, so a lobby's count would climb every time a phone woke up.
+   */
+  private viewerKey = randomViewerKey();
   /** The highest rev applied — the reducer's gate across all three transports. */
   private appliedRev = -1;
   /** True once any lobby row (live or ended) has been seen for this PIN. */
   private sawLobby = false;
   private notFoundTimer: ReturnType<typeof setTimeout> | null = null;
+  private isResuming = false;
+
+  /**
+   * The automatic half of Re-sync. A viewer's phone is in a pocket for most of a
+   * set, and the tab that comes back has missed every event in between — so
+   * waking up re-reads the row (and re-joins the channel if the socket went with
+   * it) rather than waiting for the viewer to notice they are on the wrong song
+   * and press the button.
+   */
+  private readonly wake = new LobbyWake(() => void this.resume());
 
   private readonly _payload = signal<LobbyPayload | null>(null);
   /** The current-song payload for this lobby, or `null`. */
@@ -70,17 +92,32 @@ export class LobbyViewer {
   /** Join the lobby at `pin`. Leaves any previous channel first. */
   async join(pin: string): Promise<void> {
     await this.leave();
+    this.currentPin = pin;
+    this.viewerKey = randomViewerKey();
+    this._status.set('connecting');
+    await this.subscribe(pin);
+  }
+
+  /**
+   * Open a channel on `pin` and start following the row.
+   *
+   * Split out of `join` so a re-join after a suspension can reuse it **without**
+   * resetting anything: `appliedRev`, the payload on screen and the `joined`
+   * status all stand. Clearing them would blank the song the viewer is reading
+   * while the socket comes back, and re-applying the row from `rev` -1 would
+   * re-render it a moment later — a flicker in the middle of a repair.
+   */
+  private async subscribe(pin: string): Promise<void> {
     const client = await this.supabase.client();
     if (!client) {
       this._status.set('unavailable');
       return;
     }
-    this.currentPin = pin;
-    this._status.set('connecting');
+    this.wake.arm();
 
     const channel = client.channel(channelName(pin), {
       config: {
-        presence: { key: randomViewerKey() },
+        presence: { key: this.viewerKey },
         broadcast: { self: false },
       },
     });
@@ -117,21 +154,48 @@ export class LobbyViewer {
 
   /** Leave the lobby and reset to idle. */
   async leave(): Promise<void> {
-    if (this.notFoundTimer !== null) {
-      clearTimeout(this.notFoundTimer);
-      this.notFoundTimer = null;
-    }
-    const client = await this.supabase.client();
-    if (this.channel && client) {
-      await client.removeChannel(this.channel);
-    }
-    this.channel = null;
+    this.clearNotFound();
+    this.wake.disarm();
+    await this.dropChannel();
     this.currentPin = '';
     this.appliedRev = -1;
     this.sawLobby = false;
     this._payload.set(null);
     this._audienceCount.set(0);
     this._status.set('idle');
+  }
+
+  /**
+   * Catch up after this tab was away — the automatic Re-sync.
+   *
+   * A joined channel needs only a re-read: the row is the truth and the rev gate
+   * makes applying it idempotent, so a viewer already on the current song sees
+   * nothing happen. A channel that is no longer joined is dropped and re-opened
+   * first, because a re-read alone would leave the next page turn undelivered.
+   */
+  async resume(): Promise<void> {
+    const pin = this.currentPin;
+    if (pin === '' || this.isResuming) return;
+    this.isResuming = true;
+    try {
+      if (!isChannelJoined(this.channel)) {
+        await this.dropChannel();
+        await this.subscribe(pin);
+        return;
+      }
+      await this.readRow(pin);
+    } finally {
+      this.isResuming = false;
+    }
+  }
+
+  /** Let go of the channel without resetting what the viewer is reading. */
+  private async dropChannel(): Promise<void> {
+    const client = await this.supabase.client();
+    if (this.channel && client) {
+      await client.removeChannel(this.channel);
+    }
+    this.channel = null;
   }
 
   /**

@@ -12,12 +12,17 @@
 // Broadcast carries the same `{ rev, payload }` as a low-latency nudge, and
 // Presence carries only `{ role: 'host' }` for the live audience count. Ending a
 // lobby marks the row (`lobby_end`) and drops the channel.
+//
+// The channel also **heals itself** (`resume`, driven by `LobbyWake`): a
+// performer's phone locks for an hour, the socket goes with it, and what wakes up
+// is a channel object that looks live and reaches nobody.
 
 import { Injectable, inject, signal } from '@angular/core';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import type { LobbyPayload, LobbyUpdate } from '@achordeon/shared/domain';
 import { SupabaseService } from './supabase-client';
 import { LobbyAnalytics } from './lobby-analytics';
+import { LobbyWake, isChannelJoined } from './lobby-connection';
 
 export type LobbyHostStatus =
   | 'idle' // no lobby
@@ -46,6 +51,19 @@ export class LobbyHost {
   private currentPin = '';
   private updateTimer: ReturnType<typeof setTimeout> | null = null;
   private pending: LobbyPayload | null = null;
+  /**
+   * The last payload this host was asked to hold — kept past the publish, unlike
+   * `pending`, because a re-join has to open with the song the performer is
+   * actually on rather than with nothing.
+   */
+  private held: LobbyPayload | null = null;
+  private isResuming = false;
+
+  /**
+   * Heals the channel after the tab was frozen, the network dropped, or the
+   * watchdog found the channel closed. Constructed last so `resume` is bound.
+   */
+  private readonly wake = new LobbyWake(() => void this.resume());
 
   private readonly _audienceCount = signal(0);
   /** Live viewers on the channel — Presence, minus the host's own entry. */
@@ -64,6 +82,7 @@ export class LobbyHost {
    * on.
    */
   async sync(pin: string, payload: LobbyPayload): Promise<void> {
+    this.held = payload;
     if (pin !== this.currentPin) {
       this.cancelPending();
       await this.close();
@@ -142,23 +161,73 @@ export class LobbyHost {
       // row (its `ended_at`) rather than from the count going quiet.
       await client.rpc('lobby_end', { p_pin: pin });
     }
-    if (this.channel && client) {
-      await client.removeChannel(this.channel);
-    }
-    this.channel = null;
+    await this.dropChannel();
     this.currentPin = '';
+    this.held = null;
+    this.wake.disarm();
     this._audienceCount.set(0);
     this._status.set('idle');
   }
 
-  private async open(pin: string, payload: LobbyPayload): Promise<void> {
+  /**
+   * Re-join the channel if it stopped being joined while this tab was away.
+   *
+   * The failure it answers is silent: a frozen tab's socket is closed under it,
+   * and what wakes up is a channel object that still accepts `send` and delivers
+   * nothing — so the audience count goes to zero on the viewers' side and the
+   * next page turn is broadcast into a channel with nobody in it.
+   *
+   * A joined channel is left alone. A closed one is dropped and re-opened, which
+   * re-tracks Presence and re-publishes the held song — and re-publishing is safe
+   * precisely because the row owns `rev` (ADR-0011): the viewers' reducer applies
+   * it once and a viewer already on that song sees nothing happen.
+   *
+   * **Not `close()` first.** `close()` calls `lobby_end`, and a viewer watching
+   * the row would see the lobby end and then un-end a moment later — a flicker
+   * out of a repair. `dropChannel` is the half of it that this needs.
+   */
+  async resume(): Promise<void> {
+    const pin = this.currentPin;
+    const payload = this.held;
+    if (pin === '' || payload === null || this.isResuming) return;
+    if (isChannelJoined(this.channel)) return;
+    this.isResuming = true;
+    try {
+      await this.dropChannel();
+      await this.open(pin, payload, false);
+    } finally {
+      this.isResuming = false;
+    }
+  }
+
+  /** Let go of the channel without touching the row. */
+  private async dropChannel(): Promise<void> {
+    const client = await this.supabase.client();
+    if (this.channel && client) {
+      await client.removeChannel(this.channel);
+    }
+    this.channel = null;
+  }
+
+  /**
+   * `isFresh` is false on a re-join: the lobby was created once, and logging a
+   * second `created` event every time a phone came out of a pocket would make the
+   * analytics count sleeps rather than performances.
+   */
+  private async open(
+    pin: string,
+    payload: LobbyPayload,
+    isFresh = true,
+  ): Promise<void> {
     const client = await this.supabase.client();
     if (!client) {
       this._status.set('unavailable');
       return;
     }
     this.currentPin = pin;
+    this.held = payload;
     this._status.set('connecting');
+    this.wake.arm();
 
     const channel = client.channel(channelName(pin), {
       config: { presence: { key: 'host' }, broadcast: { self: false } },
@@ -181,7 +250,7 @@ export class LobbyHost {
           void channel.track({ role: 'host' }).then(async () => {
             await this.writeAndBroadcast(payload);
             this._status.set('hosting');
-            this.analytics.created(pin, payload.song.id);
+            if (isFresh) this.analytics.created(pin, payload.song.id);
             resolve();
           });
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {

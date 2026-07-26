@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>app</title>
+    <!-- The plain app name: what the tab says before Angular has booted, and what
+         a bookmark of the app root keeps. `DocumentTitle` takes over from the
+         first navigation and appends the module, the document, or "Performing". -->
+    <title>Achordeon</title>
     <base href="/" />
     <!-- Content Security Policy, generated. GitHub Pages cannot set response
          headers, so the policy has to ride in a meta tag (PRD-INFRASTRUCTURE.md

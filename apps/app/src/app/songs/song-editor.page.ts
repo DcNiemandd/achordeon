@@ -4,15 +4,23 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
   input,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { Button, Dialog, Icon, Tooltip, type IconName } from '../primitives';
 import { Router, RouterLink } from '@angular/router';
-import { ActionBar, BlankPage, SplitPane, UiStore } from '../shared/layout';
+import {
+  ActionBar,
+  BlankPage,
+  DocumentTitle,
+  SplitPane,
+  UiStore,
+} from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
@@ -673,8 +681,22 @@ export class SongEditorPage {
   }
 
   constructor() {
+    // `untracked` for the same reason the stage's does: `load()` reads the song
+    // store's entity list to find the song before it falls back to a fetch, so a
+    // plain effect re-ran on *every* store change — including the autosave's own
+    // write-back, which then re-set `_content` from the saved row and would have
+    // discarded whatever was typed since. The route param is the trigger; what
+    // the load reads on the way is not.
     effect(() => {
-      void this.presenter.load(this.id());
+      const id = this.id();
+      untracked(() => void this.presenter.load(id));
     });
+
+    // The tab names the song, not the module: this is a document, and a rename
+    // from the title field reaches the tab because `claim` takes the accessor
+    // rather than the string.
+    inject(DestroyRef).onDestroy(
+      inject(DocumentTitle).claim(() => this.presenter.name()),
+    );
   }
 }
