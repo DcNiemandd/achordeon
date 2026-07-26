@@ -10,6 +10,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
@@ -24,8 +25,10 @@ import {
 } from '../primitives';
 import {
   BlankPage,
+  DocumentTitle,
   Fullscreen,
   StageSession,
+  TierGuard,
   Viewport,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
@@ -84,6 +87,7 @@ const SWIPE_THRESHOLD_PX = 60;
       class="screen"
       (pointerdown)="startSwipe($event)"
       (pointerup)="endSwipe($event)"
+      (pointercancel)="cancelSwipe($event)"
     >
       <!-- Desktop only: the feature's own top grid bar. Mobile draws nothing
            here — its controls are the shell's bottom bar (StageBar). -->
@@ -289,7 +293,11 @@ const SWIPE_THRESHOLD_PX = 60;
           }
           @if (session.audienceState() === 'create') {
             <!-- Premium indicator lives in the dialog, not on the bar button. -->
-            <app-premium [label]="createLobbyLabel" dialog-actions>
+            <app-premium
+              [label]="createLobbyLabel"
+              [isMarked]="tier.isMarked('audience-host')"
+              dialog-actions
+            >
               <button
                 appButton
                 type="button"
@@ -302,13 +310,19 @@ const SWIPE_THRESHOLD_PX = 60;
             </app-premium>
           }
 
-          @if (session.audienceState() === 'active') {
+          @if (
+            session.audienceState() === 'active' &&
+            tier.isMarked('audience-host')
+          ) {
             <!-- Gold tint marks the lobby as a Premium feature, the same
-                 language the premium glow speaks elsewhere (§5.3). -->
+                 language the premium glow speaks elsewhere (§5.3). Not shown to
+                 someone who already pays — they are not the audience for it. -->
             <p class="premium-note" data-testid="stage-lobby-premium">
               <app-icon name="favorite" [isFilled]="true" />
               {{ lobbyPremiumNote }}
             </p>
+          }
+          @if (session.audienceState() === 'active') {
             <dl class="lobby-info">
               <dt>{{ lobbyPinLabel }}</dt>
               <dd class="lobby-pin" data-testid="stage-lobby-pin">
@@ -372,9 +386,19 @@ const SWIPE_THRESHOLD_PX = 60;
       user-select: none;
     }
 
+    /* The swipe surface, and the reason swiping works on a phone at all.
+       With touch-action left at its default, Chrome on Android watches the
+       first ~8px of a drag, decides it is a pan, hands the gesture to the
+       compositor and fires **pointercancel** — no pointerup ever arrives, so
+       endSwipe never ran and the page never turned. Claiming the horizontal
+       axis here tells the browser up front that this drag is ours.
+
+       pan-y and pinch-zoom stay with the browser on purpose: a vertical drag is
+       not a page turn, and pinch is how you read a chord that rendered small. */
     .render {
       flex: 1;
       min-block-size: 0;
+      touch-action: pan-y pinch-zoom;
     }
 
     /* Desktop top bar — grid: [left 1fr] [nav auto] [right 1fr] = nav centered */
@@ -627,6 +651,9 @@ const SWIPE_THRESHOLD_PX = 60;
 export class StagePerformPage {
   protected readonly presenter = inject(StagePerformPresenter);
   protected readonly session = inject(StageSession);
+  /** Hosting a lobby is the Premium feature here (PRD-INFRASTRUCTURE.md §10) —
+   * marked, never blocked, and not marked at all for someone who pays. */
+  protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
   private readonly router = inject(Router);
@@ -666,8 +693,23 @@ export class StagePerformPage {
     // The shell draws the stage controls while this view is on screen.
     this.session.enterView();
 
+    // The tab names the act, not the book: the songbook's name is already on
+    // screen, and what a performer glancing at a tab strip needs to find is the
+    // performance.
+    destroyRef.onDestroy(
+      inject(DocumentTitle).claim(() => this.performingTitle),
+    );
+
+    // `untracked`, and the exit cross is why. `open()` reads the session's own
+    // `bookId` on its first line (`start` is idempotent on the same book), so a
+    // plain effect took that read as a dependency — and `end()`, which clears
+    // `bookId`, re-triggered the effect that immediately set it back. The
+    // performance could not be ended: `/stage` saw a live session and bounced
+    // straight back into it. An effect's job here is "the route param changed,
+    // load it"; what the load reads on the way is not a reason to run again.
     effect(() => {
-      void this.presenter.open(this.songbookId());
+      const id = this.songbookId();
+      untracked(() => void this.presenter.open(id));
     });
   }
 
@@ -712,11 +754,27 @@ export class StagePerformPage {
     // hidden, so the reveal decision waits for pointerup, where a tap is told
     // apart from a swipe.
     if ((event.target as HTMLElement).closest('.summary, button, a')) return;
+    // A second finger (a pinch) must not move the anchor out from under the
+    // first one, or the gesture that ends is measured from the wrong place.
+    if (!event.isPrimary) return;
     this.swipeStartX = event.clientX;
     this.swipeStartY = event.clientY;
   }
 
+  /**
+   * The browser took the gesture (a pan it decided to handle itself, or the
+   * pointer left the window). No pointerup will follow, so the anchor has to go
+   * — otherwise the *next* tap measures its distance from a finger that left
+   * minutes ago and turns the page on a touch that never moved.
+   */
+  protected cancelSwipe(event: PointerEvent): void {
+    if (!event.isPrimary) return;
+    this.swipeStartX = null;
+    this.swipeStartY = null;
+  }
+
   protected endSwipe(event: PointerEvent): void {
+    if (!event.isPrimary) return;
     if (this.swipeStartX === null || this.swipeStartY === null) return;
     const dx = event.clientX - this.swipeStartX;
     const dy = event.clientY - this.swipeStartY;
@@ -765,6 +823,8 @@ export class StagePerformPage {
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
+  /** What the browser tab says while a performance is on: "Performing - Achordeon". */
+  private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;
 
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;

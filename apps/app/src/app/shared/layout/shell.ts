@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Button } from '../../primitives';
 import { Fullscreen } from './fullscreen';
 import { BackNavigation } from './back-navigation';
+import { DocumentTitle } from './document-title';
 import { ModuleSwitcher } from './module-switcher';
 import { Panes } from './panes';
 import { Rail } from './rail';
@@ -189,6 +190,12 @@ export class Shell {
    * that always is. See `BackNavigation`.
    */
   private readonly backNavigation = inject(BackNavigation);
+  /**
+   * Injected for its side effect too: it writes `document.title` from an effect,
+   * so it has to be alive from boot. Same reasoning as `BackNavigation` — a
+   * root-scoped service nobody injects is a service that never runs.
+   */
+  private readonly documentTitle = inject(DocumentTitle);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 

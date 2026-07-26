@@ -625,6 +625,24 @@ test.describe('song editor', () => {
     expect(square[2] / square[3]).toBeCloseTo(1); // 1:1, as asked
   });
 
+  // Notation is a SPELLING of the printed chord, and nothing else. The half that
+  // matters to a musician is the last assertion: a preference did not rewrite
+  // their song.
+  test('German notation prints H for B, and leaves the source alone', async ({
+    page,
+  }) => {
+    await type(page, '1.: sing [B]this [Bb]too');
+    const render = page.getByTestId('song-render');
+    await expect(render).toContainText('Bb'); // English: exactly as written
+
+    await page.getByTestId('editor-settings').click();
+    await page.getByTestId('notation-german').click();
+
+    await expect(render).toContainText('H'); // B natural is H…
+    await expect(render).not.toContainText('Bb'); // …and B flat is plain B
+    await expect(page.getByTestId('editor')).toContainText('[Bb]');
+  });
+
   test('an unset song setting shows as inherited, and reset gives it back', async ({
     page,
   }) => {

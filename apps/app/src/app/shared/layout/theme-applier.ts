@@ -34,6 +34,26 @@ export class ThemeApplier {
     effect(() => this.apply(theme()));
   }
 
+  /**
+   * The last theme this device chose, or `null` if it never did.
+   *
+   * The root shell seeds `SettingsStore` from this at boot, and without it the
+   * cache below would be write-only: the pre-paint script stamped `dark`, the
+   * store came up at its `'system'` default, and the first `connect` effect
+   * promptly *removed* the attribute the script had just set. A chosen dark theme
+   * survived exactly until Angular booted.
+   */
+  cached(): Theme | null {
+    try {
+      const stored = localStorage.getItem(PRE_PAINT_KEY);
+      return stored === 'dark' || stored === 'light' || stored === 'system'
+        ? stored
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   apply(theme: Theme): void {
     const root = this.document.documentElement;
     if (theme === 'system') {

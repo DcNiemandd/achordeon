@@ -20,6 +20,7 @@ import {
   type MigrateStatus,
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
+import { BootGate } from '../persistence/boot-gate';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
 import { readTextFile } from './file-io';
 import { readEmbeddedSnapshot } from './embedded-metadata';
@@ -43,6 +44,7 @@ export interface ImportSource {
 export class ImportService {
   private readonly songs = inject(SONG_REPOSITORY);
   private readonly songbooks = inject(SONGBOOK_REPOSITORY);
+  private readonly boot = inject(BootGate);
 
   /**
    * A picked file as a migrated envelope.
@@ -54,14 +56,19 @@ export class ImportService {
    *
    * `refuse` from the gateway is a hard stop, not a warning: the file was
    * written by a build with a breaking schema this one cannot read, and guessing
-   * a down-migration is how a library gets quietly mangled (ADR-0007).
+   * a down-migration is how a library gets quietly mangled (ADR-0007). It also
+   * latches `BootGate`, which raises the blocking update prompt — telling the user
+   * to update is only fair if the app then offers to (PRD-INFRASTRUCTURE.md §11).
    */
   async read(file: Blob): Promise<ImportSource> {
     const raw =
       (await readEmbeddedSnapshot(file)) ?? (await readTextFile(file));
     const parsed = this.parse(raw);
     const { snapshot, status } = migrate(parsed);
-    if (status === 'refuse') throw new ImportError('refused');
+    if (status === 'refuse') {
+      this.boot.refuseIngest();
+      throw new ImportError('refused');
+    }
     return { snapshot, status };
   }
 

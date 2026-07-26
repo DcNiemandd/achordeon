@@ -17,6 +17,7 @@ const settings: GlobalSettings = {
   contentY: 'top',
   chordColor: '#000000',
   chordSize: 1,
+  notation: 'english',
 };
 const ctx = (hideChords = false) =>
   createContext(settings, createFakeMeasurer(), DEFAULT_TUNING, hideChords);

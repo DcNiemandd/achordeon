@@ -84,6 +84,7 @@ Which scopes a given setting may be overridden at is a configurable property of 
 - _columns_ — author-set count (future: smart auto-fit).
 - _title position_ — top, or left side as a sideways (rotated) spine. A companion _title layout_ choice stacks the subtitle under the title or sets it inline beside it. The title block always sits at the top-left corner.
 - _aspect ratio_ — validated text input accepting `N:N`, `N` (float), `N/N`, or `A4`, plus a dropdown of predefined presets.
+- _notation_ — English or German note names on the printed page. German spells B natural as `H` and B♭ as `B`. It is a **spelling**, not a reading: the Song's own text is never rewritten, and `[H]` is understood as B natural under either setting. What a stored chord _means_ must not depend on a preference, or the same file would sound different on two devices.
 
 ## Aspect ratio
 

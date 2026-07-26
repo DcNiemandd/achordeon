@@ -250,6 +250,26 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     group: 'chords',
     control: { kind: 'stepper', min: 0.5, max: 3, step: 0.1 },
   },
+  notation: {
+    label: $localize`:@@setting.notation:Notation`,
+    // Says what changes on the page, and — because this is the one setting a
+    // musician could reasonably fear — that the song itself is not touched.
+    help: $localize`:@@setting.notation.help:Which note names the chords are printed with. German writes H for B, and B for B flat. Only the printed page changes; the song is left exactly as you wrote it.`,
+    group: 'chords',
+    control: {
+      kind: 'choice',
+      options: [
+        {
+          value: 'english',
+          label: $localize`:@@setting.notation.english:English (B)`,
+        },
+        {
+          value: 'german',
+          label: $localize`:@@setting.notation.german:German (H)`,
+        },
+      ],
+    },
+  },
 };
 
 /** The registry rows a given scope is allowed to override (ADR-0006). */

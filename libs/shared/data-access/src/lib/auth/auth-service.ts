@@ -220,8 +220,37 @@ export class AuthService {
   private async adopt(session: Session | null): Promise<void> {
     this._session.set(session);
     this._status.set(session ? 'signed-in' : 'signed-out');
+    if (session !== null) await this.refreshIdentities(session);
     await this.refreshPlan();
     await this.reactivateProfile();
+  }
+
+  /**
+   * Re-read the user from the server, because the one on the session is a
+   * snapshot and `identities` is the field that goes stale.
+   *
+   * `linkIdentity` (Settings ▸ Add Google) grants the identity server-side and
+   * then redirects back — and the session that comes out of storage on the other
+   * side is the one from *before* the link, listing the old identities. So
+   * `hasGoogle()` stayed false after connecting Google: the Add Google button
+   * stayed offered, the Drive buttons stayed disabled and the line telling you to
+   * add Google stayed under them, until a token refresh happened to fix it hours
+   * later. `getUser()` asks the server, which is the only thing that knows.
+   *
+   * Best-effort and non-blocking: a failed read leaves the session exactly as it
+   * was. Being offline must never look like being signed out.
+   */
+  private async refreshIdentities(session: Session): Promise<void> {
+    const client = await this.supabase.client();
+    if (client === null) return;
+    const { data, error } = await client.auth.getUser();
+    if (error || data.user === null) return;
+    // Another adopt may have landed while this was in flight (a sign-out, a
+    // refresh); only the session this was called for may be rewritten.
+    if (this._session()?.access_token !== session.access_token) return;
+    // Spread, not replace: `provider_token` is the session's, not the user's,
+    // and Drive's whole re-auth dance depends on it surviving this.
+    this._session.set({ ...session, user: data.user });
   }
 
   /**

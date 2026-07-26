@@ -1,9 +1,14 @@
 # Prompt
 
 ```
-i want you to implement the work even thought i told you not to before. I want you to commit witht your signature. I want you to use @docs and @docs/achordeon-implementation.md specificaly. If you have questions, leave them at the end and continue with different work.
+i want you to implement the work even thought i told you not to before. I want you to commit without your signature. I want you to use @docs and @docs/achordeon-implementation.md specificaly. If you have questions, leave them at the end and continue with different work.
 
-implement epic 8
+- the performance session should survive page reload, now it dies. I also want it to survive multiple minutes to an hour when the perfomer's phone is locked or away from the tab
+- I want to set the title of the page:
+1. staticly it should be "Achordeon"
+2. in module it should say "Achordeon - ${MODULE}"
+3. in song/songbook "${NAME_OF_THE_FILE} - Achordeon"
+4. performing: "Performing - Achordeon"
 ```
 
 # Plan: Achordeon implementation
@@ -681,12 +686,188 @@ Audience (Epic 9).
 
 ### Subtasks
 
-- [ ] Songbook picker → performing mode; "Perform" shortcut from Songbooks.
-- [ ] One-song view with prev/next (disabled at ends; empty songbook can't be
+- [x] Songbook picker → performing mode; "Perform" shortcut from Songbooks.
+- [x] One-song view with prev/next (disabled at ends; empty songbook can't be
       performed).
-- [ ] Summary list (compact, search-only) to jump to a song.
-- [ ] Swipe navigation + fullscreen (tap toggles navbar, no dedicated tap zone).
-- [ ] "Create an audience" entry point (wires into Epic 9).
+- [x] Summary list (compact, search-only) to jump to a song.
+- [x] Swipe navigation + fullscreen (tap toggles navbar, no dedicated tap zone).
+- [x] "Create an audience" entry point (wires into Epic 9).
+
+### Landed — the swipe did not work on a phone
+
+The gesture was written on Pointer Events so one handler serves mouse and touch,
+and on a desktop it worked. On Chrome for Android it never fired once.
+
+**`touch-action` was left at its default**, so the browser treats the first few
+pixels of a touch drag as possibly-a-pan, decides it is one, hands the gesture to
+the compositor and fires **`pointercancel`**. No `pointerup` ever arrives, and
+`pointerup` is where the page turn was. The render now claims the horizontal axis
+(`touch-action: pan-y pinch-zoom` — vertical drags and pinch stay the browser's,
+because neither is a page turn and pinch is how you read a chord that rendered
+small).
+
+Two things fell out of the same reading:
+
+- **A cancelled gesture left its anchor behind.** `pointercancel` cleared
+  nothing, so the next tap measured its distance from a finger that had left
+  minutes earlier — a tap that turned the page. It resets now.
+- **Only the primary pointer counts.** A second finger used to move the anchor
+  out from under the first, so a pinch could end as a page turn.
+
+`apps/app-e2e/src/stage.spec.ts` covers it, and **it dispatches touch through
+CDP rather than `page.mouse`** — a mouse drag produces a tidy
+pointerdown/move/up and passes happily against the broken build. Only
+`Input.dispatchTouchEvent` goes through Chromium's real input pipeline, where
+`touch-action` and the gesture recogniser apply. Verified by reverting the fix:
+the spec goes red.
+
+### Landed — the performance survives the page, not just the route
+
+Epic 8 called the session "persistent" and meant it across **modules**: leave
+`/stage/:id` for the library and the performance is still there on the way back.
+That was half the requirement. The other half is the one a stage actually
+produces: a phone locks between songs, or the OS reclaims a backgrounded tab, and
+what comes back is a fresh document with an empty root injector. The book was
+restored (it is in the URL) and everything else was not — the performance
+restarted at song 1 and the lobby PIN was gone, while the durable `lobbies` row
+(ADR-0011) was still holding the audience open with nobody publishing to it.
+
+- **`StageSession` mirrors itself to `localStorage`** — `{ bookId, index,
+lobbyPin, savedAt }`, written from each mutator and read at construction. That
+  is deliberately the whole record and nothing else: `isMounted` stays in memory
+  because whether the view is on screen is a fact about _this_ document, and a
+  stale `true` would draw the stage bar over the library. `localStorage` for
+  `UiStore`'s reason — the index has to be readable **synchronously**, before the
+  route asks for it — and device-local for the split ratio's reason: which song a
+  phone on stage is showing is not a fact about the account.
+- **A reload takes the same path as a route re-entry.** `start(bookId)` is
+  already idempotent on the same book, and after hydration the stored book _is_
+  the one off the URL, so a reload is the early return and the stored index
+  stands. Nothing new had to know about reloads.
+- **Twelve hours, then it is last night's.** A performance is an event: the tab
+  that comes back an hour later is the same gig, the one that comes back tomorrow
+  is not — and resuming also resurrects the PIN and re-publishes to it. Twelve
+  covers any single evening and cannot span two. `savedAt` is refreshed on every
+  change, so the window is "since you last touched it".
+- **`setTotal` clamps the index.** A song deleted between sessions makes a stored
+  index unreachable, and an index past the end renders a blank page inside a book
+  the view insists is not empty. Landing on the last song is the honest answer to
+  "the song you were on is gone".
+- **Fullscreen is still session-only, and that is not an oversight.** The
+  Fullscreen API needs a user gesture, so a flag that claimed to restore it would
+  be a flag that lies (`UiStore` already records this). One tap gets it back.
+
+**The lobby heals itself instead of assuming its socket lasted.** A frozen tab's
+websocket is closed under it, and a frozen tab runs no timers and gets no events,
+so neither lobby service noticed. What woke up was a `RealtimeChannel` that still
+accepted `send` and delivered nothing: the host broadcast page turns into a
+channel with nobody in it, and viewers sat three songs behind. `LobbyWake`
+(`lobby/lobby-connection.ts`) asks the two questions a suspension raises —
+"did this tab just wake" (`visibilitychange`), "did the network come back"
+(`online`) — plus a 30 s watchdog for the quiet version, a venue's wifi dropping
+while the screen is on. Both sides answer it:
+
+- **The host re-joins and re-publishes the _held_ song**, not the one the lobby
+  opened with — which is why `LobbyHost` now keeps the payload past the publish.
+  Re-publishing is safe precisely because the row owns `rev`: the viewers' reducer
+  applies it once, and a viewer already on that song sees nothing happen.
+- **A repair must not go through `close()`.** `close()` calls `lobby_end`, so
+  reusing it would make a viewer watching the row see the lobby end and un-end a
+  moment later — a flicker out of a repair. `dropChannel()` is the half of it that
+  a re-join needs, and `open()` gained an `isFresh` flag so the analytics count
+  performances rather than sleeps.
+- **The viewer's `resume` is the Re-sync button, automatic.** A joined channel
+  needs only a re-read (the rev gate makes it idempotent); a closed one is
+  re-subscribed **without** resetting `appliedRev`, the payload or the status —
+  `join`'s reset would blank the song being read while the socket came back and
+  then re-render it, which is a flicker inside a repair again. Its Presence key is
+  minted once per join and reused, or a lobby's audience count would climb every
+  time a phone woke up.
+- **A reload while off the stage route leaves the lobby hostless until you go
+  back.** The channel's driver is the route-scoped presenter (Epic 9's note on
+  why), and a fresh document has no presenter until `/stage/:id` mounts again.
+  The audience is not stranded — the durable row still holds the current song —
+  and re-entering performing re-attaches. Fixing it properly means a second
+  driver for one host, which Epic 9 argued against on purpose.
+
+**Fixed on the way, and it was the reason the reload work looked broken: the exit
+cross could not exit.** `presenter.open()` reads the session's own `bookId` on its
+first line, and it was called straight from an `effect` — so the effect took that
+read as a dependency, and `end()`, whose whole job is to clear `bookId`,
+re-triggered the effect that immediately set it back. `/stage` then saw a live
+session and bounced into it (`StagePresenter.load` does that by design). The
+performance was un-endable, which a _persisted_ one would have made permanent.
+`untracked` is the fix: an effect here means "the route param changed, load it",
+and what the load reads on the way is not a reason to run again.
+
+- **The song editor had the identical trap, with worse stakes.**
+  `SongEditorPresenter.load` reads the store's entity list to find the song
+  before it falls back to a fetch, so the effect re-ran on **every** store change
+  — including the autosave's own write-back, which then re-set `_content` from the
+  saved row and would discard whatever had been typed since. Same one-line fix.
+  Both are covered by the suites that already exist (`editor.spec.ts` is green
+  either way; `stage.spec.ts` gained the test that catches the exit).
+
+### Landed — the tab says where you are
+
+`<title>` was still the CLI's `app`. Three shapes, and the word order is the point
+of each:
+
+- **A module** — `Achordeon - Songs`. You are in the app, looking at one of its
+  places, and a tab strip full of them should read by the app.
+- **A song or a songbook** — `Down by the River - Achordeon`. You are looking at a
+  _document_, and its own name is what you are hunting for among fifteen tabs.
+- **Performing** — `Performing - Achordeon`. A document again in shape, but the
+  thing worth naming is the act: the songbook's name is already on screen, and
+  what a performer glancing at a tab strip needs to find is the performance.
+
+- **The module is read off the URL; a document's name cannot be.** `DocumentTitle`
+  matches `ALL_NAV_ITEMS` against `Router.lastSuccessfulNavigation` — the same
+  no-RxJS read `ModuleSwitcher` already makes. A name lives in a record the shell
+  may not load (`shared/**` must not touch a store), so the **page claims** the
+  title and hands over an accessor; because that accessor is read inside a
+  computed, a rename from the editor's title field lands in the tab with nobody
+  wiring it. Three pages claim: the editor, the songbook detail, and performing.
+- **A claim releases only if it is still ours.** The next page can claim before
+  the last one has finished tearing down, and a late release would otherwise wipe
+  the new page's title.
+- **An empty claimed name falls back to the module.** A song's name arrives an
+  IndexedDB read after the route does, and `- Achordeon` with a hole in front of
+  it is worse than the module title it replaces a tick later.
+- **`index.html.template` carries the plain `Achordeon`** — what the tab says
+  before Angular has booted, and what a bookmark of the app root keeps.
+- **A joined viewer is `Watching - Achordeon`** — performing's shape, for the same
+  reason: what the tab belongs to is the act. The claim is keyed on the page's own
+  `view()`, so it goes **empty on the PIN prompt** and the fallback to
+  `Achordeon - Audience` covers it. `/audience` is the module; only a live lobby
+  is an act.
+
+### Landed — the four boxes Epic 8 never ticked
+
+Everything but the swipe was built and left unchecked. Three of the four were
+simply true and are ticked; the fourth was half true, so the missing half was
+built rather than ticked over.
+
+- **There was no "Perform" shortcut from Songbooks.** You had to go to the Stage
+  module and find the same book again in a second list. The songbook list is the
+  explorer's fourth capability set, so this is a **fifth capability**
+  (`canPerform`, on for that mount alone): a song is performed as part of a book,
+  and a slot inside one is already in the book you would be performing.
+- **It is the row's first action, and the primary tint** — the same weight the
+  stage picker gives it. A songbook exists to be played; everything else on the
+  row is administration.
+- **Not gated on `isReadOnly`.** All songs is read-only and is exactly what
+  someone reaches for when a performance was not planned, the same call Epic 7's
+  fourth pass made for download and export.
+- **An empty songbook has no Perform button at all**, and that needed a second
+  per-row fact (`SongRow.isEmpty`) beside `isReadOnly` — "this row holds nothing"
+  is the same kind of thing only the row can know. Hidden rather than greyed out,
+  because the picker's own answer to an empty book is to hide the row: a
+  greyed-out control trains you to click it anyway. Absent means "holds
+  something", which is right for a song.
+- The presenter navigates to `/stage/:id`, the picker's own navigation —
+  `StageSession.start` is what decides whether that is a new performance or the
+  resumed one, so a shortcut cannot disagree with the picker about it.
 
 ---
 
@@ -1060,22 +1241,129 @@ the security posture.
 
 ### Subtasks
 
-- [ ] Router config: lazy feature routes per module + default redirect. (The nav
+- [x] Router config: lazy feature routes per module + default redirect. (The nav
       shell itself — rail, mobile bar, split, theme — is **Epic 13**.)
-- [ ] `tierGuard` as highlight+tooltip (not a hard block) during testing. (The
+- [x] `tierGuard` as highlight+tooltip (not a hard block) during testing. (The
       `<app-premium>` marker itself is **Epic 13** — it's a tooltip consumer; this
       subtask is only the guard + deciding which controls wear it.)
-- [ ] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
+- [x] PWA: `@angular/service-worker` wired by hand; `ngsw-config.json` precaches
       the app shell; Audience + sync stay network paths. **Fonts: precache the
       body face only** (`fonts/RobotoMono-*.ttf`) — Epic 7 already fetches the
       three title faces on first use, so the config only has to not undo that.
-- [ ] Update strategy: gentle dismissible "update available" affordance (never
+- [x] Update strategy: gentle dismissible "update available" affordance (never
       silent reload mid-performance); forced refuse-and-update path for newer
       `schemaVersion`; recovery on unrecoverable SW.
-- [ ] i18n: `@angular/localize` runtime mode, EN + CS, one bundle; language switch
+- [x] i18n: `@angular/localize` runtime mode, EN + CS, one bundle; language switch
       persists in Settings + reloads.
-- [ ] Security: CSP via meta + SRI on third-party scripts; enforce no-`innerHTML`
+- [x] Security: CSP via meta + SRI on third-party scripts; enforce no-`innerHTML`
       for rendered content; shortest-lived sync tokens.
+
+### Landed — what implementation changed
+
+Corrections and choices the build forced, recorded so they aren't re-litigated:
+
+- **i18n went back to §11's runtime mode, and the numbers for both are on record.**
+  The app had been built the other way (per-locale `--localize`, `cs` under its own
+  sub-path), which is where the measurements come from: two locales cost 8.05 s cold
+  against 5.80 s for one — the compile happens once and only the inlining repeats,
+  so the "per-locale GitHub Pages build" §11 was avoiding was never the expensive
+  part. What it does cost is **8.3 MB of artifact against 4.4 MB**, and — new
+  information, because Epic 11 is what added the service worker — **a second SW
+  scope**, so switching language re-downloads a 2.9 MB shell instead of fetching a
+  15 kB catalog. Runtime mode's own price is now measured too: the initial bundle
+  goes **678 kB → 742 kB** raw (180 → 199 kB transferred), because every message id
+  and the `$localize` call survive into the bundle instead of being inlined away.
+  One cache and 4 MB less deploy for 19 kB on every load: taken.
+  - **`main.ts` awaits the catalog before `bootstrapApplication`.** A message is
+    translated on _first encounter_, so anything that renders before the catalog
+    lands stays English permanently. English itself fetches nothing — it is the
+    source text already in the bundle.
+  - **A failed catalog fetch is not fatal.** An English app is a working app;
+    refusing to boot over a 15 kB file would turn cosmetic into broken.
+  - **`null` means untranslated**, and those keys are dropped before
+    `loadTranslations` — so an unfinished language falls back to English per message
+    and is safe to ship. `"draft": true` in a catalog is what keeps the gate below
+    off its back until it is finished.
+  - **`LOCALE_ID` and `<html lang>` are set by hand now** (the per-locale build used
+    to), and Czech locale data is a lazy import in the same branch as the catalog:
+    `LOCALE_ID: 'cs'` with no registered data makes the first `DatePipe` throw, and
+    it would throw for Czech users only.
+  - The pre-boot locale redirect script is **gone** — one URL, one bundle — and with
+    it the locale argument to `tools/spa-github-404.mjs`.
+- **`tierGuard` is a control gate, not a route guard.** There is no Premium-only
+  _place_: joining an Audience is free (only hosting is Premium), and automatic sync
+  is a toggle inside a section everyone uses. So `TierGuard` holds the feature
+  registry, the tier accessor and the one `IS_TESTING` switch, and the two Premium
+  controls read it — `app.routes.ts` records why the route table has no guard.
+  `<app-premium>` gained an `isMarked` input as a result: a Premium user is no
+  longer shown their own features as upsells.
+- **`bootstrap()` (the ADR-0007 boot gateway) was never wired.** It existed from
+  Epic 1 and nothing called it, so no local migration ran and a `refuse` could not
+  reach the UI — while Epic 11 owns the forced-update path that a refusal depends
+  on. Now an awaited app initializer (`provideAchordeonBoot`) runs it before any
+  store reads a row and publishes the verdict on `BootGate`.
+- **The Drive pull did not migrate either.** ADR-0007 says all four ingest paths
+  funnel through `migrate()`; Drive returned its JSON straight to the per-row LWW
+  merge, which would have fused rows of a shape this build cannot read and written
+  them back stripped. `SyncService.ingest()` is now that seam for both cloud paths,
+  and a refusal latches `BootGate` → the blocking prompt. Import does the same.
+- **`AppUpdate` avoids `SwUpdate`'s RxJS surface.** `checkForUpdate()` and
+  `activateUpdate()` are promises, which covers the gentle path and the forced one;
+  only `unrecoverable` has no promise form, so it gets a single `subscribe` with no
+  operators — the same concession the lobby makes for `channel.subscribe`.
+- **The CSP is generated, not hand-written.** A meta-tag policy has no nonce, so
+  each inline script in `index.html.template` is allowed by the **sha256 of its own
+  body**, computed by `tools/gen-index.mjs` from the finished text. A `--dev` flag
+  adds the dev-server's websocket and `unsafe-eval`; `gen-index-dev` is what
+  `serve` depends on. The same script is the SRI guard: a `<script src>` pointing
+  off-origin without `integrity` + `crossorigin` fails the build.
+- **Critical-CSS inlining had to be switched off** (`optimization.styles.inlineCritical:
+false`). Angular ships the stylesheet as `media="print"` plus an inline
+  `onload="this.media='all'"` — an inline event handler, which the CSP blocks, and
+  the page would then paint with only the inlined subset forever. The whole sheet is
+  ~8 kB, so a plain blocking link is cheaper than an exception in the policy.
+- **The Supabase session is persisted without its Google tokens.** `persistSession`
+  writes the whole session object, `provider_token` and `provider_refresh_token`
+  included — which is exactly what §7 says must never sit in the browser, and the
+  opposite of what `AuthService.providerToken()` claimed ("gone after any reload").
+  A storage adapter in `supabase-client.ts` strips both on write; the live signal
+  still has the token for the page that minted it, which is where Drive uses it.
+- **Prefetching the app shell means prefetching every chunk.** `/*.js` in
+  `ngsw-config.json` covers the lazy chunks too (editor, jsPDF, fflate), because
+  "works offline" has to include opening the editor and exporting a PDF offline —
+  not just booting. The title faces stay `lazy`/`lazy` so Epic 7's fetch-on-first-use
+  is untouched, and Audience + sync appear in no asset or data group at all.
+- **The theme did not survive a reload.** `ThemeApplier`'s `localStorage` cache was
+  write-only: the pre-paint script stamped `dark`, then the store came up at its
+  `'system'` default and the first effect _removed_ the attribute. The root shell
+  now seeds `SettingsStore` from `ThemeApplier.cached()`.
+- **`Tooltip` treats empty text as "no tooltip".** A directive cannot be applied
+  conditionally, and `<app-premium>` needs exactly that — so an empty string is now
+  the off switch instead of an empty panel.
+- **`i18nMissingTranslation: "error"` does not exist in runtime mode**, so it was
+  rebuilt as `tools/check-locales.mjs`. That option belongs to compile-time
+  _inlining_ — the CLI can only complain while it is substituting a translation into
+  a bundle. At runtime a missing key silently falls back to English, which looks like
+  a working app and reaches production unnoticed. The gate fails the build on four
+  things: a `$localize`/`i18n=` id the source catalog has never seen (found by
+  scanning the code, not by re-extracting — a full build is too expensive to run as a
+  precondition of one), an untranslated message, a translation whose English has
+  since changed, and a mismatch between the catalogs on disk and `LANGUAGES` in the
+  code. Wired to `build`, **not** to `serve`: a target's `dependsOn` does not reach
+  the dev-server's in-process build, so it is strict where it ships and silent where
+  you work.
+- **`ng extract-i18n` cannot merge**, so `tools/sync-locales.mjs` does: it rebuilds
+  each catalog from the freshly extracted source, keeps the wording, drops messages
+  that no longer exist, and adds new ones as **`null`** rather than as a copy of the
+  English — a copy is indistinguishable from a real translation and would ship as
+  one. Staleness needs the English each translation was written against, which lives
+  in a `xx.sources.json` **sidecar**: it is authoring data, and shipping the English
+  a second time to a Czech reader is 24 kB of nothing. `nx run app:sync-locales` runs
+  extraction and the merge together.
+- **The app icons and favicon are generated** by `tools/gen-app-icons.mjs` from one
+  description — the SVGs, the PNG install icons, the maskable cut and the `.ico`
+  (16/32/48, with a bolder cut of the mark, because six thin rows are a smudge at
+  16px). The mark is a **placeholder**, not a designed logo.
 
 ---
 
@@ -1093,15 +1381,186 @@ cascade), plus the manual export/import entry points.
 
 ### Subtasks
 
-- [ ] Profile section: login/logout, "add a sign-in method", Connect Drive
-      (drives the Google link if absent).
-- [ ] Sync controls: Drive upload/download buttons, premium auto-sync toggle,
+- [x] Profile section: login/logout, "add a sign-in method", Connect Drive
+      (drives the Google link if absent). _Landed with Epic 10; Epic 12 re-cut it
+      into rows and gave the identity its own line._
+- [x] Sync controls: Drive upload/download buttons, premium auto-sync toggle,
       manual export/import entry points.
-- [ ] Application: theme (system/light/dark), language (EN/CS).
-- [ ] Rendering: GUI for the **global** render defaults (the registry's Global
+- [x] Application: theme (system/light/dark), language (EN/CS). _Landed with Epic
+      11 — the language control is the switch that owns the locale sub-paths, so it
+      shipped with the i18n it drives._
+- [x] Rendering: GUI for the **global** render defaults (the registry's Global
       scope) — mount `<app-settings-panel [scope]="'global'">` from **Epic 13**; the
       panel is built once and reused at Song/Songbook scope. Don't rebuild it here.
-- [ ] Premium highlight markers on tier-gated controls.
+- [x] Premium highlight markers on tier-gated controls.
+
+### Landed — what implementation changed
+
+Epic 12 found its subtasks already built: Epics 10, 11 and 13 had each landed
+their own slice of this page as they went. What was missing was the thing no
+single epic owned — the page as **one page**. So this is mostly a design pass,
+and what it changed is worth recording:
+
+- **The render section was the only part that had an inset, and that was the
+  bug, not the feature.** `<app-settings-panel>` pads itself (it is built for the
+  editor dialog, where it owns the whole surface) and was dropped into a section
+  that padded nothing, so the render rows sat 12px in from every other row on the
+  page. The inset is now the host's to decide — one `--panel-inset` custom
+  property, defaulted to what the dialogs want, set to `0` by the Settings page
+  because the section already pads. Nothing about the dialogs changed.
+- **Sections are cards.** Each one has the panel's inset, an edge and
+  `--surface`, on a `--surface-sunken` body. Not `--surface-raised`: the rail and
+  the action bar are already raised, so a raised card read as more chrome rather
+  than as the page's content.
+- **The page had one heading style for two levels.** Section headings copied the
+  panel's `.section-title` — but that style belongs to the level _below_ (PAGE,
+  TITLE, CHORDS), so RENDERING and PAGE looked like siblings. Sections are now
+  real headings; the uppercase-faint caption is reserved for the group inside a
+  card, which is exactly what the render panel does.
+- **Rows go two-up, off the same container query the panel uses** (420px, asking
+  the card rather than the viewport). Every hand-built section now uses the
+  panel's row shape — label + `(?)` above, control beneath — so a settings row
+  looks the same wherever it is.
+- **Three heading levels became two.** "Manual backup" was an `<h4>` under the
+  Sync subsection under the Account section; it is one setting, not a group, so
+  it is a row like the others. Sync stays as the one subsection.
+- **The Premium tier badge was invisible.** `background: var(--premium-glow)`
+  substituted a `box-shadow` value into `background`, which makes the declaration
+  invalid at computed-value time — white text on nothing. It wears the gold now,
+  with a `--premium-on` token for text on it (white on gold is 1.9:1).
+- **"Panels" was a section holding one checkbox.** Folded into Application, where
+  a device-local UI preference belongs beside theme.
+- **Export/import got a signpost, not a second home.** Epic 7 put the pickers
+  where the songs are, because choosing which songs is the whole act. Settings
+  says so and links there — otherwise someone who came looking for "export" uses
+  Back up as a substitute and mails a copy of their entire library.
+
+**Fixed alongside** (Epic 5/13's bar, not Settings'): the editor's action bar
+overflowed a 320px viewport. `.commands` wraps between groups — "a break falls
+where the meaning already changes, never through the middle of one" — but eight
+40px insert buttons and their gaps are 348px, and a 320px phone leaves the
+commands about 215px, so the rule had no way to hold and the group simply ran off
+the screen instead. Groups wrap too now; because `.commands` still breaks between
+them first, a group is only ever asked to break when it alone is wider than the
+line. `mobile-layout.spec.ts` covers it at 320 and 390.
+
+**Also fixed: connecting Google did not take.** `linkIdentity` grants the
+identity server-side and redirects back, and the session that comes out of
+storage on the other side is the one from _before_ the link. `AuthService` read
+`identities` straight off it, so `hasGoogle()` stayed false after connecting:
+"Add Google" stayed on offer, the Drive buttons stayed disabled, and the line
+telling you to add Google stayed under them until some later token refresh
+happened to fix it. `adopt()` now re-reads the user with `getUser()` — the server
+is the only thing that knows — best-effort, so being offline never looks like
+being signed out. The line itself is now keyed on `hasGoogle()` alone and, when
+there is no account yet, says to sign in rather than to "add Google to your
+account".
+
+**Also fixed: the global render defaults were never saved.** Changing the aspect
+ratio on this page held until the next reload and then went back to A4. The
+`user` table has held a `settings` column since Epic 4 and the sync layer already
+read and wrote it — but nothing ever wrote a `user` row, so the table was empty
+on every install, and `SettingsStore` was a plain in-memory holder whose own
+docstring left the write-back to "feature panels (Epic 12)". This is Epic 12.
+
+- **The store owns the round-trip.** `setGlobal` writes the bag through to the
+  account row and `load()` reads it back; nothing above has to remember. Putting
+  it in the four presenters that inject the store would have been four chances to
+  forget, and the panel is mounted in three places.
+- **The row is a singleton with a constant id** (`LOCAL_USER_ID`, like
+  `ALL_SONGS_ID`). Two devices editing their defaults offline have to produce the
+  _same_ row for per-row LWW (ADR-0004) to reconcile them; random ids would merge
+  into two accounts and let `find` pick whichever came first. It is a synced row,
+  so a changed default now travels between devices like any other edit.
+- **Hydration is awaited in the boot initializer, after the gateway.** Settings
+  are rows, so they must be read at the current shape; and they must be in the
+  store before first paint, because a page that renders A4 and then jumps to the
+  user's own ratio is a worse bug than the one being fixed.
+- **A stored bag is completed against the registry on the way in.** Global is the
+  base of the cascade (ADR-0006) and `resolveSettings` reads every key off it, so
+  it has to be complete — a bag saved before a setting existed is not. The stored
+  values spread last, so a newer build's unknown key still round-trips
+  (ADR-0007).
+- **Writes are serialised**, because each is a read-modify-write of one row: two
+  overlapping ones both read the pre-edit row and the loser puts back a bag
+  missing the winner's change. Dragging a slider fires exactly that pattern.
+
+Two e2e tests cover it, and they wait for the row rather than for a stretch of
+time — a reload issued in the same millisecond as the click will beat IndexedDB
+to disk, which is a real (millisecond-wide) window for a user who closes the tab
+mid-click and an unreal one for a test with no human delay in front of it.
+
+**Also fixed: every sync cycle failed the moment settings started saving.** With
+the account row finally being written, the push finally had one to send — and
+`profiles.record_id` was a `uuid` column, while the row's id is the constant
+`local-user`. Postgres refused it, the push is one transaction so the whole cycle
+went with it, and because `recomputeUnsynced` only ran on the success path the
+"you have unsynced changes" flag latched true forever. Which the user meets as a
+`beforeunload` prompt on every single reload, for the rest of the install's life.
+
+- **`record_id` is `text` now** (`20260726000000_profile_record_id_text.sql`).
+  Nothing joins on it or casts it: it is the client's own id, echoed back so a
+  pull can rebuild the row for the merge, and the client's id space has always
+  included sentinels (`local-user`, `all-songs`). Fixing the column rather than
+  the constant also heals every install that already has the row — an id change
+  would have needed a repair pass, and one for the Drive backups too.
+- **A failed cycle recounts.** `hasUnsynced` used to keep whatever the last cycle
+  that _did_ land left behind, which is wrong in both directions: stale-true is
+  the unreloadable tab, and stale-false hides real work after `setAutoSync(true)`
+  resets the watermark and the first cycle fails.
+
+**Also fixed: the app warned about its own reloads.** Switching language reloads
+(runtime `$localize` caches each message on first use, so §11 chose the reload),
+and the leave-warning fired on it — as it did on restoring a backup, deleting an
+account, taking an update, and heading off to Google. The warning answers "you
+are leaving and the other device will not have this"; none of those is that. The
+user asked for the thing that is happening, the work is safe in IndexedDB, and
+`SyncService.init` pushes it on the next boot. Being asked to confirm leaving a
+page you never chose to leave only teaches you to dismiss the one prompt that
+matters. `WarnUnsynced` now owns both sides of the question — `reload()` is the
+single way the app reloads itself, so a fifth caller cannot forget the first
+half, and `expectUnload()` covers the OAuth redirects it cannot wrap. Armed, not
+permanent: a sign-in that throws before it can redirect re-arms the guard after
+five seconds instead of disarming it for the session.
+
+**Also landed: a changed default reaches the cloud on its own.** It used to reach
+it only if some _other_ edit happened to trigger a cycle first. `SettingsStore`
+now announces a written row (`onSaved`) and `SyncService` registers `pushSoon`
+there at boot — a listener rather than a call into the sync layer, because the
+dependency runs the other way and calling back would close the circle. So a
+preference is a push boundary like a saved song, it counts toward the unsynced
+warning, and it rides the paths the account row was already on: Supabase
+`profiles.settings` for a paid account, the Drive backup file, and the whole-
+database Backup file. Selective **export** still leaves the row out on purpose —
+a file you send someone must not re-base their library on your defaults.
+
+Not synced, and deliberately: **theme and language**. Both are settings on this
+page, but both are device preferences a shared account should not impose — a dark
+phone and a light desktop is a setup, not a bug — and both have a home that has to
+be readable before the app boots (a pre-paint localStorage cache; the URL). Say
+the word and they become two more columns.
+
+**Epic 12 also brought a setting of its own: `notation`** (`english | german`,
+scopes songbook + song), the one row PRD-DOMAIN-MODEL parked. German prints B
+natural as `H` and B♭ as `B`.
+
+- **It spells the page; it does not rewrite the song.** `respellChords` runs over
+  the AST at the top of the render and `content` is never touched. Letting a
+  preference decide what a stored symbol _means_ would make the same file sound
+  different on two devices, and the next transpose would bake the difference in.
+  The two halves that do change meaning — strict German input, German transpose
+  output — stay parked, and PARSER-GRAMMAR §Notation now says which is which.
+- **One seam: `RenderService.layout`.** Not the parser, so the editor keeps
+  showing the source as written; not each caller, so screen, PNG, PDF and the
+  songbook exports cannot disagree about what a chord is called.
+- **English is the identity.** It means "as you typed it", so no existing song
+  renders differently than it did yesterday — including one already written with
+  `H`, which has been a valid chord since Epic 2 and still is under either
+  setting.
+
+**Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
+tests (`audience-fullscreen` never becomes visible). They fail identically on the
+branch head; left alone so the fix is reviewable on its own.
 
 ---
 

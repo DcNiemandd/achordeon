@@ -2,9 +2,12 @@
 // Spec: PRD-INFRASTRUCTURE.md §2/§4 (PersistenceService owns IndexedDB; stores sit on the paged API)
 
 import { InjectionToken, inject } from '@angular/core';
-import type { Song, Songbook } from '@achordeon/shared/domain';
+import type { Song, Songbook, User } from '@achordeon/shared/domain';
 import { AchordeonDb } from '../persistence/db';
-import { DexieEntitySource } from '../persistence/entity-source';
+import {
+  DexieEntitySource,
+  type EntitySource,
+} from '../persistence/entity-source';
 import { PagedRepository } from '../persistence/paged-repository';
 import type { PagingConfig, SortKey } from '../persistence/paging';
 
@@ -62,6 +65,19 @@ export const SONGBOOK_REPOSITORY = new InjectionToken<
       songbookPagingConfig,
     ),
 });
+
+/**
+ * The account row. A plain `EntitySource`, not a `PagedRepository`: there is one
+ * row, so there is nothing to sort, search or page — `SettingsStore` reads it at
+ * boot and writes it back on every global-settings edit.
+ */
+export const USER_REPOSITORY = new InjectionToken<EntitySource<User>>(
+  'USER_REPOSITORY',
+  {
+    providedIn: 'root',
+    factory: () => new DexieEntitySource(inject(ACHORDEON_DB).user),
+  },
+);
 
 /** One page's worth of rows appended per infinite-scroll fetch. */
 export const PAGE_LIMIT = 50;

@@ -1,3 +1,5 @@
+import type { ChordNotation } from './chords';
+
 export const SCOPES = ['global', 'songbook', 'song'] as const; // ordered least → most specific
 type Scope = (typeof SCOPES)[number];
 
@@ -71,6 +73,13 @@ export const SETTINGS = {
   }, // songbook scope alongside chordColor: CONTEXT.md §Songbook says a book
   // "can restyle the chords of all its songs — chord color, chord size and font".
   // A book that could re-colour chords but not resize them was half a theme.
+  notation: {
+    default: 'english' as ChordNotation,
+    scopes: ['songbook', 'song'],
+  }, // English (B/Bb) or German (H/B) note names — a SPELLING of the rendered
+  // chord, never a rewrite of the source (see notation.ts). Song scope because a
+  // German hymn among English songs is the normal case; songbook scope because a
+  // book printed for one congregation should not be spelled two ways.
   // font: {
   //   default: 'serif' as string,
   //   scopes: ['songbook', 'song'],

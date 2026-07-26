@@ -117,6 +117,7 @@ const SETTINGS = {
   padding: { default: 0.5, scopes: ['song'] }, // blank border inside the render box, in em. An INSET, so it never bends the aspect ratio; the songbook's print margin ADDS to it rather than overriding, which is why there is no 'songbook' scope. See PRD-RENDERING §4.11 / §6
   chordColor: { default: '#9f1212', scopes: ['songbook', 'song'] },
   chordSize: { default: 1, scopes: ['song'] },
+  notation: { default: 'english', scopes: ['songbook', 'song'] }, // 'english' | 'german' — how a chord is SPELLED on the printed page (German: B natural → H, B♭ → B). Never a rewrite of `content`. See PARSER-GRAMMAR.md §Notation
   font: { default: 'serif', scopes: ['songbook', 'song'] },
 } satisfies Record<string, SettingDef>;
 ```
@@ -126,14 +127,14 @@ const SETTINGS = {
 - **`font`** — the body face; the row above is a placeholder. v1 ships one bundled
   font, so it is commented out in code (`titleFont` is the one font choice that _is_
   live). See PRD-RENDERING §4.10.
-- **`notation`** (`german | english`, default `english`; `scopes: ['songbook','song']`)
-  — chord-symbol notation. English is the engine today, already extended so the
-  German **`H`** reads as B natural (the mixed convention). The setting is what a
-  full switch needs, because it changes what existing symbols mean: **strict German**
-  (`B` = B♭), the **solfège** spellings (`Cis`/`Des`/`As`/`Es`), and German transpose
-  **output** (re-spell B natural back to `H`). Flipping any of these silently would
-  break every English song, which is why it is a choice, not a default. See
-  `PARSER-GRAMMAR.md` §Notation.
+- **`notation`** — no longer parked: the row above is live (Epic 12), and it is the
+  **spelling** of the printed chord, applied at the top of the render and never to
+  `content`. What is still parked is everything that changes what an existing symbol
+  _means_: **strict German** (`B` = B♭), the **solfège** spellings
+  (`Cis`/`Des`/`As`/`Es`), and German transpose **output** (re-spell B natural back
+  to `H` in the source). Flipping any of those silently would break every English
+  song, which is why they wait behind their own decision rather than riding on the
+  spelling switch. See `PARSER-GRAMMAR.md` §Notation.
 
 `SettingDef` carries, alongside `default` + `scopes`, a **value-type / editor kind**:
 

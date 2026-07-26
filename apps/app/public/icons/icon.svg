@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Achordeon">
+  <title>Achordeon</title>
+  <rect width="512" height="512" rx="96" fill="#c13515" />
+  <g fill="#ffffff">
+    <rect x="112" y="128" width="56" height="24" rx="12" />
+    <rect x="232" y="128" width="88" height="24" rx="12" />
+    <rect x="112" y="200" width="288" height="24" rx="12" opacity="0.55" />
+    <rect x="112" y="264" width="56" height="24" rx="12" />
+    <rect x="272" y="264" width="56" height="24" rx="12" />
+    <rect x="112" y="336" width="224" height="24" rx="12" opacity="0.55" />
+  </g>
+</svg>

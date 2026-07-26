@@ -34,12 +34,22 @@ export interface SongRow {
    * This row has no record behind it to rename or destroy — the virtual **All
    * songs** songbook is the case (CONTEXT.md §Songbook).
    *
-   * A per-*row* exception to the per-*mount* capability rule, and the only one:
-   * capabilities answer "what may be done on this screen", which a row cannot
-   * know, while this answers "what is this row made of", which nothing else
-   * can. Opening still works — there is something to open.
+   * A per-*row* exception to the per-*mount* capability rule: capabilities answer
+   * "what may be done on this screen", which a row cannot know, while this
+   * answers "what is this row made of", which nothing else can. Opening still
+   * works — there is something to open.
    */
   readonly isReadOnly?: boolean;
+  /**
+   * This row holds nothing — an empty songbook, or All songs on an empty library.
+   * The other fact only the row knows, and the reason Perform disappears rather
+   * than greying out: an empty songbook cannot be performed (Epic 8), and the
+   * stage picker's own answer to this is to hide the row, not to disable it,
+   * because a greyed-out control trains you to click it anyway. Absent means
+   * "holds something", which is right for a song — a song is never empty in this
+   * sense.
+   */
+  readonly isEmpty?: boolean;
   /**
    * A `(?)` note about what this row *is*, for a row that is not what it looks
    * like — the virtual **All songs** book, which is the library wearing a
@@ -138,6 +148,13 @@ export interface ExplorerCapabilities {
    * which inserts at a position — this has no position, only "out".
    */
   readonly canDropRemove: boolean;
+  /**
+   * Take this row to the stage (Epic 8). Only the songbook list has it: a song is
+   * performed as part of a book, and a slot inside one is already in the book you
+   * would be performing. **Not gated on `isReadOnly`** — All songs is read-only
+   * and is the most likely thing to perform on the spur of the moment.
+   */
+  readonly canPerform: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
   readonly canRename: boolean;
@@ -170,6 +187,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canReorder: false,
   canDrag: false,
   canDrop: false,
+  canPerform: false,
   canEdit: true,
   canRename: true,
   canDuplicate: true,
@@ -195,6 +213,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canReorder: false,
   canDrag: true,
   canDrop: false,
+  canPerform: false,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -223,6 +242,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canReorder: true,
   canDrag: true,
   canDrop: true,
+  canPerform: false,
   canEdit: false,
   canRename: false,
   canDuplicate: false,
@@ -263,6 +283,9 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canReorder: false,
   canDrag: false,
   canDrop: false,
+  // The one mount that performs: this row IS a songbook, and taking it to the
+  // stage is the most everyday thing anyone does with one.
+  canPerform: true,
   canEdit: true,
   canRename: true,
   canDuplicate: true,

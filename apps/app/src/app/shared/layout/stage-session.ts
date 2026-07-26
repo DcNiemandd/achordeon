@@ -9,11 +9,46 @@ import { Fullscreen } from './fullscreen';
 /** The audience panel phase. */
 export type AudienceState = 'closed' | 'create' | 'active';
 
+const KEY = 'achordeon.stage';
+
+/**
+ * How long a stored performance may be resumed for.
+ *
+ * A performance is an *event*: the tab that comes back an hour later is the same
+ * gig, the one that comes back tomorrow morning is not. Twelve hours is long
+ * enough to cover any single evening — including a phone that sat locked through
+ * a whole set and a tab the OS discarded and reloaded — and short enough that it
+ * can never span two, which matters because resuming also resurrects the lobby
+ * PIN and re-publishes to it.
+ */
+const MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+interface PersistedStage {
+  bookId: string | null;
+  index: number;
+  lobbyPin: string;
+  savedAt: number;
+}
+
 /**
  * The **persistent** part of a performance: which book, which song, and the
  * lobby — the state that must outlive the `/stage/:id` route so the session
  * survives a jump to another module and resumes on return (only the exit cross
  * ends it).
+ *
+ * It also outlives the **page**. A performer's phone locks between songs, or the
+ * OS reclaims a backgrounded tab, and what comes back is a fresh document with
+ * an empty root injector — so "persistent across modules" was only half the
+ * requirement, and a reload used to restart the book at song 1 and lose the
+ * lobby PIN (stranding an audience the durable row was still holding open,
+ * ADR-0011). The record is mirrored to `localStorage` on every change and read
+ * back at construction, which makes a reload indistinguishable from a jump to
+ * another module and back.
+ *
+ * `localStorage`, not IndexedDB, for `UiStore`'s reason: it must be readable
+ * **synchronously at boot**, before the perform route asks for the index. And
+ * device-local for the same reason as the split ratio — which song a phone on
+ * stage is showing is not a fact about the account.
  *
  * A store-free UI-state holder, deliberately in `shared/layout` beside `Panes`
  * and `Fullscreen`: the shell's bottom bar renders the mobile controls and so
@@ -23,7 +58,9 @@ export type AudienceState = 'closed' | 'create' | 'active';
  * `StagePerformPresenter`, which reads `index` from here.
  *
  * `isMounted` is the `Panes`-style report: the perform page raises it while it
- * is on screen, and the shell draws the stage controls only then.
+ * is on screen, and the shell draws the stage controls only then. It is
+ * deliberately **not** persisted: whether the view is on screen is a fact about
+ * this document, and a stale `true` would draw the stage bar over the library.
  */
 @Injectable({ providedIn: 'root' })
 export class StageSession {
@@ -83,33 +120,57 @@ export class StageSession {
     )}`;
   });
 
+  constructor() {
+    this.hydrate();
+  }
+
   /**
    * Begin (or resume) a performance of `bookId`. Idempotent on the same book:
    * re-entering the route must keep the current song, so only a *different* book
    * resets the index. The presenter reloads the songs either way.
+   *
+   * A reload arrives here too — `bookId` comes off the URL and the hydrated
+   * record already holds it, so this is the early return and the stored index
+   * stands.
    */
   start(bookId: string): void {
     if (this._bookId() === bookId) return;
     this._bookId.set(bookId);
     this._index.set(0);
     this._total.set(0);
+    this.persist();
   }
 
+  /**
+   * The book's length, reported once the presenter has hydrated its songs.
+   *
+   * **Clamps the index**, because a stored one may no longer be reachable: songs
+   * are deleted from the library between sessions, and an index past the end
+   * renders a blank page inside a book the view insists is not empty. Landing on
+   * the last song is the honest answer to "the song you were on is gone".
+   */
   setTotal(total: number): void {
     this._total.set(total);
+    if (total > 0 && this._index() > total - 1) {
+      this._index.set(total - 1);
+      this.persist();
+    }
   }
 
   prev(): void {
     this._index.update((i) => Math.max(0, i - 1));
+    this.persist();
   }
 
   next(): void {
     this._index.update((i) => Math.min(this._total() - 1, i + 1));
+    this.persist();
   }
 
   jumpTo(index: number): void {
     this._index.set(Math.max(0, Math.min(this._total() - 1, index)));
     this._isSummaryOpen.set(false);
+    this.persist();
   }
 
   openSummary(): void {
@@ -143,6 +204,7 @@ export class StageSession {
    */
   createLobby(): void {
     this._lobbyPin.set(generateLobbyPin());
+    this.persist();
   }
 
   /** Live viewer count, pushed in by the presenter from the host channel. */
@@ -155,6 +217,7 @@ export class StageSession {
     this._lobbyPin.set('');
     this._audienceCount.set(0);
     this._isAudienceOpen.set(false);
+    this.persist();
   }
 
   /** The perform page is on screen: the shell draws the stage controls. */
@@ -176,7 +239,80 @@ export class StageSession {
     this._index.set(0);
     this._total.set(0);
     this._isSummaryOpen.set(false);
+    // Ends the lobby and persists — so the stored record goes with the
+    // performance rather than waiting out its twelve hours.
     this.endLobby();
     void this.fullscreen.exit();
+  }
+
+  /**
+   * Read the stored performance back, or drop it.
+   *
+   * A record with no book is nothing to resume, and one past `MAX_AGE_MS` is
+   * last night's — both are removed rather than left to be re-read on every
+   * boot. Anything malformed is treated the same way: a hand-edited or
+   * half-written value must not be able to stop the app booting.
+   */
+  private hydrate(): void {
+    const stored = this.read();
+    if (
+      !stored ||
+      typeof stored.bookId !== 'string' ||
+      typeof stored.savedAt !== 'number' ||
+      Date.now() - stored.savedAt > MAX_AGE_MS
+    ) {
+      this.forget();
+      return;
+    }
+    this._bookId.set(stored.bookId);
+    if (typeof stored.index === 'number' && stored.index >= 0) {
+      this._index.set(Math.floor(stored.index));
+    }
+    if (typeof stored.lobbyPin === 'string') {
+      this._lobbyPin.set(stored.lobbyPin);
+    }
+  }
+
+  private read(): Partial<PersistedStage> | null {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return raw ? (JSON.parse(raw) as Partial<PersistedStage>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Written synchronously from each mutator, `UiStore`'s reason: an `effect`
+   * flushes on a later tick, and the tap that turns the page is exactly the
+   * moment a phone gets locked. There are a handful of mutators — a scheduler
+   * buys nothing here and costs correctness.
+   */
+  private persist(): void {
+    const bookId = this._bookId();
+    if (bookId === null) {
+      this.forget();
+      return;
+    }
+    const state: PersistedStage = {
+      bookId,
+      index: this._index(),
+      lobbyPin: this._lobbyPin(),
+      savedAt: Date.now(),
+    };
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch {
+      // Private mode or quota. The performance still works for this document,
+      // which is all it could promise before.
+    }
+  }
+
+  private forget(): void {
+    try {
+      localStorage.removeItem(KEY);
+    } catch {
+      // Nothing was stored; nothing to remove.
+    }
   }
 }

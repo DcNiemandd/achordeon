@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
 import { App } from './app';
 import { appRoutes } from './app.routes';
 
@@ -8,7 +9,14 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideZonelessChangeDetection(), provideRouter(appRoutes)],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter(appRoutes),
+        // Disabled, but present: `AppUpdate` injects `SwUpdate`, which only has a
+        // provider once the worker is provided at all. Every signal it exposes
+        // stays false, which is exactly the no-service-worker case.
+        provideServiceWorker('ngsw-worker.js', { enabled: false }),
+      ],
     }).compileComponents();
   });
 

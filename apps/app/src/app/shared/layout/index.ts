@@ -8,9 +8,22 @@
 // the search-param contracts stay.
 
 export { ActionBar } from './action-bar';
+export { AppUpdate } from './app-update';
+export type { UpdatePrompt } from './app-update';
+export { UpdateNotice } from './update-notice';
+export {
+  LANGUAGES,
+  Localization,
+  SOURCE_LANGUAGE,
+  chosenLanguage,
+} from './localization';
+export type { Language } from './localization';
+export { TierGuard } from './tier-guard';
+export type { PremiumFeature } from './tier-guard';
 export { Fullscreen } from './fullscreen';
 export { BackNavigation } from './back-navigation';
 export { BlankPage } from './blank-page';
+export { DocumentTitle } from './document-title';
 export { ModuleSwitcher } from './module-switcher';
 export { Rail } from './rail';
 export { Shell } from './shell';

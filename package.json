@@ -25,6 +25,7 @@
     "@angular/platform-browser": "21.2.9",
     "@angular/platform-browser-dynamic": "~21.2.0",
     "@angular/router": "21.2.9",
+    "@angular/service-worker": "21.2.9",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/language": "^6.12.4",
     "@codemirror/lint": "^6.9.7",

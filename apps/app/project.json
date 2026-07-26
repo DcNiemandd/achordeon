@@ -5,15 +5,7 @@
   "prefix": "app",
   "sourceRoot": "apps/app/src",
   "tags": ["type:app"],
-  "i18n": {
-    "sourceLocale": { "code": "en", "subPath": "" },
-    "locales": {
-      "cs": {
-        "translation": "apps/app/src/locale/messages.cs.xlf",
-        "subPath": "cs"
-      }
-    }
-  },
+  "i18n": { "sourceLocale": "en" },
   "targets": {
     "gen-index": {
       "executor": "nx:run-commands",
@@ -29,6 +21,20 @@
         "cwd": "apps/app"
       }
     },
+    "gen-index-dev": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/index.html.template",
+        "{projectRoot}/project.json",
+        "{projectRoot}/tools/gen-index.mjs"
+      ],
+      "outputs": ["{projectRoot}/src/index.html"],
+      "options": {
+        "command": "node tools/gen-index.mjs --dev",
+        "cwd": "apps/app"
+      }
+    },
     "gen-supabase": {
       "executor": "nx:run-commands",
       "cache": false,
@@ -38,10 +44,23 @@
         "cwd": "apps/app"
       }
     },
+    "check-locales": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/locale/*.json",
+        "{projectRoot}/src/app/**/*.ts",
+        "{projectRoot}/tools/check-locales.mjs"
+      ],
+      "options": {
+        "command": "node tools/check-locales.mjs",
+        "cwd": "apps/app"
+      }
+    },
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
-      "dependsOn": ["gen-index", "gen-supabase"],
+      "dependsOn": ["gen-index", "gen-supabase", "check-locales"],
       "options": {
         "outputPath": "dist/apps/app",
         "browser": "apps/app/src/main.ts",
@@ -53,6 +72,12 @@
           {
             "glob": "**/*",
             "input": "apps/app/public"
+          },
+          {
+            "glob": "*.json",
+            "input": "apps/app/src/locale",
+            "output": "locale",
+            "ignore": ["messages.json", "*.sources.json"]
           }
         ],
         "styles": [
@@ -62,6 +87,12 @@
       },
       "configurations": {
         "production": {
+          "serviceWorker": "apps/app/ngsw-config.json",
+          "optimization": {
+            "scripts": true,
+            "fonts": true,
+            "styles": { "minify": true, "inlineCritical": false }
+          },
           "budgets": [
             {
               "type": "initial",
@@ -74,17 +105,12 @@
               "maximumError": "8kb"
             }
           ],
-          "outputHashing": "all",
-          "localize": true
+          "outputHashing": "all"
         },
         "development": {
           "optimization": false,
           "extractLicenses": false,
-          "sourceMap": true,
-          "localize": ["en"]
-        },
-        "cs": {
-          "localize": ["cs"]
+          "sourceMap": true
         }
       },
       "defaultConfiguration": "production"
@@ -92,16 +118,13 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
-      "dependsOn": ["gen-index", "gen-supabase"],
+      "dependsOn": ["gen-index-dev", "gen-supabase"],
       "configurations": {
         "production": {
           "buildTarget": "app:build:production"
         },
         "development": {
           "buildTarget": "app:build:development"
-        },
-        "cs": {
-          "buildTarget": "app:build:development,cs"
         }
       },
       "defaultConfiguration": "development"
@@ -112,7 +135,16 @@
       "options": {
         "buildTarget": "app:build",
         "outputPath": "apps/app/src/locale",
-        "format": "xlf"
+        "format": "json"
+      }
+    },
+    "sync-locales": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["extract-i18n"],
+      "options": {
+        "command": "node tools/sync-locales.mjs",
+        "cwd": "apps/app"
       }
     },
     "lint": {

@@ -11,7 +11,13 @@ import {
   SyncService,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
-import { UiStore } from '../shared/layout';
+import {
+  Localization,
+  TierGuard,
+  UiStore,
+  WarnUnsynced,
+  type Language,
+} from '../shared/layout';
 
 /** How a restore ended, for the page to say so. */
 export type RestoreOutcome = 'done' | 'failed';
@@ -52,9 +58,20 @@ export class SettingsPresenter {
    * the seam the presenter exists to hide.
    */
   private readonly ui = inject(UiStore);
+  /** Owns the locale sub-paths — switching language is a navigation, not a
+   * setting the running bundle can honour (PRD-INFRASTRUCTURE.md §11). */
+  private readonly localization = inject(Localization);
+  private readonly tier = inject(TierGuard);
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
+  /**
+   * Every way this page leaves the running app goes through here — the two
+   * reloads below and the two Google redirects. All four are things the user
+   * asked for, so none of them may raise the "you have unsynced changes" prompt
+   * (see `WarnUnsynced.expectUnload`).
+   */
+  private readonly unload = inject(WarnUnsynced);
 
   readonly theme = this.store.theme;
   readonly language = this.store.language;
@@ -64,6 +81,7 @@ export class SettingsPresenter {
   readonly authStatus = this.auth.status;
   readonly email = this.auth.email;
   readonly isPro = this.auth.isPro;
+  readonly isSignedIn = this.auth.isSignedIn;
   readonly hasGoogle = this.auth.hasGoogle;
   readonly hasPassword = this.auth.hasPassword;
   readonly autoSync = this.sync.autoSync;
@@ -72,6 +90,11 @@ export class SettingsPresenter {
   /** Automatic sync needs the paid tier; the toggle is decoration over it while
    * signed out or free (tierGuard is highlight-not-block during testing). */
   readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
+  /** Whether the auto-sync toggle wears the Premium marker — the gate decides, so
+   * a Premium user is not sold what they already have. */
+  readonly marksAutoSyncPremium = computed(() =>
+    this.tier.isMarked('auto-sync'),
+  );
 
   private readonly _drive = signal<DriveOutcome | null>(null);
   private readonly _driveBusy = signal(false);
@@ -114,6 +137,7 @@ export class SettingsPresenter {
 
   logInGoogle(): Promise<void> {
     this._authError.set(null);
+    this.unload.expectUnload(); // OAuth navigates away — the user's own doing
     return this.auth
       .signInWithGoogle()
       .catch((e) => this._authError.set(this.message(e)));
@@ -171,6 +195,7 @@ export class SettingsPresenter {
    * first Drive action (Flow A, `reconnectDrive`). */
   linkGoogle(): Promise<void> {
     this._authError.set(null);
+    this.unload.expectUnload();
     return this.auth
       .linkGoogle(false)
       .catch((e) => this._authError.set(this.message(e)));
@@ -206,7 +231,7 @@ export class SettingsPresenter {
     try {
       await this.auth.deleteAccount();
       await this.backups.clearLocal();
-      location.reload();
+      this.unload.reload();
     } catch (e) {
       this._authError.set(this.message(e));
       this._deleting.set(false);
@@ -296,6 +321,7 @@ export class SettingsPresenter {
    * only path that asks for `drive.file`: sign-in and Drive are split, so the
    * scope is requested lazily, before the first backup. */
   private reconnectDrive(): Promise<void> {
+    this.unload.expectUnload();
     return this.auth
       .signInWithGoogle(true)
       .catch((e) => this._authError.set(this.message(e)));
@@ -337,6 +363,17 @@ export class SettingsPresenter {
     this.store.setTheme(theme);
   }
 
+  /**
+   * Choose the UI language. The store is set first so the page is momentarily
+   * consistent, then `Localization` navigates to that locale's build — which is
+   * what actually changes the language, and is why this returns nothing useful:
+   * by the time it matters, this document is on its way out (PRD §11).
+   */
+  setLanguage(language: Language): void {
+    this.store.setLanguage(language);
+    this.localization.switchTo(language);
+  }
+
   setSplitShared(isShared: boolean): void {
     // No current scope: the settings page has no splitter of its own to adopt a
     // ratio from, so linking falls back to the shared value already stored.
@@ -367,7 +404,7 @@ export class SettingsPresenter {
     try {
       await this.backups.restore(file);
       this._restore.set('done');
-      location.reload();
+      this.unload.reload();
     } catch {
       this._restore.set('failed');
     } finally {
@@ -379,14 +416,14 @@ export class SettingsPresenter {
     this._restore.set(null);
   }
 
-  patchGlobal(patch: Record<string, unknown>): void {
+  /** @returns when the change has been saved — the page does not wait on it. */
+  patchGlobal(patch: Record<string, unknown>): Promise<void> {
     // A sparse patch from the panel. At Global scope every setting is defined,
     // so an `undefined` (reset) has nothing to fall back to and is dropped.
     const defined = Object.fromEntries(
       Object.entries(patch).filter(([, value]) => value !== undefined),
     );
-    if (Object.keys(defined).length > 0) {
-      this.store.setGlobal(defined);
-    }
+    if (Object.keys(defined).length === 0) return Promise.resolve();
+    return this.store.setGlobal(defined);
   }
 }

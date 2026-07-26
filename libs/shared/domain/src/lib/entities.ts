@@ -33,6 +33,17 @@ export interface User extends BaseRecord {
 }
 
 /**
+ * The id of the one `User` row. There is exactly one account per library, so the
+ * row is a singleton and its id is a constant rather than minted per device —
+ * two devices editing their global settings offline must produce the SAME row for
+ * per-row LWW (ADR-0004) to reconcile them, and random ids would instead merge
+ * into two accounts and let `find` pick whichever came first.
+ *
+ * Like `ALL_SONGS_ID`, an id `crypto.randomUUID()` cannot produce.
+ */
+export const LOCAL_USER_ID = 'local-user';
+
+/**
  * Parser cache — DERIVED, never authored. Rewritten from `content` on save.
  * PRD-DOMAIN-MODEL.md §Song.
  */

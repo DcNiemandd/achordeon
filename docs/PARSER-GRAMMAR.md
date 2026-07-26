@@ -197,7 +197,7 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
   the interval picked (`m2` vs `A1` are both one semitone), which direction supplies.
   Full detail belongs to the transpose grilling, not here.
 
-### Notation — English now, a German/English setting later [partly decided]
+### Notation — English source, a German/English print setting [partly decided]
 
 - **Now (shipped):** the engine is English, plus the **German `H` as an extra name
   for B natural** — the common _mixed_ convention, where `B` stays B natural and
@@ -207,20 +207,30 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
   and the fake cannot drift. The original `H` survives for display (it is the
   anchor's `raw`); only the parsed root normalises, so `[H]` transposes as the B it
   names and re-spells into **English** (`[H]`+1 ⇒ `[C]`).
-- **Future — a `notation` setting (`german | english`, deferred).** Everything below
-  changes what an **existing** symbol means or how transpose spells, so it must be a
-  user choice (per-song / global, like other render settings), **not** a silent
-  default:
+- **Now (shipped, Epic 12): the `notation` setting (`german | english`, default
+  `english`, `scopes: ['songbook','song']`) — the SPELLING half of it.** German
+  prints B natural as `H` and B♭ as `B`; English prints every chord exactly as it
+  was typed. It is applied once, at the top of the render (`respellChords` in
+  `shared/domain`, called by `RenderService.layout`), so screen, PNG, PDF and the
+  songbook exports cannot disagree — and it never touches `content`. Choosing what
+  a stored symbol _means_ from a preference would make the same file sound
+  different on two devices, and a transpose would then bake the difference in; so
+  reading stays one language and only printing follows the setting.
+- **Still future — the parts that change what a symbol MEANS (deferred).** Each
+  changes how an **existing** symbol reads or how transpose writes the source, so
+  none of them can ride on the spelling switch above without a migration story:
   - **Strict German input:** `B` means **B♭** (and `H` means B natural). Today `B` is
     B natural for everyone; flipping it is exactly why this needs a setting.
   - **Solfège accidentals:** `Cis`/`Des`/`As`/`Es` (…) as note spellings.
-  - **German transpose _output_:** re-spell B natural back to `H` and B♭ to `B`, so a
-    German-notation song stays in German notation after transpose (today it comes
-    back English).
+  - **German transpose _output_:** re-spell B natural back to `H` and B♭ to `B` in
+    the SOURCE, so a German-notation song reads as German in the editor after a
+    transpose (today it comes back English there). The printed page already follows
+    the setting, so this is about the text the author sees, not the render.
   - Interacts with the **key-aware spelling** refinement already parked above — both
     are "how is a transposed note spelled", one by key, one by notation.
-  - _Domain-model ripple when built:_ a new `notation` row in the SETTINGS registry
-    (`scopes: ['songbook','song']`), see `PRD-DOMAIN-MODEL.md`.
+  - _Domain-model:_ the `notation` row is already in the SETTINGS registry
+    (`scopes: ['songbook','song']`), see `PRD-DOMAIN-MODEL.md`; these would change
+    what it does, not add a row.
 
 ### No nesting [decided]
 

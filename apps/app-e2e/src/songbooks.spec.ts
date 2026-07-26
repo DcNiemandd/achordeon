@@ -781,4 +781,40 @@ test.describe('drag & drop', () => {
     // And the Add buttons are the keyboard path across the gap.
     await expect(page.getByTestId('add-end')).toBeVisible();
   });
+
+  // Epic 8's "Perform shortcut from Songbooks": you should not have to go to the
+  // Stage module and find the same book again in a second list.
+  test('a songbook row goes straight to the stage', async ({ page }) => {
+    await createSong(page, 'Alpha');
+    await createSongbook(page, 'Campfire');
+    await addSongs(page, ['Alpha'], 'end');
+
+    await page.goto('songbooks');
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`perform-${id}`).click();
+
+    await expect(page).toHaveURL(new RegExp(`/stage/${id}$`));
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+    await expect(page).toHaveTitle('Performing - Achordeon');
+  });
+
+  // An empty songbook cannot be performed, and the picker's answer to that is to
+  // hide the affordance rather than grey it out.
+  test('an empty songbook offers no Perform, and All songs offers it', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSongbook(page, 'Empty');
+
+    await page.goto('songbooks');
+    const row = page.getByTestId('songbook-row').filter({ hasText: 'Empty' });
+    const id = await row.getAttribute('data-song-id');
+    await expect(page.getByTestId(`perform-${id}`)).toHaveCount(0);
+
+    // All songs is read-only and still performable — it is the whole library.
+    await expect(page.getByTestId('perform-all-songs')).toBeVisible();
+  });
 });

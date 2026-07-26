@@ -34,12 +34,19 @@ let nextId = 0;
   imports: [Tooltip],
   host: { '[attr.data-testid]': '"premium"' },
   template: `
-    <div class="glow" [appTooltip]="note()" appTooltipTrigger="hover">
+    <div
+      class="wrap"
+      [class.glow]="isMarked()"
+      [appTooltip]="isMarked() ? note() : ''"
+      appTooltipTrigger="hover"
+    >
       <ng-content />
     </div>
     <!-- Referenced by the wrapped control's aria-describedby, so the note is
          announced without replacing the control's own name. -->
-    <span [id]="id" hidden>{{ note() }}</span>
+    @if (isMarked()) {
+      <span [id]="id" hidden>{{ note() }}</span>
+    }
   `,
   styles: `
     :host {
@@ -47,8 +54,12 @@ let nextId = 0;
       position: relative;
     }
 
-    .glow {
+    /* The wrapper is a layout box either way — only the gold is conditional. */
+    .wrap {
       display: inline-flex;
+    }
+
+    .glow {
       border-radius: var(--radius-md);
       box-shadow: var(--premium-glow);
     }
@@ -57,6 +68,17 @@ let nextId = 0;
 export class Premium {
   /** The wrapped control's own label, e.g. "Transpose". */
   readonly label = input('');
+  /**
+   * Whether to actually mark. `false` renders the wrapped control untouched — no
+   * glow, no tooltip, no described-by note.
+   *
+   * It defaults to `true` so `<app-premium>` on its own still means "this is
+   * Premium", and exists because *who* sees the marker is a tier question, not a
+   * layout one: someone who already pays should not be sold their own feature. The
+   * caller binds it from the tier gate rather than wrapping this in an `@if`,
+   * which would duplicate the control's markup in both branches.
+   */
+  readonly isMarked = input(true);
   readonly id = `app-premium-${nextId++}`;
 
   /** Appended, not replaced — the control still says what it does. */

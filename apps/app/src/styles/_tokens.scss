@@ -64,6 +64,9 @@
   // --- premium (§5.3) --------------------------------------------------------
   // Gold. Open question in §13: two warm tones this close may muddy.
   --premium: hsl(45 90% 45%);
+  // Text ON the gold. Near-black rather than white: gold is a light colour, and
+  // white on it is 1.9:1. This is 10:1, in both themes — the gold does not move.
+  --premium-on: hsl(45 60% 8%);
   --premium-glow:
     0 0 0 1px hsl(45 90% 45% / 0.9), 0 0 8px hsl(45 90% 50% / 0.55);
 

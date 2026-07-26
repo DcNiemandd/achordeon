@@ -175,6 +175,12 @@ export class Tooltip {
 
   private show(): void {
     this.clearTimers();
+    // Empty text means "no tooltip right now" — the only way a caller can bind a
+    // tooltip on and off, since a directive cannot be applied conditionally. An
+    // empty panel would be a stray rectangle with nothing in it.
+    if (this.appTooltip() === '') {
+      return;
+    }
     if (this.ref) {
       return;
     }

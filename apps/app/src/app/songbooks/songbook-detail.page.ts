@@ -8,6 +8,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -25,7 +26,13 @@ import {
   Tooltip,
   type IconName,
 } from '../primitives';
-import { ActionBar, SplitPane, UiStore, Viewport } from '../shared/layout';
+import {
+  ActionBar,
+  DocumentTitle,
+  SplitPane,
+  UiStore,
+  Viewport,
+} from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
   ENTRY_CAPABILITIES,
@@ -809,5 +816,10 @@ export class SongbookDetailPage {
         isFavoritesFirst: this.isFavoritesFirst(),
       });
     });
+
+    // The tab names the songbook, not the module — it is a document like a song.
+    inject(DestroyRef).onDestroy(
+      inject(DocumentTitle).claim(() => this.presenter.name()),
+    );
   }
 }
