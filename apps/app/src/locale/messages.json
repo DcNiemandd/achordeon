@@ -40,6 +40,7 @@
     "settings.drive.heading": "Google Drive backup",
     "settings.drive.about": "About Google Drive backup",
     "settings.drive.requires": "Add Google to your account to back up to Drive.",
+    "settings.drive.requiresSignIn": "Sign in with Google to back up to Drive.",
     "settings.account": "Account",
     "settings.account.unavailable": "Sign-in and cloud sync are unavailable in this build. Your library works and is saved on this device.",
     "settings.account.signedInAs": "Signed in as",

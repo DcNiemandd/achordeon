@@ -73,6 +73,7 @@ export class SettingsPresenter {
   readonly authStatus = this.auth.status;
   readonly email = this.auth.email;
   readonly isPro = this.auth.isPro;
+  readonly isSignedIn = this.auth.isSignedIn;
   readonly hasGoogle = this.auth.hasGoogle;
   readonly hasPassword = this.auth.hasPassword;
   readonly autoSync = this.sync.autoSync;

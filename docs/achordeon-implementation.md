@@ -685,8 +685,36 @@ Audience (Epic 9).
 - [ ] One-song view with prev/next (disabled at ends; empty songbook can't be
       performed).
 - [ ] Summary list (compact, search-only) to jump to a song.
-- [ ] Swipe navigation + fullscreen (tap toggles navbar, no dedicated tap zone).
+- [x] Swipe navigation + fullscreen (tap toggles navbar, no dedicated tap zone).
 - [ ] "Create an audience" entry point (wires into Epic 9).
+
+### Landed — the swipe did not work on a phone
+
+The gesture was written on Pointer Events so one handler serves mouse and touch,
+and on a desktop it worked. On Chrome for Android it never fired once.
+
+**`touch-action` was left at its default**, so the browser treats the first few
+pixels of a touch drag as possibly-a-pan, decides it is one, hands the gesture to
+the compositor and fires **`pointercancel`**. No `pointerup` ever arrives, and
+`pointerup` is where the page turn was. The render now claims the horizontal axis
+(`touch-action: pan-y pinch-zoom` — vertical drags and pinch stay the browser's,
+because neither is a page turn and pinch is how you read a chord that rendered
+small).
+
+Two things fell out of the same reading:
+
+- **A cancelled gesture left its anchor behind.** `pointercancel` cleared
+  nothing, so the next tap measured its distance from a finger that had left
+  minutes earlier — a tap that turned the page. It resets now.
+- **Only the primary pointer counts.** A second finger used to move the anchor
+  out from under the first, so a pinch could end as a page turn.
+
+`apps/app-e2e/src/stage.spec.ts` covers it, and **it dispatches touch through
+CDP rather than `page.mouse`** — a mouse drag produces a tidy
+pointerdown/move/up and passes happily against the broken build. Only
+`Input.dispatchTouchEvent` goes through Chromium's real input pipeline, where
+`touch-action` and the gesture recogniser apply. Verified by reverting the fix:
+the spec goes red.
 
 ---
 
@@ -1254,10 +1282,30 @@ and what it changed is worth recording:
   says so and links there — otherwise someone who came looking for "export" uses
   Back up as a substitute and mails a copy of their entire library.
 
-**Pre-existing, not from this epic:** `mobile-layout.spec.ts` "the editor fits at
-320px" fails on the branch head — the editor's action bar (`insert-syntax`,
-`insert-escape`) overflows a 320px viewport. It is Epic 5/13's bar, unrelated to
-Settings, and left alone here so the fix is reviewable on its own.
+**Fixed alongside** (Epic 5/13's bar, not Settings'): the editor's action bar
+overflowed a 320px viewport. `.commands` wraps between groups — "a break falls
+where the meaning already changes, never through the middle of one" — but eight
+40px insert buttons and their gaps are 348px, and a 320px phone leaves the
+commands about 215px, so the rule had no way to hold and the group simply ran off
+the screen instead. Groups wrap too now; because `.commands` still breaks between
+them first, a group is only ever asked to break when it alone is wider than the
+line. `mobile-layout.spec.ts` covers it at 320 and 390.
+
+**Also fixed: connecting Google did not take.** `linkIdentity` grants the
+identity server-side and redirects back, and the session that comes out of
+storage on the other side is the one from _before_ the link. `AuthService` read
+`identities` straight off it, so `hasGoogle()` stayed false after connecting:
+"Add Google" stayed on offer, the Drive buttons stayed disabled, and the line
+telling you to add Google stayed under them until some later token refresh
+happened to fix it. `adopt()` now re-reads the user with `getUser()` — the server
+is the only thing that knows — best-effort, so being offline never looks like
+being signed out. The line itself is now keyed on `hasGoogle()` alone and, when
+there is no account yet, says to sign in rather than to "add Google to your
+account".
+
+**Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
+tests (`audience-fullscreen` never becomes visible). They fail identically on the
+branch head; left alone so the fix is reviewable on its own.
 
 ---
 

@@ -85,6 +85,7 @@ const SWIPE_THRESHOLD_PX = 60;
       class="screen"
       (pointerdown)="startSwipe($event)"
       (pointerup)="endSwipe($event)"
+      (pointercancel)="cancelSwipe($event)"
     >
       <!-- Desktop only: the feature's own top grid bar. Mobile draws nothing
            here — its controls are the shell's bottom bar (StageBar). -->
@@ -383,9 +384,19 @@ const SWIPE_THRESHOLD_PX = 60;
       user-select: none;
     }
 
+    /* The swipe surface, and the reason swiping works on a phone at all.
+       With touch-action left at its default, Chrome on Android watches the
+       first ~8px of a drag, decides it is a pan, hands the gesture to the
+       compositor and fires **pointercancel** — no pointerup ever arrives, so
+       endSwipe never ran and the page never turned. Claiming the horizontal
+       axis here tells the browser up front that this drag is ours.
+
+       pan-y and pinch-zoom stay with the browser on purpose: a vertical drag is
+       not a page turn, and pinch is how you read a chord that rendered small. */
     .render {
       flex: 1;
       min-block-size: 0;
+      touch-action: pan-y pinch-zoom;
     }
 
     /* Desktop top bar — grid: [left 1fr] [nav auto] [right 1fr] = nav centered */
@@ -726,11 +737,27 @@ export class StagePerformPage {
     // hidden, so the reveal decision waits for pointerup, where a tap is told
     // apart from a swipe.
     if ((event.target as HTMLElement).closest('.summary, button, a')) return;
+    // A second finger (a pinch) must not move the anchor out from under the
+    // first one, or the gesture that ends is measured from the wrong place.
+    if (!event.isPrimary) return;
     this.swipeStartX = event.clientX;
     this.swipeStartY = event.clientY;
   }
 
+  /**
+   * The browser took the gesture (a pan it decided to handle itself, or the
+   * pointer left the window). No pointerup will follow, so the anchor has to go
+   * — otherwise the *next* tap measures its distance from a finger that left
+   * minutes ago and turns the page on a touch that never moved.
+   */
+  protected cancelSwipe(event: PointerEvent): void {
+    if (!event.isPrimary) return;
+    this.swipeStartX = null;
+    this.swipeStartY = null;
+  }
+
   protected endSwipe(event: PointerEvent): void {
+    if (!event.isPrimary) return;
     if (this.swipeStartX === null || this.swipeStartY === null) return;
     const dx = event.clientX - this.swipeStartX;
     const dy = event.clientY - this.swipeStartY;

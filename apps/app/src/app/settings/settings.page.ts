@@ -385,9 +385,17 @@ const MIN_PASSWORD = 8;
                       {{ driveDownloadLabel }}
                     </button>
                   </div>
-                  @if (!canDrive()) {
+                  <!-- Gone the moment Google is connected — the row works from
+                       then on, and a line telling you to do what you have
+                       already done reads as the app not having noticed. Until
+                       then it names the step that is actually missing: "add
+                       Google to your account" is nonsense to someone who has no
+                       account yet. -->
+                  @if (!presenter.hasGoogle()) {
                     <p class="requirement" data-testid="drive-req">
-                      {{ driveReq }}
+                      {{
+                        presenter.isSignedIn() ? driveReqLink : driveReqSignIn
+                      }}
                     </p>
                   }
                   @if (driveMessage(); as message) {
@@ -1438,7 +1446,8 @@ export class SettingsPage {
   protected readonly autoSyncReq = $localize`:@@settings.autoSync.requires:Available on a Premium account.`;
   protected readonly driveHeading = $localize`:@@settings.drive.heading:Google Drive backup`;
   protected readonly aboutDrive = $localize`:@@settings.drive.about:About Google Drive backup`;
-  protected readonly driveReq = $localize`:@@settings.drive.requires:Add Google to your account to back up to Drive.`;
+  protected readonly driveReqLink = $localize`:@@settings.drive.requires:Add Google to your account to back up to Drive.`;
+  protected readonly driveReqSignIn = $localize`:@@settings.drive.requiresSignIn:Sign in with Google to back up to Drive.`;
 
   protected onAutoSync(event: Event): void {
     void this.presenter.setAutoSync((event.target as HTMLInputElement).checked);

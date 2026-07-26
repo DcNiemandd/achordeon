@@ -359,9 +359,19 @@ import { ReturnUrl } from './return-url';
       gap: var(--space-1) var(--space-4);
     }
 
+    /* A group wraps too — but only ever as the last resort, because .commands
+       above breaks between groups first and a group is only asked to break when
+       it alone is wider than the line. Eight 40px inserts plus their gaps are
+       348px; a 320px phone has ~215px left after the bar's padding and the
+       download/settings pair, so "never break a group" had no way to hold there
+       and the group simply overflowed the viewport instead. Wrapping inside the
+       group keeps the preference (breaks still fall between groups whenever
+       there is room to) and gives it a floor when there is not. */
     .group {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
+      min-inline-size: 0;
       gap: var(--space-1);
     }
 

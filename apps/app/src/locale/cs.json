@@ -41,6 +41,7 @@
     "settings.drive.heading": null,
     "settings.drive.about": null,
     "settings.drive.requires": null,
+    "settings.drive.requiresSignIn": null,
     "settings.account": null,
     "settings.account.unavailable": null,
     "settings.account.signedInAs": null,
