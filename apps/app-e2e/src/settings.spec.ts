@@ -5,7 +5,34 @@
 // auto-retrying `expect` rather than immediate reads, so a signal update + change
 // detection tick doesn't race the check.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * The saved global settings, read straight off the account row.
+ *
+ * A reload started in the same millisecond as an edit will beat the IndexedDB
+ * write to disk — the write is a few ms of transaction, and navigation aborts
+ * whatever is still in flight. That is a real (and tiny) window for a user who
+ * closes the tab mid-click, and an unreal one for a test, which reloads with no
+ * human delay in front of it at all. So the persistence tests wait for the row
+ * rather than for a stretch of time: precise about what they need, and they say
+ * "saved" out loud instead of "500ms should do it".
+ */
+function savedSettings(page: Page): Promise<Record<string, unknown> | null> {
+  return page.evaluate(
+    () =>
+      new Promise<Record<string, unknown> | null>((resolve, reject) => {
+        const open = indexedDB.open('achordeon');
+        open.onsuccess = () => {
+          const read = open.result.transaction('user', 'readonly');
+          const row = read.objectStore('user').get('local-user');
+          row.onsuccess = () => resolve(row.result?.settings ?? null);
+          row.onerror = () => reject(row.error);
+        };
+        open.onerror = () => reject(open.error);
+      }),
+  );
+}
 
 test.describe('global render settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -176,6 +203,43 @@ test.describe('global render settings', () => {
 
     await page.getByTestId('reset-aspectRatio').click();
     await expect(field).toHaveValue('A4');
+    await expect(page.getByTestId('reset-aspectRatio')).toHaveCount(0);
+  });
+
+  // Global is the base of the cascade (ADR-0006), and a base that lasts until the
+  // next reload is not a default. The bag lives in the account row; the reload is
+  // the only honest way to check it got there.
+  test('a global default survives a reload', async ({ page }) => {
+    await page.getByTestId('select-aspectRatio').selectOption('16:9');
+    await page.getByTestId('inc-columns').click();
+    await expect(page.getByTestId('input-columns')).toHaveValue('2');
+    await expect
+      .poll(async () => (await savedSettings(page))?.['columns'])
+      .toBe(2);
+
+    await page.reload();
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue('16:9');
+    await expect(page.getByTestId('input-columns')).toHaveValue('2');
+    // Not merely displayed — still off its default, so the cascade sees it too.
+    await expect(page.getByTestId('reset-aspectRatio')).toBeVisible();
+  });
+
+  // A reset is a change like any other: it has to outlive the reload as well, or
+  // the setting comes back from the dead.
+  test('a reset survives a reload', async ({ page }) => {
+    await page.getByTestId('select-aspectRatio').selectOption('16:9');
+    await expect(page.getByTestId('reset-aspectRatio')).toBeVisible();
+    await page.getByTestId('reset-aspectRatio').click();
+    await expect
+      .poll(async () => (await savedSettings(page))?.['aspectRatio'])
+      .toBe('A4');
+
+    await page.reload();
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue('A4');
     await expect(page.getByTestId('reset-aspectRatio')).toHaveCount(0);
   });
 });

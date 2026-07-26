@@ -405,14 +405,14 @@ export class SettingsPresenter {
     this._restore.set(null);
   }
 
-  patchGlobal(patch: Record<string, unknown>): void {
+  /** @returns when the change has been saved — the page does not wait on it. */
+  patchGlobal(patch: Record<string, unknown>): Promise<void> {
     // A sparse patch from the panel. At Global scope every setting is defined,
     // so an `undefined` (reset) has nothing to fall back to and is dropped.
     const defined = Object.fromEntries(
       Object.entries(patch).filter(([, value]) => value !== undefined),
     );
-    if (Object.keys(defined).length > 0) {
-      this.store.setGlobal(defined);
-    }
+    if (Object.keys(defined).length === 0) return Promise.resolve();
+    return this.store.setGlobal(defined);
   }
 }

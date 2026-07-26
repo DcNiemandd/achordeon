@@ -13,6 +13,7 @@ import { ACHORDEON_DB } from './stores/repositories';
 import { BootGate } from './persistence/boot-gate';
 import { bootstrap } from './persistence/gateway';
 import { seedDatabase } from './persistence/seed';
+import { SettingsStore } from './stores/settings-store';
 import { AuthService } from './auth/auth-service';
 import { SyncService } from './sync/sync-service';
 
@@ -41,11 +42,21 @@ export function provideAchordeonData(): Provider[] {
  *
  * A `refuse` leaves the database untouched and surfaces as `BootGate.mustUpdate`,
  * which the shell turns into the blocking update prompt (Epic 11).
+ *
+ * The saved global settings are hydrated here too, in the same awaited step and
+ * after the gateway rather than before it: they are rows like any other, so they
+ * must be read at the current shape, and they must be in the store before the
+ * first render — a page that paints A4 and then jumps to the user's own aspect
+ * ratio is a worse bug than the one this fixes. On a `refuse` there is nothing
+ * safe to read, and the shell is about to demand an update anyway.
  */
 export function provideAchordeonBoot(): EnvironmentProviders {
   return provideAppInitializer(async () => {
     const gate = inject(BootGate);
-    gate.publish(await bootstrap(inject(ACHORDEON_DB)));
+    const settings = inject(SettingsStore);
+    const result = await bootstrap(inject(ACHORDEON_DB));
+    gate.publish(result);
+    if (result.status !== 'refuse') await settings.load();
   });
 }
 

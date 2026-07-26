@@ -1303,6 +1303,40 @@ being signed out. The line itself is now keyed on `hasGoogle()` alone and, when
 there is no account yet, says to sign in rather than to "add Google to your
 account".
 
+**Also fixed: the global render defaults were never saved.** Changing the aspect
+ratio on this page held until the next reload and then went back to A4. The
+`user` table has held a `settings` column since Epic 4 and the sync layer already
+read and wrote it — but nothing ever wrote a `user` row, so the table was empty
+on every install, and `SettingsStore` was a plain in-memory holder whose own
+docstring left the write-back to "feature panels (Epic 12)". This is Epic 12.
+
+- **The store owns the round-trip.** `setGlobal` writes the bag through to the
+  account row and `load()` reads it back; nothing above has to remember. Putting
+  it in the four presenters that inject the store would have been four chances to
+  forget, and the panel is mounted in three places.
+- **The row is a singleton with a constant id** (`LOCAL_USER_ID`, like
+  `ALL_SONGS_ID`). Two devices editing their defaults offline have to produce the
+  _same_ row for per-row LWW (ADR-0004) to reconcile them; random ids would merge
+  into two accounts and let `find` pick whichever came first. It is a synced row,
+  so a changed default now travels between devices like any other edit.
+- **Hydration is awaited in the boot initializer, after the gateway.** Settings
+  are rows, so they must be read at the current shape; and they must be in the
+  store before first paint, because a page that renders A4 and then jumps to the
+  user's own ratio is a worse bug than the one being fixed.
+- **A stored bag is completed against the registry on the way in.** Global is the
+  base of the cascade (ADR-0006) and `resolveSettings` reads every key off it, so
+  it has to be complete — a bag saved before a setting existed is not. The stored
+  values spread last, so a newer build's unknown key still round-trips
+  (ADR-0007).
+- **Writes are serialised**, because each is a read-modify-write of one row: two
+  overlapping ones both read the pre-edit row and the loser puts back a bag
+  missing the winner's change. Dragging a slider fires exactly that pattern.
+
+Two e2e tests cover it, and they wait for the row rather than for a stretch of
+time — a reload issued in the same millisecond as the click will beat IndexedDB
+to disk, which is a real (millisecond-wide) window for a user who closes the tab
+mid-click and an unreal one for a test with no human delay in front of it.
+
 **Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
 tests (`audience-fullscreen` never becomes visible). They fail identically on the
 branch head; left alone so the fix is reviewable on its own.
