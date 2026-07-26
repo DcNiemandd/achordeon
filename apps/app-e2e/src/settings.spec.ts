@@ -317,9 +317,7 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
 //
 // One bundle, translations loaded at boot (PRD-INFRASTRUCTURE.md §11), so a switch
 // is a reload of the same URL — and the proof that it worked is that a translated
-// string comes back in Czech. `settings.language` is translated; the rest of the
-// catalog is still English, and falls back to it, which is the point of shipping a
-// language before it is finished.
+// string comes back in Czech.
 test.describe('language', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -365,8 +363,9 @@ test.describe('language', () => {
 
     // The translated string arrived from locale/cs.json before the first render.
     await expect(page.getByTestId('language-heading')).toHaveText('Jazyk');
-    // An untranslated one falls back to English rather than rendering empty.
-    await expect(page.getByTestId('theme-system')).toHaveText('System');
+    // And so did one from a different corner of the page, so this is the catalog
+    // arriving in time, not a single lucky message.
+    await expect(page.getByTestId('theme-system')).toHaveText('Systémový');
   });
 
   test('the choice survives a fresh load', async ({ page }) => {
