@@ -1200,17 +1200,64 @@ cascade), plus the manual export/import entry points.
 
 ### Subtasks
 
-- [ ] Profile section: login/logout, "add a sign-in method", Connect Drive
-      (drives the Google link if absent).
-- [ ] Sync controls: Drive upload/download buttons, premium auto-sync toggle,
+- [x] Profile section: login/logout, "add a sign-in method", Connect Drive
+      (drives the Google link if absent). _Landed with Epic 10; Epic 12 re-cut it
+      into rows and gave the identity its own line._
+- [x] Sync controls: Drive upload/download buttons, premium auto-sync toggle,
       manual export/import entry points.
 - [x] Application: theme (system/light/dark), language (EN/CS). _Landed with Epic
       11 — the language control is the switch that owns the locale sub-paths, so it
       shipped with the i18n it drives._
-- [ ] Rendering: GUI for the **global** render defaults (the registry's Global
+- [x] Rendering: GUI for the **global** render defaults (the registry's Global
       scope) — mount `<app-settings-panel [scope]="'global'">` from **Epic 13**; the
       panel is built once and reused at Song/Songbook scope. Don't rebuild it here.
-- [ ] Premium highlight markers on tier-gated controls.
+- [x] Premium highlight markers on tier-gated controls.
+
+### Landed — what implementation changed
+
+Epic 12 found its subtasks already built: Epics 10, 11 and 13 had each landed
+their own slice of this page as they went. What was missing was the thing no
+single epic owned — the page as **one page**. So this is mostly a design pass,
+and what it changed is worth recording:
+
+- **The render section was the only part that had an inset, and that was the
+  bug, not the feature.** `<app-settings-panel>` pads itself (it is built for the
+  editor dialog, where it owns the whole surface) and was dropped into a section
+  that padded nothing, so the render rows sat 12px in from every other row on the
+  page. The inset is now the host's to decide — one `--panel-inset` custom
+  property, defaulted to what the dialogs want, set to `0` by the Settings page
+  because the section already pads. Nothing about the dialogs changed.
+- **Sections are cards.** Each one has the panel's inset, an edge and
+  `--surface`, on a `--surface-sunken` body. Not `--surface-raised`: the rail and
+  the action bar are already raised, so a raised card read as more chrome rather
+  than as the page's content.
+- **The page had one heading style for two levels.** Section headings copied the
+  panel's `.section-title` — but that style belongs to the level _below_ (PAGE,
+  TITLE, CHORDS), so RENDERING and PAGE looked like siblings. Sections are now
+  real headings; the uppercase-faint caption is reserved for the group inside a
+  card, which is exactly what the render panel does.
+- **Rows go two-up, off the same container query the panel uses** (420px, asking
+  the card rather than the viewport). Every hand-built section now uses the
+  panel's row shape — label + `(?)` above, control beneath — so a settings row
+  looks the same wherever it is.
+- **Three heading levels became two.** "Manual backup" was an `<h4>` under the
+  Sync subsection under the Account section; it is one setting, not a group, so
+  it is a row like the others. Sync stays as the one subsection.
+- **The Premium tier badge was invisible.** `background: var(--premium-glow)`
+  substituted a `box-shadow` value into `background`, which makes the declaration
+  invalid at computed-value time — white text on nothing. It wears the gold now,
+  with a `--premium-on` token for text on it (white on gold is 1.9:1).
+- **"Panels" was a section holding one checkbox.** Folded into Application, where
+  a device-local UI preference belongs beside theme.
+- **Export/import got a signpost, not a second home.** Epic 7 put the pickers
+  where the songs are, because choosing which songs is the whole act. Settings
+  says so and links there — otherwise someone who came looking for "export" uses
+  Back up as a substitute and mails a copy of their entire library.
+
+**Pre-existing, not from this epic:** `mobile-layout.spec.ts` "the editor fits at
+320px" fails on the branch head — the editor's action bar (`insert-syntax`,
+`insert-escape`) overflows a 320px viewport. It is Epic 5/13's bar, unrelated to
+Settings, and left alone here so the fix is reviewable on its own.
 
 ---
 

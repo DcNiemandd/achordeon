@@ -305,11 +305,17 @@ interface Section {
       container-type: inline-size;
     }
 
+    /* The inset is the HOST's to decide, because the three homes pad
+       differently: a dialog gives the panel the whole surface (so the panel
+       pads itself), while the Settings page drops it into a section that is
+       already padded (so a second inset would indent the render rows out of
+       line with every other row on the page). One custom property, defaulted to
+       what the dialogs want. */
     .panel {
       display: flex;
       flex-direction: column;
       gap: var(--space-4);
-      padding: var(--space-3);
+      padding: var(--panel-inset, var(--space-3));
     }
 
     .section-title {

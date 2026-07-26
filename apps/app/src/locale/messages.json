@@ -1,5 +1,5 @@
 {
-  "locale": "en-US",
+  "locale": "en",
   "translations": {
     "audience.joinHeading": "Join an audience",
     "audience.joinHint": "Enter the PIN the performer is showing, or scan their QR code.",
@@ -27,7 +27,6 @@
     "settings.language.help": "Achordeon reloads to switch language, and stays on the page you are on.",
     "settings.language.about": "About the language setting",
     "settings.rendering": "Rendering",
-    "settings.panels": "Panels",
     "settings.splitShared": "One panel size everywhere",
     "settings.splitShared.on": "Use one panel size everywhere",
     "settings.splitShared.help": "Off: each module remembers how you sized its panels.",
@@ -46,7 +45,8 @@
     "settings.account.signedInAs": "Signed in as",
     "settings.account.pro": "Premium",
     "settings.account.free": "Free",
-    "settings.account.methods": "Sign-in methods:",
+    "settings.account.methods": "Sign-in methods",
+    "settings.account.session": "This device",
     "settings.account.googleWord": "Google",
     "settings.account.passwordWord": "Email & password",
     "settings.account.methodsNone": "none",
@@ -114,6 +114,8 @@
     "settings.backup.help": "Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.",
     "settings.backup.save": "Back up to a file",
     "settings.backup.restore": "Restore from a file",
+    "settings.transfer.note": "Sending a few songs to someone else is a different job — export and import live with the songs.",
+    "settings.transfer.link": "Go to Songs",
     "settings.restore.title": "Restore this backup?",
     "settings.restore.text": "This replaces your entire current library with the backup. Anything not in the file is lost.",
     "settings.restore.confirm": "Restore",

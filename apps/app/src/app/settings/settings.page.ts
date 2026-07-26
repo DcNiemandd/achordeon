@@ -11,6 +11,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { ActionBar, BackNavigation } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
@@ -33,7 +34,16 @@ const MIN_PASSWORD = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SettingsPresenter],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
-  imports: [ActionBar, SettingsPanel, Button, Dialog, Icon, Premium, Tooltip],
+  imports: [
+    ActionBar,
+    SettingsPanel,
+    Button,
+    Dialog,
+    Icon,
+    Premium,
+    RouterLink,
+    Tooltip,
+  ],
   template: `
     <app-action-bar [title]="title" />
 
@@ -50,62 +60,84 @@ const MIN_PASSWORD = 8;
 
           @switch (presenter.authStatus()) {
             @case ('unavailable') {
-              <p class="backup-help">{{ accountUnavailable }}</p>
+              <p class="setting-note">{{ accountUnavailable }}</p>
             }
             @case ('signed-in') {
-              <p class="account-line" data-testid="account-email">
-                {{ signedInAs }} <strong>{{ presenter.email() }}</strong>
+              <!-- Who you are, on the card's own line above the controls: it is
+                   the answer the section exists to give, not a setting. -->
+              <div class="identity" data-testid="account-email">
+                <span class="identity-who">
+                  <span class="identity-caption">{{ signedInAs }}</span>
+                  <strong class="identity-email">{{
+                    presenter.email()
+                  }}</strong>
+                </span>
                 <span
                   class="tier-badge"
                   [class.is-pro]="presenter.isPro()"
                   data-testid="tier-badge"
                   >{{ presenter.isPro() ? proLabel : freeLabel }}</span
                 >
-              </p>
+              </div>
 
-              <p class="method-line" data-testid="account-methods">
-                {{ methodsLabel }}
-                <strong>{{ methodsSummary() }}</strong>
-              </p>
+              <div class="group">
+                <div class="setting">
+                  <div class="head">
+                    <span class="label">{{ methodsLabel }}</span>
+                  </div>
+                  <p class="value" data-testid="account-methods">
+                    {{ methodsSummary() }}
+                  </p>
+                  @if (!presenter.hasGoogle() || !presenter.hasPassword()) {
+                    <div class="actions">
+                      @if (!presenter.hasGoogle()) {
+                        <button
+                          appButton
+                          variant="secondary"
+                          data-testid="link-google"
+                          (click)="presenter.linkGoogle()"
+                        >
+                          {{ linkGoogleLabel }}
+                        </button>
+                      }
+                      @if (!presenter.hasPassword()) {
+                        <button
+                          appButton
+                          variant="secondary"
+                          data-testid="add-password"
+                          (click)="openAddPassword()"
+                        >
+                          {{ addPasswordLabel }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
 
-              <div class="backup-actions">
-                @if (!presenter.hasGoogle()) {
-                  <button
-                    appButton
-                    variant="secondary"
-                    data-testid="link-google"
-                    (click)="presenter.linkGoogle()"
-                  >
-                    {{ linkGoogleLabel }}
-                  </button>
-                }
-                @if (!presenter.hasPassword()) {
-                  <button
-                    appButton
-                    variant="secondary"
-                    data-testid="add-password"
-                    (click)="openAddPassword()"
-                  >
-                    {{ addPasswordLabel }}
-                  </button>
-                }
-                <button
-                  appButton
-                  variant="ghost"
-                  data-testid="logout"
-                  (click)="presenter.logOut()"
-                >
-                  {{ logoutLabel }}
-                </button>
-                <button
-                  appButton
-                  variant="ghost"
-                  class="danger-btn"
-                  data-testid="delete-account"
-                  (click)="confirmDelete.set(true)"
-                >
-                  {{ deleteAccountLabel }}
-                </button>
+                <div class="setting">
+                  <div class="head">
+                    <span class="label">{{ sessionHeading }}</span>
+                  </div>
+                  <div class="actions">
+                    <button
+                      appButton
+                      variant="secondary"
+                      data-testid="logout"
+                      (click)="presenter.logOut()"
+                    >
+                      {{ logoutLabel }}
+                    </button>
+                    <button
+                      appButton
+                      variant="ghost"
+                      class="danger-btn"
+                      data-testid="delete-account"
+                      (click)="confirmDelete.set(true)"
+                    >
+                      {{ deleteAccountLabel }}
+                    </button>
+                  </div>
+                </div>
               </div>
             }
             @default {
@@ -123,65 +155,69 @@ const MIN_PASSWORD = 8;
                 >
               </p>
 
-              <div class="setting">
-                <div class="head">
-                  <span class="label">{{ googleHeading }}</span>
-                  <button
-                    appButton
-                    type="button"
-                    class="help"
-                    [isIconOnly]="true"
-                    [appTooltip]="googleHelp"
-                    appTooltipTrigger="click"
-                    [attr.aria-label]="aboutGoogle"
-                    data-testid="help-google"
-                  >
-                    <app-icon name="help" />
-                  </button>
+              <div class="group">
+                <div class="setting">
+                  <div class="head">
+                    <span class="label">{{ googleHeading }}</span>
+                    <button
+                      appButton
+                      type="button"
+                      class="help"
+                      [isIconOnly]="true"
+                      [appTooltip]="googleHelp"
+                      appTooltipTrigger="click"
+                      [attr.aria-label]="aboutGoogle"
+                      data-testid="help-google"
+                    >
+                      <app-icon name="help" />
+                    </button>
+                  </div>
+                  <div class="actions">
+                    <button
+                      appButton
+                      variant="secondary"
+                      data-testid="login-google"
+                      (click)="presenter.logInGoogle()"
+                    >
+                      {{ googleLabel }}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  appButton
-                  variant="secondary"
-                  data-testid="login-google"
-                  (click)="presenter.logInGoogle()"
-                >
-                  {{ googleLabel }}
-                </button>
-              </div>
 
-              <div class="setting">
-                <div class="head">
-                  <span class="label">{{ emailHeading }}</span>
-                  <button
-                    appButton
-                    type="button"
-                    class="help"
-                    [isIconOnly]="true"
-                    [appTooltip]="emailHelp"
-                    appTooltipTrigger="click"
-                    [attr.aria-label]="aboutEmail"
-                    data-testid="help-email"
-                  >
-                    <app-icon name="help" />
-                  </button>
-                </div>
-                <div class="backup-actions">
-                  <button
-                    appButton
-                    variant="secondary"
-                    data-testid="open-login"
-                    (click)="openLogin()"
-                  >
-                    {{ loginLabel }}
-                  </button>
-                  <button
-                    appButton
-                    variant="ghost"
-                    data-testid="open-register"
-                    (click)="openRegister()"
-                  >
-                    {{ registerLabel }}
-                  </button>
+                <div class="setting">
+                  <div class="head">
+                    <span class="label">{{ emailHeading }}</span>
+                    <button
+                      appButton
+                      type="button"
+                      class="help"
+                      [isIconOnly]="true"
+                      [appTooltip]="emailHelp"
+                      appTooltipTrigger="click"
+                      [attr.aria-label]="aboutEmail"
+                      data-testid="help-email"
+                    >
+                      <app-icon name="help" />
+                    </button>
+                  </div>
+                  <div class="actions">
+                    <button
+                      appButton
+                      variant="secondary"
+                      data-testid="open-login"
+                      (click)="openLogin()"
+                    >
+                      {{ loginLabel }}
+                    </button>
+                    <button
+                      appButton
+                      variant="ghost"
+                      data-testid="open-register"
+                      (click)="openRegister()"
+                    >
+                      {{ registerLabel }}
+                    </button>
+                  </div>
                 </div>
               </div>
             }
@@ -193,283 +229,317 @@ const MIN_PASSWORD = 8;
                backend; Manual backup is the no-account method, nested below and
                always available. Prerequisite-missing controls are DISABLED with a
                line saying what unlocks them (item 7) — never hidden. -->
+          <!-- One level below the section heading, and the SAME title style the
+               render panel gives PAGE / TITLE / CHORDS: the page has exactly two
+               levels of grouping and each one looks like itself. -->
           <div class="subsection">
-            <h3 class="sub-title">{{ syncHeading }}</h3>
+            <h3 class="subheading">{{ syncHeading }}</h3>
 
-            @if (presenter.authStatus() !== 'unavailable') {
-              <!-- Automatic cloud sync — Premium. Shown always; the control is
-                   disabled until a signed-in Premium account is present. -->
+            <div class="group">
+              @if (presenter.authStatus() !== 'unavailable') {
+                <!-- Automatic cloud sync — Premium. Shown always; the control is
+                     disabled until a signed-in Premium account is present. -->
+                <div class="setting">
+                  <div class="head">
+                    <span class="label">{{ autoSyncLabel }}</span>
+                    <button
+                      appButton
+                      type="button"
+                      class="help"
+                      [isIconOnly]="true"
+                      [appTooltip]="autoSyncHelp"
+                      appTooltipTrigger="click"
+                      [attr.aria-label]="aboutAutoSync"
+                      data-testid="help-auto-sync"
+                    >
+                      <app-icon name="help" />
+                    </button>
+                  </div>
+                  <app-premium
+                    [label]="autoSyncLabel"
+                    [isMarked]="presenter.marksAutoSyncPremium()"
+                  >
+                    <label
+                      class="check-row"
+                      [class.is-disabled]="!presenter.canAutoSync()"
+                    >
+                      <input
+                        type="checkbox"
+                        class="check"
+                        [checked]="presenter.autoSync()"
+                        [disabled]="!presenter.canAutoSync()"
+                        data-testid="auto-sync"
+                        (change)="onAutoSync($event)"
+                      />
+                      <span class="check-label">{{ autoSyncOnLabel }}</span>
+                    </label>
+                  </app-premium>
+                  @if (!presenter.canAutoSync()) {
+                    <p class="requirement" data-testid="auto-sync-req">
+                      {{ autoSyncReq }}
+                    </p>
+                  }
+                  @if (presenter.hasUnsynced()) {
+                    <p class="requirement" data-testid="unsynced">
+                      {{ unsyncedText }}
+                    </p>
+                  }
+                </div>
+              }
+
+              <!-- Manual backup — the no-account method, works everywhere. Sits
+                   with Sync because every "move my library elsewhere" tool
+                   belongs together, and as a plain row rather than a third
+                   heading level: it is one setting, not a group. Distinct from
+                   Export: the entire library, verbatim; Restore REPLACES it. -->
               <div class="setting">
                 <div class="head">
-                  <span class="label">{{ autoSyncLabel }}</span>
+                  <span class="label">{{ backupHeading }}</span>
                   <button
                     appButton
                     type="button"
                     class="help"
                     [isIconOnly]="true"
-                    [appTooltip]="autoSyncHelp"
+                    [appTooltip]="backupHelp"
                     appTooltipTrigger="click"
-                    [attr.aria-label]="aboutAutoSync"
-                    data-testid="help-auto-sync"
+                    [attr.aria-label]="aboutBackup"
+                    data-testid="help-backup"
                   >
                     <app-icon name="help" />
                   </button>
                 </div>
-                <app-premium
-                  [label]="autoSyncLabel"
-                  [isMarked]="presenter.marksAutoSyncPremium()"
-                >
-                  <label
-                    class="check-row"
-                    [class.is-disabled]="!presenter.canAutoSync()"
-                  >
-                    <input
-                      type="checkbox"
-                      class="check"
-                      [checked]="presenter.autoSync()"
-                      [disabled]="!presenter.canAutoSync()"
-                      data-testid="auto-sync"
-                      (change)="onAutoSync($event)"
-                    />
-                    <span class="check-label">{{ autoSyncOnLabel }}</span>
-                  </label>
-                </app-premium>
-                @if (!presenter.canAutoSync()) {
-                  <p class="requirement" data-testid="auto-sync-req">
-                    {{ autoSyncReq }}
-                  </p>
-                }
-                @if (presenter.hasUnsynced()) {
-                  <p class="unsynced" data-testid="unsynced">
-                    {{ unsyncedText }}
-                  </p>
-                }
-              </div>
-
-              <!-- Manual Google Drive backup — needs a Google login (Drive rides
-                   the Google identity, ADR-0009). Shown always; disabled until. -->
-              <div class="setting">
-                <div class="head">
-                  <span class="label">{{ driveHeading }}</span>
-                  <button
-                    appButton
-                    type="button"
-                    class="help"
-                    [isIconOnly]="true"
-                    [appTooltip]="driveHelp"
-                    appTooltipTrigger="click"
-                    [attr.aria-label]="aboutDrive"
-                    data-testid="help-drive"
-                  >
-                    <app-icon name="help" />
-                  </button>
-                </div>
-                <div class="backup-actions">
+                <div class="actions">
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="!canDrive() || presenter.driveBusy()"
-                    data-testid="drive-upload"
-                    (click)="presenter.driveUpload()"
+                    [disabled]="presenter.isBusy()"
+                    data-testid="backup"
+                    (click)="presenter.backup()"
                   >
                     <app-icon name="download" />
-                    {{ driveUploadLabel }}
+                    {{ backupButton }}
                   </button>
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="!canDrive() || presenter.driveBusy()"
-                    data-testid="drive-download"
-                    (click)="presenter.driveDownload()"
+                    [disabled]="presenter.isBusy()"
+                    data-testid="restore"
+                    (click)="restoreInput.click()"
                   >
                     <app-icon name="import" />
-                    {{ driveDownloadLabel }}
+                    {{ restoreButton }}
                   </button>
+                  <input
+                    #restoreInput
+                    class="file"
+                    type="file"
+                    accept="application/json,.json"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    data-testid="restore-input"
+                    (change)="onRestoreFilePicked($event)"
+                  />
                 </div>
-                @if (!canDrive()) {
-                  <p class="requirement" data-testid="drive-req">
-                    {{ driveReq }}
-                  </p>
-                }
-                @if (driveMessage(); as message) {
-                  <p class="backup-help" data-testid="drive-status">
-                    {{ message }}
-                    @if (presenter.driveOutcome()?.kind === 'conflict') {
-                      <button
-                        appButton
-                        variant="ghost"
-                        [disabled]="presenter.driveBusy()"
-                        data-testid="drive-force"
-                        (click)="presenter.driveUpload(true)"
-                      >
-                        {{ driveForceLabel }}
-                      </button>
-                    }
-                  </p>
-                }
               </div>
-            }
 
-            <!-- Manual backup — the no-account method, works everywhere. Nested
-                 under Sync so every "move my library elsewhere" tool sits
-                 together. Distinct from Export: the entire library, verbatim;
-                 Restore REPLACES it. -->
-            <div class="sub-block">
-              <div class="head">
-                <h4 class="sub-block-title">{{ backupHeading }}</h4>
-                <button
-                  appButton
-                  type="button"
-                  class="help"
-                  [isIconOnly]="true"
-                  [appTooltip]="backupHelp"
-                  appTooltipTrigger="click"
-                  [attr.aria-label]="aboutBackup"
-                  data-testid="help-backup"
-                >
-                  <app-icon name="help" />
-                </button>
-              </div>
-              <div class="backup-actions">
-                <button
-                  appButton
-                  variant="secondary"
-                  [disabled]="presenter.isBusy()"
-                  data-testid="backup"
-                  (click)="presenter.backup()"
-                >
-                  <app-icon name="download" />
-                  {{ backupButton }}
-                </button>
-                <button
-                  appButton
-                  variant="secondary"
-                  [disabled]="presenter.isBusy()"
-                  data-testid="restore"
-                  (click)="restoreInput.click()"
-                >
-                  <app-icon name="import" />
-                  {{ restoreButton }}
-                </button>
-                <input
-                  #restoreInput
-                  class="file"
-                  type="file"
-                  accept="application/json,.json"
-                  tabindex="-1"
-                  aria-hidden="true"
-                  data-testid="restore-input"
-                  (change)="onRestoreFilePicked($event)"
-                />
-              </div>
+              @if (presenter.authStatus() !== 'unavailable') {
+                <!-- Manual Google Drive backup — needs a Google login (Drive
+                     rides the Google identity, ADR-0009). Two buttons and a
+                     status line, so it takes the row's full width rather than
+                     wrapping inside half of it. -->
+                <div class="setting is-wide">
+                  <div class="head">
+                    <span class="label">{{ driveHeading }}</span>
+                    <button
+                      appButton
+                      type="button"
+                      class="help"
+                      [isIconOnly]="true"
+                      [appTooltip]="driveHelp"
+                      appTooltipTrigger="click"
+                      [attr.aria-label]="aboutDrive"
+                      data-testid="help-drive"
+                    >
+                      <app-icon name="help" />
+                    </button>
+                  </div>
+                  <div class="actions">
+                    <button
+                      appButton
+                      variant="secondary"
+                      [disabled]="!canDrive() || presenter.driveBusy()"
+                      data-testid="drive-upload"
+                      (click)="presenter.driveUpload()"
+                    >
+                      <app-icon name="download" />
+                      {{ driveUploadLabel }}
+                    </button>
+                    <button
+                      appButton
+                      variant="secondary"
+                      [disabled]="!canDrive() || presenter.driveBusy()"
+                      data-testid="drive-download"
+                      (click)="presenter.driveDownload()"
+                    >
+                      <app-icon name="import" />
+                      {{ driveDownloadLabel }}
+                    </button>
+                  </div>
+                  @if (!canDrive()) {
+                    <p class="requirement" data-testid="drive-req">
+                      {{ driveReq }}
+                    </p>
+                  }
+                  @if (driveMessage(); as message) {
+                    <p class="status" data-testid="drive-status">
+                      <span>{{ message }}</span>
+                      @if (presenter.driveOutcome()?.kind === 'conflict') {
+                        <button
+                          appButton
+                          variant="ghost"
+                          [disabled]="presenter.driveBusy()"
+                          data-testid="drive-force"
+                          (click)="presenter.driveUpload(true)"
+                        >
+                          {{ driveForceLabel }}
+                        </button>
+                      }
+                    </p>
+                  }
+                </div>
+              }
             </div>
+
+            <!-- The other way a library moves: a few songs, chosen, in a file
+                 you send someone (Epic 7). It is NOT a second backup, and it is
+                 not built here — the pickers live where the songs are, because
+                 choosing which ones is the whole act. This is the signpost, so
+                 someone who came to Settings looking for "export" leaves knowing
+                 where it is instead of using Back up as a substitute. -->
+            <p class="setting-note">
+              {{ transferNote }}
+              <a
+                class="doc-link"
+                routerLink="/songs"
+                data-testid="transfer-link"
+                >{{ transferLink }}</a
+              >
+            </p>
           </div>
         </section>
 
         <section class="section">
           <h2 class="heading">{{ appHeading }}</h2>
-          <div class="setting">
-            <div class="head">
-              <span class="label">{{ themeHeading }}</span>
+          <div class="group">
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ themeHeading }}</span>
+              </div>
+              <div
+                class="choices"
+                role="group"
+                [attr.aria-label]="themeHeading"
+              >
+                @for (option of themes; track option.value) {
+                  <button
+                    appButton
+                    variant="ghost"
+                    [class.is-active]="presenter.theme() === option.value"
+                    [attr.aria-pressed]="presenter.theme() === option.value"
+                    [attr.data-testid]="'theme-' + option.value"
+                    (click)="presenter.setTheme(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
             </div>
-            <div class="choices" role="group" [attr.aria-label]="themeHeading">
-              @for (option of themes; track option.value) {
+
+            <!-- Language (Epic 11 ▸ i18n). At runtime a message is translated
+                 once, on first encounter, so a language change cannot be
+                 re-rendered into a running app: choosing one reloads, on the same
+                 URL. The hint says so, because a control that reloads the app
+                 without warning is a control that feels broken. -->
+            <div class="setting">
+              <div class="head">
+                <span class="label" data-testid="language-heading">{{
+                  languageHeading
+                }}</span>
                 <button
                   appButton
-                  variant="ghost"
-                  [class.is-active]="presenter.theme() === option.value"
-                  [attr.aria-pressed]="presenter.theme() === option.value"
-                  [attr.data-testid]="'theme-' + option.value"
-                  (click)="presenter.setTheme(option.value)"
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="languageHelp"
+                  appTooltipTrigger="click"
+                  [attr.aria-label]="aboutLanguage"
+                  data-testid="help-language"
                 >
-                  {{ option.label }}
+                  <app-icon name="help" />
                 </button>
-              }
-            </div>
-          </div>
-
-          <!-- Language (Epic 11 ▸ i18n). At runtime a message is translated once,
-               on first encounter, so a language change cannot be re-rendered into a
-               running app: choosing one reloads, on the same URL. The hint says so,
-               because a control that reloads the app without warning is a control
-               that feels broken. -->
-          <div class="setting">
-            <div class="head">
-              <span class="label" data-testid="language-heading">{{
-                languageHeading
-              }}</span>
-              <button
-                appButton
-                type="button"
-                class="help"
-                [isIconOnly]="true"
-                [appTooltip]="languageHelp"
-                appTooltipTrigger="click"
-                [attr.aria-label]="aboutLanguage"
-                data-testid="help-language"
+              </div>
+              <div
+                class="choices"
+                role="group"
+                [attr.aria-label]="languageHeading"
               >
-                <app-icon name="help" />
-              </button>
+                @for (option of languages; track option.value) {
+                  <button
+                    appButton
+                    variant="ghost"
+                    [class.is-active]="presenter.language() === option.value"
+                    [attr.aria-pressed]="presenter.language() === option.value"
+                    [attr.data-testid]="'language-' + option.value"
+                    (click)="presenter.setLanguage(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
             </div>
-            <div
-              class="choices"
-              role="group"
-              [attr.aria-label]="languageHeading"
-            >
-              @for (option of languages; track option.value) {
+
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ splitSharedLabel }}</span>
                 <button
                   appButton
-                  variant="ghost"
-                  [class.is-active]="presenter.language() === option.value"
-                  [attr.aria-pressed]="presenter.language() === option.value"
-                  [attr.data-testid]="'language-' + option.value"
-                  (click)="presenter.setLanguage(option.value)"
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="splitSharedHelp"
+                  appTooltipTrigger="click"
+                  [attr.aria-label]="aboutSplitShared"
+                  data-testid="help-split-shared"
                 >
-                  {{ option.label }}
+                  <app-icon name="help" />
                 </button>
-              }
+              </div>
+              <!-- A checkbox, not a segmented pair: one fact that is either true
+                   or false; "Linked / Not linked" would be two words for one
+                   switch. -->
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  class="check"
+                  [checked]="presenter.isSplitShared()"
+                  data-testid="split-shared"
+                  (change)="onSplitShared($event)"
+                />
+                <span class="check-label">{{ splitSharedOnLabel }}</span>
+              </label>
             </div>
-          </div>
-        </section>
-
-        <section class="section">
-          <h2 class="heading">{{ panelsHeading }}</h2>
-          <div class="setting">
-            <div class="head">
-              <span class="label">{{ splitSharedLabel }}</span>
-              <button
-                appButton
-                type="button"
-                class="help"
-                [isIconOnly]="true"
-                [appTooltip]="splitSharedHelp"
-                appTooltipTrigger="click"
-                [attr.aria-label]="aboutSplitShared"
-                data-testid="help-split-shared"
-              >
-                <app-icon name="help" />
-              </button>
-            </div>
-            <!-- A checkbox, not a segmented pair: one fact that is either true or
-                 false; "Linked / Not linked" would be two words for one switch. -->
-            <label class="check-row">
-              <input
-                type="checkbox"
-                class="check"
-                [checked]="presenter.isSplitShared()"
-                data-testid="split-shared"
-                (change)="onSplitShared($event)"
-              />
-              <span class="check-label">{{ splitSharedOnLabel }}</span>
-            </label>
           </div>
         </section>
 
         <section class="section">
           <h2 class="heading">{{ renderHeading }}</h2>
           <!-- Global scope: the base of the cascade. The SAME component is mounted
-             by songbooks (songbook scope) and the song editor (song scope). -->
+             by songbooks (songbook scope) and the song editor (song scope).
+             The section already pads, so the panel's own inset is switched off
+             (see .render-panel below) — that inset is for the dialogs, where the
+             panel owns the whole surface. -->
           <app-settings-panel
+            class="render-panel"
             scope="global"
             [values]="presenter.globalValues()"
             (changed)="presenter.patchGlobal($event)"
@@ -481,14 +551,17 @@ const MIN_PASSWORD = 8;
            placeholders — not wired to the settings cascade — because turning them
            into live settings means changing what existing chord symbols mean and
            embedding uploaded font bytes, both their own pieces of work. -->
-        <section class="section">
-          <h2 class="heading">{{ comingHeading }}</h2>
-          <div class="stubs">
-            <div class="stub">
-              <span>
-                <span class="stub-label">{{ notationLabel }}</span>
-                <span class="stub-help">{{ notationHelp }}</span>
-              </span>
+        <section class="section is-coming">
+          <h2 class="heading">
+            {{ comingHeading }}
+            <span class="heading-note">{{ comingNote }}</span>
+          </h2>
+          <div class="group">
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ notationLabel }}</span>
+              </div>
+              <p class="hint">{{ notationHelp }}</p>
               <div
                 class="choices"
                 role="group"
@@ -508,22 +581,22 @@ const MIN_PASSWORD = 8;
               </div>
             </div>
 
-            <div class="stub">
-              <span>
-                <span class="stub-label">{{ fontLibraryLabel }}</span>
-                <span class="stub-help">{{ fontLibraryHelp }}</span>
-              </span>
-              <button
-                appButton
-                variant="secondary"
-                disabled
-                data-testid="font-library"
-              >
-                {{ fontLibraryButton }}
-              </button>
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ fontLibraryLabel }}</span>
+              </div>
+              <p class="hint">{{ fontLibraryHelp }}</p>
+              <div class="actions">
+                <button
+                  appButton
+                  variant="secondary"
+                  disabled
+                  data-testid="font-library"
+                >
+                  {{ fontLibraryButton }}
+                </button>
+              </div>
             </div>
-
-            <p class="coming-note">{{ comingNote }}</p>
           </div>
         </section>
       </div>
@@ -942,80 +1015,175 @@ const MIN_PASSWORD = 8;
       block-size: 100%;
     }
 
-    /* Full width, so its scrollbar is at the page's right edge. */
+    /* Full width, so its scrollbar is at the page's right edge. Sunken, so the
+       cards below sit ON something: the shell's chrome (rail, action bar) is
+       already --surface-raised, so a raised card would have read as more chrome
+       rather than as the page's content. */
     .body {
       flex: 1;
       min-block-size: 0;
       overflow: auto;
+      background: var(--surface-sunken);
     }
 
     /* The readable column: centred and capped, so the settings sit in the
-       middle of the page rather than hard against the left. */
+       middle of the page rather than hard against the left. 720px, not 640 —
+       a card that goes two-up has to leave each control a usable half. */
     .content {
       display: flex;
       flex-direction: column;
-      gap: var(--space-6);
-      padding: var(--space-4);
-      max-inline-size: 640px;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-4) var(--space-7);
+      max-inline-size: 720px;
       margin-inline: auto;
     }
 
-    /* Every section lays itself out the same way — a column with one gap — so
-       the render panel and the hand-built sections read alike (item 3): no
-       section relies on ad-hoc margins between its title and its controls. */
+    /* A section is a card: its own inset, its own edge, one step above the page.
+       That inset is the thing the render panel already had and the hand-built
+       sections did not, which is why the render rows sat indented from every
+       other row on the page — the panel was padding itself inside a section that
+       padded nothing. Now the section pads and the panel does not (--panel-inset
+       below), so one gutter runs down the whole page.
+
+       The container query asks the CARD how wide it is, exactly as the panel
+       asks its own host: same 420px switch, so the two never disagree about
+       when to go two-up. */
     .section {
+      container-type: inline-size;
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--space-4);
+      padding: var(--space-4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
     }
 
-    /* Copied verbatim from app-settings-panel's .section-title so the render
-       section and the hand-built ones share one title style (item 3). */
+    /* A real heading, not a caption. It used to copy the render panel's
+       .section-title — but that style belongs to the level BELOW (PAGE, TITLE,
+       CHORDS), and wearing it at both levels left the page with no hierarchy at
+       all: RENDERING and PAGE looked like siblings. */
     .heading {
-      margin: 0;
-      font-size: var(--text-xs);
-      font-weight: 500;
-      color: var(--text-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    /* Sync / Backup sit UNDER the account (item 2): separated by a rule and the
-       same internal gap, titled a level down from the section heading. */
-    .subsection {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      padding-block-start: var(--space-3);
-      border-block-start: 1px solid var(--border);
-    }
-
-    .sub-title {
-      margin: 0;
-      font-size: var(--text-xs);
-      font-weight: 500;
-      color: var(--text-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    /* A block nested one level below a subsection (e.g. Manual backup under
-       Sync): its own gap, indented under the subsection's controls. */
-    .sub-block {
-      display: flex;
-      flex-direction: column;
+      align-items: baseline;
+      flex-wrap: wrap;
       gap: var(--space-2);
-    }
-
-    .sub-block-title {
       margin: 0;
-      font-size: var(--text-sm);
+      font-size: var(--text-md);
       font-weight: 500;
       color: var(--text);
     }
 
+    /* An aside on the heading's own line — "these are not available yet" is
+       about the whole card, so it says so once, up here. */
+    .heading-note {
+      font-size: var(--text-xs);
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text-faint);
+    }
+
+    /* Rows, two-up once the card is wide enough: the render panel's grid to the
+       pixel, because the render section and the rest are one page. */
+    .group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+
+    @container (min-width: 420px) {
+      .group {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* A row that needs the whole card: two buttons plus a status line does not
+       fit in half of one without breaking into a stack of one-word lines. */
+    .is-wide {
+      grid-column: 1 / -1;
+    }
+
+    /* Sync sits UNDER the account: separated by a rule, and titled the way the
+       render panel titles its groups. */
+    .subsection {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding-block-start: var(--space-3);
+      border-block-start: 1px solid var(--border);
+    }
+
+    .subheading {
+      margin: 0 0 var(--space-1);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Who you are — the one thing the Account card exists to state, so it gets
+       the line above the controls rather than being a paragraph among them. */
+    .identity {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .identity-who {
+      display: flex;
+      flex-direction: column;
+      min-inline-size: 0;
+    }
+
+    .identity-caption {
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
+    .identity-email {
+      font-size: var(--text-md);
+      font-weight: 500;
+      color: var(--text);
+      /* An address has no spaces to break at, and a long one must not push the
+         badge off the card. */
+      overflow-wrap: anywhere;
+    }
+
+    /* The section pads; the panel must not pad again. */
+    .render-panel {
+      --panel-inset: 0;
+    }
+
     /* What unlocks a disabled sync method (item 7). */
     .requirement {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+
+    /* A line of copy under a label, about the row it sits in. */
+    .hint {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
+    /* A read-only answer under a label (which sign-in methods are linked). */
+    .value {
+      margin: 0;
+      font-size: var(--text-sm);
+      color: var(--text);
+    }
+
+    /* How the last Drive push/pull ended, with its one follow-up action inline —
+       the offer to overwrite is part of the sentence that raised the conflict. */
+    .status {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-2);
       margin: 0;
       font-size: var(--text-xs);
       color: var(--text-muted);
@@ -1031,9 +1199,24 @@ const MIN_PASSWORD = 8;
       white-space: nowrap;
     }
 
+    /* Equal shares, like the panel's choice rows: three ghost buttons of
+       different word lengths otherwise read as three unrelated links. */
     .choices {
       display: flex;
       gap: var(--space-1);
+      inline-size: 100%;
+    }
+
+    .choices > * {
+      flex: 1;
+    }
+
+    /* A row's buttons. Wrap rather than overflow; the panel's gap. */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      inline-size: 100%;
     }
 
     .check-row {
@@ -1066,68 +1249,16 @@ const MIN_PASSWORD = 8;
       color: var(--text-faint);
     }
 
-    .stubs {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      opacity: 0.65;
-    }
-
-    .stub {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-    }
-
-    .stub-label,
-    .stub-help {
-      display: block;
-    }
-
-    .stub-label {
-      font-size: var(--text-sm);
-      color: var(--text);
-    }
-
-    .stub-help {
-      font-size: var(--text-xs);
-      color: var(--text-faint);
-    }
-
-    .coming-note {
-      margin: 0;
-      font-size: var(--text-xs);
-      color: var(--text-faint);
-      font-style: italic;
-    }
-
-    .backup-help {
-      margin: 0 0 var(--space-2);
-      font-size: var(--text-sm);
+    /* Not working yet, and the card says so once in its heading (#1). The rows
+       are NOT dimmed on top of that: their controls are already disabled, and
+       0.6 over the button's own 0.45 left them at a quarter opacity — unreadable
+       for something whose whole job is to show the shape of what is coming. */
+    .is-coming .label {
       color: var(--text-muted);
-    }
-
-    .backup-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
     }
 
     .warn {
       margin: 0 0 var(--space-2);
-    }
-
-    .account-line {
-      margin: 0 0 var(--space-2);
-      font-size: var(--text-sm);
-      color: var(--text);
-    }
-
-    .method-line {
-      margin: 0 0 var(--space-3);
-      font-size: var(--text-xs);
-      color: var(--text-muted);
     }
 
     /* One sentence + a docs link, on the section's own gap (no ad-hoc margin). */
@@ -1148,6 +1279,10 @@ const MIN_PASSWORD = 8;
       flex-direction: column;
       gap: var(--space-1);
       align-items: flex-start;
+      /* A grid item's floor is its content; without this a long label stretches
+         the column instead of wrapping. */
+      min-inline-size: 0;
+      inline-size: 100%;
     }
 
     .head {
@@ -1194,12 +1329,14 @@ const MIN_PASSWORD = 8;
       color: var(--text-muted);
     }
 
-    /* The tier flag — always shown (item 1). Neutral for Free, brand for Pro. */
+    /* The tier flag — always shown (item 1). Neutral for Free, gold for Pro,
+       pushed to the card's far edge so the eye finds it in the same place
+       whatever the address beside it is. */
     .tier-badge {
-      margin-inline-start: var(--space-2);
+      margin-inline-start: auto;
       padding: 2px var(--space-2);
-      border-radius: var(--space-1);
-      background: var(--surface-sunken, var(--surface));
+      border-radius: var(--radius-sm);
+      background: var(--surface-sunken);
       border: 1px solid var(--border);
       color: var(--text-muted);
       font-size: var(--text-xs);
@@ -1207,31 +1344,30 @@ const MIN_PASSWORD = 8;
       letter-spacing: 0.04em;
     }
 
+    /* --premium-glow is a box-shadow, not a colour: substituting it into
+       background made the declaration invalid at computed-value time, so the
+       Pro badge was white text on nothing — invisible. It is the gold itself
+       that belongs here. */
     .tier-badge.is-pro {
-      background: var(--premium-glow, var(--brand));
+      background: var(--premium);
       border-color: transparent;
-      color: var(--text-on-brand, #fff);
+      color: var(--premium-on);
     }
 
     /* A destructive action — coloured so "Delete account" reads apart from the
        neutral logout/cancel beside it. */
     .danger-btn {
-      color: var(--danger, #d13438);
+      color: var(--danger);
     }
 
     .text-input {
       padding: var(--space-2);
-      border: 1px solid var(--border);
-      border-radius: var(--space-1);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
       background: var(--surface);
       color: var(--text);
       font: inherit;
-    }
-
-    .unsynced {
-      margin: var(--space-2) 0 0;
       font-size: var(--text-sm);
-      color: var(--text-muted);
     }
 
     /* The real control behind Restore. Not display:none, which makes it
@@ -1286,7 +1422,6 @@ export class SettingsPage {
   protected readonly languageHelp = $localize`:@@settings.language.help:Achordeon reloads to switch language, and stays on the page you are on.`;
   protected readonly aboutLanguage = $localize`:@@settings.language.about:About the language setting`;
   protected readonly renderHeading = $localize`:@@settings.rendering:Rendering`;
-  protected readonly panelsHeading = $localize`:@@settings.panels:Panels`;
   protected readonly splitSharedLabel = $localize`:@@settings.splitShared:One panel size everywhere`;
   protected readonly splitSharedOnLabel = $localize`:@@settings.splitShared.on:Use one panel size everywhere`;
   protected readonly splitSharedHelp = $localize`:@@settings.splitShared.help:Off: each module remembers how you sized its panels.`;
@@ -1441,7 +1576,8 @@ export class SettingsPage {
   protected readonly signedInAs = $localize`:@@settings.account.signedInAs:Signed in as`;
   protected readonly proLabel = $localize`:@@settings.account.pro:Premium`;
   protected readonly freeLabel = $localize`:@@settings.account.free:Free`;
-  protected readonly methodsLabel = $localize`:@@settings.account.methods:Sign-in methods:`;
+  protected readonly methodsLabel = $localize`:@@settings.account.methods:Sign-in methods`;
+  protected readonly sessionHeading = $localize`:@@settings.account.session:This device`;
   protected readonly googleWord = $localize`:@@settings.account.googleWord:Google`;
   protected readonly passwordWord = $localize`:@@settings.account.passwordWord:Email & password`;
   protected readonly methodsNone = $localize`:@@settings.account.methodsNone:none`;
@@ -1564,6 +1700,8 @@ export class SettingsPage {
   protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
   protected readonly restoreButton = $localize`:@@settings.backup.restore:Restore from a file`;
+  protected readonly transferNote = $localize`:@@settings.transfer.note:Sending a few songs to someone else is a different job — export and import live with the songs.`;
+  protected readonly transferLink = $localize`:@@settings.transfer.link:Go to Songs`;
   protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:Restore this backup?`;
   protected readonly restoreConfirmText = $localize`:@@settings.restore.text:This replaces your entire current library with the backup. Anything not in the file is lost.`;
   protected readonly restoreConfirmButton = $localize`:@@settings.restore.confirm:Restore`;
