@@ -167,13 +167,22 @@ export interface ExplorerCapabilities {
    * the other format. */
   readonly canExport: boolean;
   /**
-   * Fold the secondary row actions (duplicate, download, export, delete) behind
-   * a `⋯` menu, keeping only edit and rename in reach. True where a row carries
-   * many actions and few of them are everyday — the Songs module. **False for
-   * the songbook list**, where the handful of actions read better laid out than
-   * pocketed.
+   * Fold the secondary row actions (perform, duplicate, download, export,
+   * delete) behind a `⋯` menu, keeping the everyday ones in reach. True where a
+   * row carries many actions and few of them are everyday — which, since the
+   * songbook row grew a perform, an edit and two file exports, is now every
+   * mount that has a secondary action at all.
    */
   readonly usesRowMenu: boolean;
+  /**
+   * Keep **duplicate** out of the `⋯` and on the row itself.
+   *
+   * The songbook list's third action: copying a book is how you make next
+   * week's set out of last week's, so it is an everyday act there in a way that
+   * copying a song is not. Only meaningful alongside `usesRowMenu` — without a
+   * menu every action is already on the row.
+   */
+  readonly hasInlineDuplicate: boolean;
 }
 
 /** The Songs module: everything on. */
@@ -196,6 +205,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canExport: true,
   canDropRemove: false,
   usesRowMenu: true,
+  hasInlineDuplicate: false,
 };
 
 /**
@@ -222,6 +232,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canExport: false,
   canDropRemove: true,
   usesRowMenu: false,
+  hasInlineDuplicate: false,
 };
 
 /**
@@ -251,6 +262,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canExport: false,
   canDropRemove: false,
   usesRowMenu: false,
+  hasInlineDuplicate: false,
 };
 
 /** The virtual All songs book: a read-only order, so nothing may be moved out. */
@@ -272,6 +284,10 @@ export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
  * No checkboxes — nothing acts on several songbooks at once yet — and no
  * search: a library holds hundreds of songs and a handful of books. A click
  * selects (pane B previews its title page), a double click opens it.
+ *
+ * The row reads **edit, rename, duplicate, `⋯`** — the three things you do to a
+ * book you are keeping, and then everything else. It used to lay all seven out,
+ * which is a hover strip you have to aim within rather than read.
  */
 export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canSearch: false,
@@ -293,7 +309,8 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDownload: true,
   canExport: true,
   canDropRemove: false,
-  usesRowMenu: false,
+  usesRowMenu: true,
+  hasInlineDuplicate: true,
 };
 
 /** Where a per-row move sends that one row. Same vocabulary as the toolbar's,

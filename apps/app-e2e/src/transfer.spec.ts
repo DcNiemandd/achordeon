@@ -117,6 +117,23 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
 }
 
 /**
+ * Open a songbook row's ⋯ menu — where perform, download, export and delete
+ * live (edit, rename and duplicate stay direct on the row).
+ *
+ * Every item closes the menu when chosen, so a test that reaches for a second
+ * one has to open it again.
+ */
+async function openBookMenu(page: Page, id: string | null): Promise<void> {
+  await page
+    .getByTestId('songbook-row')
+    .filter({ has: page.getByTestId(`more-${id}`) })
+    .first()
+    .hover();
+  await page.getByTestId(`more-${id}`).click();
+  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+}
+
+/**
  * The first PNG lifted out of a stored ZIP.
  *
  * The archive is packed at level 0 (see DownloadService), so each PNG sits in it
@@ -296,7 +313,7 @@ test.describe('import across modules', () => {
     await page.goto('songbooks');
     const row = page.getByTestId('songbook-row').filter({ hasText: bookName });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
+    await openBookMenu(page, id);
     return download(page, () => page.getByTestId(`export-${id}`).click());
   }
 
@@ -310,7 +327,7 @@ test.describe('import across modules', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
+    await openBookMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
     await expect(
@@ -730,12 +747,14 @@ test.describe('download a songbook', () => {
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
     await all.hover();
-    // It is the whole library, so it hands itself out — but it is read-only,
-    // so it cannot be renamed, duplicated or deleted.
-    await expect(page.getByTestId(`download-${id}`)).toBeVisible();
-    await expect(page.getByTestId(`export-${id}`)).toBeVisible();
+    // Read-only, so no rename or duplicate on the row itself.
     await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
+    // It is the whole library, so its ⋯ still hands it out — and still offers
+    // no delete.
+    await openBookMenu(page, id);
+    await expect(page.getByTestId(`download-${id}`)).toBeVisible();
+    await expect(page.getByTestId(`export-${id}`)).toBeVisible();
     await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
   });
 
@@ -752,7 +771,7 @@ test.describe('download a songbook', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
-    await all.hover();
+    await openBookMenu(page, id);
     await page.getByTestId(`download-${id}`).click();
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
@@ -778,7 +797,7 @@ test.describe('download a songbook', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'All songs' });
     const allId = await all.getAttribute('data-song-id');
-    await all.hover();
+    await openBookMenu(page, allId);
     await page.getByTestId(`download-${allId}`).click();
     await expect(page.getByTestId('pdf-song-order')).toBeVisible();
     await expect(page.getByTestId('pdf-favorites-first')).toBeVisible();
@@ -789,7 +808,7 @@ test.describe('download a songbook', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'New songbook' });
     const realId = await real.getAttribute('data-song-id');
-    await real.hover();
+    await openBookMenu(page, realId);
     await page.getByTestId(`download-${realId}`).click();
     await expect(page.getByTestId('pdf-song-order')).toHaveCount(0);
     await expect(page.getByTestId('pdf-favorites-first')).toHaveCount(0);
@@ -803,7 +822,7 @@ test.describe('download a songbook', () => {
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
 
-    await all.hover();
+    await openBookMenu(page, id);
     await page.getByTestId(`download-${id}`).click();
     await page.getByTestId('pdf-song-order').selectOption('created');
     await page.getByTestId('pdf-favorites-first').check();
@@ -813,7 +832,7 @@ test.describe('download a songbook', () => {
     );
 
     // Reopen — the last choice is still set.
-    await all.hover();
+    await openBookMenu(page, id);
     await page.getByTestId(`download-${id}`).click();
     await expect(page.getByTestId('pdf-song-order')).toHaveValue('created');
     await expect(page.getByTestId('pdf-favorites-first')).toBeChecked();
@@ -827,7 +846,7 @@ test.describe('download a songbook', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
-    await all.hover();
+    await openBookMenu(page, id);
     const file = await download(page, () =>
       page.getByTestId(`export-${id}`).click(),
     );

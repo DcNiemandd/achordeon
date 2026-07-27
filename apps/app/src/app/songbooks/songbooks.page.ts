@@ -89,7 +89,7 @@ import {
         <!-- The same list component again, a fourth capability set: no
              checkboxes (nothing acts on several songbooks at once yet), no
              search (a library has hundreds of songs and a handful of books),
-             rename and delete on the row. -->
+             and edit, rename, duplicate and a ⋯ on the row. -->
         <app-song-explorer
           class="list"
           rowTestid="songbook-row"
