@@ -102,6 +102,19 @@ const config: Config = {
   baseUrl,
 
   headTags: [
+    // The vector favicon, beside the `.ico` above. Both come out of the app's
+    // `tools/gen-app-icons.mjs`, which writes them into `static/img` as well as
+    // into the app — one mark, two properties. `favicon` takes a single path, so
+    // the SVG that modern browsers prefer has to be its own tag; those that don't
+    // understand it fall back to the `.ico`.
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: `${baseUrl}img/favicon.svg`,
+      },
+    },
     {
       tagName: 'script',
       attributes: {},
@@ -163,6 +176,14 @@ const config: Config = {
     },
     navbar: {
       title: 'Achordeon',
+      // The bold cut of the mark, not `icons/icon.svg`: the navbar renders the
+      // logo at 2rem, where the full mark's six 1.5px rows smudge into a haze —
+      // the same reason that cut exists for the 16px tab strip. One file, both
+      // jobs; `tools/gen-app-icons.mjs` in the app emits it.
+      logo: {
+        alt: 'Achordeon',
+        src: 'img/favicon.svg',
+      },
       items: [
         {
           type: 'docSidebar',

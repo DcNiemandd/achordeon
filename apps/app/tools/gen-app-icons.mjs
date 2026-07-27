@@ -1,4 +1,5 @@
-// Generates the PWA install icons in `public/icons` — Epic 11 ▸ PWA.
+// Generates the PWA install icons in `public/icons` — Epic 11 ▸ PWA — and the
+// docs site's favicons in `apps/docs/static/img`.
 //
 // Run it when the mark changes: `node tools/gen-app-icons.mjs` (from apps/app).
 // The output is committed, because it is a static asset the manifest and the
@@ -18,7 +19,16 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '../public/icons');
+const here = dirname(fileURLToPath(import.meta.url));
+const OUT = resolve(here, '../public/icons');
+
+/**
+ * The docs site wears the same mark, so its favicons are emitted from here too —
+ * one description, both properties, and no way for the two to drift. Docusaurus
+ * serves `static/` verbatim, so the files land under the names its config names
+ * (`img/favicon.ico`, `img/favicon.svg`) and are committed like the app's.
+ */
+const DOCS_OUT = resolve(here, '../../docs/static/img');
 
 /** Brand red — `--brand` at its light-theme lightness (styles/_tokens.scss). */
 const BRAND = [0xc1, 0x35, 0x15];
@@ -82,21 +92,22 @@ function main() {
   // The favicon, from the same mark, at the root where `index.html` names it. At
   // 16px the two lyric rows collapse into a smudge, so the small sizes drop to a
   // bolder cut of the mark — legibility beats fidelity in a 16px tab strip.
-  writeFileSync(
-    resolve(OUT, '../favicon.ico'),
-    ico(
-      [16, 32, 48].map((size) => ({
-        size,
-        data: png(size, { radius: PLATE_RADIUS, bars: FAVICON_BARS }),
-      })),
-    ),
+  const faviconIco = ico(
+    [16, 32, 48].map((size) => ({
+      size,
+      data: png(size, { radius: PLATE_RADIUS, bars: FAVICON_BARS }),
+    })),
   );
   // A vector favicon for the browsers that prefer one (and for any future
   // dark-mode variant, which raster cannot express).
-  writeFileSync(
-    resolve(OUT, 'favicon.svg'),
-    svg({ radius: PLATE_RADIUS, bars: FAVICON_BARS }),
-  );
+  const faviconSvg = svg({ radius: PLATE_RADIUS, bars: FAVICON_BARS });
+
+  writeFileSync(resolve(OUT, '../favicon.ico'), faviconIco);
+  writeFileSync(resolve(OUT, 'favicon.svg'), faviconSvg);
+
+  mkdirSync(DOCS_OUT, { recursive: true });
+  writeFileSync(resolve(DOCS_OUT, 'favicon.ico'), faviconIco);
+  writeFileSync(resolve(DOCS_OUT, 'favicon.svg'), faviconSvg);
 }
 
 // --- SVG ---------------------------------------------------------------------
