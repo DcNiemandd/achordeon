@@ -2,5 +2,9 @@
   "version.label": {
     "message": "Next",
     "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.Songs": {
+    "message": "Songs",
+    "description": "The label for category 'Songs' in sidebar 'tutorialSidebar'"
   }
 }
