@@ -19,6 +19,9 @@ apps/app/src/app/supabase.config.ts
 .env.local
 .env
 
+# Personal working notes — anything named *.local.md stays on this machine
+*.local.md
+
 # Nx caches
 .nx/cache
 .nx/workspace-data
