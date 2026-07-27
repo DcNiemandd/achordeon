@@ -90,6 +90,21 @@ The panel calls `detect()` twice for different questions: once at construction t
 decide whether the row exists at all, and again at click time for a value that is
 current for the orientation the device is in _now_.
 
+### Orientation is not simply the order of the two numbers
+
+`screen.width`/`height` disagree across platforms: Safari on iOS reports the panel's
+_physical_ dimensions and leaves them in portrait order however the device is held,
+while Chrome on Android swaps them. Taken at face value, "as currently held" would
+therefore not apply to iPhones or iPads at all — the most likely performer device.
+
+So `detect()` asks the platform for the orientation and **swaps only when the box and
+the orientation disagree** — a no-op everywhere the values already turn. The source is
+`screen.orientation.type` (Safari 16.4+), falling back to the deprecated, iOS-only
+numeric `window.orientation`, and `null` when neither answers (then the reading is
+taken as given). Deliberately **not** `matchMedia('(orientation: landscape)')`, which
+describes the viewport rather than the screen: a tall narrow window on a wide monitor
+would report portrait and transpose a display that was never rotated.
+
 ## Control: `select` learns optgroups, plus one sentinel
 
 ```ts
@@ -117,7 +132,9 @@ injects no store; a browser-capability probe is neither, and the comment will sa
 
 - `aspect.spec.ts` — `formatAspectRatio` reduction, degenerate input, non-integers, and
   a round trip: `tryParseAspectRatio(formatAspectRatio(w, h)) ≈ w / h`.
-- `screen-shape.spec.ts` — reduces a stubbed `screen`, and returns `null` when absent.
+- `screen-shape.spec.ts` — reduces a stubbed `screen`, corrects an iOS-style screen
+  that refused to turn with the device, honours the legacy angle, leaves the reading
+  alone when nothing names the orientation, and returns `null` when there is no screen.
 - `aspect-options.spec.ts` — every row's value parses via `tryParseAspectRatio`, values
   are unique across all groups, no group is empty, and every device row names its ratio.
 - `settings-panel.spec.ts` (new) — picking a device row emits its ratio; picking

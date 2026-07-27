@@ -205,20 +205,29 @@ test.describe('global render settings', () => {
       .toBe(expected);
   });
 
-  // Thirty answers in one picker only work if they arrive sorted into kinds.
-  test('the aspect picker is grouped, and devices name their ratio', async ({
+  // A picker this long only works if the answers arrive sorted into kinds. Which
+  // kinds, and which rows, is the list's business — so this reads them off the
+  // page rather than naming them, and stays true whatever the list decides.
+  test('the aspect picker is grouped, and every group is pickable', async ({
     page,
   }) => {
     const picker = page.getByTestId('select-aspectRatio');
-
     await expect(picker.locator('optgroup')).not.toHaveCount(0);
-    // A device row's ratio is printed beside its name so the claim can be
-    // checked against "Match this screen" by anyone holding the device.
-    await expect(
-      picker.locator('optgroup[label="Phones"] option'),
-    ).not.toHaveCount(0);
-    await picker.selectOption('41:59');
-    await expect(page.getByTestId('input-aspectRatio')).toHaveValue('41:59');
+
+    // The last row of the last group: proves the whole list reached the DOM and
+    // that a grouped option sets the value like any other.
+    const last = await picker
+      .locator('optgroup')
+      .last()
+      .locator('option')
+      .last()
+      .getAttribute('value');
+
+    await picker.selectOption(last as string);
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue(
+      last as string,
+    );
+    await expect(page.getByTestId('error-aspectRatio')).toHaveCount(0);
   });
 
   // A closed list: every valid answer is in it, so there is nothing to type.

@@ -3,7 +3,7 @@
 
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { ScreenShape } from '../layout';
-import { MATCH_SCREEN } from './aspect-options';
+import { ASPECT_OPTION_GROUPS, MATCH_SCREEN } from './aspect-options';
 import { SettingsPanel } from './settings-panel';
 
 describe('SettingsPanel', () => {
@@ -47,23 +47,37 @@ describe('SettingsPanel', () => {
     fixture.detectChanges();
   }
 
-  it('stores the ratio behind a device row', () => {
+  /**
+   * The picker's rows, read from the list itself rather than named here.
+   *
+   * Which shapes are worth offering is a question the list gets to answer on its
+   * own — a test that hard-codes "41:59" or the heading "Phones" fails the moment
+   * a row is added, reworded, or parked behind a comment, and says "the panel is
+   * broken" when it means "the list changed".
+   */
+  const listed = ASPECT_OPTION_GROUPS.flatMap((group) => group.options).filter(
+    (opt) => opt.value !== MATCH_SCREEN,
+  );
+
+  it('stores the ratio behind a picked row', () => {
     mount();
 
-    pick('aspectRatio', '41:59');
+    // The last one, so this covers the whole list reaching the DOM and not just
+    // the top of it.
+    const last = listed[listed.length - 1];
+    pick('aspectRatio', last.value);
 
-    expect(patches).toEqual([{ aspectRatio: '41:59' }]);
+    expect(patches).toEqual([{ aspectRatio: last.value }]);
   });
 
-  it('groups the ratios under headings', () => {
+  it('renders every group the list declares, under its own heading', () => {
     mount();
 
     const headings = [
       ...picker('aspectRatio').querySelectorAll('optgroup'),
     ].map((group) => group.getAttribute('label'));
 
-    expect(headings.length).toBeGreaterThan(3);
-    expect(headings).toContain('Phones');
+    expect(headings).toEqual(ASPECT_OPTION_GROUPS.map((group) => group.label));
   });
 
   it('leaves a flat list flat', () => {

@@ -18,6 +18,9 @@ import { formatAspectRatio } from '@achordeon/shared/render-core';
  * sets 131:284 syncs 131:284, never a "this device" token that would re-resolve
  * to the wrong shape on a desktop). So there is no signal here and nothing to
  * keep in sync on rotation — ask again and get the current orientation.
+ *
+ * **In the orientation it is held**, which takes work: the two dimensions cannot
+ * be trusted to be in that order (`isLandscape`).
  */
 @Injectable({ providedIn: 'root' })
 export class ScreenShape {
@@ -33,13 +36,52 @@ export class ScreenShape {
    * the API missing.
    */
   detect(): `${number}:${number}` | null {
-    const screen = this.document.defaultView?.screen;
+    const view = this.document.defaultView;
+    const screen = view?.screen;
     if (
       typeof screen?.width !== 'number' ||
       typeof screen.height !== 'number'
     ) {
       return null;
     }
-    return formatAspectRatio(screen.width, screen.height);
+
+    // Swap only when the box and the orientation disagree — see `isLandscape`.
+    const landscape = view ? isLandscape(view, screen) : null;
+    const wide = screen.width > screen.height;
+    return landscape === null || landscape === wide
+      ? formatAspectRatio(screen.width, screen.height)
+      : formatAspectRatio(screen.height, screen.width);
   }
+}
+
+/**
+ * Is the screen currently held the wide way round? `null` when nothing will say.
+ *
+ * **This exists because `screen.width`/`height` do not agree across platforms.**
+ * Safari on iOS reports the panel's *physical* dimensions and leaves them alone
+ * when the device turns; Chrome on Android swaps them. So the same iPhone held
+ * sideways measures as portrait while a Galaxy measures as landscape, and "the
+ * orientation you are holding it in" — which is the whole promise of the button —
+ * quietly stopped applying to iPhones. The CSS Working Group has resolved that the
+ * values should swap; until Safari does, this is the correction.
+ *
+ * Asked of the *screen*, never the window. `matchMedia('(orientation: landscape)')`
+ * would have been simpler and wrong: it describes the shape of the viewport, so a
+ * tall narrow window on a wide monitor would report portrait and transpose a
+ * display that was never rotated.
+ *
+ * `screen.orientation` is the standard answer (Safari has it from 16.4). The
+ * deprecated `window.orientation` is a number and iOS-only, which is exactly the
+ * set of browsers old enough to need it.
+ */
+function isLandscape(view: Window, screen: Screen): boolean | null {
+  const type = screen.orientation?.type;
+  if (typeof type === 'string') {
+    return type.startsWith('landscape');
+  }
+  const legacy = (view as { orientation?: unknown }).orientation;
+  if (typeof legacy === 'number') {
+    return Math.abs(legacy) === 90;
+  }
+  return null;
 }
