@@ -8,12 +8,19 @@ import { themes as prismThemes } from 'prism-react-renderer';
 // the empty string means "not configured" here, and a blank base path would
 // build a site whose every asset link is broken.
 
-// Angular app lives outside Docusaurus's route table — prefix internal-looking
-// paths with `pathname://` so the broken-link checker treats them as external.
+const url = process.env.DOCS_URL || 'https://achordeon.eu';
+
+// The Angular app lives outside Docusaurus's route table, and ONE bundle serves
+// every language (PRD-INFRASTRUCTURE.md §11) — so its link must be ABSOLUTE.
+// Anything site-relative goes through `<Link>`, which prepends the locale-aware
+// baseUrl and sends Czech readers to /cs/app/, where nothing is served. (The
+// `pathname://` escape only exempts a link from the broken-link checker; it does
+// not stop the prefixing.) An absolute URL is external to Docusaurus on every
+// count: no prefix, no route lookup, no link check.
 const rawAppLink = process.env.APP_LINK || '/app/';
 const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
-  : `pathname://${rawAppLink}`;
+  : new URL(rawAppLink, url).href;
 
 const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
@@ -58,7 +65,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: process.env.DOCS_URL || 'https://achordeon.eu',
+  url,
   baseUrl,
 
   headTags: [
@@ -69,10 +76,10 @@ const config: Config = {
     },
   ],
 
-  // Where the Angular app is, for `<AppLink>` in .mdx (the navbar/footer read
-  // `appLink` directly). One source, so a domain or base-path move is the
-  // APP_LINK env in the deploy workflow and nothing else.
-  customFields: { appLink: rawAppLink },
+  // Where the Angular app is, for the landing page and `<AppLink>` in .mdx (the
+  // navbar/footer read `appLink` directly). One source, so a domain or base-path
+  // move is the DOCS_URL/APP_LINK envs in the deploy workflow and nothing else.
+  customFields: { appLink },
 
   organizationName: 'dcniemandd',
   projectName: 'achordeon',
@@ -126,7 +133,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: appLink,
+          href: appLink,
           label: 'Launch App',
           position: 'right',
         },

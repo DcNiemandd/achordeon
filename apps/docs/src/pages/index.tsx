@@ -9,10 +9,14 @@ import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
 
-const appLink = 'pathname:///achordeon/app/';
-
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
+  // Same source as the navbar and the docs pages. A plain <a>, not <Link>: the
+  // app is not a route of this site, and `<Link>` would either rewrite the href
+  // with the locale prefix or — for the absolute form — hand it to the
+  // broken-link checker, which resolves our own domain back to an internal path
+  // and fails the build on a page Docusaurus does not own.
+  const appLink = siteConfig.customFields?.appLink as string;
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
@@ -27,13 +31,15 @@ function HomepageHeader() {
           >
             <Translate id="homepage.cta.readDocs">Read the Docs</Translate>
           </Link>
-          <Link
+          <a
             className="button button--primary button--lg"
-            to={appLink}
+            href={appLink}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ marginLeft: '1rem' }}
           >
             <Translate id="homepage.cta.launchApp">Launch App →</Translate>
-          </Link>
+          </a>
         </div>
       </div>
     </header>
