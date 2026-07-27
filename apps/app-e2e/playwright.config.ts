@@ -4,12 +4,11 @@ import { workspaceRoot } from '@nx/devkit';
 
 // For CI, you may want to set BASE_URL to the deployed application.
 // The trailing path is the app's baseHref (project.json) — the app is served
-// under /achordeon/app/ for GitHub Pages, so a bare origin would make every
+// under /app/ (the docs site owns the root), so a bare origin would make every
 // navigation miss. The trailing slash matters: without it, URL resolution drops
 // the last segment. Specs must use RELATIVE paths (`goto('songs')`) — a leading
 // slash resolves from the origin and throws the base path away.
-const baseURL =
-  process.env['BASE_URL'] || 'http://localhost:4200/achordeon/app/';
+const baseURL = process.env['BASE_URL'] || 'http://localhost:4200/app/';
 
 /**
  * Read environment variables from file.

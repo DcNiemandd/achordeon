@@ -108,7 +108,7 @@ export class StageSession {
 
   /**
    * The join URL, base-href-aware. `prepareExternalUrl` folds in the app's
-   * deploy base (`/achordeon/app/`, plus the locale sub-path) — a bare
+   * deploy base (`/app/`, plus the locale sub-path) — a bare
    * `/audience/…` would point at the domain root, which is not where the app
    * lives. Empty until a lobby exists.
    */

@@ -11,13 +11,19 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Phase 1 (GitHub Pages, no custom domain).
-  # When custom apex domain is live, set DOCS_URL=https://achordeon.com,
-  # DOCS_BASE_URL=/, APP_BASE_HREF=/app/, APP_LINK=/app/.
-  DOCS_URL: https://dcniemandd.github.io
-  DOCS_BASE_URL: /achordeon/
-  APP_BASE_HREF: /achordeon/app/
-  APP_LINK: /achordeon/app/
+  # Where the deployed site lives. Set these as repo *variables* (Settings ▸
+  # Secrets and variables ▸ Actions ▸ Variables) to move the site without
+  # touching the repo; the literals after `||` are the fallback, so a fork — or
+  # a checkout where nobody set the variables — still builds a coherent site
+  # rather than one with an empty base path.
+  #
+  # The domain itself is claimed by `apps/docs/static/CNAME`, which Docusaurus
+  # copies to the site root for Pages to read. These four only say where the two
+  # apps think they live: docs at the root, app one level under it.
+  DOCS_URL: ${{ vars.DOCS_URL || 'https://achordeon.eu' }}
+  DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL || '/' }}
+  APP_BASE_HREF: ${{ vars.APP_BASE_HREF || '/app/' }}
+  APP_LINK: ${{ vars.APP_LINK || '/app/' }}
 
 jobs:
   verify:

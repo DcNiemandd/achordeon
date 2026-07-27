@@ -35,18 +35,26 @@ pnpm test       # Run unit tests
 
 ## URLs
 
-Phase 1 (current — GitHub Pages, no custom domain):
+GitHub Pages, served under the custom apex domain `achordeon.eu`:
 
-| URL                                                | Content              |
-| -------------------------------------------------- | -------------------- |
-| `https://dcniemandd.github.io/achordeon/`          | Landing page         |
-| `https://dcniemandd.github.io/achordeon/docs/intro`| Documentation        |
-| `https://dcniemandd.github.io/achordeon/app/`      | Achordeon app        |
+| URL                               | Content       |
+| --------------------------------- | ------------- |
+| `https://achordeon.eu/`           | Landing page  |
+| `https://achordeon.eu/docs/intro` | Documentation |
+| `https://achordeon.eu/app/`       | Achordeon app |
 
-Phase 2 (planned — custom apex domain): toggle the env vars in
-`.github/workflows/deploy.yml` to point `DOCS_BASE_URL=/`, `APP_BASE_HREF=/app/`,
-`APP_LINK=/app/`, `DOCS_URL=https://<domain>`. Add a CNAME file under
-`apps/docs/static/`.
+The domain is claimed by `apps/docs/static/CNAME` (copied to the site root by the
+Docusaurus build). DNS: apex `A`/`AAAA` records to GitHub's Pages IPs, `www`
+`CNAME` to `dcniemandd.github.io`.
+
+Where the two apps think they live comes from four variables — `DOCS_URL`,
+`DOCS_BASE_URL`, `APP_BASE_HREF`, `APP_LINK`. In CI they are repo **variables**
+(Settings ▸ Secrets and variables ▸ Actions ▸ Variables); the workflow falls back
+to the values above when a variable is unset. Locally they are optional: Nx loads
+`.env.local` into every task it runs, so uncommenting them in your `.env.local`
+(see `.env.local.example`) reproduces a deploy build, and leaving them out gives
+you the same paths from the defaults in `apps/docs/docusaurus.config.ts` and
+`apps/app/project.json`.
 
 ## Deploying
 

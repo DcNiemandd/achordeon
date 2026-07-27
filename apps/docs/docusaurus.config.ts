@@ -2,16 +2,22 @@ import type * as Preset from '@docusaurus/preset-classic';
 import type { Config } from '@docusaurus/types';
 import { themes as prismThemes } from 'prism-react-renderer';
 
+// Deploy-target values (`DOCS_URL`, `DOCS_BASE_URL`, `APP_LINK`) come from the
+// environment: repo variables in CI, and locally whatever Nx loaded from
+// `.env.local` — it feeds every task it runs. `||`, not `??`: an env var set to
+// the empty string means "not configured" here, and a blank base path would
+// build a site whose every asset link is broken.
+
 // Angular app lives outside Docusaurus's route table — prefix internal-looking
 // paths with `pathname://` so the broken-link checker treats them as external.
-const rawAppLink = process.env.APP_LINK ?? '/achordeon/app/';
+const rawAppLink = process.env.APP_LINK || '/app/';
 const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
   : `pathname://${rawAppLink}`;
 
 const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
-const baseUrl = process.env.DOCS_BASE_URL ?? '/achordeon/';
+const baseUrl = process.env.DOCS_BASE_URL || '/';
 
 const i18n = {
   defaultLocale: 'en',
@@ -52,7 +58,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: process.env.DOCS_URL ?? 'https://dcniemandd.github.io',
+  url: process.env.DOCS_URL || 'https://achordeon.eu',
   baseUrl,
 
   headTags: [
@@ -62,6 +68,11 @@ const config: Config = {
       innerHTML: localeRedirectScript,
     },
   ],
+
+  // Where the Angular app is, for `<AppLink>` in .mdx (the navbar/footer read
+  // `appLink` directly). One source, so a domain or base-path move is the
+  // APP_LINK env in the deploy workflow and nothing else.
+  customFields: { appLink: rawAppLink },
 
   organizationName: 'dcniemandd',
   projectName: 'achordeon',

@@ -33,8 +33,18 @@ port = 54324
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:4200"
-additional_redirect_urls = ["http://127.0.0.1:4200"]
+# The app is served under /app/ (the docs site owns the root), and OAuth /
+# confirmation links return to the exact page that started the flow (AuthService
+# `redirectTo`), so the allow-list needs the path wildcard, not a bare origin —
+# a non-matching redirect_to is silently replaced by site_url. The hosted project
+# keeps the same list under Dashboard ▸ Authentication ▸ URL Configuration, with
+# site_url = https://achordeon.eu/app/.
+site_url = "http://127.0.0.1:4200/app/"
+additional_redirect_urls = [
+  "http://127.0.0.1:4200/**",
+  "http://localhost:4200/**",
+  "https://achordeon.eu/**",
+]
 jwt_expiry = 3600
 enable_signup = true
 # Epic 10 (ADR-0009): the user may deliberately add a second sign-in method to

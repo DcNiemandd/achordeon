@@ -1572,8 +1572,16 @@ export class SettingsPage {
   // lives in the docs (linked) rather than a cramped tooltip.
   protected readonly accountWhy = $localize`:@@settings.account.why:Sign in to keep your library synced across your devices.`;
   protected readonly learnMore = $localize`:@@settings.account.learnMore:Learn more`;
-  /** The published docs (apps/docs, GitHub Pages) — the account & sync guide. */
-  protected readonly docsUrl = 'https://dcniemandd.github.io/achordeon/';
+  /**
+   * The published docs — the account & sync guide. Derived from the app's own
+   * base href rather than written out: the deploy puts the docs site at the root
+   * and the app one level under it (`/app/`, see `.github/workflows/deploy.yml`),
+   * so `../` is the docs root wherever the bundle is served from — the apex
+   * domain, a project page, a fork. Nothing to re-point when the domain changes.
+   * In `nx serve` this resolves to the dev server root, where the docs are not
+   * (they run separately, `nx serve docs`); the link is a production affordance.
+   */
+  protected readonly docsUrl = new URL('../', document.baseURI).href;
   protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;
   protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
