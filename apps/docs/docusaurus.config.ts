@@ -63,6 +63,11 @@ const config: Config = {
     },
   ],
 
+  // Where the Angular app is, for `<AppLink>` in .mdx (the navbar/footer read
+  // `appLink` directly). One source, so a domain or base-path move is the
+  // APP_LINK env in the deploy workflow and nothing else.
+  customFields: { appLink: rawAppLink },
+
   organizationName: 'dcniemandd',
   projectName: 'achordeon',
   trailingSlash: false,
