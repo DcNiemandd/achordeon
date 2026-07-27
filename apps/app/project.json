@@ -35,6 +35,15 @@
         "cwd": "apps/app"
       }
     },
+    "gen-build-info": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": ["{projectRoot}/src/app/shared/build-info.ts"],
+      "options": {
+        "command": "node tools/gen-build-info.mjs",
+        "cwd": "apps/app"
+      }
+    },
     "gen-supabase": {
       "executor": "nx:run-commands",
       "cache": false,
@@ -60,7 +69,12 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
-      "dependsOn": ["gen-index", "gen-supabase", "check-locales"],
+      "dependsOn": [
+        "gen-index",
+        "gen-supabase",
+        "gen-build-info",
+        "check-locales"
+      ],
       "options": {
         "outputPath": "dist/apps/app",
         "browser": "apps/app/src/main.ts",
@@ -118,7 +132,7 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
-      "dependsOn": ["gen-index-dev", "gen-supabase"],
+      "dependsOn": ["gen-index-dev", "gen-supabase", "gen-build-info"],
       "configurations": {
         "production": {
           "buildTarget": "app:build:production"
@@ -152,7 +166,7 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "dependsOn": ["gen-supabase"],
+      "dependsOn": ["gen-supabase", "gen-build-info"],
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "jestConfig": "apps/app/jest.config.ts",

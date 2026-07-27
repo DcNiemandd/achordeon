@@ -35,6 +35,39 @@ const i18n = {
   },
 } satisfies Config['i18n'];
 
+/**
+ * The site root IS the app.
+ *
+ * `/` (and each locale's root, `/cs/`) sends the visitor to the app instead of
+ * showing the landing page. Runs in `<head>`, before the body paints, so there is
+ * no flash of a page nobody asked for — the same trick the locale redirect below
+ * uses, and it goes FIRST so that the app wins before a Czech browser gets
+ * bounced to /cs/ and has to bounce again.
+ *
+ * Only the roots: every docs URL is left alone, which is the whole point of
+ * matching the path exactly rather than by prefix. `location.replace`, so the
+ * back button returns to wherever the visitor came from rather than to a page
+ * that would immediately redirect again. Without JavaScript nothing happens and
+ * the landing page is served as before, Launch App button and all — that is the
+ * fallback, and it is why there is no <noscript> meta-refresh here (headTags are
+ * emitted on every page, and a refresh tag would drag the docs along with it).
+ */
+const appRedirectScript = `(function () {
+  try {
+    var BASE = ${JSON.stringify(baseUrl)};
+    var LOCALES = ${JSON.stringify(i18n.locales)};
+    var DEFAULT = ${JSON.stringify(i18n.defaultLocale)};
+    var roots = [BASE];
+    for (var i = 0; i < LOCALES.length; i++) {
+      if (LOCALES[i] !== DEFAULT) roots.push(BASE + LOCALES[i] + '/');
+    }
+    var path = location.pathname;
+    if (path.charAt(path.length - 1) !== '/') path += '/';
+    if (roots.indexOf(path) < 0) return;
+    location.replace(${JSON.stringify(appLink)} + location.search + location.hash);
+  } catch (e) {}
+})();`;
+
 const localeRedirectScript = `(function () {
   try {
     var FLAG = 'achordeon-docs-locale-init';
@@ -69,6 +102,11 @@ const config: Config = {
   baseUrl,
 
   headTags: [
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: appRedirectScript,
+    },
     {
       tagName: 'script',
       attributes: {},

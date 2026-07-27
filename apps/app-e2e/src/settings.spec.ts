@@ -376,3 +376,51 @@ test.describe('language', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
   });
 });
+
+// The About block — the last section, and the only rows on the page that leave
+// the app. The docs link is asserted by SHAPE (it ends in the right doc path)
+// rather than by a full URL: the origin is the base href the bundle was built
+// with, which differs between `nx serve` and a deploy, and pinning it here would
+// make the test a statement about the dev server instead of about the link.
+test.describe('about', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('settings');
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+  });
+
+  test('links out to the docs, the tracker, and names the build', async ({
+    page,
+  }) => {
+    const docs = page.getByTestId('about-docs');
+    await expect(docs).toHaveAttribute('href', /\/docs\/intro$/);
+    // A new tab, so a half-written song is not navigated away from.
+    await expect(docs).toHaveAttribute('target', '_blank');
+
+    await expect(page.getByTestId('about-issues')).toHaveAttribute(
+      'href',
+      'https://github.com/DcNiemandd/achordeon/issues',
+    );
+
+    // The commit date of the build, which is what makes a bug report placeable.
+    await expect(page.getByTestId('about-version')).toHaveText(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
+  });
+
+  test('the docs link follows the UI language', async ({ page }) => {
+    await expect(page.getByTestId('about-docs')).toHaveAttribute(
+      'href',
+      /\/docs\/intro$/,
+    );
+
+    // Switching reloads the app; the link comes back pointing at the Czech docs,
+    // which is a different Docusaurus locale and so a different path.
+    await page.getByTestId('language-cs').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+    await expect(page.getByTestId('about-docs')).toHaveAttribute(
+      'href',
+      /\/cs\/docs\/intro$/,
+    );
+  });
+});
