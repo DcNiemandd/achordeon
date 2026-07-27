@@ -54,7 +54,7 @@
     <script>
       // SPA deep-link restore (PRD-INFRASTRUCTURE deploy note). GitHub Pages has
       // no per-app 404, so the site's root 404 page redirects an app deep link
-      // like `/achordeon/app/songs` into `/achordeon/app/?/songs`; this turns
+      // like `/app/songs` into `/app/?/songs`; this turns
       // that back into the real path before the router — and the locale redirect
       // below — reads the URL. A normal load has no leading "/" in its query, so
       // this is a no-op then. (github.com/rafgraph/spa-github-pages)

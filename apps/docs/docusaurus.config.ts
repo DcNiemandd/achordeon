@@ -4,14 +4,14 @@ import { themes as prismThemes } from 'prism-react-renderer';
 
 // Angular app lives outside Docusaurus's route table — prefix internal-looking
 // paths with `pathname://` so the broken-link checker treats them as external.
-const rawAppLink = process.env.APP_LINK ?? '/achordeon/app/';
+const rawAppLink = process.env.APP_LINK ?? '/app/';
 const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
   : `pathname://${rawAppLink}`;
 
 const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
-const baseUrl = process.env.DOCS_BASE_URL ?? '/achordeon/';
+const baseUrl = process.env.DOCS_BASE_URL ?? '/';
 
 const i18n = {
   defaultLocale: 'en',
@@ -52,7 +52,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: process.env.DOCS_URL ?? 'https://dcniemandd.github.io',
+  url: process.env.DOCS_URL ?? 'https://achordeon.eu',
   baseUrl,
 
   headTags: [

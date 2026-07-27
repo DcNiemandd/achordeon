@@ -11,13 +11,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Phase 1 (GitHub Pages, no custom domain).
-  # When custom apex domain is live, set DOCS_URL=https://achordeon.com,
-  # DOCS_BASE_URL=/, APP_BASE_HREF=/app/, APP_LINK=/app/.
-  DOCS_URL: https://dcniemandd.github.io
-  DOCS_BASE_URL: /achordeon/
-  APP_BASE_HREF: /achordeon/app/
-  APP_LINK: /achordeon/app/
+  # Phase 2: custom apex domain (achordeon.eu). The domain itself is claimed by
+  # `apps/docs/static/CNAME`, which Docusaurus copies to the site root for Pages
+  # to read; these four say where the two apps think they live.
+  DOCS_URL: https://achordeon.eu
+  DOCS_BASE_URL: /
+  APP_BASE_HREF: /app/
+  APP_LINK: /app/
 
 jobs:
   verify:

@@ -2,9 +2,9 @@
 //
 // GitHub Pages serves the *root* 404.html for every path it cannot find — there
 // is no per-directory 404 — so a reload of an Angular deep link like
-// `/achordeon/app/songs` lands on the Docusaurus 404 instead of the app. This
+// `/app/songs` lands on the Docusaurus 404 instead of the app. This
 // injects a tiny redirect into that root 404 page: an app path is bounced to the
-// app's index with the route encoded in the query (`/achordeon/app/?/songs`),
+// app's index with the route encoded in the query (`/app/?/songs`),
 // which `apps/app/src/index.html` restores before the router runs. Any other
 // miss falls straight through and still renders the Docusaurus 404 below.
 //
@@ -14,7 +14,7 @@
 // locale subpaths as a third argument, from when each language was its own build.
 //
 // Usage: node tools/spa-github-404.mjs <404.html> <app-base-href>
-//   e.g. node tools/spa-github-404.mjs dist/site/404.html /achordeon/app/
+//   e.g. node tools/spa-github-404.mjs dist/site/404.html /app/
 
 import { readFileSync, writeFileSync } from 'node:fs';
 

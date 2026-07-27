@@ -13,7 +13,7 @@
   },
   "link.item.label.Launch App": {
     "message": "Launch App",
-    "description": "The label of footer link with label=Launch App linking to pathname:///achordeon/app/"
+    "description": "The label of footer link with label=Launch App linking to pathname:///app/"
   },
   "link.item.label.GitHub": {
     "message": "GitHub",
