@@ -57,3 +57,46 @@ export function tryParseAspectRatio(
   }
   return null;
 }
+
+/**
+ * A pixel box **as** an aspect-ratio setting — the inverse of the reader above.
+ *
+ * Lives beside `tryParseAspectRatio` because it is the same knowledge asked the
+ * other way round: that function decides what a legal `aspectRatio` looks like,
+ * and this one has to produce one. A caller that built its own `` `${w}:${h}` ``
+ * string would be a second, unversioned opinion about the format.
+ *
+ * **Reduced, and exact.** `393×852` becomes `"131:284"`, not `"9:19.5"` and not
+ * `"0.461"`: the value is stored and synced verbatim, so it is read by a human on
+ * another machine later, and a ratio that has been rounded to look tidy is a
+ * shape the device does not actually have. Non-integer inputs cannot be reduced
+ * by a GCD, so they are emitted as given — still exact, just not pretty.
+ *
+ * `null` for anything that is not a positive, finite box, so a caller reading a
+ * screen that is not there gets a "no answer" rather than `"0:0"`.
+ */
+export function formatAspectRatio(
+  width: number,
+  height: number,
+): `${number}:${number}` | null {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    return null;
+  }
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+  if (!Number.isInteger(width) || !Number.isInteger(height)) {
+    return `${width}:${height}`;
+  }
+  const divisor = greatestCommonDivisor(width, height);
+  return `${width / divisor}:${height / divisor}`;
+}
+
+/** Euclid, iteratively — `formatAspectRatio` runs on a click, not in a layout. */
+function greatestCommonDivisor(a: number, b: number): number {
+  let [left, right] = [a, b];
+  while (right !== 0) {
+    [left, right] = [right, left % right];
+  }
+  return left;
+}

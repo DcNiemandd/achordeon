@@ -4,7 +4,13 @@ export type {
   Control,
   Group,
   Option,
+  OptionGroup,
   Scope,
   SettingKey,
   SettingUi,
 } from './setting-ui';
+export {
+  ASPECT_OPTION_GROUPS,
+  MATCH_SCREEN,
+  allAspectOptions,
+} from './aspect-options';

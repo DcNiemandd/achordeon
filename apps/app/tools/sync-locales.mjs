@@ -36,7 +36,18 @@ const LOCALE_DIR = resolve(here, '../src/locale');
 const SOURCE_FILE = 'messages.json';
 
 function main() {
-  const source = readCatalog(SOURCE_FILE).translations;
+  // Sorted by id before anything reads it, and written back sorted.
+  //
+  // `extract-i18n` emits in discovery order, which is a property of the module
+  // graph rather than of the messages: adding two files reshuffled 450 lines of
+  // catalog and buried the nine new keys in the noise. Nothing downstream cares
+  // about the order — the app loads these as a map, `check-locales.mjs` reads the
+  // key set — so id order is free, and it makes the diff of an extraction show
+  // exactly what changed. Every catalog below inherits it, because they are all
+  // built by walking this one.
+  const extracted = readCatalog(SOURCE_FILE);
+  const source = sortById(extracted.translations);
+  write(SOURCE_FILE, { ...extracted, translations: source });
 
   for (const file of catalogFiles()) {
     const language = file.replace(/\.json$/, '');
@@ -83,6 +94,15 @@ function main() {
         `(${untranslated} untranslated, ${stale.length} to re-check, -${dropped} removed)`,
     );
   }
+}
+
+/** The same messages, keyed in id order. */
+function sortById(translations) {
+  return Object.fromEntries(
+    Object.entries(translations).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    ),
+  );
 }
 
 function write(name, data) {

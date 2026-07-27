@@ -26,6 +26,7 @@ export { BlankPage } from './blank-page';
 export { DocumentTitle } from './document-title';
 export { ModuleSwitcher } from './module-switcher';
 export { Rail } from './rail';
+export { ScreenShape } from './screen-shape';
 export { Shell } from './shell';
 export { StageBar } from './stage-bar';
 export { StageSession } from './stage-session';

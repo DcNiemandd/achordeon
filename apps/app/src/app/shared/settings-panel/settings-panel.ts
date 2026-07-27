@@ -5,12 +5,16 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { Button, Icon, Tooltip } from '../../primitives';
+import { ScreenShape } from '../layout';
+import { MATCH_SCREEN } from './aspect-options';
 import {
   GROUPS,
   GROUP_LABELS,
@@ -18,6 +22,7 @@ import {
   keysForScope,
   type Group,
   type Option,
+  type OptionGroup,
   type Scope,
   type SettingKey,
 } from './setting-ui';
@@ -44,7 +49,9 @@ interface Section {
  *
  * It is a **controlled form and nothing more**: values in, a sparse patch out. It
  * holds no state and injects no store, like every other component (§3) — each
- * feature's thin wrapper binds it to that feature's presenter.
+ * feature's thin wrapper binds it to that feature's presenter. (It does inject
+ * `ScreenShape`, which is neither: a reading of `window.screen` that only the
+ * browser can answer, and that all three hosts would otherwise answer alike.)
  *
  * **Grouped, and it lays itself out.** Rows are sectioned by concern (page /
  * title / chords) rather than listed flat, and the grid is driven by a *container*
@@ -55,8 +62,30 @@ interface Section {
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Icon, Tooltip],
+  imports: [Button, Icon, Tooltip, NgTemplateOutlet],
   template: `
+    <!-- The option markup, written once for both selects below: a closed list and
+         a collapsed picker differ in how they are worn, not in what they offer.
+         Duplicating it is how one of them would quietly stop honouring groups. -->
+    <ng-template #optionList let-row>
+      <!-- Tracked by position: a row's groups are a fixed list that never
+           reorders, and two runs of ungrouped options would both key on the same
+           empty label. -->
+      @for (group of optionGroups(row); track $index) {
+        @if (group.label) {
+          <optgroup [label]="group.label">
+            @for (opt of group.options; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </optgroup>
+        } @else {
+          @for (opt of group.options; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        }
+      }
+    </ng-template>
+
     <div class="panel" data-testid="settings-panel">
       @for (section of sections(); track section.group) {
         <section class="section">
@@ -128,7 +157,7 @@ interface Section {
                 @switch (row.ui.control.kind) {
                   @case ('choice') {
                     <div class="choices">
-                      @for (opt of options(row); track opt.value) {
+                      @for (opt of choices(row); track opt.value) {
                         <button
                           appButton
                           type="button"
@@ -156,9 +185,10 @@ interface Section {
                         [attr.data-testid]="'select-' + row.key"
                         (change)="setFromInput(row, $event)"
                       >
-                        @for (opt of options(row); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
-                        }
+                        <ng-container
+                          [ngTemplateOutlet]="optionList"
+                          [ngTemplateOutletContext]="{ $implicit: row }"
+                        />
                       </select>
                     } @else {
                       <!-- One control, not two: the field always shows the value
@@ -189,9 +219,10 @@ interface Section {
                           <!-- A typed value matches nothing here, so the picker
                              shows blank rather than lying about the value. -->
                           <option value=""></option>
-                          @for (opt of options(row); track opt.value) {
-                            <option [value]="opt.value">{{ opt.label }}</option>
-                          }
+                          <ng-container
+                            [ngTemplateOutlet]="optionList"
+                            [ngTemplateOutletContext]="{ $implicit: row }"
+                          />
                         </select>
                       </div>
                     }
@@ -561,11 +592,76 @@ export class SettingsPanel {
     return $localize`:@@settings.decrease:Decrease ${row.ui.label}:setting:`;
   }
 
-  protected options(row: Row): readonly Option[] {
-    const control = row.ui.control;
-    return control.kind === 'select' || control.kind === 'choice'
-      ? control.options
-      : [];
+  /**
+   * The one dependency this panel has, and it is not state: a probe for the
+   * shape of the screen it is running on (`ScreenShape`). "Match this screen" is
+   * a question only the browser can answer, and the alternative — bubbling it out
+   * for each of the three hosts to answer identically — would spread one reading
+   * of `window.screen` across three features.
+   */
+  private readonly screen = inject(ScreenShape);
+
+  /**
+   * Whether this device can be measured at all, decided once.
+   *
+   * A host without a `screen` (jsdom, anything non-browser) gets no row rather
+   * than a row that does nothing when tapped. The *value* is read again on the
+   * tap itself, because that is when the orientation is known.
+   */
+  private readonly canMatchScreen = this.screen.detect() !== null;
+
+  protected choices(row: Row): readonly Option[] {
+    return row.ui.control.kind === 'choice' ? row.ui.control.options : [];
+  }
+
+  /**
+   * A `select`'s options as groups, flat lists included.
+   *
+   * Bare options collapse into a run with **no label**, which the template
+   * renders without an `<optgroup>` wrapper — so `titleFont` keeps its four plain
+   * options while `aspectRatio` gets its headings, from one code path. A *run*
+   * rather than one group per option, so a flat list is one block of markup and
+   * an ungrouped option keeps its place among grouped ones.
+   *
+   * Also where "Match this screen" disappears on a host that cannot measure one:
+   * filtered by value, so the rule holds wherever the row lists it, and a group
+   * left empty by the filter drops out rather than showing a bare heading.
+   */
+  protected optionGroups(row: Row): readonly OptionGroup[] {
+    if (row.ui.control.kind !== 'select') {
+      return [];
+    }
+
+    const groups: OptionGroup[] = [];
+    for (const entry of row.ui.control.options) {
+      if ('options' in entry) {
+        groups.push(entry);
+        continue;
+      }
+      const run = groups[groups.length - 1];
+      if (run?.label === '') {
+        groups[groups.length - 1] = {
+          label: '',
+          options: [...run.options, entry],
+        };
+      } else {
+        groups.push({ label: '', options: [entry] });
+      }
+    }
+
+    return groups
+      .map((group) => ({
+        label: group.label,
+        options: group.options.filter(
+          (opt) => opt.value !== MATCH_SCREEN || this.canMatchScreen,
+        ),
+      }))
+      .filter((group) => group.options.length > 0);
+  }
+
+  /** Every option a `select` row offers, groups flattened away. */
+  private pickable(row: Row): readonly Option[] {
+    return this.optionGroups(row).flatMap((group) => group.options);
   }
 
   protected canStep(row: Row, direction: number): boolean {
@@ -593,7 +689,7 @@ export class SettingsPanel {
 
   /** Blank unless the value happens to be one of the named answers. */
   protected pickerValue(row: Row): string {
-    const match = this.options(row).some((o) => o.value === String(row.value));
+    const match = this.pickable(row).some((o) => o.value === String(row.value));
     return match ? String(row.value) : '';
   }
 
@@ -602,15 +698,26 @@ export class SettingsPanel {
   }
 
   protected onPick(row: Row, event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+    const picked = (event.target as HTMLSelectElement).value;
     // The blank row is a display state, not a choice — picking it would wipe a
     // typed value for no reason.
-    if (value !== '') {
-      // A listed option is legal by construction, so picking one is also how you
-      // get out of an error you typed yourself.
-      this.setError(row.key, null);
-      this.set(row.key, value);
+    if (picked === '') {
+      return;
     }
+
+    // "Match this screen" is an action wearing an option's clothes: it stands for
+    // a measurement, so what gets stored is the measurement. Storing the sentinel
+    // would make the setting mean "whatever device is reading it", and the shape
+    // of a song would change when it synced to a desktop.
+    const value = picked === MATCH_SCREEN ? this.screen.detect() : picked;
+    if (value === null) {
+      return;
+    }
+
+    // A listed option is legal by construction, so picking one is also how you
+    // get out of an error you typed yourself.
+    this.setError(row.key, null);
+    this.set(row.key, value);
   }
 
   protected set(key: SettingKey, value: unknown): void {

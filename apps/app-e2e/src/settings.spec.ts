@@ -183,6 +183,44 @@ test.describe('global render settings', () => {
     }
   });
 
+  // The one preset the app has to compute rather than know. It must land as a
+  // plain ratio: a sentinel that meant "whatever device is reading this" would
+  // change the shape of the song the moment it synced to a desktop.
+  test('matching this screen stores the screen, not a promise to look it up', async ({
+    page,
+  }) => {
+    const expected = await page.evaluate(() => {
+      const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+      const { width, height } = window.screen;
+      const divisor = gcd(width, height);
+      return `${width / divisor}:${height / divisor}`;
+    });
+
+    await page.getByTestId('select-aspectRatio').selectOption('@screen');
+
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue(expected);
+    await expect(page.getByTestId('error-aspectRatio')).toHaveCount(0);
+    await expect
+      .poll(async () => (await savedSettings(page))?.['aspectRatio'])
+      .toBe(expected);
+  });
+
+  // Thirty answers in one picker only work if they arrive sorted into kinds.
+  test('the aspect picker is grouped, and devices name their ratio', async ({
+    page,
+  }) => {
+    const picker = page.getByTestId('select-aspectRatio');
+
+    await expect(picker.locator('optgroup')).not.toHaveCount(0);
+    // A device row's ratio is printed beside its name so the claim can be
+    // checked against "Match this screen" by anyone holding the device.
+    await expect(
+      picker.locator('optgroup[label="Phones"] option'),
+    ).not.toHaveCount(0);
+    await picker.selectOption('41:59');
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue('41:59');
+  });
+
   // A closed list: every valid answer is in it, so there is nothing to type.
   test('the title font is a plain dropdown, with no free-text field', async ({
     page,
