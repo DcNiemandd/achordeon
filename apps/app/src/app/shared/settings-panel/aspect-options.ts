@@ -94,49 +94,50 @@ export const ASPECT_OPTION_GROUPS: readonly OptionGroup[] = [
       { value: '4:3', label: '4:3' },
     ],
   },
-  {
-    // Newest first, by brand — how the list is actually scanned. Ordering these
-    // by ratio would interleave the brands, and the ratios are within 1% of one
-    // another anyway: that is the hardware, not a rounding bug, and it is why
-    // nobody finds their row by comparing fourth decimal places.
-    label: $localize`:@@aspect.group.phones:Phones`,
-    options: [
-      { value: '110:239', label: 'iPhone 16 Pro Max (110:239)' },
-      { value: '201:437', label: 'iPhone 16 Pro (201:437)' },
-      { value: '131:284', label: 'iPhone 14 Pro, 15, 16 (131:284)' },
-      {
-        value: '215:466',
-        label: 'iPhone 14 Pro Max, 15 Plus, 16 Plus (215:466)',
-      },
-      { value: '195:422', label: 'iPhone 12, 13, 14 (195:422)' },
-      {
-        value: '214:463',
-        label: 'iPhone 12 Pro Max, 13 Pro Max, 14 Plus (214:463)',
-      },
-      // 360×780 exactly, on both — the one row where an iPhone and a Galaxy have
-      // the same shape, so they share it rather than fight over the value.
-      {
-        value: '6:13',
-        label: 'iPhone 12 mini, 13 mini, Galaxy S21–S25 (6:13)',
-      },
-      { value: '375:812', label: 'iPhone X, XS, 11 Pro (375:812)' },
-      { value: '207:448', label: 'iPhone XR, 11, 11 Pro Max (207:448)' },
-      { value: '375:667', label: 'iPhone SE, 8 (375:667)' },
-      { value: '412:915', label: 'Pixel 6, 7, 8 (412:915)' },
-      { value: '45:101', label: 'Pixel 9 (45:101)' },
-    ],
-  },
-  {
-    // Short, because three tablet shapes are named ratios and ride on the rows
-    // above: iPad 9.7"/10.2" is 3:4, Galaxy Tab is 5:8, Surface Pro is 2:3.
-    label: $localize`:@@aspect.group.tablets:Tablets`,
-    options: [
-      { value: '512:683', label: 'iPad Pro 12.9", 13" (512:683)' },
-      { value: '139:199', label: 'iPad Pro 11" (139:199)' },
-      { value: '41:59', label: 'iPad Air 11", iPad 10.9" (41:59)' },
-      { value: '744:1133', label: 'iPad mini 6, 7 (744:1133)' },
-    ],
-  },
+  // TODO: analyze what values would be most useful to add, now there is too much not readable.
+  // {
+  //   // Newest first, by brand — how the list is actually scanned. Ordering these
+  //   // by ratio would interleave the brands, and the ratios are within 1% of one
+  //   // another anyway: that is the hardware, not a rounding bug, and it is why
+  //   // nobody finds their row by comparing fourth decimal places.
+  //   label: $localize`:@@aspect.group.phones:Phones`,
+  //   options: [
+  //     { value: '110:239', label: 'iPhone 16 Pro Max (110:239)' },
+  //     { value: '201:437', label: 'iPhone 16 Pro (201:437)' },
+  //     { value: '131:284', label: 'iPhone 14 Pro, 15, 16 (131:284)' },
+  //     {
+  //       value: '215:466',
+  //       label: 'iPhone 14 Pro Max, 15 Plus, 16 Plus (215:466)',
+  //     },
+  //     { value: '195:422', label: 'iPhone 12, 13, 14 (195:422)' },
+  //     {
+  //       value: '214:463',
+  //       label: 'iPhone 12 Pro Max, 13 Pro Max, 14 Plus (214:463)',
+  //     },
+  //     // 360×780 exactly, on both — the one row where an iPhone and a Galaxy have
+  //     // the same shape, so they share it rather than fight over the value.
+  //     {
+  //       value: '6:13',
+  //       label: 'iPhone 12 mini, 13 mini, Galaxy S21–S25 (6:13)',
+  //     },
+  //     { value: '375:812', label: 'iPhone X, XS, 11 Pro (375:812)' },
+  //     { value: '207:448', label: 'iPhone XR, 11, 11 Pro Max (207:448)' },
+  //     { value: '375:667', label: 'iPhone SE, 8 (375:667)' },
+  //     { value: '412:915', label: 'Pixel 6, 7, 8 (412:915)' },
+  //     { value: '45:101', label: 'Pixel 9 (45:101)' },
+  //   ],
+  // },
+  // {
+  //   // Short, because three tablet shapes are named ratios and ride on the rows
+  //   // above: iPad 9.7"/10.2" is 3:4, Galaxy Tab is 5:8, Surface Pro is 2:3.
+  //   label: $localize`:@@aspect.group.tablets:Tablets`,
+  //   options: [
+  //     { value: '512:683', label: 'iPad Pro 12.9", 13" (512:683)' },
+  //     { value: '139:199', label: 'iPad Pro 11" (139:199)' },
+  //     { value: '41:59', label: 'iPad Air 11", iPad 10.9" (41:59)' },
+  //     { value: '744:1133', label: 'iPad mini 6, 7 (744:1133)' },
+  //   ],
+  // },
 ];
 
 /** Every row in the picker, groups flattened away. */
