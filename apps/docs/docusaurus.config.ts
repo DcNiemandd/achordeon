@@ -8,12 +8,19 @@ import { themes as prismThemes } from 'prism-react-renderer';
 // the empty string means "not configured" here, and a blank base path would
 // build a site whose every asset link is broken.
 
-// Angular app lives outside Docusaurus's route table — prefix internal-looking
-// paths with `pathname://` so the broken-link checker treats them as external.
+const url = process.env.DOCS_URL || 'https://achordeon.eu';
+
+// The Angular app lives outside Docusaurus's route table, and ONE bundle serves
+// every language (PRD-INFRASTRUCTURE.md §11) — so its link must be ABSOLUTE.
+// Anything site-relative goes through `<Link>`, which prepends the locale-aware
+// baseUrl and sends Czech readers to /cs/app/, where nothing is served. (The
+// `pathname://` escape only exempts a link from the broken-link checker; it does
+// not stop the prefixing.) An absolute URL is external to Docusaurus on every
+// count: no prefix, no route lookup, no link check.
 const rawAppLink = process.env.APP_LINK || '/app/';
 const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
   ? rawAppLink
-  : `pathname://${rawAppLink}`;
+  : new URL(rawAppLink, url).href;
 
 const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
@@ -27,6 +34,39 @@ const i18n = {
     cs: { label: 'Čeština', htmlLang: 'cs-CZ' },
   },
 } satisfies Config['i18n'];
+
+/**
+ * The site root IS the app.
+ *
+ * `/` (and each locale's root, `/cs/`) sends the visitor to the app instead of
+ * showing the landing page. Runs in `<head>`, before the body paints, so there is
+ * no flash of a page nobody asked for — the same trick the locale redirect below
+ * uses, and it goes FIRST so that the app wins before a Czech browser gets
+ * bounced to /cs/ and has to bounce again.
+ *
+ * Only the roots: every docs URL is left alone, which is the whole point of
+ * matching the path exactly rather than by prefix. `location.replace`, so the
+ * back button returns to wherever the visitor came from rather than to a page
+ * that would immediately redirect again. Without JavaScript nothing happens and
+ * the landing page is served as before, Launch App button and all — that is the
+ * fallback, and it is why there is no <noscript> meta-refresh here (headTags are
+ * emitted on every page, and a refresh tag would drag the docs along with it).
+ */
+const appRedirectScript = `(function () {
+  try {
+    var BASE = ${JSON.stringify(baseUrl)};
+    var LOCALES = ${JSON.stringify(i18n.locales)};
+    var DEFAULT = ${JSON.stringify(i18n.defaultLocale)};
+    var roots = [BASE];
+    for (var i = 0; i < LOCALES.length; i++) {
+      if (LOCALES[i] !== DEFAULT) roots.push(BASE + LOCALES[i] + '/');
+    }
+    var path = location.pathname;
+    if (path.charAt(path.length - 1) !== '/') path += '/';
+    if (roots.indexOf(path) < 0) return;
+    location.replace(${JSON.stringify(appLink)} + location.search + location.hash);
+  } catch (e) {}
+})();`;
 
 const localeRedirectScript = `(function () {
   try {
@@ -58,10 +98,28 @@ const config: Config = {
     v4: true,
   },
 
-  url: process.env.DOCS_URL || 'https://achordeon.eu',
+  url,
   baseUrl,
 
   headTags: [
+    // The vector favicon, beside the `.ico` above. Both come out of the app's
+    // `tools/gen-app-icons.mjs`, which writes them into `static/img` as well as
+    // into the app — one mark, two properties. `favicon` takes a single path, so
+    // the SVG that modern browsers prefer has to be its own tag; those that don't
+    // understand it fall back to the `.ico`.
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: `${baseUrl}img/favicon.svg`,
+      },
+    },
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: appRedirectScript,
+    },
     {
       tagName: 'script',
       attributes: {},
@@ -69,10 +127,10 @@ const config: Config = {
     },
   ],
 
-  // Where the Angular app is, for `<AppLink>` in .mdx (the navbar/footer read
-  // `appLink` directly). One source, so a domain or base-path move is the
-  // APP_LINK env in the deploy workflow and nothing else.
-  customFields: { appLink: rawAppLink },
+  // Where the Angular app is, for the landing page and `<AppLink>` in .mdx (the
+  // navbar/footer read `appLink` directly). One source, so a domain or base-path
+  // move is the DOCS_URL/APP_LINK envs in the deploy workflow and nothing else.
+  customFields: { appLink },
 
   organizationName: 'dcniemandd',
   projectName: 'achordeon',
@@ -118,6 +176,14 @@ const config: Config = {
     },
     navbar: {
       title: 'Achordeon',
+      // The bold cut of the mark, not `icons/icon.svg`: the navbar renders the
+      // logo at 2rem, where the full mark's six 1.5px rows smudge into a haze —
+      // the same reason that cut exists for the 16px tab strip. One file, both
+      // jobs; `tools/gen-app-icons.mjs` in the app emits it.
+      logo: {
+        alt: 'Achordeon',
+        src: 'img/favicon.svg',
+      },
       items: [
         {
           type: 'docSidebar',
@@ -126,7 +192,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: appLink,
+          href: appLink,
           label: 'Launch App',
           position: 'right',
         },

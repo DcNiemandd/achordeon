@@ -183,6 +183,53 @@ test.describe('global render settings', () => {
     }
   });
 
+  // The one preset the app has to compute rather than know. It must land as a
+  // plain ratio: a sentinel that meant "whatever device is reading this" would
+  // change the shape of the song the moment it synced to a desktop.
+  test('matching this screen stores the screen, not a promise to look it up', async ({
+    page,
+  }) => {
+    const expected = await page.evaluate(() => {
+      const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+      const { width, height } = window.screen;
+      const divisor = gcd(width, height);
+      return `${width / divisor}:${height / divisor}`;
+    });
+
+    await page.getByTestId('select-aspectRatio').selectOption('@screen');
+
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue(expected);
+    await expect(page.getByTestId('error-aspectRatio')).toHaveCount(0);
+    await expect
+      .poll(async () => (await savedSettings(page))?.['aspectRatio'])
+      .toBe(expected);
+  });
+
+  // A picker this long only works if the answers arrive sorted into kinds. Which
+  // kinds, and which rows, is the list's business — so this reads them off the
+  // page rather than naming them, and stays true whatever the list decides.
+  test('the aspect picker is grouped, and every group is pickable', async ({
+    page,
+  }) => {
+    const picker = page.getByTestId('select-aspectRatio');
+    await expect(picker.locator('optgroup')).not.toHaveCount(0);
+
+    // The last row of the last group: proves the whole list reached the DOM and
+    // that a grouped option sets the value like any other.
+    const last = await picker
+      .locator('optgroup')
+      .last()
+      .locator('option')
+      .last()
+      .getAttribute('value');
+
+    await picker.selectOption(last as string);
+    await expect(page.getByTestId('input-aspectRatio')).toHaveValue(
+      last as string,
+    );
+    await expect(page.getByTestId('error-aspectRatio')).toHaveCount(0);
+  });
+
   // A closed list: every valid answer is in it, so there is nothing to type.
   test('the title font is a plain dropdown, with no free-text field', async ({
     page,
@@ -374,5 +421,53 @@ test.describe('language', () => {
 
     await page.goto('songs');
     await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+  });
+});
+
+// The About block — the last section, and the only rows on the page that leave
+// the app. The docs link is asserted by SHAPE (it ends in the right doc path)
+// rather than by a full URL: the origin is the base href the bundle was built
+// with, which differs between `nx serve` and a deploy, and pinning it here would
+// make the test a statement about the dev server instead of about the link.
+test.describe('about', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('settings');
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+  });
+
+  test('links out to the docs, the tracker, and names the build', async ({
+    page,
+  }) => {
+    const docs = page.getByTestId('about-docs');
+    await expect(docs).toHaveAttribute('href', /\/docs\/intro$/);
+    // A new tab, so a half-written song is not navigated away from.
+    await expect(docs).toHaveAttribute('target', '_blank');
+
+    await expect(page.getByTestId('about-issues')).toHaveAttribute(
+      'href',
+      'https://github.com/DcNiemandd/achordeon/issues',
+    );
+
+    // The commit date of the build, which is what makes a bug report placeable.
+    await expect(page.getByTestId('about-version')).toHaveText(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
+  });
+
+  test('the docs link follows the UI language', async ({ page }) => {
+    await expect(page.getByTestId('about-docs')).toHaveAttribute(
+      'href',
+      /\/docs\/intro$/,
+    );
+
+    // Switching reloads the app; the link comes back pointing at the Czech docs,
+    // which is a different Docusaurus locale and so a different path.
+    await page.getByTestId('language-cs').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+    await expect(page.getByTestId('about-docs')).toHaveAttribute(
+      'href',
+      /\/cs\/docs\/intro$/,
+    );
   });
 });

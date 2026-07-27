@@ -38,6 +38,40 @@
     <!-- iOS ignores the manifest icons for "Add to Home Screen". -->
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <script>
+      // HTTPS or nothing, and FIRST — before the theme stamp reads storage or
+      // the bundle mints anything.
+      //
+      // Plain http is not a secure context, so `crypto.randomUUID` does not
+      // exist, and the device id is minted at boot (ADR-0004) — the app dies on
+      // the first line it runs rather than degrading. The CSP's
+      // `upgrade-insecure-requests` does not save us: it upgrades SUBRESOURCES,
+      // never the top-level document, which is why the chunks arrive over https
+      // while the page that asked for them is still http.
+      //
+      // GitHub Pages' "Enforce HTTPS" is the real redirect; this is the belt to
+      // its braces, for a typed URL or an old bookmark that arrives while that
+      // setting is off (or before a new domain's certificate exists).
+      //
+      // localhost is exempt: it is already a secure context by definition, and
+      // there is no certificate to upgrade to — redirecting would break `nx serve`.
+      (function () {
+        try {
+          if (location.protocol !== 'http:') return;
+          var host = location.hostname;
+          if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+            return;
+          }
+          location.replace(
+            'https://' +
+              location.host +
+              location.pathname +
+              location.search +
+              location.hash,
+          );
+        } catch (e) {}
+      })();
+    </script>
+    <script>
       // Pre-paint theme stamp (PRD-UI-SHELL.md §6). Angular boots after first
       // paint, so without this a dark-mode user gets a white flash. Mirrors
       // ThemeApplier: 'system' means NO attribute, so the token sheet's bare

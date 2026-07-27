@@ -380,27 +380,13 @@ const ARM_MOVE_TOLERANCE = 8;
             class="row-actions"
             [class.is-menu-open]="openMenuRow() === row.id"
           >
-            <!-- Perform, and first: a songbook exists to be played, so this is
-                 the everyday act and the rest of the row is administration. NOT
-                 gated on isReadOnly — All songs is read-only and is exactly what
-                 someone reaches for when a performance was not planned. Primary
-                 tint rather than a plain icon button, the same weight the stage
-                 picker gives it. -->
-            @if (capabilities().canPerform && !row.isEmpty) {
-              <button
-                appButton
-                type="button"
-                variant="primary"
-                [isIconOnly]="true"
-                [attr.aria-label]="performRowLabel(row)"
-                [appTooltip]="PERFORM"
-                [attr.data-testid]="'perform-' + row.id"
-                (click)="performed.emit(row.id)"
-              >
-                <app-icon name="stage" />
-              </button>
-            }
-            <!-- A read-only row has no record to open — the virtual All songs
+            <!-- **Edit leads**, and wears no more weight than what follows it:
+                 every row action is a plain icon button, so the strip reads as
+                 one group in reading order rather than as a tinted call to
+                 action with a tail of afterthoughts. Perform kept the primary
+                 tint until it moved into the ⋯ (see the menu below).
+
+                 A read-only row has no record to open — the virtual All songs
                  book, which is downloaded and previewed but never opened into an
                  editable view (its order is chosen at download, not here). -->
             @if (capabilities().canEdit && !row.isReadOnly) {
@@ -429,6 +415,26 @@ const ARM_MOVE_TOLERANCE = 8;
                 (click)="startRename(row)"
               >
                 <app-icon name="rename" />
+              </button>
+            }
+            <!-- Third, where copying is an everyday act (hasInlineDuplicate —
+                 the songbook list): next week's set is last week's, copied.
+                 Everywhere else it stays behind the ⋯ with the rest. -->
+            @if (
+              capabilities().canDuplicate &&
+              capabilities().hasInlineDuplicate &&
+              !row.isReadOnly
+            ) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="duplicateRowLabel(row)"
+                [appTooltip]="DUPLICATE"
+                [attr.data-testid]="'duplicate-' + row.id"
+                (click)="duplicated.emit(row.id)"
+              >
+                <app-icon name="duplicate" />
               </button>
             }
             <!-- Reorder is per ROW here, not per selection: you are already
@@ -482,14 +488,15 @@ const ARM_MOVE_TOLERANCE = 8;
                 <app-icon name="transferOut" />
               </button>
             }
-            <!-- The secondary actions — duplicate, the two file exports, delete.
-                 Two ways to wear them, chosen per mount (usesRowMenu):
+            <!-- The secondary actions — perform, duplicate, the two file
+                 exports, delete. Two ways to wear them, chosen per mount
+                 (usesRowMenu):
 
-                 - Menu (the Songs module): edit and rename stay in reach and the
-                   rest fold behind one dots button, because a library row
-                   carries many actions and few are everyday.
-                 - Laid out (the songbook list): a songbook row carries a
-                   handful, and they read better as buttons than pocketed. -->
+                 - Menu: the everyday actions stay in reach and the rest fold
+                   behind one dots button, because a row that lays seven icons
+                   out is a strip you aim within rather than read.
+                 - Laid out: for a mount whose secondary actions are few enough
+                   to read as buttons. -->
             @if (hasRowMenu(row)) {
               @if (capabilities().usesRowMenu) {
                 <!-- Inlined, not an ng-template outlet: a MenuItem finds its
@@ -520,6 +527,21 @@ const ARM_MOVE_TOLERANCE = 8;
                       {{ RENAME }}
                     </button>
                   }
+                  <!-- Perform, first in the popover: it is the one item here
+                       that plays the book rather than administers it. NOT gated
+                       on isReadOnly — All songs is read-only and is exactly what
+                       someone reaches for when a performance was not planned —
+                       but an empty book has nothing to play. -->
+                  @if (capabilities().canPerform && !row.isEmpty) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'perform-' + row.id"
+                      (chosen)="performed.emit(row.id)"
+                    >
+                      <app-icon name="stage" />
+                      {{ PERFORM }}
+                    </button>
+                  }
                   <!-- Download and export are NOT gated on isReadOnly: the
                        virtual All songs book is read-only (nothing to rename,
                        duplicate or delete) yet very much downloadable — it is
@@ -545,7 +567,13 @@ const ARM_MOVE_TOLERANCE = 8;
                       {{ EXPORT }}
                     </button>
                   }
-                  @if (capabilities().canDuplicate && !row.isReadOnly) {
+                  <!-- …unless this mount keeps it on the row (see above), where
+                       it must not also appear here. -->
+                  @if (
+                    capabilities().canDuplicate &&
+                    !capabilities().hasInlineDuplicate &&
+                    !row.isReadOnly
+                  ) {
                     <button
                       appMenuItem
                       [attr.data-testid]="'duplicate-' + row.id"
@@ -590,11 +618,25 @@ const ARM_MOVE_TOLERANCE = 8;
       </div>
     }
 
-    <!-- The secondary row actions as **laid-out icon buttons** — the songbook
-         list's way. The menu wears the same four as labelled items (inlined
-         above, for the DI reason noted there); this is the version for a mount
-         that has room to show them. -->
+    <!-- The secondary row actions as **laid-out icon buttons**. The menu wears
+         the same set as labelled items (inlined above, for the DI reason noted
+         there); this is the version for a mount that has room to show them, and
+         it must stay in step with it — hasRowMenu answers for both, so an
+         action missing here would leave a mount with an empty group. -->
     <ng-template #directActions let-row="row">
+      @if (capabilities().canPerform && !row.isEmpty) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="performRowLabel(row)"
+          [appTooltip]="PERFORM"
+          [attr.data-testid]="'perform-' + row.id"
+          (click)="performed.emit(row.id)"
+        >
+          <app-icon name="stage" />
+        </button>
+      }
       <!-- Download/export are ungated on isReadOnly (see the menu copy): All
            songs is read-only but downloadable. -->
       @if (capabilities().canDownload) {
@@ -623,7 +665,12 @@ const ARM_MOVE_TOLERANCE = 8;
           <app-icon name="export" />
         </button>
       }
-      @if (capabilities().canDuplicate && !row.isReadOnly) {
+      <!-- Not where the row already carries it (hasInlineDuplicate). -->
+      @if (
+        capabilities().canDuplicate &&
+        !capabilities().hasInlineDuplicate &&
+        !row.isReadOnly
+      ) {
         <button
           appButton
           type="button"
@@ -1540,14 +1587,15 @@ export class SongExplorer {
    * download/export (it has something to hand out) but loses duplicate/delete. */
   protected hasRowMenu(row: SongRow): boolean {
     const caps = this.capabilities();
-    // Download and export apply to a read-only row too (All songs); duplicate
-    // and delete do not. So a read-only row still has actions iff it can hand
-    // something out.
-    if (row.isReadOnly) return caps.canDownload || caps.canExport;
+    // Perform and the two file exports apply to a read-only row too (All songs
+    // performs, downloads and exports); duplicate and delete do not.
+    if (caps.canPerform && !row.isEmpty) return true;
+    if (caps.canDownload || caps.canExport) return true;
+    // So a read-only row has a menu iff it can play or hand something out.
+    if (row.isReadOnly) return false;
     return (
-      caps.canDownload ||
-      caps.canExport ||
-      caps.canDuplicate ||
+      // Not when the row wears it directly — that would leave the menu empty.
+      (caps.canDuplicate && !caps.hasInlineDuplicate) ||
       caps.canDelete ||
       // On a phone the menu also carries rename, so it exists even for a mount
       // whose only other action is renaming.

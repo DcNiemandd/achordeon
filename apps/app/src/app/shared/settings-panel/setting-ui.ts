@@ -3,6 +3,7 @@
 
 import { SETTINGS, SCOPES } from '@achordeon/shared/domain';
 import { tryParseAspectRatio } from '@achordeon/shared/render-core';
+import { ASPECT_OPTION_GROUPS } from './aspect-options';
 
 export type Scope = (typeof SCOPES)[number];
 export type SettingKey = keyof typeof SETTINGS;
@@ -10,6 +11,17 @@ export type SettingKey = keyof typeof SETTINGS;
 export interface Option {
   readonly value: string;
   readonly label: string;
+}
+
+/**
+ * A named run of options inside a `select` — an `<optgroup>`.
+ *
+ * Only `select` takes these. A `choice` row is a handful of side-by-side buttons;
+ * a list long enough to need headings is not a list you can lay out that way.
+ */
+export interface OptionGroup {
+  readonly label: string;
+  readonly options: readonly Option[];
 }
 
 export type Control =
@@ -32,8 +44,16 @@ export type Control =
    * A named list plus an escape hatch. `custom: true` reveals a free-text field,
    * so the common answers are one tap and the long tail stays reachable — which
    * is exactly the shape of `aspectRatio` and `scale`.
+   *
+   * The list may be flat or grouped into `<optgroup>`s, and a row can mix the
+   * two. Grouping is what lets `aspectRatio` carry thirty answers without
+   * reading as thirty unrelated ones.
    */
-  | { kind: 'select'; options: readonly Option[]; custom?: boolean }
+  | {
+      kind: 'select';
+      options: readonly (Option | OptionGroup)[];
+      custom?: boolean;
+    }
   | { kind: 'choice'; options: readonly Option[] };
 
 /** Rows are grouped so the panel reads as sections, not a wall of inputs. */
@@ -67,27 +87,6 @@ export interface SettingUi {
    */
   readonly validate?: (raw: string) => string | null;
 }
-
-/**
- * Aspect-ratio presets.
- *
- * **Named ratios only — no device names.** A row like "Galaxy Tab S11" claims an
- * exact spec, and a wrong one is invisible: the song just renders cropped and
- * nobody notices. These are ratios that are true by definition. `Custom…` still
- * takes any `N:N`, `N/N`, number, or `A4`, so nothing is unreachable.
- */
-const ASPECT_PRESETS: readonly Option[] = [
-  { value: 'A4', label: $localize`:@@aspect.a4:A4 (210:297)` },
-  // `1:1`, not `1`: a preset's value is stored verbatim, so it should be a value
-  // the `aspectRatio` type actually allows. (The renderer parses a bare number
-  // too — CONTEXT.md promises that for the text input — but a preset has no
-  // excuse to lean on it.)
-  { value: '1:1', label: $localize`:@@aspect.square:Square (1:1)` },
-  { value: '16:9', label: '16:9' },
-  { value: '16:10', label: '16:10' },
-  { value: '4:3', label: '4:3' },
-  { value: '3:4', label: '3:4' },
-];
 
 /**
  * How each registry row is presented, and what its `(?)` says.
@@ -127,9 +126,9 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
   },
   aspectRatio: {
     label: $localize`:@@setting.aspectRatio:Aspect ratio`,
-    help: $localize`:@@setting.aspectRatio.help:The shape of the page. Crop it to your content to waste less space — printing keeps the shape and scales to fit. Custom accepts a ratio like 3:4, a fraction like 3/4, or a number.`,
+    help: $localize`:@@setting.aspectRatio.help:The shape of the page. Crop it to your content to waste less space — printing keeps the shape and scales to fit. Pick a ratio, a device, or "Match this screen" to use the shape of the one you are holding. Custom accepts a ratio like 3:4, a fraction like 3/4, or a number.`,
     group: 'page',
-    control: { kind: 'select', custom: true, options: ASPECT_PRESETS },
+    control: { kind: 'select', custom: true, options: ASPECT_OPTION_GROUPS },
     // The renderer's own reader, asked whether it could make sense of the text
     // (see `tryParseAspectRatio`). Anything it refuses would have been stored and
     // then silently drawn as A4 — a setting that looks saved and does nothing.

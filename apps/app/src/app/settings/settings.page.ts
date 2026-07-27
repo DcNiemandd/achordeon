@@ -13,8 +13,9 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
-import { ActionBar, BackNavigation } from '../shared/layout';
+import { ActionBar, BackNavigation, SOURCE_LANGUAGE } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { BUILD_DATE } from '../shared/build-info';
 import { SettingsPresenter } from './settings.presenter';
 
 /** Which credential dialog is open. Login and register are separate forms so
@@ -147,7 +148,7 @@ const MIN_PASSWORD = 8;
                 {{ accountWhy }}
                 <a
                   class="doc-link"
-                  [href]="docsUrl"
+                  [href]="docsUrl()"
                   target="_blank"
                   rel="noopener"
                   data-testid="account-docs"
@@ -582,6 +583,62 @@ const MIN_PASSWORD = 8;
                 </button>
               </div>
             </div>
+          </div>
+        </section>
+
+        <!-- Last, and deliberately so: the way out of the app. Everything above
+             changes how Achordeon behaves; this block only points elsewhere —
+             the guides, the issue tracker, and which build you are looking at
+             when you write one. -->
+        <section class="section">
+          <h2 class="heading">{{ aboutHeading }}</h2>
+          <div class="group">
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ docsLabel }}</span>
+              </div>
+              <p class="hint">{{ docsHelp }}</p>
+              <div class="actions">
+                <a
+                  appButton
+                  variant="secondary"
+                  [href]="docsUrl()"
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="about-docs"
+                  >{{ docsButton }}</a
+                >
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ bugLabel }}</span>
+              </div>
+              <p class="hint">{{ bugHelp }}</p>
+              <div class="actions">
+                <a
+                  appButton
+                  variant="secondary"
+                  [href]="issuesUrl"
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="about-issues"
+                  >{{ bugButton }}</a
+                >
+              </div>
+            </div>
+
+            <!-- Dropped rather than shown empty: a build outside a git checkout
+                 has no commit date, and an "unknown" version helps nobody. -->
+            @if (buildDate !== null) {
+              <div class="setting">
+                <div class="head">
+                  <span class="label">{{ versionLabel }}</span>
+                </div>
+                <p class="value" data-testid="about-version">{{ buildDate }}</p>
+              </div>
+            }
           </div>
         </section>
       </div>
@@ -1573,16 +1630,46 @@ export class SettingsPage {
   protected readonly accountWhy = $localize`:@@settings.account.why:Sign in to keep your library synced across your devices.`;
   protected readonly learnMore = $localize`:@@settings.account.learnMore:Learn more`;
   /**
-   * The published docs — the account & sync guide. Derived from the app's own
-   * base href rather than written out: the deploy puts the docs site at the root
-   * and the app one level under it (`/app/`, see `.github/workflows/deploy.yml`),
-   * so `../` is the docs root wherever the bundle is served from — the apex
-   * domain, a project page, a fork. Nothing to re-point when the domain changes.
-   * In `nx serve` this resolves to the dev server root, where the docs are not
-   * (they run separately, `nx serve docs`); the link is a production affordance.
+   * The published docs, in the language the app is showing.
+   *
+   * Derived from the app's own base href rather than written out: the deploy puts
+   * the docs site at the root and the app one level under it (`/app/`, see
+   * `.github/workflows/deploy.yml`), so `../` is the docs root wherever the
+   * bundle is served from — the apex domain, a project page, a fork. Nothing to
+   * re-point when the domain changes.
+   *
+   * `docs/intro` and not the docs root, deliberately: the root redirects back
+   * into the app (docusaurus.config.ts), so linking there would bounce the reader
+   * straight back to where they clicked. Non-source languages live under their
+   * own prefix, which is Docusaurus's i18n layout, not ours.
+   *
+   * In `nx serve` this resolves to the dev server, where the docs are not (they
+   * run separately, `nx serve docs`); the link is a production affordance.
    */
-  protected readonly docsUrl = new URL('../', document.baseURI).href;
+  protected readonly docsUrl = computed(() => {
+    const language = this.presenter.language();
+    const path =
+      language === SOURCE_LANGUAGE ? 'docs/intro' : `${language}/docs/intro`;
+    return new URL(path, new URL('../', document.baseURI)).href;
+  });
   protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;
+
+  // The About block: the only rows on this page that leave the app, plus which
+  // build you are looking at when you write the bug report.
+  protected readonly aboutHeading = $localize`:@@settings.about.heading:About`;
+  protected readonly docsLabel = $localize`:@@settings.about.docs:Documentation`;
+  protected readonly docsHelp = $localize`:@@settings.about.docsHelp:Guides for songs, songbooks and performing.`;
+  protected readonly docsButton = $localize`:@@settings.about.docsButton:Open docs`;
+  protected readonly bugLabel = $localize`:@@settings.about.bug:Found a bug?`;
+  protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Open an issue on GitHub — say what you did and what happened instead.`;
+  protected readonly bugButton = $localize`:@@settings.about.bugButton:Report on GitHub`;
+  protected readonly versionLabel = $localize`:@@settings.about.version:Version`;
+  /** The issue tracker. The repo is the repo — not a deploy-time value. */
+  protected readonly issuesUrl =
+    'https://github.com/DcNiemandd/achordeon/issues';
+  /** Commit date of this build, generated (apps/app/tools/gen-build-info.mjs). */
+  protected readonly buildDate = BUILD_DATE;
+
   protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
   protected readonly googleHeading = $localize`:@@settings.account.googleHeading:Google`;

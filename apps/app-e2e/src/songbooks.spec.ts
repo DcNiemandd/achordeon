@@ -67,6 +67,20 @@ async function createSongbook(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Open a songbook row's ⋯ menu — perform, download, export and delete live
+ * behind it. Edit, rename and duplicate stay direct on the row.
+ */
+async function openBookMenu(page: Page, id: string | null): Promise<void> {
+  await page
+    .getByTestId('songbook-row')
+    .filter({ has: page.getByTestId(`more-${id}`) })
+    .first()
+    .hover();
+  await page.getByTestId(`more-${id}`).click();
+  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+}
+
+/**
  * Tick songs in the left explorer and add them at `where`.
  *
  * The checkbox is the multi-select gesture; a click on the row body would
@@ -104,9 +118,11 @@ test.describe('songbooks', () => {
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
     await expect(page.getByTestId('open-all-songs')).toBeVisible();
-    // It has no record behind it, so it wears no identity actions.
+    // It has no record behind it, so it wears no identity actions — neither on
+    // the row nor inside the ⋯ it does have (it can still be handed out).
     await page.getByTestId('songbook-row').hover();
     await expect(page.getByTestId('rename-all-songs')).toHaveCount(0);
+    await openBookMenu(page, 'all-songs');
     await expect(page.getByTestId('delete-all-songs')).toHaveCount(0);
     // "No songbooks yet" is about the ones you make — All songs is not one.
     await expect(page.getByTestId('songbooks-empty')).toBeVisible();
@@ -548,8 +564,8 @@ test.describe('songbooks', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
-    // The songbook list lays its actions out (no ⋯ menu), so delete is direct.
+    // Delete is behind the row's ⋯ — it is not an everyday act.
+    await openBookMenu(page, id);
     await page.getByTestId(`delete-${id}`).click();
     await page.getByTestId('songbook-delete-confirm').click();
 
@@ -794,6 +810,7 @@ test.describe('drag & drop', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'Campfire' });
     const id = await row.getAttribute('data-song-id');
+    await openBookMenu(page, id);
     await page.getByTestId(`perform-${id}`).click();
 
     await expect(page).toHaveURL(new RegExp(`/stage/${id}$`));
@@ -812,9 +829,13 @@ test.describe('drag & drop', () => {
     await page.goto('songbooks');
     const row = page.getByTestId('songbook-row').filter({ hasText: 'Empty' });
     const id = await row.getAttribute('data-song-id');
+    // Absent from the ⋯ it lives in, not merely absent from a closed menu.
+    await openBookMenu(page, id);
     await expect(page.getByTestId(`perform-${id}`)).toHaveCount(0);
+    await page.keyboard.press('Escape');
 
     // All songs is read-only and still performable — it is the whole library.
+    await openBookMenu(page, 'all-songs');
     await expect(page.getByTestId('perform-all-songs')).toBeVisible();
   });
 });
