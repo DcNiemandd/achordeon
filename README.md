@@ -44,10 +44,17 @@ GitHub Pages, served under the custom apex domain `achordeon.eu`:
 | `https://achordeon.eu/app/`       | Achordeon app |
 
 The domain is claimed by `apps/docs/static/CNAME` (copied to the site root by the
-Docusaurus build); the paths come from the env vars at the top of
-`.github/workflows/deploy.yml` (`DOCS_URL`, `DOCS_BASE_URL`, `APP_BASE_HREF`,
-`APP_LINK`). DNS: apex `A`/`AAAA` records to GitHub's Pages IPs, `www` `CNAME` to
-`dcniemandd.github.io`.
+Docusaurus build). DNS: apex `A`/`AAAA` records to GitHub's Pages IPs, `www`
+`CNAME` to `dcniemandd.github.io`.
+
+Where the two apps think they live comes from four variables — `DOCS_URL`,
+`DOCS_BASE_URL`, `APP_BASE_HREF`, `APP_LINK`. In CI they are repo **variables**
+(Settings ▸ Secrets and variables ▸ Actions ▸ Variables); the workflow falls back
+to the values above when a variable is unset. Locally they are optional: Nx loads
+`.env.local` into every task it runs, so uncommenting them in your `.env.local`
+(see `.env.local.example`) reproduces a deploy build, and leaving them out gives
+you the same paths from the defaults in `apps/docs/docusaurus.config.ts` and
+`apps/app/project.json`.
 
 ## Deploying
 
