@@ -238,3 +238,168 @@ describe('layoutSummary', () => {
     }
   });
 });
+
+describe('layoutSummary — the number after the title', () => {
+  /** Titles of every length, so the leaders have different amounts to cover. */
+  const ragged: SummaryItem[] = [
+    { title: 'A', number: '1' },
+    { title: 'A longer name', number: '2' },
+    { title: 'A name longer again by some way', number: '3' },
+  ];
+
+  it('is what a summary does when nothing says otherwise', () => {
+    // The default is the reference table, because that is what the summary was
+    // before there was a choice — nobody's book changes shape on an upgrade.
+    const withoutArg = layoutSummary(ragged, A4, MARGIN, measure);
+    const explicit = layoutSummary(ragged, A4, MARGIN, measure, 'after');
+    expect(withoutArg.placements).toEqual(explicit.placements);
+  });
+
+  it('leads the eye from the title to the number with dots', () => {
+    const layout = layoutSummary(ragged, A4, MARGIN, measure, 'after');
+    const { metrics } = layout;
+    for (const placed of layout.placements) {
+      expect(placed.numberAlign).toBe('right');
+      expect(placed.leader).toMatch(/^\.{2,}$/);
+      // Clear of the title it starts from…
+      expect(placed.leaderX).toBeGreaterThan(
+        placed.titleX + measure(placed.title, metrics.fontSize),
+      );
+      // …and clear of the number it ends at.
+      const numberLeft =
+        placed.numberX - measure(placed.number, metrics.fontSize);
+      expect(
+        placed.leaderX + measure(placed.leader, metrics.fontSize),
+      ).toBeLessThanOrEqual(numberLeft);
+    }
+  });
+
+  it('ends every leader the same distance from the number', () => {
+    // The column of numbers is the strong vertical line on the page. A leader
+    // that stopped a different fraction of a dot short of it on every row would
+    // be the one thing fighting that line, so the slack falls by the title.
+    const layout = layoutSummary(ragged, A4, MARGIN, measure, 'after');
+    const { metrics } = layout;
+    const slack = layout.placements.map((placed) => {
+      const numberLeft =
+        placed.numberX - measure(placed.number, metrics.fontSize);
+      return (
+        numberLeft - (placed.leaderX + measure(placed.leader, metrics.fontSize))
+      );
+    });
+    for (const gap of slack) {
+      expect(gap).toBeCloseTo(metrics.fontSize * SUMMARY_TUNING.leaderGapEm);
+    }
+    // A shorter title buys more dots, not a wider hole at the number's end.
+    expect(layout.placements[0].leader.length).toBeGreaterThan(
+      layout.placements[2].leader.length,
+    );
+  });
+
+  it('drops the leader when the title has filled its column', () => {
+    // Two stray dots after a title that already runs the width of the column is
+    // not a leader, it is a typo.
+    const layout = layoutSummary(
+      [{ title: 'x'.repeat(400), number: '9' }],
+      A4,
+      MARGIN,
+      measure,
+      'after',
+    );
+    expect(layout.placements[0].isTruncated).toBe(true);
+    expect(layout.placements[0].leader).toBe('');
+  });
+});
+
+describe('layoutSummary — the number before the title', () => {
+  /** Numbers of two widths, so the shared indent has a widest to be set by. */
+  const twelve = items(12);
+
+  it('carries the number as an ordinal, with its period', () => {
+    // "7 Wonderwall" reads as a title that starts with a digit; "7." does not.
+    // The same form the song's own page prints (`numberedAst`).
+    const layout = layoutSummary(twelve, A4, MARGIN, measure, 'before');
+    expect(layout.placements.map((p) => p.number).slice(0, 3)).toEqual([
+      '1.',
+      '2.',
+      '3.',
+    ]);
+    expect(layout.placements[11].number).toBe('12.');
+    // Left-aligned at the column's own edge, which is where the numbers make a
+    // column of their own.
+    for (const placed of layout.placements) {
+      expect(placed.numberAlign).toBe('left');
+      expect(placed.numberX).toBeCloseTo(MARGIN);
+      // Nothing to lead to — the number is already at the eye's starting point.
+      expect(placed.leader).toBe('');
+    }
+  });
+
+  it('indents every title to the same left edge, past the widest number', () => {
+    const layout = layoutSummary(twelve, A4, MARGIN, measure, 'before');
+    const { metrics } = layout;
+    // "12." is the widest of them, and it is what "1." is padded out to — so a
+    // single-digit entry's title starts where a two-digit entry's does.
+    const indent = measure('12.', metrics.fontSize) + metrics.entryGap;
+    const lefts = new Set(layout.placements.map((p) => Math.round(p.titleX)));
+    expect(lefts.size).toBe(1);
+    expect(layout.placements[0].titleX).toBeCloseTo(MARGIN + indent);
+  });
+
+  it('lets a book that reaches three digits indent further', () => {
+    // The indent is the book's, not the entry's: the whitespace after "1." in a
+    // hundred-song book is wider than in a ten-song one, and that is the price
+    // of one straight column of titles.
+    const small = layoutSummary(items(9), A4, MARGIN, measure, 'before');
+    const large = layoutSummary(items(120), A4, MARGIN, measure, 'before');
+    expect(large.placements[0].titleX).toBeGreaterThan(
+      small.placements[0].titleX,
+    );
+    // …and the title pays for it, so nothing runs past the column edge.
+    expect(large.placements[0].titleX - MARGIN).toBeCloseTo(
+      measure('120.', large.metrics.fontSize) + large.metrics.entryGap,
+    );
+  });
+
+  it('gives the title the rest of the column, and truncates inside it', () => {
+    const long = 'A title so long it would run clean across the gutter'.repeat(
+      3,
+    );
+    const layout = layoutSummary(
+      [{ title: long, number: '7' }],
+      A4,
+      MARGIN,
+      measure,
+      'before',
+    );
+    const [placed] = layout.placements;
+    const { metrics } = layout;
+    const room = metrics.columnWidth - (placed.titleX - MARGIN);
+    expect(placed.isTruncated).toBe(true);
+    expect(measure(placed.title, metrics.fontSize)).toBeLessThanOrEqual(room);
+  });
+
+  it('still runs column-first over two columns, and pages the same way', () => {
+    // Turning the entry around is a change to one line, not to the page: the
+    // reading order, the balance and the pagination are all as they were.
+    const before = layoutSummary(
+      items(ROWS + 1),
+      A4,
+      MARGIN,
+      measure,
+      'before',
+    );
+    const after = layoutSummary(items(ROWS + 1), A4, MARGIN, measure, 'after');
+    expect(before.pages).toBe(after.pages);
+    expect(
+      before.placements.map((p) => [p.index, p.page, p.column, p.row]),
+    ).toEqual(after.placements.map((p) => [p.index, p.page, p.column, p.row]));
+  });
+
+  it('survives an empty book, and does not measure a widest number', () => {
+    // `Math.max()` of nothing is -Infinity, which would put every title at NaN.
+    const layout = layoutSummary([], A4, MARGIN, measure, 'before');
+    expect(layout.pages).toBe(0);
+    expect(layout.placements).toEqual([]);
+  });
+});

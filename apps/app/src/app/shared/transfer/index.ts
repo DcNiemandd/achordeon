@@ -23,5 +23,6 @@ export type {
   SongOrder,
   SongOrderAxis,
   SongOrderDir,
+  SummaryNumberPlace,
   TitlePageVariant,
 } from './transfer-model';

@@ -18,13 +18,31 @@ export type DownloadFormat = SongDownloadFormat | MultiDownloadFormat;
 
 export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
 
+/**
+ * Where a song's page number goes. Five spots on the paper — and `before-title`,
+ * which is not a spot at all: it puts the number into the song's heading
+ * ("7. Wonderwall"), which is how a book is used out loud and what survives a
+ * page being photocopied or re-bound.
+ */
 export type PageNumberPlace =
   | 'bottom-center'
   | 'bottom-right'
   | 'bottom-left'
   | 'top-center'
   | 'top-right'
-  | 'top-left';
+  | 'top-left'
+  | 'before-title';
+
+/**
+ * Which side of the title the **summary's** page number sits on: `after` is the
+ * reference table (`title · · · 7`, the number at the column's right edge under
+ * leader dots), `before` is the hymnal (`7.  title`, the numbers in a column of
+ * their own with every title indented past the widest of them).
+ *
+ * One or the other, never both — a songbook numbers each song by its page, so a
+ * contents line carrying the number at each end says it twice.
+ */
+export type SummaryNumberPlace = 'before' | 'after';
 
 /** A title-page layout. Only `classic` renders today; the rest are declared so
  * the dialog can offer them, and land later (Epic 7 follow-up stub). */
@@ -68,12 +86,10 @@ export interface SongbookPdfChoice {
   /** Which title-page layout. A stub beyond `classic` for now. */
   readonly titlePageVariant: TitlePageVariant;
   readonly hasSummary: boolean;
-  /** Number the songs: "7. Wonderwall" in the summary and on the song's own
-   * page. Not the same as `hasPageNumbers`, which numbers the sheets of paper —
-   * a song number is part of the song's heading and is how a book is used
-   * ("turn to 42"). Applies to both formats, since it is the render that carries
-   * it. */
-  readonly hasSongNumbers: boolean;
+  /** Which side of the title the summary's page number sits on. Only the PDF's
+   * summary is laid out here — the image ZIP's contents page is a render, and
+   * numbers its songs its own way. */
+  readonly summaryNumberPlace: SummaryNumberPlace;
   readonly hasPageNumbers: boolean;
   readonly pageNumberPosition: PageNumberPlace;
   /** The order All songs prints in. Ignored for a real songbook, whose order is

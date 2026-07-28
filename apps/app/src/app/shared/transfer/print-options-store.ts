@@ -23,7 +23,7 @@ export const DEFAULT_PRINT_OPTIONS: SongbookPdfChoice = {
   hasTitlePage: true,
   titlePageVariant: 'classic',
   hasSummary: false,
-  hasSongNumbers: false,
+  summaryNumberPlace: 'after',
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
   // All songs prints by title (the heading a reader flips to find) by default.

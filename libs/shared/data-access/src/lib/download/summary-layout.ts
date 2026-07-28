@@ -15,7 +15,7 @@
 // columns double the capacity of every sheet at no cost in type size, which is
 // the whole point of a contents page: the reader is scanning, not reading.
 //
-// **Why the wide gutter.** An entry is `title ……… number`, the number sitting at
+// **Why the wide gutter.** An entry is `title · · · number`, the number sitting at
 // the RIGHT edge of its column, because that is where a reader's eye goes for a
 // page reference. Set two of those side by side at an ordinary column gap and
 // column one's numbers end up a hair's breadth from column two's titles — the
@@ -24,9 +24,31 @@
 // entry, so the eye groups `title…number` as one thing and the columns as two.
 // `gutterEm` is three times `entryGapEm` for exactly that reason.
 //
+// **Why the number can change sides.** `SummaryNumberPlace` turns the entry
+// around: `7.  title`, the hymnal's form, with the numbers in a column of their
+// own and every title indented past the widest of them. It exists because the
+// number a songbook prints on a song's page is its page number, so a contents
+// page that leads with the number AND ends with it says the same thing twice on
+// every row.
+//
 // Units are PostScript points (1/72"), like everything else the PDF path speaks.
 
 import type { Size } from './page-geometry';
+
+/**
+ * Which side of the title the number sits on.
+ *
+ * `after` is the reference table: `title · · · · 7`, the number against the
+ * column's right edge under a run of leader dots, which is what a reader's eye
+ * runs along to find a page. `before` is the hymnal: `7.  title`, the number
+ * leading the line and every title indented to a common left edge, which is what
+ * a reader uses when they already have a number and want the name.
+ *
+ * They are alternatives rather than a pair, and that is the point: the songbook
+ * numbers each song by its page, so printing the number on both sides of the
+ * same line puts the same digits twice on every row.
+ */
+export type SummaryNumberPlace = 'before' | 'after';
 
 /** One line of the contents list: what it is called, and what it is numbered. */
 export interface SummaryItem {
@@ -82,10 +104,20 @@ export const SUMMARY_TUNING = {
    * three would take the title room below `minColumnEm` on A5 and turn most
    * titles into stubs. */
   maxColumns: 2,
+  /** Clear space at each end of a run of leader dots, × the font size. Half an
+   * em a side, so the dots stop short of both the title and the number and the
+   * two still read as one entry — the same one em in total that the bare gap
+   * used to be. */
+  leaderGapEm: 0.5,
+  /** Fewer dots than this is not a leader, it is a full stop after the title. */
+  minLeaderDots: 2,
 } as const;
 
 /** What one glyph of "there is more here" costs. */
 const ELLIPSIS = '…';
+
+/** The leader's unit. A run of these is what the eye follows to the number. */
+const DOT = '.';
 
 /** The page's arithmetic, before any text has been measured. */
 export interface SummaryMetrics {
@@ -119,12 +151,24 @@ export interface SummaryPlacement {
   /** The title as it will be drawn — truncated if it did not fit. */
   readonly title: string;
   readonly isTruncated: boolean;
-  /** The page reference, carried through so the caller draws what was measured. */
+  /** The page reference **as it is drawn** — bare digits against the right edge,
+   * or `7.` in front of the title, where the period matches the number the song's
+   * own page carries. The caller draws this, not the item's own field. */
   readonly number: string;
-  /** Left edge of the title. */
+  /** Left edge of the title. In `before` mode this is the common indent every
+   * title shares, which is what the whitespace after the number pays for. */
   readonly titleX: number;
-  /** RIGHT edge of the number: the column's right edge, drawn right-aligned. */
+  /** The number's edge at `numberAlign`: the column's right edge going `after`
+   * the title, its left edge coming `before` it. */
   readonly numberX: number;
+  /** How to draw the number at `numberX`. */
+  readonly numberAlign: 'left' | 'right';
+  /** The run of dots between the title and its number — empty in `before` mode
+   * (there is nothing to lead to) and whenever there is no room for a run worth
+   * the name. Drawn left-aligned at `leaderX`. */
+  readonly leader: string;
+  /** Left edge of the leader. Meaningless while `leader` is empty. */
+  readonly leaderX: number;
   readonly y: number;
 }
 
@@ -226,10 +270,31 @@ export function layoutSummary(
   page: Size,
   margin: number,
   measure: MeasureText,
+  numberPlace: SummaryNumberPlace = 'after',
 ): SummaryLayout {
   const metrics = summaryMetrics(page, margin, items.length);
   const pages = Math.ceil(items.length / metrics.perPage);
   const placements: SummaryPlacement[] = [];
+  const isBefore = numberPlace === 'before';
+
+  /**
+   * The indent every title shares in `before` mode.
+   *
+   * Set by the **widest number in the book**, not by each entry's own: "7." and
+   * "12." are different widths, and a title that starts right after its own
+   * number would leave the list's left edge stepping in and out by a digit. So
+   * the narrower numbers are padded out to the widest — the whitespace after the
+   * number is what buys one straight column of titles. `Math.max` is seeded so an
+   * empty book gives 0 rather than -Infinity.
+   */
+  const numberColumn = isBefore
+    ? Math.max(
+        0,
+        ...items.map((item) =>
+          measure(numberText(item.number, numberPlace), metrics.fontSize),
+        ),
+      ) + metrics.entryGap
+    : 0;
 
   for (let sheet = 0; sheet < pages; sheet++) {
     const from = sheet * metrics.perPage;
@@ -246,15 +311,17 @@ export function layoutSummary(
       const column = Math.floor(i / perColumn);
       const row = i % perColumn;
       const x = margin + column * (metrics.columnWidth + metrics.gutter);
-      // The number is drawn right-aligned at the column edge, so the room left
-      // for the title is what the number and the entry gap do not claim. Every
-      // entry measures its own number: "9" and "127" are not the same width, and
-      // reserving the widest would leave a ragged hole in a short book.
+      const number = numberText(item.number, numberPlace);
+      const numberWidth = measure(number, metrics.fontSize);
+      // What the number does not claim is the title's. Going `after`, every entry
+      // measures its OWN number, because reserving the widest would leave a
+      // ragged hole in a short book; coming `before`, it is the shared indent,
+      // because the titles have to line up.
       const room =
         metrics.columnWidth -
-        measure(item.number, metrics.fontSize) -
-        metrics.entryGap;
+        (isBefore ? numberColumn : numberWidth + metrics.entryGap);
       const title = fitTitle(item.title, room, metrics.fontSize, measure);
+      const titleX = x + (isBefore ? numberColumn : 0);
       placements.push({
         index: from + i,
         page: sheet,
@@ -262,15 +329,70 @@ export function layoutSummary(
         row,
         title,
         isTruncated: title !== item.title,
-        number: item.number,
-        titleX: x,
-        numberX: x + metrics.columnWidth,
+        number,
+        titleX,
+        numberX: isBefore ? x : x + metrics.columnWidth,
+        numberAlign: isBefore ? 'left' : 'right',
+        ...leader(
+          titleX + measure(title, metrics.fontSize),
+          x + metrics.columnWidth - numberWidth,
+          metrics,
+          measure,
+          isBefore,
+        ),
         y: metrics.top + row * metrics.linePitch,
       });
     }
   }
 
   return { metrics, pages, placements };
+}
+
+/**
+ * The number as it is drawn: `7.` in front of a title, a bare `7` at the column's
+ * right edge.
+ *
+ * The period belongs to the leading form only, and for the same reason the song's
+ * own page carries one (`numberedAst`): in front of a name a number is an
+ * ordinal, and "7 Wonderwall" reads as a title that begins with a digit. At the
+ * far end of a row of dots it is a page reference, where a period would be a
+ * speck of dirt.
+ */
+function numberText(number: string, place: SummaryNumberPlace): string {
+  return place === 'before' ? `${number}.` : number;
+}
+
+/**
+ * The dots between a title and its page number.
+ *
+ * Aligned to the **number**, not to the title: the column of numbers is the
+ * strong vertical line on the page, and a leader that stopped a fraction of a dot
+ * short of it by a different amount on every row would be the one thing on the
+ * page fighting that line. So the run ends a fixed gap from the number and the
+ * slack falls next to the title, where the eye is already anchored on a word.
+ *
+ * A run too short to read as a leader is dropped rather than printed as one or
+ * two stray dots — a long title that fills its column wants clear space after it,
+ * not punctuation.
+ */
+function leader(
+  titleRight: number,
+  numberLeft: number,
+  metrics: SummaryMetrics,
+  measure: MeasureText,
+  isBefore: boolean,
+): { leader: string; leaderX: number } {
+  if (isBefore) return { leader: '', leaderX: 0 };
+
+  const gap = metrics.fontSize * SUMMARY_TUNING.leaderGapEm;
+  const room = numberLeft - gap - (titleRight + gap);
+  const dot = measure(DOT, metrics.fontSize);
+  const dots = dot > 0 ? Math.floor(room / dot) : 0;
+  if (dots < SUMMARY_TUNING.minLeaderDots) return { leader: '', leaderX: 0 };
+  return {
+    leader: DOT.repeat(dots),
+    leaderX: numberLeft - gap - dots * dot,
+  };
 }
 
 /**
