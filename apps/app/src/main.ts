@@ -13,13 +13,16 @@
 import { LOCALE_ID } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { loadTranslations } from '@angular/localize';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+// **Straight at the file, not through the `shared/layout` barrel** — and the app
+// itself is not imported here at all. See `boot`: a static import of either would
+// run the whole shell's module bodies before this one's, and `$localize` at module
+// scope translates then. The barrel is the trap, because importing one name from it
+// evaluates every module it re-exports.
 import {
   SOURCE_LANGUAGE,
   chosenLanguage,
   type Language,
-} from './app/shared/layout';
+} from './app/shared/layout/localization';
 
 async function boot(): Promise<void> {
   const language = chosenLanguage();
@@ -31,6 +34,23 @@ async function boot(): Promise<void> {
   // and the browser which hyphenation and quote rules apply. The template ships
   // `lang="en"`, so anything else has to be stamped here.
   document.documentElement.lang = language;
+
+  // **Imported here, dynamically, and not at the top of the file.**
+  //
+  // A static import is evaluated before the importing module's own body runs, so
+  // `import { App } from './app/app'` would execute every module in the shell's
+  // graph *before* `boot` was ever called — and any `$localize` at module scope
+  // (rather than inside a class) is translated at exactly that moment, against a
+  // catalog that has not been loaded yet. The result is a message frozen in
+  // English for the life of the page, whatever the user chose.
+  //
+  // That is not hypothetical: the nav labels are a module-level `const` array, and
+  // they were the one thing on a Czech screen still reading "Songs". Awaiting the
+  // import here is what puts the catalog first.
+  const [{ appConfig }, { App }] = await Promise.all([
+    import('./app/app.config'),
+    import('./app/app'),
+  ]);
 
   await bootstrapApplication(App, {
     ...appConfig,

@@ -415,6 +415,39 @@ test.describe('language', () => {
     await expect(page.getByTestId('theme-system')).toHaveText('Systémový');
   });
 
+  /**
+   * The nav labels, which are the hardest messages in the app to translate.
+   *
+   * Everything above lives inside a component, so it is translated when that
+   * component renders — comfortably after the catalog has loaded. `NAV_ITEMS` is a
+   * module-level `const`, so its `$localize` runs the moment the module is
+   * evaluated, and a static import of the shell from `main.ts` made that happen
+   * before `loadTranslations` was even called. The labels froze in English while
+   * every other string on the page turned Czech.
+   *
+   * So this is a test about *import order*, and the rail is where it shows.
+   */
+  test('the navbar module names are translated too', async ({ page }) => {
+    await page.getByTestId('language-cs').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
+
+    // The rail is icon-only, so the label is what it announces and what its
+    // tooltip says — not text in the DOM. Read it off the accessible name.
+    const rail = page.getByTestId('rail');
+    for (const czech of [
+      'Písně',
+      'Zpěvníky',
+      'Pódium',
+      'Publikum',
+      'Nastavení',
+    ]) {
+      await expect(rail.getByLabel(czech)).toHaveCount(1);
+    }
+    // …and nothing left over in English.
+    await expect(rail.getByLabel('Songs', { exact: true })).toHaveCount(0);
+    await expect(rail.getByLabel('Songbooks', { exact: true })).toHaveCount(0);
+  });
+
   test('the choice survives a fresh load', async ({ page }) => {
     await page.getByTestId('language-cs').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
