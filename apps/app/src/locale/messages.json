@@ -352,6 +352,7 @@
     "songbookDownload.pageSize": "Page size",
     "songbookDownload.portrait": "Portrait",
     "songbookDownload.position": "Number position",
+    "songbookDownload.songNumbers": "Number the songs",
     "songbookDownload.soon": "(soon)",
     "songbookDownload.summary": "Summary (contents)",
     "songbookDownload.title": "Download “{$name}”",

@@ -180,6 +180,20 @@ interface VariantOption {
           <span class="name">{{ summaryLabel }}</span>
         </label>
 
+        <!-- Song numbers ride on the render, not on the paper, so they are out
+             of the paper gate too: the ZIP's per-song images carry them just as
+             the PDF's pages do. Distinct from the page numbers above — those
+             number the sheets, this numbers the songs. -->
+        <label class="row is-toggle">
+          <input
+            type="checkbox"
+            [checked]="choice().hasSongNumbers"
+            data-testid="pdf-song-numbers"
+            (change)="patch({ hasSongNumbers: checked($event) })"
+          />
+          <span class="name">{{ songNumbersLabel }}</span>
+        </label>
+
         <!-- Song order — **All songs only**. A real songbook's order IS its
              content; you arranged it, so it prints as arranged. All songs has no
              order of its own, so this is where one is chosen. -->
@@ -434,6 +448,7 @@ export class SongbookDownloadDialog {
   protected readonly titlePageLabel = $localize`:@@songbookDownload.titlePage:Title page`;
   protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
   protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
+  protected readonly songNumbersLabel = $localize`:@@songbookDownload.songNumbers:Number the songs`;
   protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
   protected readonly orderLabel = $localize`:@@songbookDownload.order:Song order`;
   protected readonly byTitleLabel = $localize`:@@songbookDownload.order.title:Title`;

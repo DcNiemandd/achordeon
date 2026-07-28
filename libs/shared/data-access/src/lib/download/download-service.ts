@@ -106,6 +106,28 @@ export function librarySongOrder(
   ];
 }
 
+/**
+ * The song's place in the book, in front of its title — "7. Wonderwall".
+ *
+ * **Unpadded** (1, 2, … 10, 11). Padding is a *filename's* problem: `01-` exists
+ * in the image ZIP only so a lexical sort keeps ten songs in order. A reader
+ * sorts nothing, and "07" on a printed page reads as a serial number rather than
+ * as the seventh song.
+ *
+ * Written into the AST rather than drawn over the finished render, because a
+ * title *is* content: the number then wears the title's own face and colour, and
+ * follows the title onto the left-hand spine when the settings put it there
+ * (§4.5) — none of which a number painted onto the page afterwards would do.
+ *
+ * A song with no title of its own gets the bare number, not a dangling "7.":
+ * the number still has to reach the page, or the summary sends a reader to a
+ * sheet with nothing on it to confirm they arrived.
+ */
+export function numberedAst(ast: SongAst, n: number): SongAst {
+  const title = ast.title?.trim();
+  return { ...ast, title: title ? `${n}. ${title}` : String(n) };
+}
+
 /** What a single song can come out as. */
 export type SongFormat = 'png' | 'pdf';
 
@@ -145,6 +167,18 @@ export interface SongbookPdfOptions {
   readonly hasTitlePage?: boolean;
   readonly titlePageVariant?: TitlePageVariant;
   readonly hasSummary?: boolean;
+  /**
+   * Number the **songs** — "7. Wonderwall" in the summary and on the song's own
+   * page (`numberedAst`).
+   *
+   * Not `hasPageNumbers`, which numbers the *sheets* in a corner of the paper.
+   * A song number is part of the song's heading and belongs to the book: it is
+   * how a hymnal is used ("turn to 42"), and it survives the book being
+   * photocopied two-up or bound with other paper, which a sheet number does not.
+   * The two coincide today — every song is one page — and are still different
+   * facts, so they stay separate toggles.
+   */
+  readonly hasSongNumbers?: boolean;
   readonly hasPageNumbers?: boolean;
   readonly pageNumberPosition?: PageNumberPosition;
   /** The order All songs prints in — ignored for a real songbook. */
@@ -159,6 +193,7 @@ const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
   hasTitlePage: true,
   titlePageVariant: 'classic',
   hasSummary: false,
+  hasSongNumbers: false,
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
   songOrder: DEFAULT_SONG_ORDER,
@@ -266,7 +301,7 @@ export class DownloadService {
     const book = await this.bookFor(id, opts.songOrder);
     if (!book) return;
 
-    const rendered = await this.render(book.entries, book);
+    const rendered = await this.render(book.entries, book, opts.hasSongNumbers);
 
     // The other shape a book can take: a folder of pictures instead of a
     // document. Everything below is about paper, which a ZIP has none of.
@@ -289,7 +324,12 @@ export class DownloadService {
     // column split is what decides that count. Measuring needs the body face
     // registered, which it now is.
     const summary = opts.hasSummary
-      ? layoutSummary(summaryItems(rendered), page, margin, measureWith(doc))
+      ? layoutSummary(
+          summaryItems(rendered, opts.hasSongNumbers),
+          page,
+          margin,
+          measureWith(doc),
+        )
       : undefined;
     const summaryPages = summary?.pages ?? 0;
 
@@ -457,6 +497,7 @@ export class DownloadService {
   private async render(
     ids: readonly Uuid[],
     book?: Songbook,
+    hasSongNumbers = false,
   ): Promise<RenderedSong[]> {
     const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
     const songs = rows.filter(
@@ -469,8 +510,12 @@ export class DownloadService {
     await this.renderer.ensureFonts(settings);
 
     return songs.map((song, i) => {
+      const ast = this.parser.parse(song.content);
+      // The number is the song's place in *this* list — the filtered one, which
+      // is also what the summary numbers off, so the two agree even when a
+      // songbook points at a song that has since been deleted.
       const plan = this.renderer.layout(
-        this.parser.parse(song.content),
+        hasSongNumbers ? numberedAst(ast, i + 1) : ast,
         settings[i],
       );
       // `inlineFonts` — a downloaded file has no CSS to lean on, and Safari
@@ -634,12 +679,29 @@ export class DownloadService {
  * scaled to fit one sheet, §8). Front matter is deliberately not in it — the
  * title page and the summary carry no number, so "1" means the first song, which
  * is the number a reader can actually use.
+ *
+ * With `hasSongNumbers` the title carries that same number in front of it too, so
+ * the line reads "7. Wonderwall ⋯ 7" — the leading number is what the *page* says
+ * (`numberedAst`), and the trailing one is where to turn. They are the same digits
+ * today because a song is one page; the prefix is there so a reader who has the
+ * book open at a song can find it in the contents, which the right-hand column
+ * cannot help with.
  */
-function summaryItems(songs: readonly RenderedSong[]): SummaryItem[] {
-  return songs.map((one, index) => ({
-    title: one.song.cache.title || one.song.name,
-    number: String(index + 1),
-  }));
+function summaryItems(
+  songs: readonly RenderedSong[],
+  hasSongNumbers = false,
+): SummaryItem[] {
+  return songs.map((one, index) => {
+    const title = one.song.cache.title || one.song.name;
+    return {
+      // Prefixed here rather than left to the layout, so the number is inside the
+      // string `fitTitle` measures: a title too long for its column is then
+      // clipped from the tail, and the number — the part being scanned for —
+      // survives. The layout has no business knowing what numbering means.
+      title: hasSongNumbers ? `${index + 1}. ${title}` : title,
+      number: String(index + 1),
+    };
+  });
 }
 
 /**

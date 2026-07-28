@@ -737,6 +737,66 @@ test.describe('download a songbook', () => {
     expect(complaints).toEqual([]);
   });
 
+  test('numbering the songs still comes out as a whole book', async ({
+    page,
+  }) => {
+    // The number is written into the AST title, so switching it on gives an
+    // *untitled* song a title region it did not have — a real change to the
+    // layout, and the one that could throw or drop a page. Alpha is titled and
+    // Beta is not, so both paths are in the one file.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createSong(page, 'Beta');
+
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    for (const name of ['Alpha', 'Beta']) {
+      await page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first()
+        .click();
+      await page.getByTestId('add-end').click();
+    }
+    await expect(page.getByTestId('entry-row')).toHaveCount(2);
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('pdf-summary').check();
+    await page.getByTestId('pdf-song-numbers').check();
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    const raw = file.toString('latin1');
+    expect(raw.startsWith('%PDF-')).toBe(true);
+    // Title page + summary + the two songs. Numbering adds no sheet of its own.
+    expect(countPages(raw)).toBe(4);
+    // The contents list still links, one annotation per entry — the number rides
+    // inside the title it prefixes, so it cannot cost an entry its link.
+    expect(raw).toContain('/Link');
+  });
+
+  test('the print dialog remembers whether the songs were numbered', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    // Remembered on *confirm*, like every other print choice — cancelling is
+    // not an answer.
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('pdf-song-numbers').check();
+    await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    await page.reload();
+    await page.getByTestId('songbook-detail-download').click();
+    await expect(page.getByTestId('pdf-song-numbers')).toBeChecked();
+  });
+
   test('All songs can be downloaded and exported, but not renamed or deleted', async ({
     page,
   }) => {

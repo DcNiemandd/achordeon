@@ -68,6 +68,12 @@ export interface SongbookPdfChoice {
   /** Which title-page layout. A stub beyond `classic` for now. */
   readonly titlePageVariant: TitlePageVariant;
   readonly hasSummary: boolean;
+  /** Number the songs: "7. Wonderwall" in the summary and on the song's own
+   * page. Not the same as `hasPageNumbers`, which numbers the sheets of paper —
+   * a song number is part of the song's heading and is how a book is used
+   * ("turn to 42"). Applies to both formats, since it is the render that carries
+   * it. */
+  readonly hasSongNumbers: boolean;
   readonly hasPageNumbers: boolean;
   readonly pageNumberPosition: PageNumberPlace;
   /** The order All songs prints in. Ignored for a real songbook, whose order is
