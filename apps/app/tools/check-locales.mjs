@@ -150,6 +150,29 @@ function report(headline, offenders, hint) {
 }
 
 /**
+ * The source with its comments blanked out.
+ *
+ * **Commented-out code is not code.** A `$localize` inside a comment is either a
+ * parked feature or an example in a doc comment; either way `extract-i18n` never
+ * sees it, because it compiles the module graph rather than grepping it. Without
+ * this the two disagree by construction, and the gate fails demanding a
+ * translation for a message that cannot reach a user — which is precisely what
+ * happened when the device rows were parked behind `//` and left the build red.
+ *
+ * Erring towards stripping is the safe direction. This check only ever reports
+ * ids the catalog has *never seen*, so over-stripping makes it quiet while
+ * under-stripping makes it wrong — and a quiet check is the failure mode the
+ * regex already accepts (see `idsInCode`). The `[^:]` guard before `//` is there
+ * so a `https://` in a string does not blank the rest of its line.
+ */
+function stripComments(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, '') // block comments — first, they can hold //
+    .replace(/<!--[\s\S]*?-->/g, '') // HTML comments in an inline template
+    .replace(/(^|[^:])\/\/.*$/gm, '$1'); // line comments, sparing a URL's //
+}
+
+/**
  * Every message id the source actually uses.
  *
  * A regex over the source rather than a real extraction, because an extraction is
@@ -160,7 +183,7 @@ function report(headline, offenders, hint) {
 function idsInCode() {
   const ids = new Set();
   for (const file of sourceFiles(resolve(projectRoot, 'src/app'))) {
-    const text = readFileSync(file, 'utf8');
+    const text = stripComments(readFileSync(file, 'utf8'));
     // $localize`:@@id:…` and $localize`:meaning|description@@id:…`
     for (const [, id] of text.matchAll(
       /\$localize`:[^`]*?@@([A-Za-z0-9._-]+):/g,
