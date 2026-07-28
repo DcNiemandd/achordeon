@@ -174,21 +174,17 @@ describe('StageSession', () => {
       expect(session.audienceLabel()).toBe('Manage audience');
     });
 
-    it('counts the listeners once there are any', () => {
+    // The label is about which act the button performs, not about how the lobby
+    // is doing: a live count would make it change width mid-set, and the lit
+    // state already says a lobby is running.
+    it('says the same thing however many are listening', () => {
       const session = perform('book-1', 3);
       session.createLobby();
       session.setAudienceCount(3);
 
-      expect(session.audienceLabel()).toBe('Manage audience (3 listening)');
-    });
+      expect(session.audienceLabel()).toBe('Manage audience');
 
-    // A count with no lobby is stale by definition, and "0 listening" is noise
-    // on a lobby nobody has joined yet.
-    it('says nothing about a count of nobody', () => {
-      const session = perform('book-1', 3);
-      session.createLobby();
       session.setAudienceCount(0);
-
       expect(session.audienceLabel()).toBe('Manage audience');
     });
 

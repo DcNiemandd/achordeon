@@ -412,7 +412,6 @@
     "splitPane.resizer": "Změnit velikost panelů",
     "stage.audience": "Vytvořit publikum",
     "stage.audience.manage": "Spravovat publikum",
-    "stage.audience.manageCount": "Spravovat publikum (posluchačů: {$count})",
     "stage.audienceDialog.copied": "Zkopírováno",
     "stage.audienceDialog.copyLink": "Kopírovat odkaz",
     "stage.audienceDialog.count": "Posluchači",

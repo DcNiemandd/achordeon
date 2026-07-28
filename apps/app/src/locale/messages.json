@@ -412,7 +412,6 @@
     "splitPane.resizer": "Resize panels",
     "stage.audience": "Create an audience",
     "stage.audience.manage": "Manage audience",
-    "stage.audience.manageCount": "Manage audience ({$count} listening)",
     "stage.audienceDialog.copied": "Copied",
     "stage.audienceDialog.copyLink": "Copy link",
     "stage.audienceDialog.count": "Listening",

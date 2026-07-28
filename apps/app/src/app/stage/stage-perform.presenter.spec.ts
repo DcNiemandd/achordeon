@@ -263,7 +263,7 @@ describe('StagePerformPresenter ▸ what the audience button ends up saying', ()
     expect(session.audienceLabel()).toBe('Create an audience');
   });
 
-  it('reports the viewers the host channel found', async () => {
+  it('turns to the manage wording once the lobby is up', async () => {
     await TestBed.inject(StagePerformPresenter).open('book1');
     session.createLobby();
     flush();
@@ -271,6 +271,8 @@ describe('StagePerformPresenter ▸ what the audience button ends up saying', ()
     host.audienceCount.set(4);
     flush();
 
-    expect(session.audienceLabel()).toBe('Manage audience (4 listening)');
+    // The count reaches the session (the dialog prints it) but not the label.
+    expect(session.audienceCount()).toBe(4);
+    expect(session.audienceLabel()).toBe('Manage audience');
   });
 });

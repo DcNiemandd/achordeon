@@ -120,20 +120,18 @@ export class StageSession {
    * §3). It is UI copy inside a state holder for that reason alone; nothing
    * else's copy belongs here.
    *
-   * Once someone is actually listening the count rides along, because that
-   * number is the answer to the question that makes a performer glance at the
-   * button mid-set — "is anyone out there?" — and until now the only place to
-   * read it was inside the dialog the button opens.
+   * The live count deliberately stays out of it. It is the one number a performer
+   * glances at mid-set, but a label that grows a parenthetical is a label that
+   * changes width under the thumb — and on the phone, where this is a menu row of
+   * text rather than an icon, it was the longest row on the bar. The lit
+   * `is-active` state already says a lobby is running; the dialog one tap away
+   * says how many are in it.
    */
-  readonly audienceLabel = computed(() => {
-    if (!this.hasLobby()) {
-      return $localize`:@@stage.audience:Create an audience`;
-    }
-    const count = this._audienceCount();
-    return count === 0
+  readonly audienceLabel = computed(() =>
+    this.hasLobby()
       ? $localize`:@@stage.audience.manage:Manage audience`
-      : $localize`:@@stage.audience.manageCount:Manage audience (${count}:count: listening)`;
-  });
+      : $localize`:@@stage.audience:Create an audience`,
+  );
 
   /**
    * The join URL, base-href-aware. `prepareExternalUrl` folds in the app's
