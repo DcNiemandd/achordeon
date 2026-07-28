@@ -6,11 +6,20 @@
 
 import { findLabelDelimiter } from './chords';
 
+/**
+ * One line of a block before Phase 2: raw content awaiting the inline scan, plus
+ * the sub-label it was written with (a labelled line that did not open the block).
+ */
+export interface RawLine {
+  label?: string;
+  content: string;
+}
+
 /** A block before Phase 2: raw content strings awaiting the inline scan. */
 export interface RawBlock {
   label?: string;
   labelInline?: boolean;
-  lines: string[];
+  lines: RawLine[];
 }
 
 /** A `*`/`**` line lifted to song level, with its source location for warnings. */
@@ -122,9 +131,9 @@ function classify(line: string, lineNo: number): Classified {
 
 /**
  * Split content into lines, classify each, and group into blocks. Blank lines are
- * boundaries (consecutive blanks collapse; no empty blocks emitted); a labelled
- * line always opens a new block; title/subtitle lines are boundaries lifted to
- * song level.
+ * boundaries (consecutive blanks collapse; no empty blocks emitted); title/subtitle
+ * lines are boundaries lifted to song level. A labelled line is a boundary only
+ * when no block is open — inside one it carries a sub-label.
  */
 export function phase1(content: string): Phase1Result {
   const lines = content.split(/\r\n|\r|\n/);
@@ -163,18 +172,26 @@ export function phase1(content: string): Phase1Result {
         }
         break;
       case 'labelled':
-        flush();
-        current = {
-          label: c.label,
-          labelInline: c.content.length > 0,
-          lines: c.content.length > 0 ? [c.content] : [],
-        };
+        // A labelled line only opens a block when there is no block to join. Inside
+        // an open one it is a SUB-label on its own line: the block's label is the
+        // one on the line that opened it, and everything after is subordinate to it
+        // (PARSER-GRAMMAR §Block boundaries). Blank/title/subtitle are the only
+        // boundaries left, so `Intro:` and the rows under it stay one block.
+        if (current) {
+          current.lines.push({ label: c.label, content: c.content });
+        } else {
+          current = {
+            label: c.label,
+            labelInline: c.content.length > 0,
+            lines: c.content.length > 0 ? [{ content: c.content }] : [],
+          };
+        }
         break;
       case 'lyric':
         if (!current) {
           current = { lines: [] };
         }
-        current.lines.push(c.content);
+        current.lines.push({ content: c.content });
         break;
     }
   });

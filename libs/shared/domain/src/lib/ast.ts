@@ -29,8 +29,14 @@ export interface Span {
  * One rendered line: a clean `text` string with chords overlaid by index.
  * Brackets are removed and escapes resolved in `text`. `spans` overlay emphasis
  * by index the same way — absent when the line has none.
+ *
+ * `label` is a **sub-label**: a labelled line that did not open its block. Only
+ * the line that opens a block can set the block's own label, so a `Line.label` is
+ * always the subordinate one. It renders in the flow at the line's start with the
+ * content after it — never in the block's label gutter.
  */
 export interface Line {
+  label?: string; // sub-label (the delimiter colon consumed); absent on a plain line
   text: string; // final rendered characters
   chords: ChordAnchor[]; // overlay by index; same-index groups allowed, kept in order
   spans?: Span[]; // emphasis overlay by index; absent when the line is plain

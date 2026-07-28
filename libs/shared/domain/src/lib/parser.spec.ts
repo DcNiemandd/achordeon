@@ -27,6 +27,23 @@ describe('parse', () => {
     ]);
   });
 
+  it('carries a sub-label onto its own line, block label unaffected', () => {
+    const ast = run('Intro:\nHousle: play [C]it');
+    expect(ast.blocks).toEqual([
+      {
+        label: 'Intro',
+        labelInline: false,
+        lines: [
+          {
+            label: 'Housle',
+            text: 'play it',
+            chords: [{ raw: 'C', at: 5, valid: true }],
+          },
+        ],
+      },
+    ]);
+  });
+
   it('is total for empty input (no title/subtitle keys, no throw)', () => {
     const ast = run('');
     expect(ast).toEqual({ blocks: [], warnings: [] });
