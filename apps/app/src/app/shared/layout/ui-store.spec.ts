@@ -103,6 +103,36 @@ describe('UiStore', () => {
     expect(store.isRailCollapsed()).toBe(false);
   });
 
+  // The dark page (Stage / Audience). Device-local like the split ratio, for a
+  // reason of its own: the performer's stage is dark and a viewer's kitchen is
+  // not, so this must never sync.
+  it('starts on white paper — the render is a document until told otherwise', () => {
+    expect(TestBed.inject(UiStore).isSongDark()).toBe(false);
+  });
+
+  it('remembers the dark page across a reload — the room is still dark', () => {
+    TestBed.inject(UiStore).toggleSongDark();
+    TestBed.resetTestingModule();
+
+    expect(TestBed.inject(UiStore).isSongDark()).toBe(true);
+  });
+
+  it('turns the page back over', () => {
+    const store = TestBed.inject(UiStore);
+
+    store.setSongDark(true);
+    expect(store.isSongDark()).toBe(true);
+
+    store.toggleSongDark();
+    expect(store.isSongDark()).toBe(false);
+  });
+
+  it('ignores a stored dark-page flag of the wrong type', () => {
+    localStorage.setItem('achordeon.ui', JSON.stringify({ isSongDark: 'yes' }));
+
+    expect(TestBed.inject(UiStore).isSongDark()).toBe(false);
+  });
+
   it('keeps fullscreen session-only — a reload must not claim to restore it', () => {
     TestBed.inject(UiStore).setFullscreen(true);
     TestBed.resetTestingModule();

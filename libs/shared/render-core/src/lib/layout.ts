@@ -62,11 +62,13 @@ export function layoutCore(
   config: LayoutConfig = {},
 ): RenderPlan {
   const tuning = resolveTuning(config.tuning);
+  const isDark = opts.dark ?? false;
   const ctx = createContext(
     settings,
     measure,
     tuning,
     opts.hideChords ?? false,
+    isDark,
   );
 
   const title = layoutTitle(ast, ctx, settings);
@@ -125,6 +127,9 @@ export function layoutCore(
     fonts: config.fonts
       ? buildFontBook(ctx.styles, config.fonts, items)
       : EMPTY_FONT_BOOK,
+    // Only a dark page carries its own ground; a light one leaves the paper to
+    // the medium it lands on (see `RenderPlan.paper`).
+    ...(isDark ? { paper: tuning.dark.paper } : {}),
   };
 }
 

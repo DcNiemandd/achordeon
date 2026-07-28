@@ -48,6 +48,21 @@ export interface RenderPlan {
   items: TextItem[]; // EVERYTHING to draw, base units
   styles: Record<TextRole, TextStyle>; // resolved per-role style
   fonts: EmbeddedFont[]; // the bytes, embedded both ways
+  /**
+   * A ground the render paints for itself, filling the whole box.
+   *
+   * **Absent by default, and that is the normal case**: the render is a
+   * document, so its page belongs to the medium — the PNG's opaque white
+   * canvas, the PDF's paper, the `.page` div on screen. A transparent SVG is
+   * the honest thing to hand each of them.
+   *
+   * The dark page (`RenderOpts.dark`) is the exception, and it is set here
+   * rather than left to CSS so the SVG remains *self-describing*: white-ish ink
+   * that only reads because of a class on an ancestor is a picture that is
+   * wrong the moment it leaves this app. The fills and the ground they were
+   * computed against travel together.
+   */
+  paper?: string;
 }
 
 /** Viewer options — NOT settings (§5). Re-run `layout` to toggle; reflow-safe. */
@@ -65,4 +80,22 @@ export interface RenderOpts {
    * this option exists only to override it for the title page.
    */
   align?: 'top-left' | 'center';
+  /**
+   * Turn the page over: a true-black ground and a light-on-dark palette
+   * (`RenderTuning.dark`). Default absent — every render is light unless the
+   * viewer in front of it asked otherwise.
+   *
+   * An **option, not a setting**, and the distinction is the whole design.
+   * Settings cascade Global → Songbook → Song and are what the download, the
+   * PDF and the print all resolve (CONTEXT.md §Render settings); a dark
+   * background stored there would sooner or later come out of a printer as a
+   * black A4. This never can: the export paths call `layout` without opts, so
+   * the only way to a dark page is a live viewer asking for one.
+   *
+   * It is also **not shared**. The performer's stage may be dark while a
+   * viewer's kitchen is not, so this rides on neither the settings the lobby
+   * payload carries nor anything else that syncs — each device answers for its
+   * own room, exactly as `hideChords` does (CONTEXT.md §Audience).
+   */
+  dark?: boolean;
 }

@@ -12,6 +12,7 @@ import type {
   LobbyPayload,
   Song,
 } from '@achordeon/shared/domain';
+import { UiStore } from '../shared/layout';
 import { AudiencePresenter } from './audience.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -59,10 +60,14 @@ const fakeRenderer = {
   layout: (
     _ast: unknown,
     _settings: unknown,
-    opts?: { hideChords?: boolean },
-  ) => ({ box: { width: 210, height: 297 }, hide: !!opts?.hideChords }),
-  emit: (plan: { hide: boolean }) =>
-    plan.hide ? 'SVG:nochords' : 'SVG:chords',
+    opts?: { hideChords?: boolean; dark?: boolean },
+  ) => ({
+    box: { width: 210, height: 297 },
+    hide: !!opts?.hideChords,
+    dark: !!opts?.dark,
+  }),
+  emit: (plan: { hide: boolean; dark: boolean }) =>
+    `${plan.hide ? 'SVG:nochords' : 'SVG:chords'}${plan.dark ? ':dark' : ''}`,
 };
 
 describe('AudiencePresenter', () => {
@@ -77,6 +82,9 @@ describe('AudiencePresenter', () => {
 
   beforeEach(() => {
     viewer = new FakeViewer();
+    // The dark page is persisted per device, so a previous test's choice would
+    // otherwise be hydrated into the next one.
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         AudiencePresenter,
@@ -154,6 +162,23 @@ describe('AudiencePresenter', () => {
     presenter.toggleHideChords();
     expect(presenter.hideChords()).toBe(true);
     expect(presenter.svg()).toBe('SVG:nochords');
+  });
+
+  // The counterpart of hide-chords, and for the same reason: the performer
+  // shares one render, but the light each viewer is sitting in is their own
+  // (CONTEXT.md §Audience). Nothing about this rides in the payload.
+  it('renders the dark page on this viewer\u2019s say-so alone', () => {
+    viewer.payload.set(makePayload(0, SONGS));
+    expect(presenter.isDark()).toBe(false);
+    expect(presenter.svg()).toBe('SVG:chords');
+
+    TestBed.inject(UiStore).setSongDark(true);
+
+    expect(presenter.isDark()).toBe(true);
+    expect(presenter.svg()).toBe('SVG:chords:dark');
+    // The host's payload is untouched — the viewer changed its own view, not
+    // the performance.
+    expect(presenter.payload()?.settings).toEqual({});
   });
 
   it('exposes the live audience count', () => {

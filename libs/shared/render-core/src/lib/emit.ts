@@ -86,10 +86,16 @@ export function emit(plan: RenderPlan, opts: EmitOpts = {}): string {
   const defs = opts.inlineFonts
     ? `<defs><style>${fontFaceCss(plan.fonts)}</style></defs>`
     : '';
+  // Outside the `<g>`, and deliberately: the ground is the *box*, not the
+  // content, so the fit transform must not touch it. Emitted only when the plan
+  // names one — a light render stays transparent, byte for byte as before.
+  const paper = plan.paper
+    ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${plan.paper}"/>`
+    : '';
   const body = plan.items.map((it) => emitItem(it, plan)).join('');
   const group = `<g transform="translate(${plan.origin.x} ${plan.origin.y}) scale(${plan.fit})">${body}</g>`;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" ` +
-    `width="${width}" height="${height}">${defs}${group}</svg>`
+    `width="${width}" height="${height}">${defs}${paper}${group}</svg>`
   );
 }

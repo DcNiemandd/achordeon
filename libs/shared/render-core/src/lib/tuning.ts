@@ -25,6 +25,35 @@ export interface RoleTypography {
   style?: 'normal' | 'italic';
   /** Fill for this role, overriding `textColor`. Ignored for `chord` (the `chordColor` setting wins). */
   color?: string;
+  /** The dark-page counterpart of `color`, overriding `dark.textColor`. Same
+   * exclusion: chords take the (lifted) `chordColor` setting. */
+  darkColor?: string;
+}
+
+/**
+ * The dark page — a **viewer option**, never a setting and never the app theme.
+ *
+ * A performer on a dark stage reads off a black screen; the same song printed,
+ * downloaded or handed to a viewer in daylight must not. So this palette is
+ * reachable only through `RenderOpts.dark`, which the export paths never set
+ * (PRD-RENDERING §5: opts are per-render viewer state, not settings, and they
+ * do not cascade or persist). PRD-UI-SHELL.md §6 — "the render is a document,
+ * dark mode is the desk, not the paper" — still holds for the app theme, which
+ * cannot reach this: turning the UI dark leaves every render light, exactly as
+ * before. This is the one thing that turns the paper itself over, and only
+ * because a performer asked for it on the device in their hands.
+ */
+export interface DarkTuning {
+  /** The page. True black, for the OLED panel in a dark room the feature exists for. */
+  paper: string;
+  /** Fill for every non-chord role that names no `darkColor` of its own. */
+  textColor: string;
+  /**
+   * The contrast floor the user's `chordColor` is lifted to against `paper`
+   * (WCAG AA for body text). A floor, not a target: a chord colour that already
+   * reads on black is left exactly as chosen. See `liftInkForPaper`.
+   */
+  minChordContrast: number;
 }
 
 export interface RenderTuning {
@@ -37,6 +66,9 @@ export interface RenderTuning {
   fallbackStack: string;
   /** Fill for every non-chord role that names no `color` of its own; chords use the `chordColor` setting (§4.10). */
   textColor: string;
+
+  /** The same palette for a page turned over — see `DarkTuning`. */
+  dark: DarkTuning;
 
   /** Per-role size/weight/style. Chord `sizeFactor` is pre-`chordSize` (§4.10). */
   typography: Record<TextRole, RoleTypography>;
@@ -120,9 +152,37 @@ export const DEFAULT_TUNING: RenderTuning = {
   fontFamily: 'Roboto Mono',
   fallbackStack: "ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace",
   textColor: '#000000',
+
+  // The light palette reflected across the lightness axis, written out as
+  // constants because this file is where the author's ink choices live.
+  //
+  // - `paper` is **true black**, not a near-black: on an OLED panel a lit pixel
+  //   is the only pixel drawing power and the only pixel giving off light, so a
+  //   #111 page in a dark room is a visibly glowing rectangle where a #000 one
+  //   is the room. That is the whole reason a performer asks for this.
+  // - `textColor` is the reflection of `#000000` — which is `#ffffff` — pulled
+  //   back to 92% lightness. Pure white on true black haloes: the glyph edges
+  //   bloom and the lyric gets harder to read, not easier. #ebebeb is still
+  //   17.6:1 against the page, which is far past AAA.
+  // - The subtitle's `#747474` reflects to `#8b8b8b` (116 → 139 of 255), which
+  //   keeps it exactly as subordinate to the body text as it is on white. That
+  //   ordering is the reason for reflecting rather than picking afresh.
+  // - 4.5 is WCAG AA for body text, and it applies to the chord glyphs because
+  //   they are set *smaller* than the lyrics (0.7em), not larger.
+  dark: {
+    paper: '#000000',
+    textColor: '#ebebeb',
+    minChordContrast: 4.5,
+  },
+
   typography: {
     title: { sizeFactor: 1.5, weight: 'bold' }, // PoC h1 `min(1.5em, 100px)`
-    subtitle: { sizeFactor: 1.2, weight: 'normal', color: '#747474' }, // PoC h2
+    subtitle: {
+      sizeFactor: 1.2,
+      weight: 'normal',
+      color: '#747474',
+      darkColor: '#8b8b8b',
+    }, // PoC h2
     label: { sizeFactor: 1.0, weight: 'bold' },
     lyric: { sizeFactor: 1.0, weight: 'normal' },
     // PoC chords over a lyric line are 0.7em; `chordSize: 1` means "the PoC
@@ -169,6 +229,7 @@ export function resolveTuning(
     ...overrides,
     typography: mergeTypography(overrides.typography),
     spacing: { ...DEFAULT_TUNING.spacing, ...overrides.spacing },
+    dark: { ...DEFAULT_TUNING.dark, ...overrides.dark },
   };
 }
 

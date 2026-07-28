@@ -10,6 +10,7 @@ import type { TextMeasurer, FontSpec } from './text-measurer';
 import type { TextRole, TextStyle } from './render-plan';
 import type { RenderTuning } from './tuning';
 import { resolveFontChoice, type FontChoiceName } from './font-catalog';
+import { liftInkForPaper } from './dark';
 
 /** String-independent line-pitch for one role (§4.7). `height` = ascent+descent. */
 export interface RoleMetrics {
@@ -41,10 +42,18 @@ export function toFontSpec(style: TextStyle): FontSpec {
   };
 }
 
-/** Resolve the per-role `TextStyle` from tuning + the (already-cascaded) settings. */
+/**
+ * Resolve the per-role `TextStyle` from tuning + the (already-cascaded) settings.
+ *
+ * `isDark` is the only thing here that is neither tuning nor a setting: it is a
+ * viewer option (`RenderOpts.dark`), so the same song resolves light for the
+ * page it prints on and dark for the phone a performer is holding in a dark
+ * room, with no stored value differing between the two. See `DarkTuning`.
+ */
 export function resolveStyles(
   settings: GlobalSettings,
   tuning: RenderTuning,
+  isDark = false,
 ): Record<TextRole, TextStyle> {
   const roles = Object.keys(tuning.typography) as TextRole[];
   const styles = {} as Record<TextRole, TextStyle>;
@@ -70,9 +79,23 @@ export function resolveStyles(
       style: t.style,
       // Chords are the one user-coloured role. Everything else takes its own
       // `color` if tuning names one (the PoC's grey subtitle) and `textColor`
-      // otherwise.
-      fill:
-        role === 'chord' ? settings.chordColor : (t.color ?? tuning.textColor),
+      // otherwise — and on a dark page, the dark counterpart of each.
+      //
+      // The chord colour is the one ink the renderer does not own, so it is the
+      // one that is *computed* rather than swapped: `liftInkForPaper` keeps the
+      // performer's hue and saturation and raises only its lightness, and only
+      // as far as the contrast floor demands. A red stays their red.
+      fill: isDark
+        ? role === 'chord'
+          ? liftInkForPaper(
+              settings.chordColor,
+              tuning.dark.paper,
+              tuning.dark.minChordContrast,
+            )
+          : (t.darkColor ?? tuning.dark.textColor)
+        : role === 'chord'
+          ? settings.chordColor
+          : (t.color ?? tuning.textColor),
       fallback: font.fallback,
     };
   }
@@ -100,8 +123,9 @@ export function createContext(
   measure: TextMeasurer,
   tuning: RenderTuning,
   hideChords: boolean,
+  isDark = false,
 ): LayoutContext {
-  const styles = resolveStyles(settings, tuning);
+  const styles = resolveStyles(settings, tuning, isDark);
   return {
     measure,
     tuning,

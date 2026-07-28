@@ -20,7 +20,7 @@ import {
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
-import { StageSession } from '../shared/layout';
+import { StageSession, UiStore } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
 
@@ -70,6 +70,16 @@ export class StagePerformPresenter {
   private readonly router = inject(Router);
   private readonly session = inject(StageSession);
   private readonly host = inject(LobbyHost);
+  /**
+   * The dark page — a viewer option, read here and passed to `layout`, and
+   * deliberately NOT folded into `_resolved`.
+   *
+   * That separation is the guarantee: `_resolved` is what the lobby payload
+   * carries and what an export would resolve, and a black page must reach
+   * neither. It travels as `RenderOpts.dark` instead, which nothing persists,
+   * nothing cascades and nothing sends over the wire.
+   */
+  private readonly ui = inject(UiStore);
 
   private readonly _book = signal<Songbook | null>(null);
   private readonly _songs = signal<Song[]>([]);
@@ -113,7 +123,7 @@ export class StagePerformPresenter {
     const resolved = this._resolved();
     if (!song || !resolved) return null;
     const ast = this.parser.parse(song.content);
-    return this.renderer.layout(ast, resolved);
+    return this.renderer.layout(ast, resolved, { dark: this.ui.isSongDark() });
   });
 
   /**

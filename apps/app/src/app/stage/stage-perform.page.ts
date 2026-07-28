@@ -29,6 +29,7 @@ import {
   Fullscreen,
   StageSession,
   TierGuard,
+  UiStore,
   Viewport,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
@@ -137,6 +138,24 @@ const SWIPE_THRESHOLD_PX = 60;
               />
             </button>
 
+            <!-- The dark page. Desktop's bar has no overflow menu — its actions
+                 are unwrapped — so the control the phone hides behind ⋯ is a
+                 button here, next to Fullscreen it belongs with: both are about
+                 the screen you are performing off, not about the song. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="ui.isSongDark()"
+              [attr.aria-pressed]="ui.isSongDark()"
+              [attr.aria-label]="darkPageLabel"
+              [appTooltip]="darkPageLabel"
+              data-testid="stage-dark-page"
+              (click)="ui.toggleSongDark()"
+            >
+              <app-icon name="moon" />
+            </button>
+
             <!-- Audience: icon-only, plain button; the premium tint lives in
                  the dialog, not on the bar. A live lobby lights the button the
                  same way an open summary lights its own — brand-subtle, the
@@ -215,7 +234,10 @@ const SWIPE_THRESHOLD_PX = 60;
             data-testid="stage-perform-empty"
           />
         } @else {
-          <app-blank-page [ratio]="presenter.pageRatio()">
+          <app-blank-page
+            [ratio]="presenter.pageRatio()"
+            [isDark]="ui.isSongDark()"
+          >
             @if (presenter.svg(); as svg) {
               <app-song-render [svg]="svg" />
             }
@@ -661,6 +683,10 @@ export class StagePerformPage {
   protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
+  /** The dark page: a device preference, so it comes from the shell's own store
+   * and never from the songbook, the song or the lobby. The presenter reads the
+   * same signal for the render itself — the paper and the ink must agree. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
@@ -826,6 +852,7 @@ export class StagePerformPage {
   protected readonly closeSummaryLabel = $localize`:@@stage.closeSummary:Close song list`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   /** What the browser tab says while a performance is on: "Performing - Achordeon". */
   private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;

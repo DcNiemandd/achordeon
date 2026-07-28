@@ -6,6 +6,7 @@ export * from './lib/tuning';
 export * from './lib/fonts';
 export * from './lib/font-catalog';
 export * from './lib/aspect';
+export * from './lib/dark';
 export * from './lib/context';
 export * from './lib/line-layout';
 export * from './lib/block-layout';

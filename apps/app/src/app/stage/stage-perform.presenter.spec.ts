@@ -14,7 +14,7 @@ import {
   SONG_REPOSITORY,
 } from '@achordeon/shared/data-access';
 import type { Song, Songbook } from '@achordeon/shared/domain';
-import { Fullscreen, StageSession } from '../shared/layout';
+import { Fullscreen, StageSession, UiStore } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -67,8 +67,12 @@ class FakeHost {
 
 const fakeParser = { parse: (content: string) => ({ content }) };
 const fakeRenderer = {
-  layout: () => ({ box: { width: 210, height: 297 } }),
-  emit: () => 'SVG:chords',
+  layout: (_ast: unknown, _settings: unknown, opts?: { dark?: boolean }) => ({
+    box: { width: 210, height: 297 },
+    dark: !!opts?.dark,
+  }),
+  emit: (plan: { dark: boolean }) =>
+    plan.dark ? 'SVG:chords:dark' : 'SVG:chords',
 };
 
 describe('StagePerformPresenter', () => {
@@ -90,6 +94,8 @@ describe('StagePerformPresenter', () => {
     session = new FakeSession();
     host = new FakeHost();
     router = { navigate: jest.fn() };
+    // The dark page persists per device; clear it so each test starts on paper.
+    localStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [
@@ -182,6 +188,24 @@ describe('StagePerformPresenter', () => {
     session.lobbyPin.set('');
     flush();
     expect(host.close).toHaveBeenCalled();
+  });
+
+  // The guarantee behind the whole design: the dark page is a viewer option, so
+  // it reaches `layout` and NOTHING else. What the audience receives — and what
+  // an export would resolve — is the settings cascade, which never learns of it.
+  it('darkens this device\u2019s render without touching what it publishes', async () => {
+    await presenter.open('book1');
+    expect(presenter.svg()).toBe('SVG:chords');
+    const lightSettings = presenter.payload()?.settings;
+
+    TestBed.inject(UiStore).setSongDark(true);
+    session.lobbyPin.set('ABCDE');
+    flush();
+
+    expect(presenter.svg()).toBe('SVG:chords:dark');
+    const [, payload] = lastSync();
+    expect(payload?.settings).toEqual(lightSettings);
+    expect(JSON.stringify(payload)).not.toContain('dark');
   });
 
   it('mirrors the live audience count back to the session', () => {
