@@ -378,9 +378,8 @@ export class SongEditor {
     const selected = view.state.sliceDoc(start, end);
     const text = request.before + selected + after;
     // A wrapped word keeps the caret on the character it was on — the word only
-    // shifted right by the opener. A user SELECTION puts the caret after the
-    // wrapping (the wrap was the point). An empty pair uses `caretOffset` to land
-    // the caret where the next keystroke goes — between the brackets of `[]`.
+    // shifted right by the opener. An empty pair uses `caretOffset` to land the
+    // caret where the next keystroke goes — between the brackets of `[]`.
     const caret = wrappedWord
       ? from + request.before.length
       : start +
@@ -388,9 +387,19 @@ export class SongEditor {
           ? request.before.length + request.caretOffset
           : text.length);
 
+    // **A user selection survives the wrap, still selected.** What you picked out
+    // is what you are working on, and wrapping it does not change that: it has
+    // only moved right by the opener. Collapsing to a caret afterwards made every
+    // second press start from nothing — you had to re-select the same word to
+    // bold it as well, or to press Chord again and make it inline.
+    const hadSelection = from !== to;
+    const innerStart = start + request.before.length;
+    const anchor = hadSelection ? innerStart : caret;
+    const head = hadSelection ? innerStart + selected.length : caret;
+
     view.dispatch({
       changes: { from: start, to: end, insert: text },
-      selection: { anchor: caret },
+      selection: { anchor, head },
       scrollIntoView: true,
     });
     view.focus();
@@ -404,21 +413,30 @@ export class SongEditor {
    * The last two are a source rewrite the domain owns (`cycleChordAt`); only the
    * first needs the editor, because only the editor knows what "the word at the
    * caret" is. So the domain is asked first and the insert is the fallback.
+   *
+   * A selection survives every state, so the three presses can be made in a row on
+   * one chosen word: both ends move by the same amount the caret does, because both
+   * sit inside the bracket being rewritten and the rewrite only happens outside
+   * them (`[` doubles in front, `]` doubles behind).
    */
   cycleChord(request: InsertRequest): void {
     const view = this.view;
     if (!view) {
       return;
     }
-    const head = view.state.selection.main.head;
+    const { anchor, head } = view.state.selection.main;
     const cycled = cycleChordAt(view.state.doc.toString(), head);
     if (!cycled) {
       this.insert(request);
       return;
     }
+    const shift = cycled.caret - head;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: cycled.content },
-      selection: { anchor: cycled.caret },
+      selection:
+        anchor === head
+          ? { anchor: cycled.caret }
+          : { anchor: anchor + shift, head: cycled.caret },
       scrollIntoView: true,
       userEvent: 'input.chord',
     });

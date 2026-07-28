@@ -392,6 +392,38 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('[Am]');
   });
 
+  // What you picked out is what you are working on: wrapping it moved it right,
+  // it did not finish with it. Collapsing to a caret meant re-selecting the same
+  // word to bold it too, or to press Chord again.
+  test('the text stays selected after a button wraps it', async ({ page }) => {
+    await type(page, 'Am');
+    await page.keyboard.press('Shift+Home');
+    await page.getByTestId('insert-chord').click();
+
+    const selected = () => page.evaluate(() => getSelection()?.toString());
+    await expect.poll(selected).toBe('Am');
+
+    // …so the three chord states can be pressed straight through on one word.
+    await page.getByTestId('insert-chord').click();
+    await expect(page.getByTestId('editor')).toContainText('[[Am]]');
+    await expect.poll(selected).toBe('Am');
+
+    await page.getByTestId('insert-chord').click();
+    await expect(page.getByTestId('editor')).toContainText('Am');
+    await expect.poll(selected).toBe('Am');
+  });
+
+  test('a selection stays selected after bold, so italic can follow', async ({
+    page,
+  }) => {
+    await type(page, 'loud');
+    await page.keyboard.press('Shift+Home');
+    await page.getByTestId('insert-bold').click();
+    await page.getByTestId('insert-italic').click();
+
+    await expect(page.getByTestId('editor')).toContainText('***loud***');
+  });
+
   test('the chord button brackets the word at the caret', async ({ page }) => {
     // The chord names on a chord row are usually typed out first, so with no
     // selection the button takes the word the caret is on.

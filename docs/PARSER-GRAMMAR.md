@@ -348,6 +348,13 @@ noted) but are an editor concern:
   rewrite in the domain (`cycleChordAt`); state 1 stays in the editor, which is the
   only side that knows what "the word at the caret" is.
 
+- **A selection survives an insert, still selected** [decided]. What the user picked
+  out is what they are working on; wrapping it moves it right by the opener and is
+  not done with it. So the three chord states can be pressed straight through on one
+  chosen word, and Bold then Italic on one selection gives `***both***` without
+  re-selecting in between. A wrapped WORD (no selection) still leaves a caret — the
+  user never made a selection, so the button does not invent one.
+
 - **Label** — inserts the block's label marker and moves the cursor in front of it.
 - **Title / Subtitle** — mark the current row (`*` / `**`), no rules.
 
