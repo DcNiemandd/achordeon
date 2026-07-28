@@ -2,17 +2,6 @@
 // Spec: CONTEXT.md §Song explorer, §Search, §Favorite; PRD-INFRASTRUCTURE.md §3/§4
 
 import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  ElementRef,
-  input,
-  linkedSignal,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
-import {
   CdkDrag,
   CdkDragHandle,
   CdkDropList,
@@ -24,6 +13,17 @@ import {
   ScrollingModule,
 } from '@angular/cdk/scrolling';
 import { NgTemplateOutlet } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  input,
+  linkedSignal,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   Autofocus,
   Button,
@@ -38,12 +38,12 @@ import {
 import {
   FULL_CAPABILITIES,
   type ExplorerCapabilities,
-  type RowMove,
-  type RowMoveRequest,
   type ExplorerSort,
   type ExplorerSortDir,
   type RenameChange,
   type RowDrop,
+  type RowMove,
+  type RowMoveRequest,
   type SongRow,
   type SortChange,
 } from './explorer-model';
@@ -212,7 +212,7 @@ const ARM_MOVE_TOLERANCE = 8;
             data-testid="explorer-favorites-first"
             (click)="favoritesFirstChange.emit(!isFavoritesFirst())"
           >
-            <app-icon name="favorite" [isFilled]="isFavoritesFirst()" />
+            <app-icon name="starCheck" [isFilled]="isFavoritesFirst()" />
           </button>
         }
       </div>

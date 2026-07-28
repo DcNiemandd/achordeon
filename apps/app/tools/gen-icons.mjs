@@ -67,6 +67,12 @@ const ICONS = {
   transposeUp: 'arrow-up',
   transposeDown: 'arrow-down',
   favorite: 'star',
+  // The favourites-first flag in the explorer toolbar, which is NOT the same act
+  // as favouriting a song: the row's `favorite` star sets the flag on one song,
+  // this one says "float the ones already flagged to the top". A bare star for
+  // both would put the same mark on a per-row toggle and a whole-list sort, so
+  // this one carries the tick — the star, plus a statement about it.
+  starCheck: 'star-check',
   title: 'type',
   // An eraser, NOT a circular arrow — undo took that shape, and two controls in
   // the same app pointing the same way meaning different things is worse than
