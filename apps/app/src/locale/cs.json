@@ -1,5 +1,6 @@
 {
   "locale": "cs",
+  "stale": [],
   "translations": {
     "actionBar.label": "Akce",
     "actionBar.rename": "Název",
@@ -423,7 +424,7 @@
     "songs.newName": "Nová píseň",
     "songs.noMatches": "Hledání neodpovídá žádná píseň.",
     "songs.title": "Písně",
-    "songs.tutorial": "* Moje první píseň\n** Rychlá prohlídka syntaxe\n\nSloka: Akord napište do [C]hranatých závorek přesně tam, kde se mění [G]zvuk.\nVykreslí se nad [Am]písmenem, které za ním následuje.\n\nRefrén: Slova před dvojtečkou se stanou [F]popiskem.\nPrázdný řádek začíná nový [C]blok.\nNapište \\: když chcete dvojtečku, která není popisek.\n\n[C] [G] [Am] [F]\n\nDohra: Řádek, na kterém jsou jen akordy, je mezihra\na vykreslí se o něco větší.\n",
+    "songs.tutorial": "* Moje první píseň\n** Rychlá prohlídka syntaxe\n\nSloka: Akord napište do [C]hranatých závorek přesně tam, kde se mění [G]zvuk.\nVykreslí se nad [Am]písmenem, které za ním následuje.\nNěkolik akordů v jedné závorce [C G Am]stojí na stejném místě.\n\nR:: Popisek zakončený dvěma dvojtečkami si jednu nechá, tak se tenhle blok jmenuje R a dvojtečka.\nNový [F]blok začne jedině prázdný řádek.\nZvýraznit se dá **tučně**, *kurzivou* nebo ***obojím***.\nNapište \\: pro dvojtečku, která není popisek, \\* pro hvězdičku, \\[ pro závorku.\n\\ Zpětné lomítko a mezera udrží mezeru na začátku řádku.\n\nPředehra:\nKytara: [Am F G Am (2x)]\nHousle: [Am F G Am (4x)]\n\n[C] [G] [Am] [F]\n\nDohra: Řádek beze slov vysadí akordy přímo do textu, ve velikosti slov.\nDvojité závorky udělají totéž [[C]] i uvnitř řádku, který slova má.\nPopisek dál v bloku pojmenuje jen svůj vlastní řádek, takže\nTiše: tenhle je kurzivou.\nZávorka, která není akord, se vznáší nad řádkem[Solo] přesně jak je napsaná[N.C.].\n",
     "splitPane.resizer": "Změnit velikost panelů",
     "stage.allSongsOrder": "Řazení všech písní",
     "stage.audience": "Vytvořit publikum",

@@ -423,7 +423,7 @@
     "songs.newName": "New song",
     "songs.noMatches": "No songs match your search.",
     "songs.title": "Songs",
-    "songs.tutorial": "* My first song\n** A quick tour of the syntax\n\nVerse: Put a chord in [C]brackets, right where the [G]sound changes.\nIt lands above the [Am]letter that follows it.\n\nChorus: The words before a colon become a [F]label.\nA blank line starts a new [C]block.\nWrite \\: when you want a colon that is not a label.\n\n[C] [G] [Am] [F]\n\nOutro: A line of nothing but chords is an instrumental,\nand it renders a little larger.\n",
+    "songs.tutorial": "* My first song\n** A quick tour of the syntax\n\nVerse: Put a chord in [C]brackets, right where the [G]sound changes.\nIt lands above the [Am]letter that follows it.\nSeveral in one bracket [C G Am]sit in the same place.\n\nR:: A label ending in two colons keeps one, so this block is called R and a colon.\nOnly a blank line starts a new [F]block.\nEmphasis is **bold**, *italic*, or ***both***.\nWrite \\: for a colon that is not a label, \\* for a star, \\[ for a bracket.\n\\ A backslash and a space keep a space at the start of a line.\n\nIntro:\nGuitar: [Am F G Am (2x)]\nFiddle: [Am F G Am (4x)]\n\n[C] [G] [Am] [F]\n\nOutro: A row with no words sets its chords in the line, at the size of the words.\nDoubled brackets do the same [[C]] inside a line that has some.\nA label further down a block names only its own row, so\nSoftly: this one is in italics.\nA bracket that is not a chord floats above the line[Solo] just as written[N.C.].\n",
     "splitPane.resizer": "Resize panels",
     "stage.allSongsOrder": "All songs sorting",
     "stage.audience": "Create an audience",
