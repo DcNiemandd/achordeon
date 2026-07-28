@@ -36,17 +36,24 @@ markup and give me the three things asked for at the end.
 - `* Title` is the song's title, `** Author` is the subtitle. The marker sits at
   the very start of the line, followed by a space. If several appear, the last
   one counts.
-- A blank line starts a new block (verse, chorus, bridge...).
+- A blank line starts a new block (verse, chorus, bridge...) — and it is the only
+  thing that does.
 - A block may start with a label: text ending in a colon followed by a space or
   the end of the line — `1.: `, `R:: `, `Solo:`. The last colon is swallowed, so
   `R::` prints as `R:`.
+- A label written on a later line of the same block is a sub-label, naming that
+  one line — the annotation on a row of chords. `Intro:` then
+  `Kl. + Bas: [Am F G]` then `Housle: [Am F G]` is one block with two named rows.
 - A colon that is not followed by a space is ordinary text (`12:30` is fine). If
   a lyric would become a label by accident, escape it: `Narrator\: hello`.
 - Chords go inside the lyric line, in square brackets, immediately before the
   character they sit above: `tr[C]ade` prints C above the `a`.
 - Several chords in one bracket sit in the same spot: `[Em G A]`. A line with
-  chords and no words is a chord-only line, and a block made only of those prints
-  larger — the usual intro/solo/bridge look.
+  chords and no words prints them in the line itself, at the size of the lyrics —
+  the usual intro/solo/bridge look.
+- Doubled brackets put a chord in the line rather than above it: `[[C]]`. Only
+  needed on a line that also has words; on a line of chords alone, `[Em G A]`
+  already prints in the line.
 - Bracket text that is not a real chord — `[Solo]`, `[2x]`, `[N.C.]`, `[||: :||]`
   — is printed above the line exactly as written. Keep it, don't "fix" it.
 - Use English note names. Convert other systems: German `H` becomes `B`, German

@@ -36,7 +36,7 @@ the song content in your message.
 ### Blocks and Labels
 
 - A Song is a sequence of **blocks** (verse, chorus, bridge…).
-- A **new block** starts after a blank line, or at any labelled line.
+- A **new block** starts after a blank line — and only there.
 - A **label** is text at the start of a block ending in a **colon-run followed by a
   space or end-of-line**. The **last colon is the delimiter and is consumed**;
   earlier colons in the run stay as literal label text:
@@ -50,6 +50,18 @@ the song content in your message.
 - Content on the label line (`Verse: foo`) vs on the next line (`Verse:` then
   `foo`) both render, but differently (one line vs two). Keep whichever the image
   shows.
+- A labelled line **inside** a block is a **sub-label** — it names that one line,
+  not the block, and renders italic at the line's start. This is how a row of
+  chords gets an annotation:
+
+  ```
+  Intro:
+  Kl. + Bas: [Am F G Am (2×)]
+  Housle: [Am F G Am (4×)]
+  ```
+
+  Only the line that **opens** the block can name the block, so every later label
+  in it is a sub-label.
 
 ### Chords `[ ]`
 
@@ -57,9 +69,11 @@ the song content in your message.
   sit above. The chord renders above the character **immediately after** the
   closing bracket: `tr[C]ade` puts `C` above the `a`.
 - **Multiple chords in one bracket**, space- or comma-separated, all sit at the
-  same spot: `[Em G Em A]`. A line whose text is empty but has chords is a
-  **chord-only line**; a block made only of chord-only lines renders larger — the
-  bridge convention.
+  same spot: `[Em G Em A]`. A line whose text is empty but has chords renders them
+  **in** the line, at the size of the lyrics — the intro/solo/bridge look.
+- **Doubled brackets** `[[C]]` put a chord in the line instead of above it. Only
+  needed on a line that also has words; on a line of chords alone the single
+  brackets already render in the line.
 - A **valid chord** = root + optional accidental + quality, optional `/bass`
   (e.g. `C`, `Am`, `F#m7`, `Gsus4`, `D/F#`). Valid chords are transposable.
 - Bracket content that is **not** a valid chord — `[Solo]`, `[x2]`, `[N.C.]`,
@@ -156,16 +170,16 @@ Track whether you reached a clean parse — you report it as `clean` below.
 Set only what the image clearly shows; leave the rest to defaults. These go in your
 fragment's `settings` object, never in the content text.
 
-| Setting         | Value                               | Read from the image                                                                                                                                                                                                                               |
-| --------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                               |
-| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                                      |
-| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                            |
-| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                                     |
-| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so).         |
-| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                        |
-| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                               |
-| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                                |
+| Setting         | Value                               | Read from the image                                                                                                                                                                                                                       |
+| --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                       |
+| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                              |
+| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                    |
+| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                             |
+| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so). |
+| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                |
+| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                       |
+| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                        |
 
 Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
 default unless the image is clearly styled.
