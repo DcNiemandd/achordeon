@@ -1,7 +1,7 @@
 import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
 import { DEFAULT_TUNING } from './tuning';
-import { createContext } from './context';
+import { createContext, type LayoutContext } from './context';
 import { layoutTitle } from './title-layout';
 
 // title size 24 (adv 14.4, ascent 19.2, h 24); subtitle 19.2 (adv 11.52, ascent 15.36, h 19.2)
@@ -32,6 +32,20 @@ const settings = (over: Partial<GlobalSettings>): GlobalSettings => ({
   ...over,
 });
 
+/**
+ * The two gaps below the titles, derived rather than spelled out.
+ *
+ * Both are magnitudes the renderer's author tunes (§4.7 "spacing magnitudes are
+ * tunable internal constants"), so a baked number makes these tests fail on a
+ * change of taste rather than on a defect — `column-layout.spec.ts` has the same
+ * note. What they actually assert is the arithmetic around the gap: band, gap,
+ * content.
+ */
+const titleGap = (c: LayoutContext) =>
+  DEFAULT_TUNING.spacing.titleGapFactor * c.metrics.lyric.height;
+const inlineGap = () =>
+  DEFAULT_TUNING.spacing.titleInlineGapEm * DEFAULT_TUNING.baseSizePx;
+
 describe('layoutTitle — empty', () => {
   it('reserves nothing when there is no title or subtitle', () => {
     const r = layoutTitle(ast(), ctx(), base);
@@ -42,20 +56,21 @@ describe('layoutTitle — empty', () => {
 
 describe('layoutTitle — top (§4.5)', () => {
   it('stacks title over subtitle, hugging the top-left, offsetting content down', () => {
+    const c = ctx();
     const r = layoutTitle(
       ast('Song', 'Sub'),
-      ctx(),
+      c,
       settings({ titlePosition: 'top', titleLayout: 'stacked' }),
     );
     const title = r.items.find((i) => i.role === 'title');
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.x).toBe(0);
-    expect(title?.y).toBeCloseTo(19.2);
+    expect(title?.y).toBeCloseTo(c.metrics.title.ascent);
     expect(title?.rotate).toBeUndefined();
     expect(subtitle?.x).toBe(0);
-    expect(subtitle?.y).toBeGreaterThan(24); // below the title row
+    expect(subtitle?.y).toBeGreaterThan(c.metrics.title.height); // below the title row
     expect(r.offset.x).toBe(0);
-    expect(r.offset.y).toBeCloseTo(r.height + 32); // region height + title gap
+    expect(r.offset.y).toBeCloseTo(r.height + titleGap(c)); // region height + title gap
   });
 
   it('puts title and subtitle on one row side by side when inline', () => {
@@ -67,15 +82,16 @@ describe('layoutTitle — top (§4.5)', () => {
     const title = r.items.find((i) => i.role === 'title');
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.y).toBeCloseTo(subtitle?.y as number); // same row
-    expect(subtitle?.x).toBeCloseTo(4 * 14.4 + 1.5 * 16); // titleW + inline gap
+    expect(subtitle?.x).toBeCloseTo(4 * 14.4 + inlineGap()); // titleW + inline gap
   });
 });
 
 describe('layoutTitle — left spine (§4.5)', () => {
   it('rotates two parallel spines CCW, offsetting content to the right', () => {
+    const c = ctx();
     const r = layoutTitle(
       ast('Song', 'Sub'),
-      ctx(),
+      c,
       settings({ titlePosition: 'left', titleLayout: 'stacked' }),
     );
     const title = r.items.find((i) => i.role === 'title');
@@ -84,20 +100,23 @@ describe('layoutTitle — left spine (§4.5)', () => {
     expect(subtitle?.rotate).toBe(-90);
     expect(subtitle?.x).toBeGreaterThan(title?.x as number); // subtitle spine is inner
     expect(r.offset.y).toBe(0);
-    expect(r.offset.x).toBeCloseTo(24 + 19.2 + 32); // both bands + gap
+    expect(r.offset.x).toBeCloseTo(
+      c.metrics.title.height + c.metrics.subtitle.height + titleGap(c),
+    ); // both bands + gap
   });
 
   it('reads title then subtitle up one spine when inline', () => {
+    const c = ctx();
     const r = layoutTitle(
       ast('Song', 'Sub'),
-      ctx(),
+      c,
       settings({ titlePosition: 'left', titleLayout: 'inline' }),
     );
     const title = r.items.find((i) => i.role === 'title');
     const subtitle = r.items.find((i) => i.role === 'subtitle');
     expect(title?.x).toBeCloseTo(subtitle?.x as number); // one band
     expect(title?.y).toBeGreaterThan(subtitle?.y as number); // title sits below (read first)
-    expect(r.offset.x).toBeCloseTo(24 + 32); // one band width + gap
+    expect(r.offset.x).toBeCloseTo(c.metrics.title.height + titleGap(c)); // one band width + gap
   });
 });
 

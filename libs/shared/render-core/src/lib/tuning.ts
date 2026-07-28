@@ -203,7 +203,7 @@ export const DEFAULT_TUNING: RenderTuning = {
     chordRowGapFactor: 0, // PoC chord row abuts its lyric
     columnGapEm: 1.0, // PoC relied on the CSS `columns` default gap, 1em
     gutterGapEm: 0.25, // PoC section `gap: 4px` between label and content
-    titleGapFactor: 2.0, // PoC `.titles` margin-bottom 24px + the 8px flex gap
+    titleGapFactor: 0.8, // PoC `.titles` margin-bottom 24px + the 8px flex gap
     titleStackGapFactor: 0.2, // PoC `.titles` row-gap 4px ÷ the 19.2px subtitle slot
     titleInlineGapEm: 1.5, // PoC `.titles` column-gap 24px
   },
