@@ -26,11 +26,7 @@ import {
   type ExplorerSort,
 } from '../shared/song-explorer';
 import { DownloadDialog, ImportPanel } from '../shared/transfer';
-import {
-  SongsPresenter,
-  type PendingDelete,
-  type SongUse,
-} from './songs.presenter';
+import { SongsPresenter, type PendingDelete } from './songs.presenter';
 
 /**
  * The song explorer and the render of whatever it has focused.
@@ -253,27 +249,21 @@ import {
         data-testid="delete-dialog"
         (closed)="presenter.cancelDelete()"
       >
-        <!-- The names as a LIST, not a sentence. A comma-joined paragraph of
-             twelve titles is a wall you have to parse to answer a question
-             about; a list is countable at a glance, which is the only thing
-             that makes "yes" a considered answer. -->
+        <!-- The songs themselves are not listed. The title already counts them
+             and the rows you ticked are still behind the dialog; re-reading
+             twelve titles you just picked is work that answers nothing. -->
         <p class="warn">{{ deleteQuestion(pending) }}</p>
-        <ul class="names" data-testid="delete-names">
-          @for (name of pending.names; track $index) {
-            <li>{{ name }}</li>
-          }
-        </ul>
 
-        <!-- The in-use warning: not a count, but the songbooks themselves, each
-             a way to go and look before you answer (CONTEXT.md §Delete vs
+        <!-- The one list worth having: the songbooks that lose something, each a
+             way to go and look before you answer (CONTEXT.md §Delete vs
              Remove). -->
         @if (pending.uses.length > 0) {
           <p class="warn in-use" data-testid="delete-in-use">
             <app-icon name="warning" class="warn-icon" />
-            {{ inUseText }}
+            {{ inUseText(pending) }}
           </p>
           <ul class="uses">
-            @for (use of pending.uses; track use.bookId + use.songId) {
+            @for (use of pending.uses; track use.bookId) {
               <li>
                 <button
                   appButton
@@ -282,7 +272,7 @@ import {
                   [attr.data-testid]="'in-use-' + use.bookId"
                   (click)="presenter.openSongbook(use)"
                 >
-                  {{ useLabel(use, pending) }}
+                  {{ use.bookName }}
                 </button>
               </li>
             }
@@ -361,13 +351,6 @@ import {
       color: var(--brand);
     }
 
-    .names {
-      margin: 0 0 var(--space-3);
-      padding-inline-start: var(--space-4);
-      max-block-size: 40vh;
-      overflow: auto;
-    }
-
     .uses {
       margin: 0;
       padding: 0;
@@ -376,6 +359,8 @@ import {
       flex-direction: column;
       align-items: flex-start;
       gap: 2px;
+      max-block-size: 40vh;
+      overflow: auto;
     }
   `,
 })
@@ -447,7 +432,14 @@ export class SongsPage {
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
-  protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
+
+  /** A bulk delete's warning spans songs, so the singular sentence would lie
+   * about what is leaving these songbooks. */
+  protected inUseText(pending: PendingDelete): string {
+    return pending.ids.length === 1
+      ? $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`
+      : $localize`:@@songs.delete.inUseMany:They are still used here. Deleting removes them from these songbooks:`;
+  }
 
   /** A song deleted is a song gone from the library and out of every songbook —
    * so the question says both, and never a bare "are you sure?". */
@@ -457,19 +449,11 @@ export class SongsPage {
       : $localize`:@@songs.delete.titleMany:Delete ${pending.ids.length}:count: songs?`;
   }
 
-  /** The sentence above the list — which is why it names no songs itself. */
+  /** What the delete does, said once — it names no songs, and no list follows. */
   protected deleteQuestion(pending: PendingDelete): string {
     return pending.ids.length === 1
-      ? $localize`:@@songs.delete.one:This will be removed from your library:`
-      : $localize`:@@songs.delete.many:These ${pending.ids.length}:count: songs will be removed from your library:`;
-  }
-
-  /** A bulk delete's warning spans songs, so a bare songbook name would not say
-   * which song put it on the list. */
-  protected useLabel(use: SongUse, pending: PendingDelete): string {
-    return pending.ids.length === 1
-      ? use.bookName
-      : $localize`:@@songs.delete.useMany:${use.bookName}:book: (${use.songName}:song:)`;
+      ? $localize`:@@songs.delete.one:This will be removed from your library.`
+      : $localize`:@@songs.delete.many:These ${pending.ids.length}:count: songs will be removed from your library.`;
   }
 
   /** "Nothing here" and "nothing matched" are different facts, and only one of

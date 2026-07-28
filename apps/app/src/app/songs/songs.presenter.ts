@@ -42,19 +42,18 @@ import { ReturnUrl } from './return-url';
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
 
-/** One place a song about to be deleted is still being used (CONTEXT.md §Delete
- * vs Remove). `songName` is carried because a bulk delete's warning spans songs. */
+/** One songbook that a pending delete would take songs out of (CONTEXT.md
+ * §Delete vs Remove). `songId` is one of the songs that put it on the list — the
+ * one the link selects when it opens the songbook. */
 export interface SongUse {
   readonly bookId: string;
   readonly bookName: string;
   readonly songId: string;
-  readonly songName: string;
 }
 
 /** A delete the user has asked for and not yet confirmed. */
 export interface PendingDelete {
   readonly ids: string[];
-  readonly names: string[];
   readonly uses: SongUse[];
 }
 
@@ -361,8 +360,12 @@ export class SongsPresenter {
    * Ask to delete: gather what it would destroy, then let the user look at it.
    *
    * The songbooks are read **before** anything is written, and read per song, so
-   * the warning names the actual slots at risk rather than a count
+   * the warning names the actual songbooks at risk rather than a count
    * (CONTEXT.md §Delete vs Remove).
+   *
+   * **One entry per songbook, not per slot.** A bulk delete of ten songs out of
+   * the same songbook is one fact about one songbook, and listing it ten times
+   * says nothing the first line did not.
    */
   async requestDelete(ids: string[]): Promise<void> {
     const songs = ids
@@ -372,23 +375,23 @@ export class SongsPresenter {
       return;
     }
 
-    const uses: SongUse[] = [];
+    const uses = new Map<string, SongUse>();
     for (const song of songs) {
       const books = await this.songbooks.songbooksWith(song.id);
       for (const book of books) {
-        uses.push({
-          bookId: book.id,
-          bookName: book.name,
-          songId: song.id,
-          songName: song.name,
-        });
+        if (!uses.has(book.id)) {
+          uses.set(book.id, {
+            bookId: book.id,
+            bookName: book.name,
+            songId: song.id,
+          });
+        }
       }
     }
 
     this._pendingDelete.set({
       ids: songs.map((song) => song.id),
-      names: songs.map((song) => song.name),
-      uses,
+      uses: [...uses.values()],
     });
   }
 

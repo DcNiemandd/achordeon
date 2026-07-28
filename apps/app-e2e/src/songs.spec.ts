@@ -57,7 +57,7 @@ async function openRowMenu(page: Page, id: string | null): Promise<void> {
 }
 
 /**
- * Put a songbook holding `songName` into IndexedDB directly.
+ * Put a songbook holding `songNames` into IndexedDB directly.
  *
  * The Songbooks module is Epic 6, so there is no UI to build one with yet — but
  * the delete cascade and its warning are Epic 5's, and they are only real if a
@@ -67,16 +67,21 @@ async function openRowMenu(page: Page, id: string | null): Promise<void> {
 async function seedSongbook(
   page: Page,
   bookName: string,
-  songName: string,
+  ...songNames: string[]
 ): Promise<void> {
-  const songId = await page
-    .getByTestId('song-row')
-    .filter({ hasText: songName })
-    .first()
-    .getAttribute('data-song-id');
+  const songIds: (string | null)[] = [];
+  for (const name of songNames) {
+    songIds.push(
+      await page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first()
+        .getAttribute('data-song-id'),
+    );
+  }
 
   await page.evaluate(
-    ({ book, song }) =>
+    ({ book, songs }) =>
       new Promise<void>((resolve, reject) => {
         const open = indexedDB.open('achordeon');
         open.onsuccess = () => {
@@ -93,7 +98,7 @@ async function seedSongbook(
             subtitle: '',
             author: '',
             settings: {},
-            entries: [song],
+            entries: songs,
           });
           tx.oncomplete = () => {
             db.close();
@@ -103,7 +108,7 @@ async function seedSongbook(
         };
         open.onerror = () => reject(open.error);
       }),
-    { book: bookName, song: songId },
+    { book: bookName, songs: songIds },
   );
   await page.reload();
 }
@@ -582,6 +587,30 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('explorer-empty')).toBeVisible();
     // The selection went with the songs — nothing left to act on.
     await expect(page.getByTestId('explorer-bulk-delete')).toBeDisabled();
+  });
+
+  test('the warning names each songbook once, however many songs it loses', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await createSong(page, 'Yesterday');
+    await seedSongbook(page, 'Campfire', 'Wonderwall', 'Yesterday');
+    // Seeding reloads, and `evaluateAll` does not wait for anything.
+    await expect(page.getByTestId('song-row')).toHaveCount(2);
+    const ids = await page
+      .getByTestId('song-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getAttribute('data-song-id')),
+      );
+
+    await page.getByTestId(`select-${ids[0]}`).check();
+    await page.getByTestId(`select-${ids[1]}`).check();
+    await page.getByTestId('explorer-bulk-delete').click();
+
+    // Two songs out of one songbook is one fact about one songbook.
+    const links = page.getByTestId(/^in-use-/);
+    await expect(links).toHaveCount(1);
+    await expect(links).toHaveText('Campfire');
   });
 
   test('below the breakpoint: the explorer is full width, with no render pane', async ({
