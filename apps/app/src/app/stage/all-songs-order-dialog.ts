@@ -6,6 +6,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   input,
+  linkedSignal,
   output,
 } from '@angular/core';
 import {
@@ -49,7 +50,7 @@ import { Button, Dialog } from '../primitives';
           <span class="name">{{ orderLabel }}</span>
           <select
             class="control"
-            [value]="draft.sort"
+            [value]="draft().sort"
             data-testid="all-songs-order-axis"
             (change)="patch({ sort: axis($event) })"
           >
@@ -63,7 +64,7 @@ import { Button, Dialog } from '../primitives';
           <span class="name">{{ directionLabel }}</span>
           <select
             class="control"
-            [value]="draft.dir"
+            [value]="draft().dir"
             data-testid="all-songs-order-dir"
             (change)="patch({ dir: dir($event) })"
           >
@@ -75,7 +76,7 @@ import { Button, Dialog } from '../primitives';
         <label class="row is-toggle">
           <input
             type="checkbox"
-            [checked]="draft.favoritesFirst"
+            [checked]="draft().favoritesFirst"
             data-testid="all-songs-order-favorites"
             (change)="patch({ favoritesFirst: checked($event) })"
           />
@@ -101,7 +102,7 @@ import { Button, Dialog } from '../primitives';
         type="button"
         variant="primary"
         data-testid="all-songs-order-save"
-        (click)="saved.emit(draft)"
+        (click)="saved.emit(draft())"
       >
         {{ saveLabel }}
       </button>
@@ -159,16 +160,22 @@ export class AllSongsOrderDialog {
   /**
    * The order as edited so far.
    *
-   * A plain field seeded from the input rather than a signal kept in step with it:
-   * the dialog is created when it opens and destroyed when it closes, so the input
-   * is read exactly once and a later change to the saved order — which can only
-   * come from another device mid-edit — must not reach under the dropdowns of
-   * someone who is choosing.
+   * A `linkedSignal` over the input, and **not** a plain field seeded from it: a
+   * field initialiser runs while the component is being constructed, which is
+   * before Angular has set the input, so it captures the input's *default* rather
+   * than the saved order. The dialog then opened on "name / ascending" however the
+   * account was actually ordered — and the e2e reload check is what caught it.
+   *
+   * Being linked also means a saved order arriving mid-edit resets the draft. That
+   * can only come from another device syncing while this dialog is open, which is
+   * rare enough to be worth the correctness of always opening on the truth.
    */
-  protected draft: AllSongsOrder = { ...this.order() };
+  protected readonly draft = linkedSignal<AllSongsOrder>(() => ({
+    ...this.order(),
+  }));
 
   protected patch(change: Partial<AllSongsOrder>): void {
-    this.draft = { ...this.draft, ...change };
+    this.draft.update((draft) => ({ ...draft, ...change }));
   }
 
   protected axis(event: Event): AllSongsOrder['sort'] {

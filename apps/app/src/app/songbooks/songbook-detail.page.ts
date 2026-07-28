@@ -94,8 +94,15 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
         (ratioChange)="ui.setSplitRatio('songbooks', $event)"
       >
         <div pane-a class="pane">
+          <!-- The heading IS the rename field: a songbook's name is the one thing
+               you always want to change about it, so it is editable in place. It
+               used to be bound to "not the virtual book", which had no record to
+               rename; only a stored book opens here now, so it is simply on.
+               ActionBar defaults this OFF, so dropping the binding silently took
+               the rename field away with it. -->
           <app-action-bar
             [title]="presenter.name()"
+            [isTitleEditable]="true"
             [titleLabel]="nameLabel"
             (titleChange)="presenter.rename($event)"
           >
