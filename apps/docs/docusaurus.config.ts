@@ -26,6 +26,14 @@ const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
 const baseUrl = process.env.DOCS_BASE_URL || '/';
 
+// `docusaurus start` vs `docusaurus build` — the CLI sets NODE_ENV before it
+// evaluates this file, so the dev server can be told apart from a real build here.
+//
+// Dev is a different site in two ways that matter below: it serves ONE locale, at
+// ONE origin, and that origin is not where the app is. So the two redirects and
+// the locale dropdown are all deploy-only — see each one for why.
+const isDev = process.env.NODE_ENV !== 'production';
+
 const i18n = {
   defaultLocale: 'en',
   locales: ['en', 'cs'],
@@ -115,16 +123,29 @@ const config: Config = {
         href: `${baseUrl}img/favicon.svg`,
       },
     },
-    {
-      tagName: 'script',
-      attributes: {},
-      innerHTML: appRedirectScript,
-    },
-    {
-      tagName: 'script',
-      attributes: {},
-      innerHTML: localeRedirectScript,
-    },
+    // Deploy-only, both of them (see `isDev`).
+    //
+    // The app redirect would send `localhost:3000/` to the DEPLOYED app, which is
+    // the one place a docs author does not want to end up — you started the docs
+    // to look at the docs. And the locale redirect would bounce a Czech browser to
+    // `/cs/…`, which the dev server does not serve at all: `docusaurus start`
+    // builds a single locale, so the other one is a 404 rather than a translation.
+    // Dropping both leaves local dev where it belongs — on the English site, at
+    // the page you asked for.
+    ...(isDev
+      ? []
+      : [
+          {
+            tagName: 'script',
+            attributes: {},
+            innerHTML: appRedirectScript,
+          },
+          {
+            tagName: 'script',
+            attributes: {},
+            innerHTML: localeRedirectScript,
+          },
+        ]),
   ],
 
   // Where the Angular app is, for the landing page and `<AppLink>` in .mdx (the
@@ -196,10 +217,17 @@ const config: Config = {
           label: 'Launch App',
           position: 'right',
         },
-        {
-          type: 'localeDropdown',
-          position: 'right',
-        },
+        // Deploy-only as well, and for a sharper reason than tidiness: in dev the
+        // switch cannot work and does not fail quietly. `docusaurus start` serves
+        // one locale, and with `--locale cs` it serves it at the localized base
+        // path (`/cs/`) while the router's paths stay relative to that base — so
+        // Docusaurus builds the English URL as `"/" + "/docs/…"`, and the browser
+        // reads `//docs/…` as protocol-relative and goes looking for a host called
+        // `docs`. Locally, switching language means restarting:
+        // `pnpm nx start docs -- --locale cs`.
+        ...(isDev
+          ? []
+          : [{ type: 'localeDropdown', position: 'right' } as const]),
         {
           href: repoUrl,
           label: 'GitHub',

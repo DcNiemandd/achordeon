@@ -1,0 +1,169 @@
+---
+sidebar_position: 30
+---
+
+# AI import
+
+Chatbot s AI umí přečíst fotku písničky a přepsat ji pro Achordeon. Pošlete mu
+fotku, on vám vrátí soubor, ten naimportujete. Žádné psaní.
+
+## 1. Vyfoťte písničku
+
+- jedna písnička na jednu fotku, na fotce celý list
+- dvě fotky, když je písnička na dvou stranách - pošlete je společně
+- akordy musí být čitelné, když si fotku přiblížíte
+
+## 2. Pošlete ji chatbotovi
+
+Poslouží kterýkoli z nich. Fotky čtou všechny i v bezplatné verzi, stačí mít
+účet:
+
+| Chatbot     | Kde                 | Od koho   |
+| ----------- | ------------------- | --------- |
+| **Gemini**  | `gemini.google.com` | Google    |
+| **Claude**  | `claude.ai`         | Anthropic |
+| **ChatGPT** | `chatgpt.com`       | OpenAI    |
+
+Otevřete nový chat, přiložte fotku a do stejné zprávy vložte celý prompt níže.
+Použijte tlačítko pro kopírování v jeho rohu.
+
+````text
+Přikládám fotku písničky s akordy. Přepiš ji do značkování Achordeonu a dej mi
+tři věci, o které si říkám na konci.
+
+# Značkování
+
+- `* Název` je název písničky, `** Autor` je podtitul. Značka stojí na úplném
+  začátku řádku a je za ní mezera. Když se jich objeví víc, platí ta poslední.
+- Prázdný řádek začíná nový blok (strofa, refrén, mezihra...).
+- Blok může začínat návěštím: text končící dvojtečkou, za kterou je mezera nebo
+  konec řádku — `1.: `, `R:: `, `Sólo:`. Poslední dvojtečka se spolkne, takže
+  `R::` se vytiskne jako `R:`.
+- Dvojtečka, po které mezera není, je obyčejný text (`12:30` je v pořádku). Když
+  by se z řádku textu omylem stalo návěští, dej před dvojtečku zpětné lomítko:
+  `Vypravěč\: ahoj`.
+- Akordy patří dovnitř řádku s textem, do hranatých závorek, přímo před znak, nad
+  kterým stojí: `pro[C]dal` vytiskne C nad `d`.
+- Několik akordů v jedné závorce stojí na stejném místě: `[Em G A]`. Řádek, kde
+  jsou akordy a žádná slova, je akordový řádek, a blok složený jen z takových
+  řádků se vytiskne větší — obvyklá podoba předehry, sóla a mezihry.
+- Text v závorce, který není akord — `[Sólo]`, `[2x]`, `[N.C.]`, `[||: :||]` — se
+  vytiskne nad řádek přesně tak, jak je napsaný. Nech ho být, neopravuj ho.
+- Používej anglické názvy not. Jiné systémy převeď: německé `H` je `B`, německé
+  `B` je `Bb`.
+- Zpětné lomítko udělá z dalšího znaku obyčejný text: `\:`, `\*`, `\[`.
+- Žádné příkazy pro transpozici, kapodastr, tóninu, sloupce ani barvy neexistují.
+  Poznámka o kapodastru nebo tónině zůstane obyčejným řádkem textu nebo poznámkou
+  v hranaté závorce.
+
+# Jak čti list
+
+- Přepiš všechno: text, akordy, názvy částí, počty repetic a poznámky na okraji
+  ("pomalu", "sólo = strofa", kapodastr, tónina, ladění). Vynech jen to, co se
+  týká samotného papíru, třeba číslo stránky.
+- Nejvíc záleží na umístění akordů. Na listu jsou akordy na řádku nad textem —
+  každý `[akord]` dej přímo před znak, nad kterým stojí.
+- Oprav zřejmé překlepy, chybějící diakritiku a rozdělená slova, ale ponech slova
+  a nářečí autora. Nikdy si nevymýšlej to, co nepřečteš — napiš to.
+- Veď si krátký seznam všech oprav a všech akordů, kterými jsi si nebyl jistý.
+
+# Nastavení
+
+Nastavení není součástí textu, jde vedle něj. Nastav jen to, co je z listu jasně
+vidět — obvykle jen `aspectRatio` a `columns` — a ostatní vynech, ať platí výchozí
+hodnoty aplikace.
+
+| Nastavení       | Hodnoty                                      | Výchozí     | Nastav, když                                                       |
+| --------------- | -------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| `aspectRatio`   | `"A4"`, poměr jako `"4/3"`, nebo číslo       | `"A4"`      | stránka na výšku: `"A4"`. Široký list: jeho šířka dělená výškou    |
+| `columns`       | `1`, `2`, `3`                                | `1`         | text je vytištěný ve víc než jednom sloupci                        |
+| `titlePosition` | `"top"`, `"left"`                            | `"top"`     | `"left"` jen když název běží po straně listu                       |
+| `titleLayout`   | `"stacked"`, `"inline"`                      | `"stacked"` | autor stojí vedle názvu, ne pod ním                                |
+| `titleFont`     | `"body"`, `"serif"`, `"display"`, `"script"` | `"body"`    | název je zřetelně jiným typem písma                                |
+| `padding`       | číslo, v em                                  | `0.5`       | okraj kolem textu je nezvykle široký nebo těsný                    |
+| `contentX`      | `"left"`, `"center"`, `"right"`               | `"center"`  | vynech to                                                          |
+| `contentY`      | `"top"`, `"middle"`, `"bottom"`              | `"middle"`  | vynech to                                                          |
+| `scale`         | `"auto"` nebo číslo                          | `"auto"`    | vynech to                                                          |
+| `chordSize`     | číslo, `1` je normál                         | `1`         | akordy jsou zřetelně větší nebo menší než text                     |
+| `chordColor`    | `"#rrggbb"`                                  | výchozí     | jen když si o barvu řeknu — barva inkoustu na scanu nic neznamená   |
+| `notation`      | `"english"`, `"german"`                      | `"english"` | jen když si řeknu o německé značení (H/B)                          |
+
+# Co mi dej
+
+1. **Nastavení** — tabulku nastavení, která jsi zvolil, u každého jednu řádku
+   odůvodnění, a pak seznam oprav a nejistých akordů.
+2. **Obsah** — značkování v jednom bloku kódu, připravené ke zkopírování.
+3. **Importní soubor** — JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
+   ho jako soubor `.json` ke stažení; jinak ho vypiš v jednom bloku kódu a uložím
+   si ho sám.
+
+```json
+{
+  "schemaVersion": 1,
+  "deviceId": "ai-import",
+  "updatedAt": 1753660800000,
+  "data": {
+    "user": [],
+    "songbooks": [],
+    "songs": [
+      {
+        "id": "6f9619ff-8b86-d011-b42d-00c04fc964ff",
+        "createdAt": 1753660800000,
+        "updatedAt": 1753660800000,
+        "deletedAt": null,
+        "name": "Wish You Were Here",
+        "content": "* Wish You Were Here\n** Pink Floyd\n\n[Em G Em G Em A Em A G]\n",
+        "favorite": false,
+        "settings": { "aspectRatio": "A4", "columns": 1 },
+        "cache": { "title": "Wish You Were Here", "subtitle": "Pink Floyd" }
+      }
+    ]
+  }
+}
+```
+
+- `content` je stejné značkování jako v bodě 2, jako jeden JSON string: `\n` pro
+  zlomy řádků, `\"` pro uvozovky.
+- `id` je libovolné náhodné UUID. Tři časová pole jsou aktuální čas v
+  milisekundách od roku 1970 (třináctimístné číslo).
+- `name` je můj štítek písničky v knihovně — použij název.
+- `cache` obsahuje přesně text platného řádku `*` a `**`, nebo `""`, když je
+  písnička nemá.
+- `settings` obsahuje jen klíče z tabulky výše, `{}` když žádné. Nikdy si
+  nevymýšlej klíč, který v ní není.
+- `schemaVersion`, `deviceId`, `user`, `songbooks`, `favorite` a `deletedAt` nech
+  přesně tak, jak jsou.
+- JSON musí být platný a úplný: žádné komentáře, žádné čárky na konci, nic
+  vynechaného.
+````
+
+## 3. Naimportujte soubor
+
+Vrátí se vám tři věci - tabulka nastavení, text písničky a importní soubor.
+Potřebujete ten soubor, ostatní dvě věci jsou v něm.
+
+- uložte ho pod jménem, které končí na `.json` - když chatbot nabídne stažení,
+  vezměte ho, jinak zkopírujte blok s JSONem do obyčejného textového souboru
+- v `Písně` klikněte na `Importovat písně ze souboru` a soubor vyberte
+- [pravidla importu](/export-import.mdx#import) jsou stejná jako u každého jiného
+  importu
+
+Druhá cesta, bez souboru: vytvořte novou písničku, vložte text písničky do
+[editoru](/songs/editing.mdx) a nastavení nastavte podle tabulky ručně.
+
+:::note[Zkontrolujte akordy]
+Chatbot čte to, co vidí, a může se mýlit - akord o písmeno vedle, slovo špatně
+přečtené z ruky. Než začnete podle písničky hrát, porovnejte render s fotkou.
+Všechno se dá potom upravit.
+:::
+
+## Další písnička
+
+Další fotku pošlete do stejného chatu se slovy 'stejně tak i pro tuhle fotku',
+instrukce v něm pořád jsou. Po jedné - deset písniček v jedné odpovědi je místo,
+kde se chyby začnou hromadit.
+
+:::note[Soubor se nedá přečíst]
+JSON je odříznutý. Vyžádejte si ho znovu v jednom bloku kódu a uložte ho bez
+úprav.
+:::
