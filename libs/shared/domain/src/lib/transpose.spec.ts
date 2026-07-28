@@ -61,6 +61,24 @@ describe('transposeContent', () => {
     expect(shift('a\\[C]b', 2)).toBe('a\\[C]b');
   });
 
+  it('shifts an inline chord group and keeps its doubled brackets', () => {
+    // Without its own branch the `[[` reads as one bracket holding `[C`, which is
+    // no chord at all — the group would silently sit out every transpose.
+    expect(shift('[[C]]', 2)).toBe('[[D]]');
+    expect(shift('Intro: [[Am F G Am (2×)]]', 2)).toBe(
+      'Intro: [[Bm G A Bm (2×)]]',
+    );
+    expect(shift('run the [[C]] then [G]go', 2)).toBe(
+      'run the [[D]] then [A]go',
+    );
+    expect(shiftDe('[[C]]', -1)).toBe('[[H]]');
+  });
+
+  it('leaves an unterminated inline group alone', () => {
+    expect(shift('[[C', 2)).toBe('[[C');
+    expect(shift('[[C]', 2)).toBe('[[D]'); // the lone-[ rule: `[C]` is a chord
+  });
+
   it('leaves every non-chord character byte-identical across lines', () => {
     const content = ['* My Song', 'Verse: la [C]la', 'la [G7]la'].join('\n');
     expect(shift(content, 2)).toBe(
@@ -147,6 +165,15 @@ describe('transposeChordAt — one chord under the caret (sharp/flat)', () => {
 
   it('moves every chord in a shared bracket together', () => {
     expect(at('[C G]', 2, 1)?.content).toBe('[C# G#]');
+  });
+
+  it('moves the inline group the caret is inside', () => {
+    expect(at('[[C]]', 2, 1)?.content).toBe('[[C#]]');
+    expect(at('[[C]]', 3, 1)?.content).toBe('[[C#]]'); // on the first ]
+    expect(at('[[C]]', 1, 1)).toBeNull(); // between the two [ — not inside yet
+    expect(at('[[C]]', 4, 1)).toBeNull(); // between the two ] — already out
+    // The first `]` of the pair, so the caret stays inside the longer group.
+    expect(at('[[C]]', 2, 1)?.bracketEnd).toBe(4);
   });
 
   it('returns null off any chord, and for a zero shift', () => {

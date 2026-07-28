@@ -13,7 +13,11 @@
 // the choice is `spellNoteInSource` (notation.ts), shared with the render's
 // speller so the two cannot drift on what `H` means.
 
-import { findClosingBracket, type ChordNotation } from './chords';
+import {
+  findClosingBracket,
+  findClosingDoubleBracket,
+  type ChordNotation,
+} from './chords';
 import { spellNoteInSource } from './notation';
 import type { ChordTheory } from './theory';
 
@@ -98,6 +102,25 @@ export function transposeContent(
       continue;
     }
 
+    // An inline group holds the same tokens as any bracket, so it transposes the
+    // same way — tested first, because its `[[` also matches the single-bracket
+    // branch and would leave `[C` as a non-chord token, silently untransposed.
+    if (c === '[' && content[i + 1] === '[') {
+      const close = findClosingDoubleBracket(content, i);
+      if (close !== -1) {
+        const inner = content.slice(i + 2, close);
+        const rewritten = inner.replace(/[^\s,]+/g, (token) =>
+          transposeToken(token, table, semitones, theory, notation),
+        );
+        out += '[[' + rewritten + ']]';
+        i = close + 2;
+        continue;
+      }
+      out += '[';
+      i += 1;
+      continue;
+    }
+
     if (c === '[') {
       const close = findClosingBracket(content, i);
       if (close === -1) {
@@ -156,6 +179,28 @@ export function transposeChordAt(
       i += 2; // a `\[` is a literal bracket, not one the caret can be "in"
       continue;
     }
+    if (c === '[' && content[i + 1] === '[') {
+      const close = findClosingDoubleBracket(content, i);
+      if (close === -1) {
+        i += 1;
+        continue;
+      }
+      // "In" an inline group means past its second `[` and no further than its
+      // first `]` — the single-bracket rule, shifted by the doubled markers.
+      if (i + 1 < index && index <= close) {
+        const inner = content.slice(i + 2, close);
+        const rewritten = inner.replace(/[^\s,]+/g, (token) =>
+          transposeToken(token, table, semitones, theory, notation),
+        );
+        return {
+          content: content.slice(0, i + 2) + rewritten + content.slice(close),
+          bracketEnd: i + 2 + rewritten.length,
+        };
+      }
+      i = close + 2;
+      continue;
+    }
+
     if (c === '[') {
       const close = findClosingBracket(content, i);
       if (close === -1) {
