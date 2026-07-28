@@ -1,6 +1,8 @@
 // Module switcher — Epic 13
 // Spec: PRD-UI-SHELL.md §4 (mobile)
 
+import { CdkTrapFocus } from '@angular/cdk/a11y';
+import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,8 +11,6 @@ import {
   signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Icon } from '../../primitives';
 import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
 
@@ -57,8 +57,12 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
       aria-haspopup="true"
       (click)="isOpen.set(!isOpen())"
     >
-      <app-icon class="hamburger-glyph" name="menu" />
-      <app-icon class="module-badge" [name]="activeItem().icon" />
+      <app-icon
+        class="hamburger-glyph"
+        [badge]="activeItem().icon"
+        name="menu"
+        badgePrimary
+      />
     </button>
 
     <ng-template
@@ -113,6 +117,7 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
     /* Touch has no hover, but the compact layout is also what a narrow desktop
        window gets — and a pressed state matters on every input. */
     .trigger:hover {
+      --badge-bg: var(--surface-sunken);
       background: var(--surface-sunken);
     }
 
@@ -164,6 +169,10 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
       color: var(--text);
       text-decoration: none;
       font-size: var(--text-md);
+    }
+
+    .link:hover {
+      background: var(--brand-subtle);
     }
 
     .link.is-active {
