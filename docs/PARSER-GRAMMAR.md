@@ -334,9 +334,16 @@ complexity to a deliberately pure module.
 Editor insert buttons write markup at the cursor; they constrain the grammar (hence
 noted) but are an editor concern:
 
-- **Markdown (bold, italic)** — inserted at the exact cursor location, following the
-  markdown rules. **Disabled when it would nest** (same-type markdown inside itself,
-  or anything inside a chord). The disable guard is a **future upgrade**.
+- **Markdown (bold, italic) — each flips ONE bit of the asterisk run** [decided].
+  Emphasis is a run whose _length_ is the state (1 italic, 2 bold, 3 both), not a
+  pair of markers, so each button reads the run already around the selection or the
+  word at the caret, flips its own bit, and rewrites the run to what the new pair of
+  bits spells. Hence `*x*` + bold ⇒ `***x***`, and `***x***` + italic ⇒ `**x**`.
+  Wrapping blindly instead would write a **fourth** asterisk — which this grammar
+  reads as literal text — and could not tell `**` from `*` well enough to keep Italic
+  from un-bolding a bold run. A run of four or more is already literal and counts as
+  no emphasis. Still **disabled inside a chord** (the asterisks would be chord text);
+  that guard is a **future upgrade**.
 - **Chord — three states in one button** [decided]. Not disabled inside a bracket,
   because in there it has something to say:
   1. **not in a bracket** → wrap the selection, else the word at the caret, else

@@ -93,21 +93,28 @@ export const SNIPPETS = {
   escape: { before: '\\' } satisfies InsertRequest,
 
   /**
-   * Markdown emphasis around the selection (PARSER-GRAMMAR §Emphasis). `**` wraps
-   * bold, `*` italic; with nothing selected the caret lands between the markers,
-   * ready to type. Content-only and blocked inside a bracket — the asterisks are
-   * literal in a chord and never reach the inline scan on a title line.
+   * Markdown emphasis (PARSER-GRAMMAR §Emphasis). `**` is bold, `*` italic; with
+   * nothing selected the caret lands between the markers, ready to type.
+   * Content-only and blocked inside a bracket — the asterisks are literal in a
+   * chord and never reach the inline scan on a title line.
+   *
+   * `togglesEmphasis` is what makes each button own **one bit** of the asterisk run
+   * rather than a pair of markers, so the two compose and each undoes itself. The
+   * `before`/`after` here are the markers a run of that one bit spells — kept so
+   * the request still reads as what it writes.
    */
   bold: {
     before: '**',
     after: '**',
     caretOffset: 0,
     wrapsWord: true,
+    togglesEmphasis: 'bold',
   } satisfies InsertRequest,
   italic: {
     before: '*',
     after: '*',
     caretOffset: 0,
     wrapsWord: true,
+    togglesEmphasis: 'italic',
   } satisfies InsertRequest,
 };

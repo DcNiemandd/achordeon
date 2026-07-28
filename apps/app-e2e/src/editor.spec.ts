@@ -413,15 +413,46 @@ test.describe('song editor', () => {
     await expect.poll(selected).toBe('Am');
   });
 
-  test('a selection stays selected after bold, so italic can follow', async ({
+  // Emphasis is a RUN of asterisks whose length is the state (1 italic, 2 bold, 3
+  // both), so each button owns one bit of it. Wrapping instead of flipping stacked
+  // a fourth asterisk — which the grammar reads as literal text — and let Italic
+  // inside a bold run quietly un-bold it.
+  test('bold and italic each flip their own bit of the emphasis run', async ({
     page,
   }) => {
+    const editor = page.getByTestId('editor');
+    const bold = page.getByTestId('insert-bold');
+    const italic = page.getByTestId('insert-italic');
+
     await type(page, 'loud');
     await page.keyboard.press('Shift+Home');
-    await page.getByTestId('insert-bold').click();
-    await page.getByTestId('insert-italic').click();
 
-    await expect(page.getByTestId('editor')).toContainText('***loud***');
+    await bold.click();
+    await expect(editor).toContainText('**loud**');
+
+    // They compose: bold + italic is the three-asterisk run, not two pairs.
+    await italic.click();
+    await expect(editor).toContainText('***loud***');
+
+    // And each undoes itself, leaving the other bit alone.
+    await italic.click();
+    await expect(editor).toContainText('**loud**');
+    await bold.click();
+    await expect(editor).toContainText('loud');
+    await expect(editor).not.toContainText('*');
+  });
+
+  test('bold toggles off on the word at the caret, with nothing selected', async ({
+    page,
+  }) => {
+    const editor = page.getByTestId('editor');
+    await type(page, 'loud');
+    await page.getByTestId('insert-bold').click();
+    await expect(editor).toContainText('**loud**');
+
+    await page.getByTestId('insert-bold').click();
+    await expect(editor).toContainText('loud');
+    await expect(editor).not.toContainText('*');
   });
 
   test('the chord button brackets the word at the caret', async ({ page }) => {
