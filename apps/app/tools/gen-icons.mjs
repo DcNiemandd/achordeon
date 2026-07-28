@@ -43,14 +43,18 @@ const ICONS = {
   add: 'plus',
   plus: 'plus',
   minus: 'minus',
+  // The two directions a file travels (Epic 7). One tray with the arrow going
+  // down, one with it going up — the same glyph mirrored, because they are the
+  // same act mirrored: something leaves the library, something arrives.
+  //
+  // `download` covers BOTH kinds of leaving now: the picture for a player and
+  // the Achordeon file for another machine are one button and one dialog, so
+  // there is no second act left for an `export` mark to name. The file glyphs
+  // (`file-output`/`file-input`) said "a page moves", which was a distinction
+  // without a button once the two merged — and a page with an arrow reads as
+  // "print" at 18px anyway.
   download: 'download',
-  // Export and import (Epic 7). The *file* marks, deliberately unlike
-  // `download`'s bare arrow: download makes a picture for a player, these two
-  // move the library itself between machines. A page with an arrow leaving it
-  // and a page with an arrow arriving — same object, opposite directions, which
-  // is exactly the relationship the two acts have.
-  export: 'file-output',
-  import: 'file-input',
+  import: 'upload',
   // The full circular arrow, which is what an undo arrow is in most people's
   // heads. It used to be `undo-2`/`redo-2` — an arrow that runs left and loops
   // back — which reads as "go left" before it reads as "go back".

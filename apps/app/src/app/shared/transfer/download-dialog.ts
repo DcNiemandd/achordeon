@@ -4,6 +4,15 @@
 //
 // Controlled: how many songs in, a format out. It holds no state at all — each
 // format is a button that downloads — injects nothing, and knows no store.
+//
+// **This is where Export lives now.** It used to be a second icon in the bar,
+// beside this dialog's own button, which asked the user to know the difference
+// between "download" and "export" *before* being shown it. So the two merged:
+// one button, one dialog, and the Achordeon file is the last row in the list —
+// the far end of a run that goes from most-for-a-player to most-for-a-machine.
+// Every row still ends in a file on disk, which is what makes "Download" an
+// honest title for all of them; the acts underneath stay two (see
+// `DownloadChoice`).
 
 import {
   ChangeDetectionStrategy,
@@ -13,12 +22,21 @@ import {
   output,
 } from '@angular/core';
 import { Button, Dialog, Icon } from '../../primitives';
-import type { DownloadFormat, DownloadProgress } from './transfer-model';
+import {
+  DATA_FORMAT,
+  type DownloadChoice,
+  type DownloadFormat,
+  type DownloadProgress,
+} from './transfer-model';
 
-interface FormatOption {
-  readonly value: DownloadFormat;
+/** A row: what the file is, and what it is for. */
+interface Option {
   readonly label: string;
   readonly hint: string;
+}
+
+interface FormatOption extends Option {
+  readonly value: DownloadFormat;
 }
 
 @Component({
@@ -67,6 +85,29 @@ interface FormatOption {
               </button>
             </div>
           }
+
+          <!-- The Achordeon file, behind a hairline rather than a heading: the
+               dialog is three rows tall and a section title for one of them
+               costs more room than it explains. The rule says "what follows is
+               a different kind of thing", and the hint says which kind. -->
+          <div class="option is-data">
+            <div class="text">
+              <span class="name">{{ dataOption().label }}</span>
+              <span class="hint">{{ dataOption().hint }}</span>
+            </div>
+            <button
+              appButton
+              type="button"
+              variant="primary"
+              class="go"
+              [attr.aria-label]="downloadOptionLabel(dataOption())"
+              data-testid="download-json"
+              (click)="chosen.emit(DATA_FORMAT)"
+            >
+              <app-icon name="download" />
+              {{ downloadLabel }}
+            </button>
+          </div>
         </div>
       }
 
@@ -98,6 +139,15 @@ interface FormatOption {
       display: flex;
       align-items: flex-start;
       gap: var(--space-3);
+    }
+
+    /* The data file, set apart from the renders above it — the same hairline
+       the songbook dialog draws above its song-order group, and for the same
+       reason: what follows answers a different question. */
+    .option.is-data {
+      margin-block-start: var(--space-1);
+      padding-block-start: var(--space-3);
+      border-block-start: 1px solid var(--border);
     }
 
     .text {
@@ -168,8 +218,11 @@ export class DownloadDialog {
    * layout pass the total is not yet known, so the spinner stands alone). */
   readonly progress = input<DownloadProgress | null>(null);
 
-  readonly chosen = output<DownloadFormat>();
+  readonly chosen = output<DownloadChoice>();
   readonly closed = output<void>();
+
+  /** Exposed for the template's one non-`@for` row. */
+  protected readonly DATA_FORMAT = DATA_FORMAT;
 
   /** The spinner's caption: a bare "Generating…" until there is a count, then
    * "Generating n of N…" as each song lands. */
@@ -201,7 +254,7 @@ export class DownloadDialog {
           {
             value: 'png',
             label: $localize`:@@download.png:Image (PNG)`,
-            hint: $localize`:@@download.png.hint:A picture to share. It carries the song inside it, so importing it back rebuilds the song.`,
+            hint: $localize`:@@download.png.hint:A picture to share. The song rides along inside it, so this one image imports back.`,
           },
         ]
       : [
@@ -223,12 +276,30 @@ export class DownloadDialog {
         ],
   );
 
+  /**
+   * The Achordeon file — the row the old Export button became.
+   *
+   * It says what the file *is* ("the song itself") against what the rows above
+   * it are (a page, a picture), because that is the distinction the merge has to
+   * carry now that one dialog offers both. The PNG round-trips too, so the hint
+   * cannot lean on "importable" alone to tell them apart: an image is a picture
+   * that happens to carry its song, and this is the song with no picture at all
+   * — which is why it is also the only one that keeps several songs exact.
+   */
+  protected readonly dataOption = computed<Option>(() => ({
+    label: $localize`:@@download.data:Achordeon file`,
+    hint:
+      this.count() === 1
+        ? $localize`:@@download.data.hint:The song itself — words, chords and settings. Import it here or on another device to get the song back, not a picture of it.`
+        : $localize`:@@download.data.hintMany:The songs themselves — words, chords and settings, in one file. Import it here or on another device to get them all back.`,
+  }));
+
   protected readonly cancelLabel = $localize`:@@download.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@download.go:Download`;
 
   /** The button repeats "Download" for every row, so its accessible name says
    * which format — the visible word alone would read "Download" five times. */
-  protected downloadOptionLabel(option: FormatOption): string {
+  protected downloadOptionLabel(option: Option): string {
     return $localize`:@@download.optionLabel:Download as ${option.label}:format:`;
   }
 }

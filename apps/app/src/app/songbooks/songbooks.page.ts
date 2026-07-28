@@ -104,7 +104,6 @@ import {
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (downloaded)="presenter.openDownloadRow($event)"
-          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event[0])"
         />
 

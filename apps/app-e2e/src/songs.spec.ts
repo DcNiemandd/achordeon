@@ -43,7 +43,7 @@ async function firstRun(page: Page): Promise<void> {
 }
 
 /**
- * Open a row's ⋯ menu — download, export and delete moved behind it (Epic 7).
+ * Open a row's ⋯ menu — download and delete moved behind it (Epic 7).
  * Edit, rename and duplicate stay direct on the row.
  */
 async function openRowMenu(page: Page, id: string | null): Promise<void> {

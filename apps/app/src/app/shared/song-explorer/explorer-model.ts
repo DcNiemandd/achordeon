@@ -160,18 +160,23 @@ export interface ExplorerCapabilities {
   readonly canRename: boolean;
   readonly canDuplicate: boolean;
   readonly canDelete: boolean;
-  /** Download this one row (a picture for a player). Off in the songbook
-   * builder's panes, where a whole book downloads rather than a slot. */
-  readonly canDownload: boolean;
-  /** Export this one row to a library file. Same subject as `canDownload`,
-   * the other format. */
-  readonly canExport: boolean;
   /**
-   * Fold the secondary row actions (perform, duplicate, download, export,
-   * delete) behind a `⋯` menu, keeping the everyday ones in reach. True where a
-   * row carries many actions and few of them are everyday — which, since the
-   * songbook row grew a perform, an edit and two file exports, is now every
-   * mount that has a secondary action at all.
+   * Take this row away as a file — a page, a picture, or the Achordeon file,
+   * which its dialog asks about. Off in the songbook builder's panes, where a
+   * whole book downloads rather than a slot.
+   *
+   * There is no `canExport` beside it any more: Download and Export were one
+   * subject asked twice, so they are one row action opening one dialog.
+   */
+  readonly canDownload: boolean;
+  /**
+   * Fold the secondary row actions (perform, duplicate, download, delete)
+   * behind a `⋯` menu, keeping the everyday ones in reach. True where a row
+   * carries many actions and few of them are everyday.
+   *
+   * **A wish, not a promise.** A menu holding one item is a click to reveal a
+   * click, so where the count comes to one the action is laid out on the row
+   * instead, whatever this says (see `secondaryActionCount`).
    */
   readonly usesRowMenu: boolean;
   /**
@@ -204,7 +209,6 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
-  canExport: true,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,
@@ -231,7 +235,6 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
-  canExport: false,
   canDropRemove: true,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -261,7 +264,6 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
-  canExport: false,
   canDropRemove: false,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -296,7 +298,6 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
-  canExport: true,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,

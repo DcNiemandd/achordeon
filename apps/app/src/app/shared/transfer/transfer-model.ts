@@ -16,6 +16,23 @@ export type MultiDownloadFormat = 'zip-png' | 'zip-pdf' | 'pdf';
 
 export type DownloadFormat = SongDownloadFormat | MultiDownloadFormat;
 
+/**
+ * The Achordeon file — the library's own JSON, which is what **Export** means
+ * (CONTEXT.md §Export).
+ *
+ * Deliberately NOT a member of `DownloadFormat`. Download and Export are one
+ * button and one dialog now, because a person choosing what to take away should
+ * not have to know which word we use for which file — but they remain two acts
+ * on two services (`DownloadService` renders, `ExportService` serialises), and a
+ * type that let `'json'` reach `downloadSong` would be lying about that. The
+ * union below is the *dialog's* vocabulary; the presenter splits it back in two.
+ */
+export const DATA_FORMAT = 'json';
+export type DataFormat = typeof DATA_FORMAT;
+
+/** What the download dialog can hand back: a render, or the data file. */
+export type DownloadChoice = DownloadFormat | DataFormat;
+
 export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
 
 /**
@@ -57,6 +74,12 @@ export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
  */
 export type SongbookFormat = 'pdf' | 'zip-png';
 
+/** The songbook dialog's own vocabulary: the two renders, **plus the Achordeon
+ * file** — the same merge the song dialog makes, expressed through the format
+ * control the dialog already had. Picking `json` retires every paper question
+ * below it, because none of them is about a database. */
+export type SongbookChoiceFormat = SongbookFormat | DataFormat;
+
 /**
  * The axis the **All songs** book is ordered by when it prints.
  *
@@ -76,9 +99,10 @@ export interface SongOrder {
 
 /** Everything the songbook download dialog decides. */
 export interface SongbookPdfChoice {
-  /** Printable PDF, or a ZIP of per-song images. Chooses which of the fields
-   * below matter — the paper options are the PDF's alone. */
-  readonly format: SongbookFormat;
+  /** Printable PDF, a ZIP of per-song images, or the Achordeon file. Chooses
+   * which of the fields below matter — the paper options are the PDF's alone,
+   * and the data file wants none of them. */
+  readonly format: SongbookChoiceFormat;
   readonly pageSize: PageSizeChoice;
   readonly isLandscape: boolean;
   readonly marginMm: number;

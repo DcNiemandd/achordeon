@@ -21,6 +21,7 @@ import {
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
 import {
+  DATA_FORMAT,
   PrintOptionsStore,
   type DownloadProgress,
   type ImportChoice,
@@ -319,11 +320,12 @@ export class SongbooksPresenter {
 
   // --- Transfer (Epic 7) -----------------------------------------------
   //
-  // Download and Export live on the **row's own menu** (Epic 7 follow-up), with
-  // the other row actions, so acting on a songbook is one gesture from the list
-  // rather than "select, then reach for the toolbar". Each act names the row it
-  // came from — never `currentId`, which is what pane B is previewing and may be
-  // a different book entirely.
+  // Download lives on the **row's own menu** (Epic 7 follow-up), with the other
+  // row actions, so acting on a songbook is one gesture from the list rather
+  // than "select, then reach for the toolbar". Export is not a second item
+  // beside it any more — it is a format inside its dialog. The act names the
+  // row it came from — never `currentId`, which is what pane B is previewing
+  // and may be a different book entirely.
 
   /** The book whose download dialog is open, or null. */
   private readonly _downloadId = signal<string | null>(null);
@@ -370,29 +372,38 @@ export class SongbooksPresenter {
     this._progress.set(null);
   }
 
+  /**
+   * Whichever shape the dialog was left on — a render, or (the `json` branch,
+   * which is what the row's Export item became) the whole book as an Achordeon
+   * file **with its songs**, which `ExportService` adds: a book of references
+   * imports as a book of nothing without them.
+   */
   async download(choice: SongbookPdfChoice): Promise<void> {
     const id = this._downloadId();
     if (!id || !this.isTransferable(id)) {
       this.cancelDownload();
       return;
     }
+    const { format } = choice;
+    if (format === DATA_FORMAT) {
+      // Not saved to the print options — see the detail presenter: taking the
+      // data file once is not a statement about paper.
+      await this.busy(() => this.exporter.export({ songbookIds: [id] }));
+      this._downloadId.set(null);
+      return;
+    }
     this.print.save(choice); // remember it for next time (#3)
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>
-      this.downloads.downloadSongbook(id, choice, (done, total) =>
-        this._progress.set({ done, total }),
+      this.downloads.downloadSongbook(
+        id,
+        { ...choice, format },
+        (done, total) => this._progress.set({ done, total }),
       ),
     );
     this._progress.set(null);
     this._downloadId.set(null);
-  }
-
-  /** The whole book as JSON — **with its songs**, which `ExportService` adds:
-   * a book of references imports as a book of nothing without them. */
-  async exportRow(id: string): Promise<void> {
-    if (!this.isTransferable(id)) return;
-    await this.busy(() => this.exporter.export({ songbookIds: [id] }));
   }
 
   // --- Import (Epic 7) --------------------------------------------------

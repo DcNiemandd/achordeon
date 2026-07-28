@@ -6,6 +6,11 @@
 // the guardrail is a claim about the *bytes of the file* rather than about a
 // call being made. So every assertion below reads the downloaded file.
 //
+// **Export is reached through Download.** The two buttons merged into one, so
+// every export here opens the download dialog first and picks the Achordeon
+// file out of it (see `exportFromBar` / `exportBook`). What each file must
+// contain did not change one byte, which is why those assertions did not.
+//
 // Selects only on `data-testid`, like every other suite here.
 
 import { expect, test, type Download, type Page } from '@playwright/test';
@@ -95,8 +100,8 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
 }
 
 /**
- * Open a songbook row's ⋯ menu — where perform, download, export and delete
- * live (edit, rename and duplicate stay direct on the row).
+ * Open a songbook row's ⋯ menu — where perform, download and delete live (edit,
+ * rename and duplicate stay direct on the row).
  *
  * Every item closes the menu when chosen, so a test that reaches for a second
  * one has to open it again.
@@ -109,6 +114,32 @@ async function openBookMenu(page: Page, id: string | null): Promise<void> {
     .hover();
   await page.getByTestId(`more-${id}`).click();
   await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+}
+
+/**
+ * The Achordeon file for whatever the bulk bar's Download acts on — the ticked
+ * rows, or the focused song.
+ *
+ * Export is a **row of the download dialog** now, not a button of its own: one
+ * control asks "what shall I make of this?", and the data file is one of the
+ * answers. So every export below is two clicks, and the first of them is the
+ * same click a PDF starts with.
+ */
+async function exportFromBar(page: Page): Promise<Buffer> {
+  await page.getByTestId('songs-download').click();
+  await expect(page.getByTestId('download-dialog')).toBeVisible();
+  return download(page, () => page.getByTestId('download-json').click());
+}
+
+/** The same, for one songbook row's ⋯ — its dialog asks with a format select
+ * rather than a row of buttons, so the data file is an option in it. */
+async function exportBook(page: Page, id: string | null): Promise<Buffer> {
+  await openBookMenu(page, id);
+  await page.getByTestId(`download-${id}`).click();
+  await page.getByTestId('songbook-format').selectOption('json');
+  return download(page, () =>
+    page.getByTestId('songbook-download-confirm').click(),
+  );
 }
 
 /**
@@ -149,9 +180,7 @@ test.describe('export & import', () => {
     page,
   }) => {
     await createSong(page, 'Alpha');
-    const file = await download(page, () =>
-      page.getByTestId('songs-export').click(),
-    );
+    const file = await exportFromBar(page);
 
     const snapshot = JSON.parse(file.toString('utf8'));
     expect(snapshot.schemaVersion).toBe(1);
@@ -171,9 +200,7 @@ test.describe('export & import', () => {
     await selectRow(page, 'Alpha');
     await selectRow(page, 'Beta');
 
-    const file = await download(page, () =>
-      page.getByTestId('songs-export').click(),
-    );
+    const file = await exportFromBar(page);
     const names = JSON.parse(file.toString('utf8')).data.songs.map(
       (song: { name: string }) => song.name,
     );
@@ -184,9 +211,7 @@ test.describe('export & import', () => {
     page,
   }) => {
     await createSong(page, 'Alpha');
-    const file = await download(page, () =>
-      page.getByTestId('songs-export').click(),
-    );
+    const file = await exportFromBar(page);
 
     await freshLibrary(page);
     await expect(page.getByTestId('song-row')).toHaveCount(0);
@@ -206,9 +231,7 @@ test.describe('export & import', () => {
 
   test('names the collisions and can keep both copies', async ({ page }) => {
     await createSong(page, 'Alpha');
-    const file = await download(page, () =>
-      page.getByTestId('songs-export').click(),
-    );
+    const file = await exportFromBar(page);
 
     await page.getByTestId('songs-import-input').setInputFiles({
       name: 'library.json',
@@ -228,9 +251,7 @@ test.describe('export & import', () => {
 
   test('keeps mine when told to ignore', async ({ page }) => {
     await createSong(page, 'Alpha');
-    const file = await download(page, () =>
-      page.getByTestId('songs-export').click(),
-    );
+    const file = await exportFromBar(page);
 
     await page.getByTestId('songs-import-input').setInputFiles({
       name: 'library.json',
@@ -291,8 +312,7 @@ test.describe('import across modules', () => {
     await page.goto('songbooks');
     const row = page.getByTestId('songbook-row').filter({ hasText: bookName });
     const id = await row.getAttribute('data-song-id');
-    await openBookMenu(page, id);
-    return download(page, () => page.getByTestId(`export-${id}`).click());
+    return exportBook(page, id);
   }
 
   test('a songbook imported in Songs appears in Songbooks without a reload', async ({
@@ -366,9 +386,11 @@ test.describe('a row acts on itself', () => {
     const id = await row.getAttribute('data-song-id');
     await row.hover();
     await page.getByTestId(`more-${id}`).click();
+    // One Download item now, and the Achordeon file is inside its dialog.
+    await page.getByTestId(`download-${id}`).click();
 
     const file = await download(page, () =>
-      page.getByTestId(`export-${id}`).click(),
+      page.getByTestId('download-json').click(),
     );
     const names = JSON.parse(file.toString('utf8')).data.songs.map(
       (song: { name: string }) => song.name,
@@ -383,6 +405,8 @@ test.describe('a row acts on itself', () => {
     const id = await row.getAttribute('data-song-id');
     await row.hover();
     await page.getByTestId(`more-${id}`).click();
+    // The row's menu no longer carries a second file item beside this one.
+    await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
     await page.getByTestId(`download-${id}`).click();
 
     // The row's menu opens the same format dialog the bulk button does.
@@ -395,6 +419,21 @@ test.describe('a row acts on itself', () => {
 });
 
 test.describe('download a song', () => {
+  test('one button offers the pictures and the data file together', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+
+    // The bar carries no Export of its own any more — the act did not go away,
+    // it moved inside the dialog the Download button opens.
+    await expect(page.getByTestId('songs-export')).toHaveCount(0);
+
+    await page.getByTestId('songs-download').click();
+    await expect(page.getByTestId('download-pdf')).toBeVisible();
+    await expect(page.getByTestId('download-png')).toBeVisible();
+    await expect(page.getByTestId('download-json')).toBeVisible();
+  });
+
   test('the PNG is a PNG, and carries the song inside it', async ({ page }) => {
     await createSong(page, 'Alpha');
     await page.getByTestId('songs-download').click();
@@ -805,6 +844,77 @@ test.describe('download a songbook', () => {
     await expect(page.getByTestId('pdf-summary-number')).toHaveValue('before');
   });
 
+  test('picking the data format retires every paper question', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    // The book you are already in has no Export button beside Download either.
+    await expect(page.getByTestId('songbook-detail-export')).toHaveCount(0);
+    await expect(page.getByTestId('pdf-page-size')).toBeVisible();
+
+    await page.getByTestId('songbook-format').selectOption('json');
+    // None of these is a question about a database, so none of them is asked.
+    await expect(page.getByTestId('pdf-page-size')).toHaveCount(0);
+    await expect(page.getByTestId('pdf-title-page')).toHaveCount(0);
+    await expect(page.getByTestId('pdf-summary')).toHaveCount(0);
+
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+    const snapshot = JSON.parse(file.toString('utf8'));
+    // The book AND the song it references — a book of references imports as a
+    // book of nothing without them.
+    expect(snapshot.data.songbooks).toHaveLength(1);
+    expect(snapshot.data.songs.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+    ]);
+  });
+
+  test('the data format is not remembered as a print choice', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('songbook-format').selectOption('json');
+    await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    // Taking the data file once says nothing about paper, so the next download
+    // opens on the paper you last printed — not on a dialog with no options.
+    await page.reload();
+    await page.getByTestId('songbook-detail-download').click();
+    await expect(page.getByTestId('songbook-format')).toHaveValue('pdf');
+  });
+
+  test('a ⋯ that would hold one action shows the action instead', async ({
+    page,
+  }) => {
+    // An empty library: All songs is read-only (no rename, duplicate, delete)
+    // and empty (no perform), so Download is all that is left — and one item
+    // behind a dots button is a click that reveals a click.
+    await page.goto('songbooks');
+    const all = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'All songs' });
+    const id = await all.getAttribute('data-song-id');
+    await all.hover();
+
+    await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
+    await expect(page.getByTestId(`download-${id}`)).toBeVisible();
+  });
+
   test('All songs can be downloaded and exported, but not renamed or deleted', async ({
     page,
   }) => {
@@ -818,11 +928,11 @@ test.describe('download a songbook', () => {
     // Read-only, so no rename or duplicate on the row itself.
     await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(0);
-    // It is the whole library, so its ⋯ still hands it out — and still offers
-    // no delete.
+    // It is the whole library, so its ⋯ still hands it out — as one Download
+    // item covering both files, and still with no delete.
     await openBookMenu(page, id);
     await expect(page.getByTestId(`download-${id}`)).toBeVisible();
-    await expect(page.getByTestId(`export-${id}`)).toBeVisible();
+    await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`delete-${id}`)).toHaveCount(0);
   });
 
@@ -914,10 +1024,7 @@ test.describe('download a songbook', () => {
       .getByTestId('songbook-row')
       .filter({ hasText: 'All songs' });
     const id = await all.getAttribute('data-song-id');
-    await openBookMenu(page, id);
-    const file = await download(page, () =>
-      page.getByTestId(`export-${id}`).click(),
-    );
+    const file = await exportBook(page, id);
     const snapshot = JSON.parse(file.toString('utf8'));
     expect(
       snapshot.data.songs.map((s: { name: string }) => s.name).sort(),

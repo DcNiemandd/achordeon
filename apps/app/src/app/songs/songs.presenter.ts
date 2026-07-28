@@ -29,12 +29,13 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
-import type {
-  DownloadFormat,
-  DownloadProgress,
-  ImportChoice,
-  ImportFailure,
-  ImportPreview,
+import {
+  DATA_FORMAT,
+  type DownloadChoice,
+  type DownloadProgress,
+  type ImportChoice,
+  type ImportFailure,
+  type ImportPreview,
 } from '../shared/transfer';
 import { NEW_SONG_CONTENT } from './new-song';
 import { ReturnUrl } from './return-url';
@@ -496,26 +497,33 @@ export class SongsPresenter {
   }
 
   /**
-   * Render and save. One id takes the single-song formats, several take the
-   * batch ones — the dialog offers only the set that matches the count, so the
-   * two branches here can trust what they are given.
+   * Save what the dialog was asked for. One id takes the single-song formats,
+   * several take the batch ones — the dialog offers only the set that matches
+   * the count, so the branches here can trust what they are given.
+   *
+   * **The `json` branch is the old Export button.** One dialog offers both, so
+   * this is where the one choice splits back into the two acts it always was:
+   * `DownloadService` renders a picture, `ExportService` serialises the records
+   * (CONTEXT.md §Export vs §Download).
    *
    * The dialog stays open through the render to host the spinner and the count,
    * and closes when the file is saved — not the instant a format is picked.
    */
-  async download(format: DownloadFormat): Promise<void> {
+  async download(choice: DownloadChoice): Promise<void> {
     const ids = this.downloadIds();
     if (ids.length === 0) {
       this.cancelDownload();
       return;
     }
     await this.busy(async () => {
-      if (ids.length === 1) {
-        await this.downloads.downloadSong(ids[0], format as SongFormat);
+      if (choice === DATA_FORMAT) {
+        await this.exporter.export({ songIds: ids });
+      } else if (ids.length === 1) {
+        await this.downloads.downloadSong(ids[0], choice as SongFormat);
       } else {
         await this.downloads.downloadSongs(
           ids,
-          format as MultiFormat,
+          choice as MultiFormat,
           (done, total) => this._progress.set({ done, total }),
         );
       }
@@ -523,22 +531,6 @@ export class SongsPresenter {
     this._progress.set(null);
     this._isDownloadOpen.set(false);
     this._rowTarget.set(null);
-  }
-
-  /** The bulk bar's Export: the selection-or-current, no dialog (nothing to
-   * choose — Export has one format). */
-  async exportSelection(): Promise<void> {
-    await this.exportIds(this.barIds());
-  }
-
-  /** A row's menu Export: that one row. */
-  async exportRow(id: string): Promise<void> {
-    await this.exportIds([id]);
-  }
-
-  private async exportIds(songIds: readonly string[]): Promise<void> {
-    if (songIds.length === 0) return;
-    await this.busy(() => this.exporter.export({ songIds: [...songIds] }));
   }
 
   /**

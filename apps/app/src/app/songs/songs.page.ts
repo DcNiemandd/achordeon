@@ -114,10 +114,16 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
                  so it lives on the row it copies (hasInlineDuplicate), where it
                  is now a visible button rather than a trip through the ⋯. -->
 
-            <!-- Download and Export sit with the bulk actions because they act
-                 on the same subject: the ticked rows, or the song you are
-                 looking at. They are enabled where the delete is not, because
-                 there is always something to download once a song is focused. -->
+            <!-- Download sits with the bulk actions because it acts on the same
+                 subject: the ticked rows, or the song you are looking at. It is
+                 enabled where the delete is not, because there is always
+                 something to download once a song is focused.
+
+                 **One button, not two.** Export used to stand beside this one,
+                 which made the first decision "picture or database?" and asked
+                 it with two icons and no explanation. It is now the last row of
+                 this button's dialog, where it sits under a sentence saying
+                 what it is for. -->
             <button
               appButton
               type="button"
@@ -135,9 +141,10 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
                  that is never disabled. It opens the shared import panel's file
                  picker; the panel owns the file input and the dialogs.
 
-                 **Before Export**, because that is the order the pair is used
-                 in: a file comes in before one goes out, and a library with
-                 nothing in it has nothing to export. -->
+                 It wears the **mirror of Download's glyph** — one tray with the
+                 arrow up, one with it down — because now that Download covers
+                 every way a file leaves, in and out is the whole distinction
+                 left to draw. -->
             <button
               appButton
               type="button"
@@ -149,19 +156,6 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
               (click)="importPanel.pick()"
             >
               <app-icon name="import" />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!hasTransferTarget() || presenter.isBusy()"
-              [attr.aria-label]="exportLabel()"
-              [appTooltip]="exportLabel()"
-              data-testid="songs-export"
-              (click)="presenter.exportSelection()"
-            >
-              <app-icon name="export" />
             </button>
 
             <!-- Red, like the same act in the row's ⋯ menu. A destructive
@@ -206,7 +200,6 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (downloaded)="presenter.openDownloadRow($event)"
-          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event)"
         />
       </div>
@@ -399,8 +392,8 @@ export class SongsPage {
     () => this.presenter.selectedIds().size > 0,
   );
 
-  /** Download and Export answer the selection, or — with none — the song in
-   * pane B. So they are live whenever there is anything to look at. */
+  /** Download answers the selection, or — with none — the song in pane B. So it
+   * is live whenever there is anything to look at. */
   protected readonly hasTransferTarget = computed(() =>
     this.presenter.hasBarTransfer(),
   );
@@ -411,12 +404,6 @@ export class SongsPage {
     this.hasSelection()
       ? $localize`:@@songs.downloadSelected:Download the selected songs`
       : $localize`:@@songs.downloadOne:Download this song`,
-  );
-
-  protected readonly exportLabel = computed(() =>
-    this.hasSelection()
-      ? $localize`:@@songs.exportSelected:Export the selected songs to a file`
-      : $localize`:@@songs.exportOne:Export this song to a file`,
   );
 
   protected readonly importLabel = $localize`:@@songs.import:Import songs from a file`;

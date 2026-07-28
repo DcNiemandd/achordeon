@@ -22,6 +22,7 @@ import {
   type SortChange,
 } from '../shared/song-explorer';
 import {
+  DATA_FORMAT,
   PrintOptionsStore,
   type DownloadProgress,
   type SongbookPdfChoice,
@@ -645,9 +646,10 @@ export class SongbookDetailPresenter {
 
   // --- Transfer (Epic 7) -----------------------------------------------
   //
-  // The same two acts the songbook list offers, on the book that is already
-  // open. **Off for the virtual All songs**, which has no record and therefore
-  // no title page, author or order of its own to print.
+  // The same act the songbook list offers, on the book that is already open —
+  // one dialog whose format row covers the renders *and* the Achordeon file.
+  // **Off for the virtual All songs**, which has no record and therefore no
+  // title page, author or order of its own to print.
 
   private readonly _isDownloadOpen = signal(false);
   private readonly _isBusy = signal(false);
@@ -670,26 +672,39 @@ export class SongbookDetailPresenter {
     this._progress.set(null);
   }
 
+  /**
+   * Whichever shape the dialog was left on. The `json` branch is what the
+   * Export button became: the book **and its songs**, which `ExportService`
+   * adds — a book of references imports as a book of nothing without them.
+   */
   async download(choice: SongbookPdfChoice): Promise<void> {
     if (!this.isTransferable()) {
       this.cancelDownload();
+      return;
+    }
+    const { format } = choice;
+    if (format === DATA_FORMAT) {
+      // Not remembered: the paper answers are a habit worth keeping, but
+      // "I once took the data file" is not a preference about printing, and
+      // saving it would open the next download on a dialog with no options.
+      await this.busy(() =>
+        this.exporter.export({ songbookIds: [this._id()] }),
+      );
+      this._isDownloadOpen.set(false);
       return;
     }
     this.print.save(choice); // remember it for next time (#3)
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>
-      this.downloads.downloadSongbook(this._id(), choice, (done, total) =>
-        this._progress.set({ done, total }),
+      this.downloads.downloadSongbook(
+        this._id(),
+        { ...choice, format },
+        (done, total) => this._progress.set({ done, total }),
       ),
     );
     this._progress.set(null);
     this._isDownloadOpen.set(false);
-  }
-
-  async exportBook(): Promise<void> {
-    if (!this.isTransferable()) return;
-    await this.busy(() => this.exporter.export({ songbookIds: [this._id()] }));
   }
 
   private async busy(job: () => Promise<unknown>): Promise<void> {
