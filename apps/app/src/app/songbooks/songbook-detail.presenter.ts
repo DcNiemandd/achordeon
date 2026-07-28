@@ -16,6 +16,7 @@ import {
 import {
   ALL_SONGS_ID,
   isAllSongs,
+  type AllSongsOrder,
   type Song,
   type Songbook,
   type Uuid,
@@ -74,6 +75,23 @@ export class SongbookDetailPresenter {
 
   readonly id = this._id.asReadonly();
   readonly isVirtual = computed(() => isAllSongs(this._id()));
+
+  /**
+   * The order this account saved for All songs, or `null` for a stored book.
+   *
+   * Reached through the presenter rather than by the page injecting
+   * `SettingsStore` itself: the page is chrome and may not touch the business
+   * layer (PRD-UI-SHELL.md §3). `null` for a stored book because there is nothing
+   * to fall back to — a book's order is its own array of slots.
+   */
+  readonly savedAllSongsOrder = computed(() =>
+    this.isVirtual() ? this.settings.allSongsOrder() : null,
+  );
+
+  /** Save a new All songs order to the account (and so to every device). */
+  setAllSongsOrder(order: AllSongsOrder): Promise<void> {
+    return this.settings.setAllSongsOrder(order);
+  }
 
   /** True when the Perform button should be active: a real book with entries. */
   readonly canPerform = computed(

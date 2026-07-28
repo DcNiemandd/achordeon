@@ -383,36 +383,37 @@ const ARM_MOVE_TOLERANCE = 8;
                  action with a tail of afterthoughts. Perform kept the primary
                  tint until it moved into the ⋯ (see the menu below).
 
-                 A read-only row has no record to *edit*, but it still has
-                 something to look at — the virtual All songs book, which opens
-                 into a view of the library it stands for. So the same slot, the
-                 same output, a different verb: a pencil edits, a list opens. -->
-            @if (capabilities().canEdit) {
-              @if (row.isReadOnly) {
-                <button
-                  appButton
-                  type="button"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="viewRowLabel(row)"
-                  [appTooltip]="VIEW"
-                  [attr.data-testid]="'view-' + row.id"
-                  (click)="opened.emit(row.id)"
-                >
-                  <app-icon name="list" />
-                </button>
-              } @else {
-                <button
-                  appButton
-                  type="button"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="editRowLabel(row)"
-                  [appTooltip]="EDIT"
-                  [attr.data-testid]="'edit-' + row.id"
-                  (click)="opened.emit(row.id)"
-                >
-                  <app-icon name="edit" />
-                </button>
-              }
+                 A read-only row has no record to *edit* — but the virtual All
+                 songs book does have something to configure, which is the one
+                 thing it can be told: how to sort itself (CONTEXT.md §Songbook).
+                 So the slot carries a gear instead of a pencil, and the gear opens
+                 a dialog rather than a screen. Opening the book itself is
+                 unaffected — that is the row, and clicking it still works. -->
+            @if (capabilities().canEdit && !row.isReadOnly) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="editRowLabel(row)"
+                [appTooltip]="EDIT"
+                [attr.data-testid]="'edit-' + row.id"
+                (click)="opened.emit(row.id)"
+              >
+                <app-icon name="edit" />
+              </button>
+            }
+            @if (capabilities().canConfigure && row.isReadOnly) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="configureRowLabel(row)"
+                [appTooltip]="CONFIGURE"
+                [attr.data-testid]="'configure-' + row.id"
+                (click)="configured.emit(row.id)"
+              >
+                <app-icon name="settings" />
+              </button>
             }
             @if (
               capabilities().canRename && !row.isReadOnly && !isRenameInMenu()
@@ -1141,6 +1142,15 @@ export class SongExplorer {
   readonly activated = output<string>();
   /** Open this song in the editor. */
   readonly opened = output<string>();
+  /**
+   * Configure this row itself — the gear on a read-only row.
+   *
+   * Separate from `opened` because it is a different act on a different subject:
+   * `opened` shows you what the row holds, this asks about the row. Only the
+   * virtual All songs book has an answer (its order), and what the dialog looks
+   * like is the page's business, not a list's.
+   */
+  readonly configured = output<string>();
   readonly selectToggled = output<string>();
   readonly favorited = output<string>();
   /**
@@ -1296,9 +1306,9 @@ export class SongExplorer {
   protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
   protected readonly PERFORM = $localize`:@@explorer.perform:Perform`;
   protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
-  /** What a read-only row offers instead of Edit: there is nothing to change in
-   * it, and everything to look at. */
-  protected readonly VIEW = $localize`:@@explorer.view:Open`;
+  /** What a read-only row offers instead of Edit: nothing about the row itself is
+   * editable, but how it is ordered is. */
+  protected readonly CONFIGURE = $localize`:@@explorer.configure:Sorting`;
   protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
   protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
   protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
@@ -1569,8 +1579,8 @@ export class SongExplorer {
     return $localize`:@@explorer.editRow:Edit ${row.name}:name:`;
   }
 
-  protected viewRowLabel(row: SongRow): string {
-    return $localize`:@@explorer.viewRow:Open ${row.name}:name:`;
+  protected configureRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.configureRow:Change how ${row.name}:name: is sorted`;
   }
 
   protected renameRowLabel(row: SongRow): string {

@@ -2,6 +2,7 @@ import {
   ENTRY_CAPABILITIES,
   FULL_CAPABILITIES,
   READONLY_ENTRY_CAPABILITIES,
+  SONGBOOK_LIST_CAPABILITIES,
   toExplorerSort,
   toExplorerSortDir,
 } from './explorer-model';
@@ -72,5 +73,28 @@ describe('the virtual All songs capability set', () => {
   it('is the only entry list that can be sorted', () => {
     expect(ENTRY_CAPABILITIES.canSort).toBe(false);
     expect(ENTRY_CAPABILITIES.canSearch).toBe(false);
+  });
+});
+
+/**
+ * The gear on a read-only row.
+ *
+ * All songs cannot be renamed, reordered or deleted, but it *can* be told how to
+ * sort itself — and that order is saved to the account, not to a record. So the
+ * one mount that lists it is the one mount that offers configuring; everywhere
+ * else a read-only row has nothing to answer.
+ */
+describe('configuring a read-only row', () => {
+  it('is offered only where All songs is listed', () => {
+    expect(SONGBOOK_LIST_CAPABILITIES.canConfigure).toBe(true);
+    expect(FULL_CAPABILITIES.canConfigure).toBe(false);
+    expect(ENTRY_CAPABILITIES.canConfigure).toBe(false);
+    expect(READONLY_ENTRY_CAPABILITIES.canConfigure).toBe(false);
+  });
+
+  // The gear replaces the pencil rather than joining it: the row it appears on is
+  // read-only, so `canEdit` stays on for the real songbooks beside it.
+  it('leaves editing on for the real books in the same list', () => {
+    expect(SONGBOOK_LIST_CAPABILITIES.canEdit).toBe(true);
   });
 });

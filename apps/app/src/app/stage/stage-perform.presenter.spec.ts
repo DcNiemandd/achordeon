@@ -13,7 +13,13 @@ import {
   SongbookStore,
   SONG_REPOSITORY,
 } from '@achordeon/shared/data-access';
-import type { Song, Songbook } from '@achordeon/shared/domain';
+import {
+  ALL_SONGS_ID,
+  DEFAULT_ALL_SONGS_ORDER,
+  type AllSongsOrder,
+  type Song,
+  type Songbook,
+} from '@achordeon/shared/domain';
 import { Fullscreen, StageSession, UiStore } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
@@ -107,7 +113,10 @@ describe('StagePerformPresenter', () => {
         { provide: RenderService, useValue: fakeRenderer },
         {
           provide: SettingsStore,
-          useValue: { global: () => defaultGlobalSettings() },
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => DEFAULT_ALL_SONGS_ORDER,
+          },
         },
         { provide: SongStore, useValue: { allLive: async () => [] } },
         {
@@ -240,7 +249,10 @@ describe('StagePerformPresenter ▸ what the audience button ends up saying', ()
         { provide: RenderService, useValue: fakeRenderer },
         {
           provide: SettingsStore,
-          useValue: { global: () => defaultGlobalSettings() },
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => DEFAULT_ALL_SONGS_ORDER,
+          },
         },
         { provide: SongStore, useValue: { allLive: async () => [] } },
         {
@@ -274,5 +286,77 @@ describe('StagePerformPresenter ▸ what the audience button ends up saying', ()
     // The count reaches the session (the dialog prints it) but not the label.
     expect(session.audienceCount()).toBe(4);
     expect(session.audienceLabel()).toBe('Manage audience');
+  });
+});
+
+/**
+ * Performing All songs in the order the account saved.
+ *
+ * The virtual book has no record and so no stored sequence of slots — its setlist
+ * is a query, and the order that query runs in is the account's answer
+ * (`SettingsStore.allSongsOrder`, CONTEXT.md §Songbook). It used to ask for
+ * `{ sort: 'name' }` regardless, which made the saved order unanswerable exactly
+ * where it matters most: the sequence you play in.
+ */
+describe('StagePerformPresenter ▸ the All songs setlist', () => {
+  const flush = () => TestBed.inject(ApplicationRef).tick();
+
+  function performAllSongs(order: AllSongsOrder) {
+    const asked: unknown[] = [];
+    const session = new FakeSession();
+    TestBed.configureTestingModule({
+      providers: [
+        StagePerformPresenter,
+        { provide: StageSession, useValue: session },
+        { provide: LobbyHost, useValue: new FakeHost() },
+        { provide: Router, useValue: { navigate: jest.fn() } },
+        { provide: ParserService, useValue: fakeParser },
+        { provide: RenderService, useValue: fakeRenderer },
+        {
+          provide: SettingsStore,
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => order,
+          },
+        },
+        {
+          provide: SongStore,
+          useValue: {
+            allLive: async (o?: unknown) => {
+              asked.push(o);
+              return [SONGS['s1']];
+            },
+          },
+        },
+        { provide: SongbookStore, useValue: { byId: async () => null } },
+        { provide: SONG_REPOSITORY, useValue: { get: async () => null } },
+      ],
+    });
+    return { presenter: TestBed.inject(StagePerformPresenter), asked };
+  }
+
+  it('asks the library for the order the account saved', async () => {
+    const order: AllSongsOrder = {
+      sort: 'created',
+      dir: 'desc',
+      favoritesFirst: true,
+    };
+    const { presenter, asked } = performAllSongs(order);
+
+    await presenter.open(ALL_SONGS_ID);
+    flush();
+
+    expect(asked).toEqual([order]);
+  });
+
+  it('falls back to the default order when the account never chose one', async () => {
+    const { presenter, asked } = performAllSongs(DEFAULT_ALL_SONGS_ORDER);
+
+    await presenter.open(ALL_SONGS_ID);
+    flush();
+
+    expect(asked).toEqual([
+      { sort: 'name', dir: 'asc', favoritesFirst: false },
+    ]);
   });
 });

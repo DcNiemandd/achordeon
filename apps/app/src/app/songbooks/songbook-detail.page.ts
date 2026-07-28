@@ -613,11 +613,33 @@ export class SongbookDetailPage {
   readonly fav = input<string | undefined>();
 
   protected readonly query = computed(() => this.q() ?? '');
+  /**
+   * The URL wins, and the account's saved order is what it falls back to.
+   *
+   * Only for the virtual book, and that asymmetry is the point. All songs has a
+   * *stored* order now (`SettingsStore.allSongsOrder`, synced with the account),
+   * so arriving at it with a bare URL must show the order you saved — otherwise
+   * the setting would be something the performance honoured and the screen you set
+   * it on did not. A stored book has no such answer to fall back to; its own list
+   * is unsorted and 'name' is simply the library pane's default.
+   *
+   * Explicit params still override, which is what makes the address bar worth
+   * having: a link can carry a one-off look, and re-sorting from the toolbar is a
+   * transient act (it writes the URL) rather than a silent edit of a synced
+   * preference. Only the dialog writes that.
+   */
+  private readonly savedOrder = this.presenter.savedAllSongsOrder;
   protected readonly sortKey = computed<ExplorerSort>(
-    () => toExplorerSort(this.sort()) ?? 'name',
+    () => toExplorerSort(this.sort()) ?? this.savedOrder()?.sort ?? 'name',
   );
-  protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
-  protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
+  protected readonly sortDir = computed(
+    () => toExplorerSortDir(this.dir()) ?? this.savedOrder()?.dir,
+  );
+  protected readonly isFavoritesFirst = computed(() =>
+    this.fav() === undefined
+      ? (this.savedOrder()?.favoritesFirst ?? false)
+      : this.fav() === '1',
+  );
   /**
    * **All songs has no library pane.**
    *

@@ -22,6 +22,40 @@ export interface BaseRecord {
 }
 
 /**
+ * How the virtual **All songs** songbook is ordered (CONTEXT.md §Songbook).
+ *
+ * A stored book's order IS its content — an array of slots. All songs has no such
+ * array, so its order has to be *described* instead: an axis, a direction, and
+ * whether favourites float. The same three questions the Song explorer asks, so
+ * the description and the list's own controls speak one vocabulary.
+ *
+ * `sort` is structurally the paging layer's `SortKey`, and deliberately declared
+ * here rather than imported from it: the domain sits below `shared/data-access` in
+ * the import ladder, and this is a fact about the library's own book, not about
+ * the query that happens to serve it. A drift between the two breaks the build at
+ * the store, which is the only place that spans both.
+ */
+export interface AllSongsOrder {
+  sort: 'name' | 'created' | 'changed';
+  dir: 'asc' | 'desc';
+  favoritesFirst: boolean;
+}
+
+/**
+ * What All songs is ordered by until someone says otherwise: names, A→Z, with
+ * favourites left in place.
+ *
+ * Alphabetical because it is the only axis whose answer does not change under you
+ * — "created" reorders the book every time you write a song, which is a strange
+ * thing for the list you go to *find* something in to do.
+ */
+export const DEFAULT_ALL_SONGS_ORDER: AllSongsOrder = {
+  sort: 'name',
+  dir: 'asc',
+  favoritesFirst: false,
+};
+
+/**
  * Account row (the `user` Dexie table / Snapshot `user[]`). PRD-INFRASTRUCTURE.md §1/§4.
  * Holds only account-global state that should travel to every device; device-local
  * bookkeeping (deviceId, sync watermark) lives outside the Snapshot.
@@ -30,6 +64,24 @@ export interface User extends BaseRecord {
   username: string; // mirrored to Supabase for username-keyed requests
   planCache: 'free' | 'pro'; // cached tier; source of truth is Supabase profiles.plan
   settings: GlobalSettings; // Global scope render defaults — base of the cascade (ADR-0006)
+  /**
+   * The All songs order (see {@link AllSongsOrder}). Account-global, so it travels
+   * to every device — you sorted *your library*, and it is the same library on the
+   * phone you perform from as on the laptop you arranged it on.
+   *
+   * **Optional, and that is the schema story**: an added field is additive, so
+   * ADR-0007's preserve-unknown makes it lossless with no migration step and no
+   * `SCHEMA_VERSION` bump — an older client round-trips it untouched, and a row
+   * written before it existed reads back as `undefined` and resolves to
+   * {@link DEFAULT_ALL_SONGS_ORDER}.
+   *
+   * Not a member of the `SETTINGS` registry, though it is a preference: that
+   * registry is *render* settings, which cascade Global → Songbook → Song and get
+   * resolved into a render (ADR-0006). An ordering is not a property of a drawn
+   * page — it would ride into `RenderOpts` meaning nothing — and it has exactly
+   * one scope, the account, where every render setting has three.
+   */
+  allSongsOrder?: AllSongsOrder;
 }
 
 /**

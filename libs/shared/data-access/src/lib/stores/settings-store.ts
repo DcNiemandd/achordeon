@@ -4,8 +4,10 @@
 
 import { Injectable, inject, signal } from '@angular/core';
 import {
+  DEFAULT_ALL_SONGS_ORDER,
   LOCAL_USER_ID,
   SETTINGS,
+  type AllSongsOrder,
   type GlobalSettings,
   type User,
 } from '@achordeon/shared/domain';
@@ -50,20 +52,36 @@ export class SettingsStore {
   private readonly users = inject(USER_REPOSITORY);
 
   private readonly _global = signal<GlobalSettings>(defaultGlobalSettings());
+  /**
+   * How the virtual All songs book is ordered — account-global, so it syncs.
+   *
+   * It rides on this store rather than on a store of its own because it lives in
+   * the same row and has to be written by the same serialised chain: two writers
+   * of one row would each read the pre-edit copy and the loser would drop the
+   * winner's change (see `persist`). It is deliberately NOT in the `global` bag —
+   * that bag is the render cascade's base, and every key on it is resolved into a
+   * render (ADR-0006).
+   */
+  private readonly _allSongsOrder = signal<AllSongsOrder>(
+    DEFAULT_ALL_SONGS_ORDER,
+  );
   private readonly _theme = signal<ThemeChoice>('system');
   private readonly _language = signal<Language>('en');
 
   readonly global = this._global.asReadonly();
+  readonly allSongsOrder = this._allSongsOrder.asReadonly();
   readonly theme = this._theme.asReadonly();
   readonly language = this._language.asReadonly();
 
   /** Seed from loaded state on boot; missing fields keep their current value. */
   hydrate(seed: {
     global?: GlobalSettings;
+    allSongsOrder?: AllSongsOrder;
     theme?: ThemeChoice;
     language?: Language;
   }): void {
     if (seed.global) this._global.set(completeGlobal(seed.global));
+    if (seed.allSongsOrder) this._allSongsOrder.set(seed.allSongsOrder);
     if (seed.theme) this._theme.set(seed.theme);
     if (seed.language) this._language.set(seed.language);
   }
@@ -81,6 +99,10 @@ export class SettingsStore {
     const row = await this.users.get(LOCAL_USER_ID);
     if (row === undefined || row.deletedAt !== null) return;
     this._global.set(completeGlobal(row.settings));
+    // Absent on every row written before the field existed — that is the additive
+    // case, not a broken one, so it falls back to the default rather than
+    // complaining (ADR-0007).
+    this._allSongsOrder.set(row.allSongsOrder ?? DEFAULT_ALL_SONGS_ORDER);
   }
 
   /**
@@ -95,6 +117,18 @@ export class SettingsStore {
    */
   setGlobal(patch: Partial<GlobalSettings>): Promise<void> {
     this._global.update((g) => ({ ...g, ...patch }));
+    return this.persist();
+  }
+
+  /**
+   * Order the All songs book, and write it through to the account row.
+   *
+   * Takes the whole order rather than a patch: the three parts are answered
+   * together in one dialog, and a partial write would let a half-applied order
+   * reach another device.
+   */
+  setAllSongsOrder(order: AllSongsOrder): Promise<void> {
+    this._allSongsOrder.set(order);
     return this.persist();
   }
 
@@ -139,15 +173,24 @@ export class SettingsStore {
    * fires exactly that pattern.
    */
   private persist(): Promise<void> {
-    const settings = this._global();
+    // Both fields are read now, not inside `write`: the write runs at the tail of
+    // a queue, and reading the signals then would give it whatever the latest edit
+    // said rather than what this call was asked to save.
+    const account = {
+      settings: this._global(),
+      allSongsOrder: this._allSongsOrder(),
+    };
     this.writing = this.writing.then(
-      () => this.write(settings),
-      () => this.write(settings),
+      () => this.write(account),
+      () => this.write(account),
     );
     return this.writing;
   }
 
-  private async write(settings: GlobalSettings): Promise<void> {
+  private async write(account: {
+    settings: GlobalSettings;
+    allSongsOrder: AllSongsOrder;
+  }): Promise<void> {
     try {
       const now = Date.now();
       const existing = await this.users.get(LOCAL_USER_ID);
@@ -159,7 +202,8 @@ export class SettingsStore {
         createdAt: now,
         ...existing,
         id: LOCAL_USER_ID,
-        settings,
+        settings: account.settings,
+        allSongsOrder: account.allSongsOrder,
         // Bumped so per-row LWW (ADR-0004) carries the change to the cloud, and
         // cleared so changing a setting on a device whose account was
         // soft-deleted revives the row rather than editing a tombstone.

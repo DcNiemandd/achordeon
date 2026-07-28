@@ -262,7 +262,16 @@ export class SyncService {
   private async reflectInStores(data: SnapshotData): Promise<void> {
     await Promise.all([this.songs.refresh(), this.songbooks.refresh()]);
     const user = data.user.find((u) => u.deletedAt === null);
-    if (user) this.settings.hydrate({ global: user.settings });
+    if (user) {
+      // The All songs order rides along: it lives on the same account row and is
+      // the one preference whose whole point is that the other device agrees. A
+      // row that predates the field leaves it undefined, and `hydrate` skips what
+      // it is not given rather than resetting it to the default.
+      this.settings.hydrate({
+        global: user.settings,
+        allSongsOrder: user.allSongsOrder,
+      });
+    }
   }
 
   private async recomputeUnsynced(): Promise<void> {

@@ -207,9 +207,14 @@ export class StagePerformPresenter {
    * makes the performance resume.
    *
    * For the virtual All songs book (`isAllSongs(id)` is true), the store has no
-   * record, so we bypass the store and use `songsStore.allLive()` directly. That
-   * returns all live songs in name order, which is the logical definition of
-   * "All songs".
+   * record, so we bypass the store and use `songsStore.allLive()` directly — in
+   * **the order the account saved** (`SettingsStore.allSongsOrder`).
+   *
+   * It used to ask for `{ sort: 'name' }`, hardcoded, which made the book's order
+   * unanswerable from the outside: you could sort All songs on the songbooks
+   * screen and then perform it alphabetically anyway. A setlist is the one place
+   * the order of this book is load-bearing — it is the sequence you play in — so
+   * it is the last place that should have been ignoring it.
    *
    * For real books, a missing or tombstoned book bounces back to /stage rather
    * than showing a broken view. Songs that were deleted are skipped: a deleted
@@ -221,7 +226,9 @@ export class StagePerformPresenter {
 
     if (isAllSongs(id)) {
       this._book.set(ALL_SONGS_BOOK);
-      const songs = await this.songsStore.allLive({ sort: 'name' });
+      const songs = await this.songsStore.allLive(
+        this.settings.allSongsOrder(),
+      );
       this._songs.set(songs);
       this.session.setTotal(songs.length);
       return;

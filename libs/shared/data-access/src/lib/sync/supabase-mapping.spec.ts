@@ -98,10 +98,41 @@ describe('profile ⇄ user mapping', () => {
       record_id: null,
       username: '',
       settings: {} as User['settings'],
+      all_songs_order: null,
       created_at: 0,
       updated_at: 0,
       deleted_at: null,
     };
     expect(profileToUser(row)).toBeNull();
+  });
+
+  // The All songs order is the one preference whose whole point is that the other
+  // device agrees, so it has to survive the trip. The column grants are per-column
+  // on `profiles`, which is where this silently breaks (see the migration).
+  it('carries the All songs order both ways', () => {
+    const ordered: User = {
+      ...user,
+      allSongsOrder: { sort: 'created', dir: 'desc', favoritesFirst: true },
+    };
+    const patch = userToProfilePatch(ordered);
+    expect(patch.all_songs_order).toEqual({
+      sort: 'created',
+      dir: 'desc',
+      favoritesFirst: true,
+    });
+
+    const back = profileToUser({ id: 'auth-uid', plan: 'free', ...patch });
+    expect(back?.allSongsOrder).toEqual(ordered.allSongsOrder);
+  });
+
+  // "Never said" and "chose alphabetical" are different facts. Only the first may
+  // be overwritten by a device that has an opinion, so an absent order must stay
+  // absent rather than resolving to a default that would then win an LWW merge.
+  it('leaves an unset order unset rather than inventing a default', () => {
+    const patch = userToProfilePatch(user);
+    expect(patch.all_songs_order).toBeNull();
+
+    const back = profileToUser({ id: 'auth-uid', plan: 'free', ...patch });
+    expect(back?.allSongsOrder).toBeUndefined();
   });
 });

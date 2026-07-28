@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { LOCAL_USER_ID, type User } from '@achordeon/shared/domain';
+import {
+  DEFAULT_ALL_SONGS_ORDER,
+  LOCAL_USER_ID,
+  type AllSongsOrder,
+  type User,
+} from '@achordeon/shared/domain';
 import { MemoryEntitySource } from '../persistence/memory-entity-source';
 import { USER_REPOSITORY } from './repositories';
 import { defaultGlobalSettings, SettingsStore } from './settings-store';
@@ -30,6 +35,58 @@ describe('SettingsStore', () => {
     });
     return TestBed.inject(SettingsStore);
   }
+
+  describe('the All songs order', () => {
+    const CHOSEN: AllSongsOrder = {
+      sort: 'created',
+      dir: 'desc',
+      favoritesFirst: true,
+    };
+
+    it('starts at the default before anyone has chosen', () => {
+      expect(make().allSongsOrder()).toEqual(DEFAULT_ALL_SONGS_ORDER);
+    });
+
+    // The reload test: a second store over the same rows. This is the whole point
+    // of the field — an order that reset on reload would not be an order, it would
+    // be a session.
+    it('survives a reload', async () => {
+      const store = make();
+      await store.setAllSongsOrder(CHOSEN);
+      const saved = await users.all();
+
+      const reloaded = make(saved);
+      await reloaded.load();
+
+      expect(reloaded.allSongsOrder()).toEqual(CHOSEN);
+    });
+
+    // A row written before the field existed. Additive means it reads back as the
+    // default rather than as a broken record (ADR-0007, preserve-unknown).
+    it('takes the default from a row that predates it', async () => {
+      const store = make([userRow()]);
+      await store.load();
+      expect(store.allSongsOrder()).toEqual(DEFAULT_ALL_SONGS_ORDER);
+    });
+
+    // Both live on one row, written by one serialised chain: a save of either must
+    // not drop the other.
+    it('does not trample the global bag it shares a row with', async () => {
+      const store = make();
+      await store.setGlobal({ columns: 3 });
+      await store.setAllSongsOrder(CHOSEN);
+
+      const row = await users.get(LOCAL_USER_ID);
+      expect(row?.allSongsOrder).toEqual(CHOSEN);
+      expect(row?.settings.columns).toBe(3);
+    });
+
+    it('hydrates from a pulled account row', () => {
+      const store = make();
+      store.hydrate({ allSongsOrder: CHOSEN });
+      expect(store.allSongsOrder()).toEqual(CHOSEN);
+    });
+  });
 
   it('starts from the registry defaults with system theme and EN', () => {
     const store = make();
