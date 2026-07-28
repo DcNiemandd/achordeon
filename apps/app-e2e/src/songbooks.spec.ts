@@ -117,7 +117,7 @@ test.describe('songbooks', () => {
     await page.goto('songbooks');
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
-    await expect(page.getByTestId('open-all-songs')).toBeVisible();
+    await expect(page.getByTestId('configure-all-songs')).toBeVisible();
     // It has no record behind it, so it wears no identity actions — neither on
     // the row nor inside the ⋯ it does have (it can still be handed out).
     await page.getByTestId('songbook-row').hover();
@@ -129,38 +129,45 @@ test.describe('songbooks', () => {
   });
 
   // It looks like a book you made and is not one, so it says so out loud.
-  test('All songs explains itself, and opens read-only', async ({ page }) => {
+  test('All songs explains itself, and does not open', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
     await page.getByTestId('hint-all-songs').click();
     await expect(page.getByRole('tooltip')).toContainText('library');
 
-    // It has no record to edit, so the row leads with Open rather than Edit —
-    // and a double click means the same thing.
+    // Nothing to edit, and nothing to open either: there is no record behind the
+    // row, and what it stands for is the Songs module. What it *can* be told is
+    // how it is ordered, so the slot carries a gear.
     await expect(page.getByTestId('edit-all-songs')).toHaveCount(0);
-    await expect(page.getByTestId('view-all-songs')).toBeVisible();
-    await page.getByTestId('open-all-songs').dblclick();
+    await expect(page.getByTestId('configure-all-songs')).toBeVisible();
 
-    await expect(page).toHaveURL(/\/songbooks\/all-songs/);
-    await expect(page.getByTestId('songbook-detail')).toBeVisible();
-    await expect(
-      page.getByTestId('entry-row').filter({ hasText: 'Wonderwall' }),
-    ).toHaveCount(1);
-    // One pane: there is nothing to add to it, so there is no library to pick
-    // from and no transfer column to cross.
-    await expect(page.getByTestId('songbook-add')).toHaveCount(0);
-    await expect(page.getByTestId('entry-tools')).toHaveCount(0);
+    await page.getByTestId('songbook-row').dblclick();
+    await expect(page).toHaveURL(/\/songbooks(\?|$)/);
   });
 
-  test('a link straight to All songs lands on the book itself', async ({
-    page,
-  }) => {
+  /** The gear, and the one question the virtual book can answer. */
+  test('All songs sorting is saved from its own dialog', async ({ page }) => {
     await createSong(page, 'Wonderwall');
-    // A bookmark, a hand-typed URL: the virtual book is a place, like any other.
-    await page.goto('songbooks/all-songs');
-    await expect(page).toHaveURL(/\/songbooks\/all-songs/);
-    await expect(page.getByTestId('songbook-detail')).toBeVisible();
+    await page.goto('songbooks');
+
+    await page.getByTestId('songbook-row').hover();
+    await page.getByTestId('configure-all-songs').click();
+    await expect(page.getByTestId('all-songs-order-dialog')).toBeVisible();
+
+    await page.getByTestId('all-songs-order-axis').selectOption('created');
+    await page.getByTestId('all-songs-order-dir').selectOption('desc');
+    await page.getByTestId('all-songs-order-save').click();
+
+    await expect(page.getByTestId('all-songs-order-dialog')).toHaveCount(0);
+
+    // Saved, not merely applied: it opens on the chosen order next time.
+    await page.getByTestId('songbook-row').hover();
+    await page.getByTestId('configure-all-songs').click();
+    await expect(page.getByTestId('all-songs-order-axis')).toHaveValue(
+      'created',
+    );
+    await expect(page.getByTestId('all-songs-order-dir')).toHaveValue('desc');
   });
 
   /**

@@ -1712,9 +1712,11 @@ export class SongExplorer {
   }
 
   protected onOpen(row: SongRow): void {
-    // A read-only row opens too — see the row's button above, where the verb
-    // (edit or open) differs but the act does not.
-    if (this.capabilities().canEdit) {
+    // A read-only row does not open. There is no record behind it to show, and
+    // what it stands for — the library — is a click away in the Songs module, so a
+    // screen here would be the same list under a second name. What the row *can*
+    // be told is how it is ordered, and that is the gear (see the row's buttons).
+    if (this.capabilities().canEdit && !row.isReadOnly) {
       this.opened.emit(row.id);
     }
   }

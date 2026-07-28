@@ -65,8 +65,29 @@ export class SongbookDetailPresenter {
   private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
 
-  /** The last-used print options, for the download dialog to open on (#3). */
-  readonly printOptions = this.print.options;
+  /**
+   * The last-used print options, for the download dialog to open on (#3) — with
+   * All songs' saved order standing in for the remembered one, exactly as on the
+   * songbooks list. One setting decides the sequence, whichever screen asks.
+   *
+   * A stored book is untouched: its order is its slots, and no preference may
+   * reorder what you arranged by hand.
+   */
+  readonly printOptions = computed(() => {
+    const remembered = this.print.options();
+    const saved = this.savedAllSongsOrder();
+    if (saved === null) {
+      return remembered;
+    }
+    return {
+      ...remembered,
+      songOrder: {
+        axis: saved.sort,
+        dir: saved.dir,
+        favoritesFirst: saved.favoritesFirst,
+      },
+    };
+  });
   private readonly route = inject(ActivatedRoute);
 
   /** The book being built, or null for the virtual one (and while loading). */

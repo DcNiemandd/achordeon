@@ -66,8 +66,39 @@ export class SongbooksPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly print = inject(PrintOptionsStore);
 
-  /** The last-used print options, for the download dialog to open on (#3). */
-  readonly printOptions = this.print.options;
+  /**
+   * The last-used print options, for the download dialog to open on (#3) — with
+   * **All songs' saved order standing in for the remembered one**.
+   *
+   * The order the account chose is the answer to "in what sequence do these
+   * songs come", and a PDF of the whole library is asking that same question. So
+   * one setting governs both: the sorting dialog decides what a performance plays
+   * in *and* what a download prints in, rather than the two drifting apart because
+   * the paper options happened to remember something else last time.
+   *
+   * Only the axis, direction and favourites-first are taken. The rest of the
+   * remembered choice — page size, margins, page numbers — is genuinely about
+   * paper and has nothing to do with order, so it survives untouched.
+   *
+   * The dialog's own controls still stand: `title` is an axis only paper has (a
+   * printed contents page is flipped through by heading, not by library name), so
+   * a one-off print can still ask for it. What changes is where the dialog *opens*.
+   */
+  readonly printOptions = computed(() => {
+    const remembered = this.print.options();
+    if (this._downloadId() !== ALL_SONGS_ID) {
+      return remembered;
+    }
+    const saved = this.settings.allSongsOrder();
+    return {
+      ...remembered,
+      songOrder: {
+        axis: saved.sort,
+        dir: saved.dir,
+        favoritesFirst: saved.favoritesFirst,
+      },
+    };
+  });
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
