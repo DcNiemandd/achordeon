@@ -136,6 +136,90 @@ describe('StageSession', () => {
     expect(session.index()).toBe(2);
   });
 
+  // The audience action is one control drawn by two chromes (the perform page's
+  // top bar and the shell's bottom-bar menu), and it used to offer "create" to a
+  // performer who was already hosting. The word is derived here so both say it.
+  describe('the audience action', () => {
+    it('offers to create one while no lobby is live', () => {
+      const session = perform('book-1', 3);
+
+      expect(session.audienceState()).toBe('closed');
+      expect(session.audienceLabel()).toBe('Create an audience');
+    });
+
+    it('still offers to create one while the create panel is open', () => {
+      const session = perform('book-1', 3);
+      session.openAudience();
+
+      expect(session.audienceState()).toBe('create');
+      expect(session.audienceLabel()).toBe('Create an audience');
+    });
+
+    it('switches to managing the moment a lobby exists', () => {
+      const session = perform('book-1', 3);
+      session.openAudience();
+      session.createLobby();
+
+      expect(session.audienceState()).toBe('active');
+      expect(session.audienceLabel()).toBe('Manage audience');
+    });
+
+    // Closing the panel keeps the lobby, so the button must keep saying so.
+    it('keeps managing after the panel is closed on a live lobby', () => {
+      const session = perform('book-1', 3);
+      session.createLobby();
+      session.closeAudience();
+
+      expect(session.audienceState()).toBe('closed');
+      expect(session.audienceLabel()).toBe('Manage audience');
+    });
+
+    it('counts the listeners once there are any', () => {
+      const session = perform('book-1', 3);
+      session.createLobby();
+      session.setAudienceCount(3);
+
+      expect(session.audienceLabel()).toBe('Manage audience (3 listening)');
+    });
+
+    // A count with no lobby is stale by definition, and "0 listening" is noise
+    // on a lobby nobody has joined yet.
+    it('says nothing about a count of nobody', () => {
+      const session = perform('book-1', 3);
+      session.createLobby();
+      session.setAudienceCount(0);
+
+      expect(session.audienceLabel()).toBe('Manage audience');
+    });
+
+    it('goes back to the create wording when the lobby ends', () => {
+      const session = perform('book-1', 3);
+      session.createLobby();
+      session.setAudienceCount(2);
+      session.endLobby();
+
+      expect(session.audienceLabel()).toBe('Create an audience');
+    });
+
+    // A reload resurrects the PIN, so it must resurrect the wording with it —
+    // otherwise the button invites the performer to start a second lobby over
+    // the one the durable row is still holding open.
+    it('comes back managing after a reload that resumed a lobby', () => {
+      perform('book-1', 3).createLobby();
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: Fullscreen, useValue: { exit: async () => undefined } },
+        ],
+      });
+
+      expect(TestBed.inject(StageSession).audienceLabel()).toBe(
+        'Manage audience',
+      );
+    });
+  });
+
   it('falls back to no performance rather than failing a boot on bad storage', () => {
     localStorage.setItem(KEY, '{ not json');
 

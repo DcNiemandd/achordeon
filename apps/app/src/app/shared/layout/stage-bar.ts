@@ -18,7 +18,7 @@ import { StageSession } from './stage-session';
  * The performing controls, dropped into the shell's bottom bar so a phone shows
  * **one** bar (the shell's), not a second one of the feature's. The docs order
  * is `Prev | Summary | Menu | Next`; the menu carries the rarer acts —
- * Fullscreen, Create audience, Exit — so the four thumb targets stay big.
+ * Fullscreen, the audience, Exit — so the four thumb targets stay big.
  *
  * It reads `StageSession`, never a store: the shell may not touch the business
  * layer (the presenter rule, PRD-UI-SHELL.md §3), and the render-derived state
@@ -121,15 +121,20 @@ import { StageSession } from './stage-session';
           }}
         </button>
 
+        <!-- The one action that changes its mind: create a lobby, or manage the
+             one already running. Lit brand while it is running, the same
+             is-active the summary control uses, so the row reads as live and
+             not merely as another thing to start. -->
         <button
           type="button"
           class="item"
           role="menuitem"
+          [class.is-active]="session.hasLobby()"
           data-testid="stage-audience"
           (click)="onAudience()"
         >
           <app-icon name="audience" />
-          {{ audienceLabel }}
+          {{ session.audienceLabel() }}
         </button>
 
         <button
@@ -200,6 +205,10 @@ import { StageSession } from './stage-session';
       background: var(--surface-sunken);
     }
 
+    .item.is-active {
+      color: var(--brand);
+    }
+
     .item.is-danger {
       color: var(--danger, #c0362c);
     }
@@ -261,6 +270,5 @@ export class StageBar {
   protected readonly menuLabel = $localize`:@@stage.menu:More`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
-  protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
 }

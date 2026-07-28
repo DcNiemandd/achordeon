@@ -14,7 +14,7 @@ import {
   SONG_REPOSITORY,
 } from '@achordeon/shared/data-access';
 import type { Song, Songbook } from '@achordeon/shared/domain';
-import { StageSession } from '../shared/layout';
+import { Fullscreen, StageSession } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -188,5 +188,65 @@ describe('StagePerformPresenter', () => {
     host.audienceCount.set(5);
     flush();
     expect(session.setAudienceCount).toHaveBeenCalledWith(5);
+  });
+});
+
+// The audience button's wording is derived in StageSession, but the two facts it
+// derives from arrive from opposite directions: the PIN is set by the shell, the
+// count is pushed in by *this* presenter off the host channel. The fake session
+// above can only prove the calls were made, so this runs the real holder and
+// checks the sentence a performer actually reads.
+describe('StagePerformPresenter ▸ what the audience button ends up saying', () => {
+  let host: FakeHost;
+  let session: StageSession;
+
+  const flush = () => TestBed.inject(ApplicationRef).tick();
+
+  beforeEach(() => {
+    localStorage.clear();
+    host = new FakeHost();
+
+    TestBed.configureTestingModule({
+      providers: [
+        StagePerformPresenter,
+        { provide: LobbyHost, useValue: host },
+        { provide: Fullscreen, useValue: { exit: async () => undefined } },
+        { provide: Router, useValue: { navigate: jest.fn() } },
+        { provide: ParserService, useValue: fakeParser },
+        { provide: RenderService, useValue: fakeRenderer },
+        {
+          provide: SettingsStore,
+          useValue: { global: () => defaultGlobalSettings() },
+        },
+        { provide: SongStore, useValue: { allLive: async () => [] } },
+        {
+          provide: SongbookStore,
+          useValue: {
+            byId: async (id: string) => (id === 'book1' ? BOOK : null),
+          },
+        },
+        {
+          provide: SONG_REPOSITORY,
+          useValue: { get: async (id: string) => SONGS[id] ?? null },
+        },
+      ],
+    });
+    TestBed.inject(StagePerformPresenter);
+    session = TestBed.inject(StageSession);
+  });
+
+  it('invites the performer to create one before there is a lobby', () => {
+    expect(session.audienceLabel()).toBe('Create an audience');
+  });
+
+  it('reports the viewers the host channel found', async () => {
+    await TestBed.inject(StagePerformPresenter).open('book1');
+    session.createLobby();
+    flush();
+
+    host.audienceCount.set(4);
+    flush();
+
+    expect(session.audienceLabel()).toBe('Manage audience (4 listening)');
   });
 });
