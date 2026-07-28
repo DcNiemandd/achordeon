@@ -106,7 +106,7 @@ import { ReturnUrl } from './return-url';
                     [attr.aria-label]="item.label"
                     [appTooltip]="item.label"
                     [attr.data-testid]="item.testid"
-                    (click)="editor().insert(item.snippet)"
+                    (click)="press(item)"
                   >
                     <app-icon
                       [name]="item.icon"
@@ -542,15 +542,20 @@ export class SongEditorPage {
     isContentOnly?: boolean;
     /** Writes a `[` — meaningless inside a bracket, since they do not nest. */
     isBlockedInsideChord?: boolean;
+    /** Inside a bracket this button rewrites it rather than writing a new one. */
+    cyclesChord?: boolean;
     glyph: string;
     label: string;
     snippet: InsertRequest;
   }[] = [
     {
+      // The one button that is NOT blocked inside a bracket: there it means
+      // "make this chord inline", and pressing it once more takes the brackets
+      // off — bracket, inline, plain, round again (`cycleChordAt`).
       testid: 'insert-chord',
       icon: 'brackets',
       isContentOnly: true,
-      isBlockedInsideChord: true,
+      cyclesChord: true,
       glyph: '[ ]',
       label: $localize`:@@editor.insertChord:Chord`,
       snippet: SNIPPETS.chord,
@@ -683,6 +688,21 @@ export class SongEditorPage {
     // Brackets do not nest: a `[` written inside one closes nothing and the
     // parser reads the whole thing as a single malformed bracket.
     return !!item.isBlockedInsideChord && caret.isInsideChord;
+  }
+
+  /**
+   * Run an insert button. Chord is the one that does more than write its snippet:
+   * inside a bracket it rewrites that bracket instead (`SongEditor.cycleChord`).
+   */
+  protected press(item: {
+    cyclesChord?: boolean;
+    snippet: InsertRequest;
+  }): void {
+    if (item.cyclesChord) {
+      this.editor().cycleChord(item.snippet);
+      return;
+    }
+    this.editor().insert(item.snippet);
   }
 
   constructor() {

@@ -7,6 +7,7 @@ import { Tag } from '@lezer/highlight';
 import {
   ESCAPABLE,
   findClosingBracket,
+  findClosingDoubleBracket,
   findLabelDelimiter,
   splitChordTokens,
   unescape,
@@ -45,6 +46,8 @@ export const achordeonTags = {
  */
 interface HighlightState {
   bracketEnd: number | null;
+  /** How many `]` close it: 2 for an inline group `[[…]]`, 1 otherwise. */
+  bracketCloseLength: number;
   /** Emphasis in force, toggled by `*` runs; reset at the start of every line
    * (an unclosed run emphasises to line end, exactly as Phase 2 resolves it). */
   italic: boolean;
@@ -85,9 +88,15 @@ export function achordeonHighlight(
   const parser: StreamParser<HighlightState> = {
     name: 'achordeon',
 
-    startState: () => ({ bracketEnd: null, italic: false, bold: false }),
+    startState: () => ({
+      bracketEnd: null,
+      bracketCloseLength: 1,
+      italic: false,
+      bold: false,
+    }),
     copyState: (state) => ({
       bracketEnd: state.bracketEnd,
+      bracketCloseLength: state.bracketCloseLength,
       italic: state.italic,
       bold: state.bold,
     }),
@@ -113,8 +122,8 @@ export function achordeonHighlight(
       // brackets belong to them, and the `||:` between them is just text.
       if (state.bracketEnd !== null) {
         if (stream.pos >= state.bracketEnd) {
+          stream.pos = state.bracketEnd + state.bracketCloseLength; // the closing `]`
           state.bracketEnd = null;
-          stream.next(); // the closing `]`
           return 'chord';
         }
         // Separators carry no meaning of their own and stay unstyled.
@@ -165,23 +174,30 @@ export function achordeonHighlight(
       }
 
       if (char === '[') {
-        const close = findClosingBracket(stream.string, stream.pos);
+        // A doubled bracket is an inline chord group: same tokens inside, so it
+        // colours identically — the markers are just two characters wide.
+        const inline = stream.string[stream.pos + 1] === '[';
+        const markerLength = inline ? 2 : 1;
+        const close = inline
+          ? findClosingDoubleBracket(stream.string, stream.pos)
+          : findClosingBracket(stream.string, stream.pos);
         if (close === -1) {
           stream.next();
           return emphasisTag(state); // unterminated — a literal bracket, not a chord
         }
-        const inner = stream.string.slice(stream.pos + 1, close);
+        const inner = stream.string.slice(stream.pos + markerLength, close);
         // A bracket with no chord at all is a verbatim annotation — `[Solo]`,
         // `[x2]` — and colours as one whole thing, because there is nothing
         // inside it to tell apart.
         if (!splitChordTokens(inner).some(isChordToken)) {
-          stream.pos = close + 1;
+          stream.pos = close + markerLength;
           return 'annotation';
         }
         // Otherwise the bracket is chord-bearing and gets read token by token
         // (see `bracketEnd`). The opening bracket is punctuation of the chord.
         state.bracketEnd = close;
-        stream.next();
+        state.bracketCloseLength = markerLength;
+        stream.pos += markerLength;
         return 'chord';
       }
 

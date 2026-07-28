@@ -32,6 +32,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import {
   ChordTheory,
+  cycleChordAt,
   findLabelDelimiter,
   transposeChordAt,
   type ChordNotation,
@@ -391,6 +392,35 @@ export class SongEditor {
       changes: { from: start, to: end, insert: text },
       selection: { anchor: caret },
       scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  /**
+   * The Chord button, which has three states in one press: bracket the selection
+   * (or the word at the caret), make an existing chord inline, then take the
+   * brackets off again.
+   *
+   * The last two are a source rewrite the domain owns (`cycleChordAt`); only the
+   * first needs the editor, because only the editor knows what "the word at the
+   * caret" is. So the domain is asked first and the insert is the fallback.
+   */
+  cycleChord(request: InsertRequest): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const head = view.state.selection.main.head;
+    const cycled = cycleChordAt(view.state.doc.toString(), head);
+    if (!cycled) {
+      this.insert(request);
+      return;
+    }
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: cycled.content },
+      selection: { anchor: cycled.caret },
+      scrollIntoView: true,
+      userEvent: 'input.chord',
     });
     view.focus();
   }

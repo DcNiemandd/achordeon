@@ -97,6 +97,52 @@ export function findClosingDoubleBracket(s: string, open: number): number {
   return -1;
 }
 
+/** A chord bracket found in the source: `[…]`, or the doubled `[[…]]`. */
+export interface BracketSpan {
+  /** Index of the opening `[` — the FIRST of the two when `inline`. */
+  start: number;
+  /** Index of the closing `]` — the FIRST of the two when `inline`. */
+  end: number;
+  inline: boolean;
+}
+
+/**
+ * The chord bracket the caret at `index` sits in, or null when it sits in none.
+ *
+ * "In" means past the opening bracket(s) and no further than the closing one —
+ * the rule the sharp/flat buttons and the Chord button both need, and the reason
+ * this is one function: two walks over the same brackets would eventually
+ * disagree about which one the caret was in. Escape-aware, and non-nesting, like
+ * every other recogniser here.
+ */
+export function bracketAt(s: string, index: number): BracketSpan | null {
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '\\') {
+      i += 2; // a `\[` is a literal bracket, not one the caret can be "in"
+      continue;
+    }
+    if (s[i] === '[') {
+      const inline = s[i + 1] === '[';
+      const close = inline
+        ? findClosingDoubleBracket(s, i)
+        : findClosingBracket(s, i);
+      if (close === -1) {
+        i += 1; // unterminated: not a bracket, keep scanning inside it
+        continue;
+      }
+      const open = i + (inline ? 1 : 0);
+      if (open < index && index <= close) {
+        return { start: i, end: close, inline };
+      }
+      i = close + (inline ? 2 : 1);
+      continue;
+    }
+    i += 1;
+  }
+  return null;
+}
+
 /**
  * Split a bracket's inner content into chord tokens on spaces/commas. Multiple
  * tokens = multiple anchors at the same index (PARSER-GRAMMAR §Line model).

@@ -206,28 +206,27 @@ test.describe('song editor', () => {
     await expect(label).toBeEnabled();
   });
 
-  // Brackets do not nest: a second `[` inside one closes nothing, and the parser
-  // reads the whole thing as a single malformed bracket.
-  test('the chord button is disabled while the caret is inside a chord', async ({
+  // Brackets do not nest, so the button cannot write a second `[` in here — but
+  // it has something to say instead: make this chord inline, then plain again.
+  test('the chord button cycles the chord the caret is inside', async ({
     page,
   }) => {
     const chord = page.getByTestId('insert-chord');
+    const editor = page.getByTestId('editor');
 
     await type(page, 'sing [C] here');
-    await expect(chord).toBeEnabled();
-
     // Into the middle of the bracket.
     await page.keyboard.press('Home');
     for (let i = 0; i < 6; i++) {
       await page.keyboard.press('ArrowRight');
     }
-    await expect(chord).toBeDisabled();
-
-    // Out the other side of it.
-    for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('ArrowRight');
-    }
     await expect(chord).toBeEnabled();
+
+    await chord.click();
+    await expect(editor).toContainText('sing [[C]] here');
+
+    await chord.click();
+    await expect(editor).toContainText('sing C here');
   });
 
   // One label per line: a second press used to prepend another delimiter,
@@ -393,15 +392,25 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('[Am]');
   });
 
+  test('the chord button brackets the word at the caret', async ({ page }) => {
+    // The chord names on a chord row are usually typed out first, so with no
+    // selection the button takes the word the caret is on.
+    await type(page, 'Am');
+    await page.getByTestId('insert-chord').click();
+
+    await expect(page.getByTestId('editor')).toContainText('[Am]');
+  });
+
   test('the chord button leaves the caret inside an empty bracket', async ({
     page,
   }) => {
-    await type(page, 'sing');
+    // No word under the caret (a space), so it opens an empty pair instead.
+    await type(page, 'sing ');
     await page.getByTestId('insert-chord').click();
     // The caret must be BETWEEN the brackets — that is where the chord goes.
     await page.keyboard.type('C');
 
-    await expect(page.getByTestId('editor')).toContainText('sing[C]');
+    await expect(page.getByTestId('editor')).toContainText('sing [C]');
   });
 
   test('the title button marks the line, not the cursor', async ({ page }) => {

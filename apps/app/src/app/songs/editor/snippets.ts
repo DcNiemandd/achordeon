@@ -24,8 +24,18 @@ import type { InsertRequest } from './editor-model';
 const TITLE_MARKER = /^\*{1,2} /;
 
 export const SNIPPETS = {
-  /** `[]` around the selection, caret between the brackets. */
-  chord: { before: '[', after: ']', caretOffset: 0 } satisfies InsertRequest,
+  /**
+   * `[]` around the selection, caret between the brackets — and around the WORD
+   * at the caret when nothing is selected, because the chord names you want to
+   * bracket are usually already typed out (`Am F G` on a chord row). This is the
+   * first of the Chord button's three states; the other two are `cycleChordAt`.
+   */
+  chord: {
+    before: '[',
+    after: ']',
+    caretOffset: 0,
+    wrapsWord: true,
+  } satisfies InsertRequest,
 
   /**
    * Line-scoped: the marker only counts at column 0, and it replaces whatever

@@ -14,6 +14,7 @@
 // speller so the two cannot drift on what `H` means.
 
 import {
+  bracketAt,
   findClosingBracket,
   findClosingDoubleBracket,
   type ChordNotation,
@@ -170,57 +171,18 @@ export function transposeChordAt(
   if (semitones === 0) {
     return null;
   }
-  const table = semitones > 0 ? UP : DOWN;
-
-  let i = 0;
-  while (i < content.length) {
-    const c = content[i];
-    if (c === '\\') {
-      i += 2; // a `\[` is a literal bracket, not one the caret can be "in"
-      continue;
-    }
-    if (c === '[' && content[i + 1] === '[') {
-      const close = findClosingDoubleBracket(content, i);
-      if (close === -1) {
-        i += 1;
-        continue;
-      }
-      // "In" an inline group means past its second `[` and no further than its
-      // first `]` — the single-bracket rule, shifted by the doubled markers.
-      if (i + 1 < index && index <= close) {
-        const inner = content.slice(i + 2, close);
-        const rewritten = inner.replace(/[^\s,]+/g, (token) =>
-          transposeToken(token, table, semitones, theory, notation),
-        );
-        return {
-          content: content.slice(0, i + 2) + rewritten + content.slice(close),
-          bracketEnd: i + 2 + rewritten.length,
-        };
-      }
-      i = close + 2;
-      continue;
-    }
-
-    if (c === '[') {
-      const close = findClosingBracket(content, i);
-      if (close === -1) {
-        i += 1;
-        continue;
-      }
-      if (i < index && index <= close) {
-        const inner = content.slice(i + 1, close);
-        const rewritten = inner.replace(/[^\s,]+/g, (token) =>
-          transposeToken(token, table, semitones, theory, notation),
-        );
-        return {
-          content: content.slice(0, i + 1) + rewritten + content.slice(close),
-          bracketEnd: i + 1 + rewritten.length,
-        };
-      }
-      i = close + 1;
-      continue;
-    }
-    i += 1;
+  const span = bracketAt(content, index);
+  if (!span) {
+    return null;
   }
-  return null;
+  const table = semitones > 0 ? UP : DOWN;
+  const open = span.start + (span.inline ? 2 : 1);
+  const inner = content.slice(open, span.end);
+  const rewritten = inner.replace(/[^\s,]+/g, (token) =>
+    transposeToken(token, table, semitones, theory, notation),
+  );
+  return {
+    content: content.slice(0, open) + rewritten + content.slice(span.end),
+    bracketEnd: open + rewritten.length,
+  };
 }
