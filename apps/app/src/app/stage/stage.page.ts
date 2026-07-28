@@ -2,7 +2,8 @@
 // Spec: docs/achordeon-implementation.md §Epic 8
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Button, EmptyState, Icon } from '../primitives';
+import { Button, EmptyState, Icon, Tooltip } from '../primitives';
+import { AllSongsOrderDialog } from './all-songs-order-dialog';
 import { ActionBar } from '../shared/layout';
 import { StagePresenter } from './stage.presenter';
 
@@ -33,7 +34,7 @@ const PREFETCH_PX = 600;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StagePresenter],
   host: { '(scroll)': 'onScroll($event)' },
-  imports: [ActionBar, EmptyState, Button, Icon],
+  imports: [ActionBar, EmptyState, Button, Icon, Tooltip, AllSongsOrderDialog],
   template: `
     <app-action-bar [title]="title" />
 
@@ -52,6 +53,23 @@ const PREFETCH_PX = 600;
               <span class="name">{{ row.name }}</span>
               <span class="count">{{ countLabel(row.entryCount) }}</span>
             </div>
+            <!-- All songs is the one row with an order to answer for: a stored
+                 book plays in the sequence you arranged, this one plays in the
+                 sequence you describe. The gear sits beside Perform because that
+                 is the press it changes. -->
+            @if (row.isAllSongs) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="orderLabel"
+                [appTooltip]="orderLabel"
+                data-testid="stage-all-songs-order"
+                (click)="presenter.openOrder(row.id)"
+              >
+                <app-icon name="settings" />
+              </button>
+            }
             <button
               appButton
               type="button"
@@ -66,6 +84,14 @@ const PREFETCH_PX = 600;
           </li>
         }
       </ul>
+
+      @if (presenter.isOrderOpen()) {
+        <app-all-songs-order-dialog
+          [order]="presenter.allSongsOrder()"
+          (saved)="presenter.saveOrder($event)"
+          (closed)="presenter.closeOrder()"
+        />
+      }
 
       @if (presenter.hiddenCount() > 0) {
         <p class="hidden-note" data-testid="stage-hidden-note">
@@ -138,6 +164,7 @@ export class StagePage {
   protected readonly title = $localize`:@@stage.title:Stage`;
   protected readonly emptyText = $localize`:@@stage.empty:No songs yet. Add songs to start performing.`;
   protected readonly performShort = $localize`:@@stage.perform:Perform`;
+  protected readonly orderLabel = $localize`:@@stage.allSongsOrder:All songs sorting`;
 
   protected performLabel(name: string): string {
     return $localize`:@@stage.performLabel:Perform "${name}:name:"`;

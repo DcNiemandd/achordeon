@@ -26,7 +26,6 @@ import {
 } from '../shared/song-explorer';
 import { SongRender } from '../shared/song-render';
 import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
-import { AllSongsOrderDialog } from './all-songs-order-dialog';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
@@ -43,7 +42,6 @@ import {
     SongExplorer,
     SongRender,
     SongbookDownloadDialog,
-    AllSongsOrderDialog,
     ImportPanel,
     Button,
     Dialog,
@@ -100,7 +98,6 @@ import {
           [currentId]="presenter.currentId()"
           [emptyText]="emptyText"
           (loadMore)="presenter.loadMore()"
-          (configured)="presenter.openOrder($event)"
           (activated)="presenter.select($event)"
           (opened)="presenter.open($event)"
           (performed)="presenter.perform($event)"
@@ -135,17 +132,6 @@ import {
         }
       </app-blank-page>
     </app-split-pane>
-
-    <!-- The virtual book's own order. Mounted only while open, so the dialog is
-         built from the saved order each time and cannot be left holding a draft
-         from the last visit. -->
-    @if (presenter.isOrderOpen()) {
-      <app-all-songs-order-dialog
-        [order]="presenter.allSongsOrder()"
-        (saved)="presenter.saveOrder($event)"
-        (closed)="presenter.closeOrder()"
-      />
-    }
 
     @if (presenter.isDownloadOpen()) {
       <app-songbook-download-dialog

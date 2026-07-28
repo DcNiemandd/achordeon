@@ -117,7 +117,6 @@ test.describe('songbooks', () => {
     await page.goto('songbooks');
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
-    await expect(page.getByTestId('configure-all-songs')).toBeVisible();
     // It has no record behind it, so it wears no identity actions — neither on
     // the row nor inside the ⋯ it does have (it can still be handed out).
     await page.getByTestId('songbook-row').hover();
@@ -136,93 +135,24 @@ test.describe('songbooks', () => {
     await page.getByTestId('hint-all-songs').click();
     await expect(page.getByRole('tooltip')).toContainText('library');
 
-    // Nothing to edit, and nothing to open either: there is no record behind the
-    // row, and what it stands for is the Songs module. What it *can* be told is
-    // how it is ordered, so the slot carries a gear.
+    // Nothing to edit and nothing to open: there is no record behind the row, and
+    // what it stands for is the Songs module. It is performed, downloaded and
+    // exported — and the order it performs in is asked for in the Stage picker.
     await expect(page.getByTestId('edit-all-songs')).toHaveCount(0);
-    await expect(page.getByTestId('configure-all-songs')).toBeVisible();
+    await expect(page.getByTestId('view-all-songs')).toHaveCount(0);
 
     await page.getByTestId('songbook-row').dblclick();
     await expect(page).toHaveURL(/\/songbooks(\?|$)/);
   });
 
-  /** The gear, and the one question the virtual book can answer. */
-  test('All songs sorting is saved from its own dialog', async ({ page }) => {
-    await createSong(page, 'Wonderwall');
-    await page.goto('songbooks');
-
-    await page.getByTestId('songbook-row').hover();
-    await page.getByTestId('configure-all-songs').click();
-    await expect(page.getByTestId('all-songs-order-dialog')).toBeVisible();
-
-    await page.getByTestId('all-songs-order-axis').selectOption('created');
-    await page.getByTestId('all-songs-order-dir').selectOption('desc');
-    await page.getByTestId('all-songs-order-save').click();
-
-    await expect(page.getByTestId('all-songs-order-dialog')).toHaveCount(0);
-
-    // Saved, not merely applied: it opens on the chosen order next time.
-    await page.getByTestId('songbook-row').hover();
-    await page.getByTestId('configure-all-songs').click();
-    await expect(page.getByTestId('all-songs-order-axis')).toHaveValue(
-      'created',
-    );
-    await expect(page.getByTestId('all-songs-order-dir')).toHaveValue('desc');
-  });
-
-  /**
-   * The one thing a book with no order of its own can be told (CONTEXT.md
-   * §Songbook) — and by the very controls the Songs module's list wears, so the
-   * two are sorted the same ways.
-   */
-  test('All songs sorts by the same axes as the songs list', async ({
+  /** The screen it used to open is gone, so its URL is an id with no record. */
+  test('a link straight to All songs finds no such songbook', async ({
     page,
   }) => {
-    await createSong(page, 'Alpha');
-    await createSong(page, 'Zulu');
-    await page.goto('songbooks/all-songs');
-
-    const rows = page.getByTestId('entry-row');
-    await expect(rows).toHaveCount(2);
-    // Name, A→Z by default.
-    await expect(rows.first()).toContainText('Alpha');
-
-    // The direction toggle turns the book around, and says so in the URL — the
-    // source of truth for sort, exactly as on /songs.
-    await page.getByTestId('explorer-sort-dir').click();
-    await expect(page).toHaveURL(/dir=desc/);
-    await expect(rows.first()).toContainText('Zulu');
-
-    // A different axis: Zulu was created last, and "created" means newest first.
-    await page.getByTestId('explorer-sort').selectOption('created');
-    await expect(page).toHaveURL(/sort=created/);
-    await expect(rows.first()).toContainText('Zulu');
-
-    // …and it survives a reload, because the choice lives in the address.
-    await page.reload();
-    await expect(page.getByTestId('entry-row').first()).toContainText('Zulu');
-
-    // Favourites first is a flag over the axis, not an axis of its own.
-    await page.getByTestId('explorer-favorites-first').click();
-    await expect(page).toHaveURL(/fav=1/);
-  });
-
-  /** Sorting is not reordering: the read-only book keeps every arranging tool
-   * off, whatever axis it is showing. */
-  test('All songs cannot be reordered, only sorted', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks/all-songs');
 
-    const row = page.getByTestId('entry-row').first();
-    await expect(row).toBeVisible();
-    await row.hover();
-    // No handle to drag, no move buttons, no remove, no checkbox.
-    await expect(
-      page.getByTestId('entry-row').getByRole('checkbox'),
-    ).toHaveCount(0);
-    await expect(row.locator('[data-testid^="row-up-"]')).toHaveCount(0);
-    await expect(row.locator('[data-testid^="remove-"]')).toHaveCount(0);
-    await expect(row.locator('[data-testid^="drag-"]')).toHaveCount(0);
+    await expect(page.getByTestId('entry-row')).toHaveCount(0);
   });
 
   test('creates a songbook, names it, and it survives a reload', async ({

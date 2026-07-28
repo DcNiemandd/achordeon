@@ -1,5 +1,5 @@
-// All songs sorting dialog — the virtual book's own order
-// Spec: CONTEXT.md §Songbook (All songs — a read-only *order*), §Account;
+// All songs sorting dialog — the order it goes to the stage in
+// Spec: CONTEXT.md §Songbook (All songs — a read-only *order*), §Stage, §Account;
 // PRD-UI-SHELL.md §3 (controlled component), ADR-0004 (the account row syncs).
 
 import {
@@ -15,20 +15,17 @@ import {
 import { Button, Dialog } from '../primitives';
 
 /**
- * Ask how the virtual **All songs** book is ordered, and save the answer.
+ * Ask what order All songs is performed in, and save the answer.
  *
- * This is the one thing that book can be told. A stored songbook's order IS its
- * content — you arranged the slots, and it performs and prints as arranged — while
- * All songs has no arrangement to protect, so its order has to be *described*
- * instead: an axis, a direction, and whether favourites float to the top.
+ * A stored songbook's order IS its content — you arranged the slots, and it plays
+ * as arranged. All songs has no arrangement to protect, so its order has to be
+ * *described* instead: an axis, a direction, and whether favourites float.
  *
- * **Why a dialog and not just the list's sort controls**, which ask the same three
- * questions: those re-sort what you are looking at and say so in the URL, which is
- * a transient act you can navigate away from. This writes the book's order to the
- * account, where it reaches the songbook screen, the download, and — the reason it
- * exists — the setlist you perform from, on every device you own. A preference with
- * that reach deserves a Save you can decline, not a dropdown that has already
- * committed by the time you notice.
+ * **It lives in the Stage picker, next to the row it orders**, because that is the
+ * only place its answer shows: the setlist. It was briefly a gear on the Songbooks
+ * row, where it governed nothing you could see — the row does not open, and the
+ * download dialog asks about order itself — and a setting with no visible effect on
+ * the screen it sits on is a setting nobody can check.
  *
  * A **controlled component** (§3): the saved order in, the new one out. It holds a
  * draft while the dialog is open, because a dialog with a Save button must be
@@ -187,7 +184,7 @@ export class AllSongsOrderDialog {
   }
 
   protected readonly title = $localize`:@@allSongsOrder.title:All songs sorting`;
-  protected readonly lead = $localize`:@@allSongsOrder.lead:All songs has no order of its own, so choose one here. It is used when you perform it and when you open it.`;
+  protected readonly lead = $localize`:@@allSongsOrder.lead:All songs has no order of its own, so choose the order it is performed in.`;
   protected readonly note = $localize`:@@allSongsOrder.note:Saved to your account, so it applies on every device you sign in on.`;
   protected readonly orderLabel = $localize`:@@allSongsOrder.order:Order by`;
   protected readonly directionLabel = $localize`:@@allSongsOrder.direction:Direction`;

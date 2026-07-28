@@ -16,7 +16,6 @@ import {
   ALL_SONGS_ID,
   resolveSettings,
   titlePageAst,
-  type AllSongsOrder,
   type ImportPlan,
   type Songbook,
 } from '@achordeon/shared/domain';
@@ -41,7 +40,7 @@ const ALL_SONGS_NAME = $localize`:@@songbooks.allSongs:All songs`;
  * which is the sort of thing a list should say out loud rather than leave you
  * to discover by finding its buttons missing.
  */
-const ALL_SONGS_HINT = $localize`:@@songbooks.allSongs.help:Every song in your library, always up to date. You cannot reorder it or remove songs from it — but you can choose how it is sorted.`;
+const ALL_SONGS_HINT = $localize`:@@songbooks.allSongs.help:Every song in your library, always up to date. You cannot reorder it or remove songs from it. Choose the order it is performed in on the Stage.`;
 
 /** A songbook delete the user has asked for and not yet confirmed. */
 export interface PendingSongbookDelete {
@@ -325,51 +324,6 @@ export class SongbooksPresenter {
   // rather than "select, then reach for the toolbar". Each act names the row it
   // came from — never `currentId`, which is what pane B is previewing and may be
   // a different book entirely.
-
-  // --- the All songs order ------------------------------------------------------
-
-  /**
-   * Is the All songs sorting dialog open?
-   *
-   * A dialog rather than the toolbar's sort controls, because this writes
-   * something the toolbar does not: the toolbar re-sorts *what you are looking
-   * at* (and says so in the URL), while this is the book's own order, saved to the
-   * account and carried to every device. Two different durations of the same
-   * question, so they get two different controls — and this one gets a Save it can
-   * be cancelled out of, which a live dropdown cannot offer.
-   */
-  private readonly _isOrderOpen = signal(false);
-  readonly isOrderOpen = this._isOrderOpen.asReadonly();
-
-  /** The saved All songs order — what the dialog opens on. */
-  readonly allSongsOrder = this.settings.allSongsOrder;
-
-  /** The row's gear was pressed. `id` is accepted and ignored: only the virtual
-   * book carries the gear, so there is nothing to disambiguate — but the output
-   * names its row like every other row action, and a list that reported "somebody
-   * pressed something" would be the odd one out. */
-  openOrder(id: string): void {
-    if (id === ALL_SONGS_ID) {
-      this._isOrderOpen.set(true);
-    }
-  }
-
-  closeOrder(): void {
-    this._isOrderOpen.set(false);
-  }
-
-  /**
-   * Save the order and close.
-   *
-   * Nothing else has to be told: the songbooks list does not show entries, the
-   * detail screen reads the same signal, and the setlist reads it when a
-   * performance starts. The write reaches the other devices through the account
-   * row like any other synced edit.
-   */
-  async saveOrder(order: AllSongsOrder): Promise<void> {
-    await this.settings.setAllSongsOrder(order);
-    this._isOrderOpen.set(false);
-  }
 
   /** The book whose download dialog is open, or null. */
   private readonly _downloadId = signal<string | null>(null);
