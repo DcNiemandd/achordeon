@@ -408,7 +408,7 @@
   "songs.delete": "Delete",
   "songs.delete.inUse": "It is still used here. Deleting removes it from these songbooks:",
   "songs.delete.inUseMany": "They are still used here. Deleting removes them from these songbooks:",
-  "songs.delete.many": "These {$count} songs will be removed from your library.",
+  "songs.delete.many": "These songs will be removed from your library.",
   "songs.delete.one": "This will be removed from your library.",
   "songs.delete.title": "Delete this song?",
   "songs.delete.titleMany": "Delete {$count} songs?",

@@ -410,7 +410,7 @@
     "songs.delete": "Smazat",
     "songs.delete.inUse": "Ještě se používá. Smazáním ji odeberete i z těchto zpěvníků:",
     "songs.delete.inUseMany": "Ještě se používají. Smazáním je odeberete i z těchto zpěvníků:",
-    "songs.delete.many": "Z vaší knihovny budou odstraněny vybrané písně ({$count}).",
+    "songs.delete.many": "Z vaší knihovny budou odstraněny vybrané písně.",
     "songs.delete.one": "Z vaší knihovny bude odstraněna tato píseň.",
     "songs.delete.title": "Smazat tuto píseň?",
     "songs.delete.titleMany": "Smazat vybrané písně ({$count})?",

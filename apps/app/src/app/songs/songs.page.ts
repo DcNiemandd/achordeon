@@ -449,11 +449,12 @@ export class SongsPage {
       : $localize`:@@songs.delete.titleMany:Delete ${pending.ids.length}:count: songs?`;
   }
 
-  /** What the delete does, said once — it names no songs, and no list follows. */
+  /** What the delete does, said once — it names no songs, no list follows, and it
+   * does not count them either: the title has already done that. */
   protected deleteQuestion(pending: PendingDelete): string {
     return pending.ids.length === 1
       ? $localize`:@@songs.delete.one:This will be removed from your library.`
-      : $localize`:@@songs.delete.many:These ${pending.ids.length}:count: songs will be removed from your library.`;
+      : $localize`:@@songs.delete.many:These songs will be removed from your library.`;
   }
 
   /** "Nothing here" and "nothing matched" are different facts, and only one of
