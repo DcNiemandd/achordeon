@@ -1,6 +1,6 @@
 import type { ChordAnchor, SongAst } from './ast';
 import { FakeChordTheory } from './fake-chord-theory.fake';
-import { respellChords, spellChord } from './notation';
+import { respellChords, spellChord, spellNoteInSource } from './notation';
 
 const theory = new FakeChordTheory();
 const german = (symbol: string) => spellChord(symbol, 'german', theory);
@@ -58,6 +58,44 @@ describe('spellChord', () => {
     expect(german('Solo')).toBe('Solo');
     expect(german('x2')).toBe('x2');
     expect(german('N.C.')).toBe('N.C.');
+  });
+});
+
+describe('spellNoteInSource', () => {
+  it('is the identity in English', () => {
+    for (const note of ['B', 'Bb', 'H', 'C#', 'A']) {
+      expect(spellNoteInSource(note, 'english')).toBe(note);
+    }
+  });
+
+  it('writes B natural as H', () => {
+    expect(spellNoteInSource('B', 'german')).toBe('H');
+    expect(spellNoteInSource('H', 'german')).toBe('H'); // already German
+  });
+
+  it('leaves B flat as Bb, unlike the printed spelling', () => {
+    // The whole reason this is a second function: `B` on a page is B♭, but `B` in
+    // the source is B natural to every reader (toEnglishNotation is
+    // unconditional), so the print spelling cannot be written back.
+    expect(spellNoteInSource('Bb', 'german')).toBe('Bb');
+    expect(german('Bb')).toBe('B');
+  });
+
+  it('touches nothing else', () => {
+    for (const note of ['C', 'C#', 'Eb', 'F#', 'A', 'Ab']) {
+      expect(spellNoteInSource(note, 'german')).toBe(note);
+    }
+  });
+
+  it('agrees with the printed spelling on every note it does re-spell', () => {
+    // The two must not drift on `H`: a page that prints H and a transpose that
+    // writes B would put the editor and the render into different languages.
+    for (const note of ['C', 'C#', 'D', 'Eb', 'E', 'F', 'G', 'A', 'B']) {
+      const source = spellNoteInSource(note, 'german');
+      if (source !== note) {
+        expect(german(note)).toBe(source);
+      }
+    }
   });
 });
 

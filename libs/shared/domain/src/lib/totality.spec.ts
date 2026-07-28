@@ -44,4 +44,37 @@ describe('parser totality', () => {
       expect(() => transposeContent(input, semitones, theory)).not.toThrow();
     }
   });
+
+  // The notation option feeds the same rewrite, so it inherits the same duty: it
+  // is chosen from a settings panel, not from the text, and no half-typed bracket
+  // may become the one input that makes a transpose throw.
+  it.each(ADVERSARIAL)(
+    'transposeContent never throws in German for %j',
+    (input) => {
+      for (const semitones of [-12, -5, -1, 0, 1, 7, 13]) {
+        expect(() =>
+          transposeContent(input, semitones, theory, 'german'),
+        ).not.toThrow();
+      }
+    },
+  );
+
+  // And whatever it writes must still parse: a German rewrite that produced a
+  // symbol the parser no longer recognised would turn chords into grey
+  // annotations on the next keystroke.
+  it.each(ADVERSARIAL)('a German rewrite still parses for %j', (input) => {
+    for (const semitones of [-12, -1, 1, 7]) {
+      const rewritten = transposeContent(input, semitones, theory, 'german');
+      const before = parse(input, theory);
+      const after = parse(rewritten, theory);
+      expect(validity(after)).toEqual(validity(before));
+    }
+  });
 });
+
+/** Every chord anchor's `valid` flag, in reading order. */
+function validity(ast: ReturnType<typeof parse>): boolean[] {
+  return ast.blocks.flatMap((block) =>
+    block.lines.flatMap((line) => line.chords.map((chord) => chord.valid)),
+  );
+}

@@ -34,6 +34,7 @@ import {
   ChordTheory,
   findLabelDelimiter,
   transposeChordAt,
+  type ChordNotation,
 } from '@achordeon/shared/domain';
 import { achordeonHighlight, achordeonTags } from './highlight';
 import type {
@@ -185,6 +186,16 @@ export class SongEditor {
    */
   readonly content = input.required<string>();
   readonly markers = input<readonly EditorMarker[]>([]);
+  /**
+   * The alphabet the sharp/flat buttons write in — this song's resolved
+   * `notation`, handed down rather than looked up.
+   *
+   * The editor holds no settings of its own (ADR-0010: everything crosses this
+   * boundary as plain data), and a second read of the cascade is exactly how the
+   * two panes would come to disagree about what a chord is called. Defaults to
+   * `english`, so an unbound editor behaves as it always has.
+   */
+  readonly notation = input<ChordNotation>('english');
   readonly editorLabel = input($localize`:@@editor.label:Song content`);
   readonly placeholderText = input(
     $localize`:@@editor.placeholder:Type your song here.`,
@@ -389,6 +400,10 @@ export class SongEditor {
    * the sharp/flat buttons. A real source edit like transpose (it joins the undo
    * history), but scoped to the bracket under the cursor. A no-op off any chord,
    * which is why the buttons disable themselves off `caret().isInsideChord`.
+   *
+   * Spelled in `notation()`, the same value the whole-song transpose uses: these
+   * two write into one document, and one document should not end up in two
+   * alphabets because it was raised by different buttons.
    */
   transposeChordAtCaret(semitones: number): void {
     const view = this.view;
@@ -401,6 +416,7 @@ export class SongEditor {
       head,
       semitones,
       this.theory,
+      this.notation(),
     );
     if (!result) {
       view.focus();

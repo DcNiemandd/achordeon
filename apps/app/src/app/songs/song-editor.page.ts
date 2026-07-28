@@ -274,10 +274,15 @@ import { ReturnUrl } from './return-url';
           </div>
         </app-action-bar>
 
+        <!-- The notation bound here is the song's resolved setting, the same
+             one pane B prints with: the sharp/flat buttons rewrite the source,
+             and the spelling they leave behind should be the one the author
+             reads. -->
         <app-song-editor
           class="editor"
           [content]="presenter.content()"
           [markers]="presenter.markers()"
+          [notation]="presenter.notation()"
           (contentChange)="presenter.setContent($event)"
         />
 
