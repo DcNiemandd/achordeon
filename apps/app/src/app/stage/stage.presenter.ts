@@ -3,8 +3,12 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { SongStore, SongbookStore } from '@achordeon/shared/data-access';
-import { ALL_SONGS_ID } from '@achordeon/shared/domain';
+import {
+  SettingsStore,
+  SongStore,
+  SongbookStore,
+} from '@achordeon/shared/data-access';
+import { ALL_SONGS_ID, type AllSongsOrder } from '@achordeon/shared/domain';
 import { StageSession } from '../shared/layout';
 
 export interface SongbookPickerRow {
@@ -31,6 +35,7 @@ export interface SongbookPickerRow {
 export class StagePresenter {
   private readonly books = inject(SongbookStore);
   private readonly songs = inject(SongStore);
+  private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
   private readonly session = inject(StageSession);
 
@@ -78,6 +83,48 @@ export class StagePresenter {
       await this.books.load();
     }
     this._librarySize.set((await this.songs.allLive()).length);
+  }
+
+  // --- the All songs order ------------------------------------------------------
+  //
+  // The picker is where this belongs: All songs is the one row whose order is a
+  // question rather than an arrangement, and the setlist is the only place the
+  // answer shows. Asking it here means the control sits beside the row it orders,
+  // one press before the performance it changes.
+
+  private readonly _isOrderOpen = signal(false);
+  readonly isOrderOpen = this._isOrderOpen.asReadonly();
+
+  /** The saved order — what the dialog opens on, and what `open()` performs in. */
+  readonly allSongsOrder = this.settings.allSongsOrder;
+
+  /** The gear on the All songs row. Other rows do not carry it: a stored book's
+   * order is its slots, and those are arranged in the Songbooks module. */
+  openOrder(id: string): void {
+    if (id === ALL_SONGS_ID) {
+      this._isOrderOpen.set(true);
+    }
+  }
+
+  closeOrder(): void {
+    this._isOrderOpen.set(false);
+  }
+
+  /**
+   * Save the order and close.
+   *
+   * Nothing here has to be told: the picker shows names and counts, not songs, and
+   * the setlist is built when a performance starts. The write reaches the account's
+   * other devices like any other synced edit.
+   */
+  async saveOrder(order: AllSongsOrder): Promise<void> {
+    await this.settings.setAllSongsOrder(order);
+    this._isOrderOpen.set(false);
+  }
+
+  /** Fetch the next page of songbooks; a no-op once the window is exhausted. */
+  loadMore(): void {
+    void this.books.loadMore();
   }
 
   perform(id: string): void {

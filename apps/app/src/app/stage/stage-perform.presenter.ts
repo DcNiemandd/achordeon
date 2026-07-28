@@ -20,7 +20,7 @@ import {
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
-import { StageSession } from '../shared/layout';
+import { StageSession, UiStore } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
 
@@ -70,6 +70,16 @@ export class StagePerformPresenter {
   private readonly router = inject(Router);
   private readonly session = inject(StageSession);
   private readonly host = inject(LobbyHost);
+  /**
+   * The dark page — a viewer option, read here and passed to `layout`, and
+   * deliberately NOT folded into `_resolved`.
+   *
+   * That separation is the guarantee: `_resolved` is what the lobby payload
+   * carries and what an export would resolve, and a black page must reach
+   * neither. It travels as `RenderOpts.dark` instead, which nothing persists,
+   * nothing cascades and nothing sends over the wire.
+   */
+  private readonly ui = inject(UiStore);
 
   private readonly _book = signal<Songbook | null>(null);
   private readonly _songs = signal<Song[]>([]);
@@ -113,7 +123,7 @@ export class StagePerformPresenter {
     const resolved = this._resolved();
     if (!song || !resolved) return null;
     const ast = this.parser.parse(song.content);
-    return this.renderer.layout(ast, resolved);
+    return this.renderer.layout(ast, resolved, { dark: this.ui.isSongDark() });
   });
 
   /**
@@ -197,9 +207,14 @@ export class StagePerformPresenter {
    * makes the performance resume.
    *
    * For the virtual All songs book (`isAllSongs(id)` is true), the store has no
-   * record, so we bypass the store and use `songsStore.allLive()` directly. That
-   * returns all live songs in name order, which is the logical definition of
-   * "All songs".
+   * record, so we bypass the store and use `songsStore.allLive()` directly — in
+   * **the order the account saved** (`SettingsStore.allSongsOrder`).
+   *
+   * It used to ask for `{ sort: 'name' }`, hardcoded, which made the book's order
+   * unanswerable from the outside: you could sort All songs on the songbooks
+   * screen and then perform it alphabetically anyway. A setlist is the one place
+   * the order of this book is load-bearing — it is the sequence you play in — so
+   * it is the last place that should have been ignoring it.
    *
    * For real books, a missing or tombstoned book bounces back to /stage rather
    * than showing a broken view. Songs that were deleted are skipped: a deleted
@@ -211,7 +226,9 @@ export class StagePerformPresenter {
 
     if (isAllSongs(id)) {
       this._book.set(ALL_SONGS_BOOK);
-      const songs = await this.songsStore.allLive({ sort: 'name' });
+      const songs = await this.songsStore.allLive(
+        this.settings.allSongsOrder(),
+      );
       this._songs.set(songs);
       this.session.setTotal(songs.length);
       return;

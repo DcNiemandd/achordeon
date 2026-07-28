@@ -17,6 +17,7 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
+import { UiStore } from './ui-store';
 
 @Component({
   selector: 'app-audience-bar',
@@ -123,6 +124,23 @@ import { Fullscreen } from './fullscreen';
           {{ hideChordsLabel }}
         </button>
 
+        <!-- The dark page — the viewer's own, exactly like Hide chords above
+             it. The performer never sends this: a stage is dark and a kitchen
+             table is not, and each screen answers for the room it is in
+             (CONTEXT.md §Audience). -->
+        <button
+          type="button"
+          class="item"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="ui.isSongDark()"
+          [class.is-active]="ui.isSongDark()"
+          data-testid="audience-dark-page"
+          (click)="onDarkPage()"
+        >
+          <app-icon name="moon" />
+          {{ darkPageLabel }}
+        </button>
+
         <button
           type="button"
           class="item is-danger"
@@ -206,6 +224,8 @@ import { Fullscreen } from './fullscreen';
 export class AudienceBar {
   protected readonly session = inject(AudienceSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** Device-local, never synced — see `UiStore.isSongDark`. */
+  protected readonly ui = inject(UiStore);
 
   protected readonly isMenuOpen = signal(false);
 
@@ -225,6 +245,12 @@ export class AudienceBar {
 
   protected onHideChords(): void {
     this.session.toggleHideChords();
+  }
+
+  /** The menu stays open, as Hide chords does: both are things you flip while
+   * looking at the song to see whether you like it better that way. */
+  protected onDarkPage(): void {
+    this.ui.toggleSongDark();
   }
 
   protected onLeave(): void {
@@ -262,6 +288,9 @@ export class AudienceBar {
   protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
   protected readonly syncLabel = $localize`:@@audience.sync:Re-sync`;
   protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
+  // The same words as the performing menu, so the one id serves both bars —
+  // the pattern `@@stage.menu` already follows here.
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly leaveLabel = $localize`:@@audience.exit:Leave audience`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;

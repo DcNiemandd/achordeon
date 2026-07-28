@@ -20,6 +20,7 @@ interface PersistedUi {
   splitRatios: Partial<Record<SplitScope, number>>;
   isSplitShared: boolean;
   isRailCollapsed: boolean;
+  isSongDark: boolean;
 }
 
 /**
@@ -54,12 +55,35 @@ export class UiStore {
    */
   private readonly _isSplitShared = signal(true);
   private readonly _isRailCollapsed = signal(false);
+  /**
+   * Render the song on a black page, while performing or watching.
+   *
+   * **A property of the room, not of the song** — which is why it is here and
+   * not a render setting. Settings cascade Global → Songbook → Song and are what
+   * the download, the PDF and the print resolve (CONTEXT.md §Render settings);
+   * a dark background stored among them would eventually come out of a printer
+   * as a black A4. This one reaches only a live view, through
+   * `RenderOpts.dark`.
+   *
+   * And it belongs beside the split ratio for the split ratio's own reason: it
+   * must **never sync** (PRD-UI-SHELL.md §7). The performer's stage is dark;
+   * the audience member following along at a kitchen table is not, and each of
+   * them is looking at a different screen in a different light. Pushing one
+   * answer to every device would be pushing the wrong one to most of them —
+   * exactly the logic behind the viewer-local Hide chords (CONTEXT.md
+   * §Audience).
+   *
+   * Persisted, unlike fullscreen, because it *can* be honestly restored: a
+   * phone that reloads mid-set is still in the same dark room.
+   */
+  private readonly _isSongDark = signal(false);
   /** Session-only: the Fullscreen API needs a gesture, so a reload could never
    * restore this. A URL or a persisted flag that lies is worse than neither. */
   private readonly _isFullscreen = signal(false);
 
   readonly isSplitShared = this._isSplitShared.asReadonly();
   readonly isRailCollapsed = this._isRailCollapsed.asReadonly();
+  readonly isSongDark = this._isSongDark.asReadonly();
   readonly isFullscreen = this._isFullscreen.asReadonly();
 
   constructor() {
@@ -108,6 +132,17 @@ export class UiStore {
     this.persist();
   }
 
+  /** Flip the page over. The bars call this; the render reads `isSongDark`. */
+  toggleSongDark(): void {
+    this._isSongDark.update((dark) => !dark);
+    this.persist();
+  }
+
+  setSongDark(dark: boolean): void {
+    this._isSongDark.set(dark);
+    this.persist();
+  }
+
   setFullscreen(on: boolean): void {
     // Deliberately not persisted — see the field comment.
     this._isFullscreen.set(on);
@@ -131,6 +166,9 @@ export class UiStore {
     }
     if (typeof stored.isRailCollapsed === 'boolean') {
       this._isRailCollapsed.set(stored.isRailCollapsed);
+    }
+    if (typeof stored.isSongDark === 'boolean') {
+      this._isSongDark.set(stored.isSongDark);
     }
   }
 
@@ -157,6 +195,7 @@ export class UiStore {
       splitRatios: this._splitRatios(),
       isSplitShared: this._isSplitShared(),
       isRailCollapsed: this._isRailCollapsed(),
+      isSongDark: this._isSongDark(),
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(state));

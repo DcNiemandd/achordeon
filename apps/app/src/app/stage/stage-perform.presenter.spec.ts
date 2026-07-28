@@ -13,8 +13,14 @@ import {
   SongbookStore,
   SONG_REPOSITORY,
 } from '@achordeon/shared/data-access';
-import type { Song, Songbook } from '@achordeon/shared/domain';
-import { StageSession } from '../shared/layout';
+import {
+  ALL_SONGS_ID,
+  DEFAULT_ALL_SONGS_ORDER,
+  type AllSongsOrder,
+  type Song,
+  type Songbook,
+} from '@achordeon/shared/domain';
+import { Fullscreen, StageSession, UiStore } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -67,8 +73,12 @@ class FakeHost {
 
 const fakeParser = { parse: (content: string) => ({ content }) };
 const fakeRenderer = {
-  layout: () => ({ box: { width: 210, height: 297 } }),
-  emit: () => 'SVG:chords',
+  layout: (_ast: unknown, _settings: unknown, opts?: { dark?: boolean }) => ({
+    box: { width: 210, height: 297 },
+    dark: !!opts?.dark,
+  }),
+  emit: (plan: { dark: boolean }) =>
+    plan.dark ? 'SVG:chords:dark' : 'SVG:chords',
 };
 
 describe('StagePerformPresenter', () => {
@@ -90,6 +100,8 @@ describe('StagePerformPresenter', () => {
     session = new FakeSession();
     host = new FakeHost();
     router = { navigate: jest.fn() };
+    // The dark page persists per device; clear it so each test starts on paper.
+    localStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [
@@ -101,7 +113,10 @@ describe('StagePerformPresenter', () => {
         { provide: RenderService, useValue: fakeRenderer },
         {
           provide: SettingsStore,
-          useValue: { global: () => defaultGlobalSettings() },
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => DEFAULT_ALL_SONGS_ORDER,
+          },
         },
         { provide: SongStore, useValue: { allLive: async () => [] } },
         {
@@ -184,9 +199,164 @@ describe('StagePerformPresenter', () => {
     expect(host.close).toHaveBeenCalled();
   });
 
+  // The guarantee behind the whole design: the dark page is a viewer option, so
+  // it reaches `layout` and NOTHING else. What the audience receives — and what
+  // an export would resolve — is the settings cascade, which never learns of it.
+  it('darkens this device\u2019s render without touching what it publishes', async () => {
+    await presenter.open('book1');
+    expect(presenter.svg()).toBe('SVG:chords');
+    const lightSettings = presenter.payload()?.settings;
+
+    TestBed.inject(UiStore).setSongDark(true);
+    session.lobbyPin.set('ABCDE');
+    flush();
+
+    expect(presenter.svg()).toBe('SVG:chords:dark');
+    const [, payload] = lastSync();
+    expect(payload?.settings).toEqual(lightSettings);
+    expect(JSON.stringify(payload)).not.toContain('dark');
+  });
+
   it('mirrors the live audience count back to the session', () => {
     host.audienceCount.set(5);
     flush();
     expect(session.setAudienceCount).toHaveBeenCalledWith(5);
+  });
+});
+
+// The audience button's wording is derived in StageSession, but the two facts it
+// derives from arrive from opposite directions: the PIN is set by the shell, the
+// count is pushed in by *this* presenter off the host channel. The fake session
+// above can only prove the calls were made, so this runs the real holder and
+// checks the sentence a performer actually reads.
+describe('StagePerformPresenter ▸ what the audience button ends up saying', () => {
+  let host: FakeHost;
+  let session: StageSession;
+
+  const flush = () => TestBed.inject(ApplicationRef).tick();
+
+  beforeEach(() => {
+    localStorage.clear();
+    host = new FakeHost();
+
+    TestBed.configureTestingModule({
+      providers: [
+        StagePerformPresenter,
+        { provide: LobbyHost, useValue: host },
+        { provide: Fullscreen, useValue: { exit: async () => undefined } },
+        { provide: Router, useValue: { navigate: jest.fn() } },
+        { provide: ParserService, useValue: fakeParser },
+        { provide: RenderService, useValue: fakeRenderer },
+        {
+          provide: SettingsStore,
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => DEFAULT_ALL_SONGS_ORDER,
+          },
+        },
+        { provide: SongStore, useValue: { allLive: async () => [] } },
+        {
+          provide: SongbookStore,
+          useValue: {
+            byId: async (id: string) => (id === 'book1' ? BOOK : null),
+          },
+        },
+        {
+          provide: SONG_REPOSITORY,
+          useValue: { get: async (id: string) => SONGS[id] ?? null },
+        },
+      ],
+    });
+    TestBed.inject(StagePerformPresenter);
+    session = TestBed.inject(StageSession);
+  });
+
+  it('invites the performer to create one before there is a lobby', () => {
+    expect(session.audienceLabel()).toBe('Create an audience');
+  });
+
+  it('turns to the manage wording once the lobby is up', async () => {
+    await TestBed.inject(StagePerformPresenter).open('book1');
+    session.createLobby();
+    flush();
+
+    host.audienceCount.set(4);
+    flush();
+
+    // The count reaches the session (the dialog prints it) but not the label.
+    expect(session.audienceCount()).toBe(4);
+    expect(session.audienceLabel()).toBe('Manage audience');
+  });
+});
+
+/**
+ * Performing All songs in the order the account saved.
+ *
+ * The virtual book has no record and so no stored sequence of slots — its setlist
+ * is a query, and the order that query runs in is the account's answer
+ * (`SettingsStore.allSongsOrder`, CONTEXT.md §Songbook). It used to ask for
+ * `{ sort: 'name' }` regardless, which made the saved order unanswerable exactly
+ * where it matters most: the sequence you play in.
+ */
+describe('StagePerformPresenter ▸ the All songs setlist', () => {
+  const flush = () => TestBed.inject(ApplicationRef).tick();
+
+  function performAllSongs(order: AllSongsOrder) {
+    const asked: unknown[] = [];
+    const session = new FakeSession();
+    TestBed.configureTestingModule({
+      providers: [
+        StagePerformPresenter,
+        { provide: StageSession, useValue: session },
+        { provide: LobbyHost, useValue: new FakeHost() },
+        { provide: Router, useValue: { navigate: jest.fn() } },
+        { provide: ParserService, useValue: fakeParser },
+        { provide: RenderService, useValue: fakeRenderer },
+        {
+          provide: SettingsStore,
+          useValue: {
+            global: () => defaultGlobalSettings(),
+            allSongsOrder: () => order,
+          },
+        },
+        {
+          provide: SongStore,
+          useValue: {
+            allLive: async (o?: unknown) => {
+              asked.push(o);
+              return [SONGS['s1']];
+            },
+          },
+        },
+        { provide: SongbookStore, useValue: { byId: async () => null } },
+        { provide: SONG_REPOSITORY, useValue: { get: async () => null } },
+      ],
+    });
+    return { presenter: TestBed.inject(StagePerformPresenter), asked };
+  }
+
+  it('asks the library for the order the account saved', async () => {
+    const order: AllSongsOrder = {
+      sort: 'created',
+      dir: 'desc',
+      favoritesFirst: true,
+    };
+    const { presenter, asked } = performAllSongs(order);
+
+    await presenter.open(ALL_SONGS_ID);
+    flush();
+
+    expect(asked).toEqual([order]);
+  });
+
+  it('falls back to the default order when the account never chose one', async () => {
+    const { presenter, asked } = performAllSongs(DEFAULT_ALL_SONGS_ORDER);
+
+    await presenter.open(ALL_SONGS_ID);
+    flush();
+
+    expect(asked).toEqual([
+      { sort: 'name', dir: 'asc', favoritesFirst: false },
+    ]);
   });
 });

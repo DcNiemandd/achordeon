@@ -24,6 +24,7 @@ import type {
   SongOrder,
   SongOrderAxis,
   SongOrderDir,
+  SummaryNumberPlace,
   TitlePageVariant,
 } from './transfer-model';
 import { DEFAULT_PRINT_OPTIONS } from './print-options-store';
@@ -163,6 +164,10 @@ interface VariantOption {
                 <option value="top-center">{{ topCenterLabel }}</option>
                 <option value="top-left">{{ topLeftLabel }}</option>
                 <option value="top-right">{{ topRightLabel }}</option>
+                <!-- Not a spot on the paper: the number joins the song's
+                     heading instead, which is what a reader says out loud and
+                     what survives the page being copied or re-bound. -->
+                <option value="before-title">{{ beforeSongTitleLabel }}</option>
               </select>
             </label>
           }
@@ -179,6 +184,24 @@ interface VariantOption {
           />
           <span class="name">{{ summaryLabel }}</span>
         </label>
+
+        <!-- Which side of the title the contents page carries its number on.
+             The PDF's summary only: the image ZIP's contents page is a render
+             with a numbering of its own, so there is nothing here to choose. -->
+        @if (choice().hasSummary && choice().format === 'pdf') {
+          <label class="row">
+            <span class="name">{{ summaryNumberLabel }}</span>
+            <select
+              class="control"
+              [value]="choice().summaryNumberPlace"
+              data-testid="pdf-summary-number"
+              (change)="patch({ summaryNumberPlace: summaryPlace($event) })"
+            >
+              <option value="after">{{ afterTitleLabel }}</option>
+              <option value="before">{{ beforeTitleLabel }}</option>
+            </select>
+          </label>
+        }
 
         <!-- Song order — **All songs only**. A real songbook's order IS its
              content; you arranged it, so it prints as arranged. All songs has no
@@ -398,6 +421,10 @@ export class SongbookDownloadDialog {
     return this.value(event) as PageNumberPlace;
   }
 
+  protected summaryPlace(event: Event): SummaryNumberPlace {
+    return this.value(event) as SummaryNumberPlace;
+  }
+
   protected variant(event: Event): TitlePageVariant {
     return this.value(event) as TitlePageVariant;
   }
@@ -434,6 +461,9 @@ export class SongbookDownloadDialog {
   protected readonly titlePageLabel = $localize`:@@songbookDownload.titlePage:Title page`;
   protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
   protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
+  protected readonly summaryNumberLabel = $localize`:@@songbookDownload.summaryNumber:Page number`;
+  protected readonly afterTitleLabel = $localize`:@@songbookDownload.afterTitle:After the title`;
+  protected readonly beforeTitleLabel = $localize`:@@songbookDownload.beforeTitle:Before the title`;
   protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
   protected readonly orderLabel = $localize`:@@songbookDownload.order:Song order`;
   protected readonly byTitleLabel = $localize`:@@songbookDownload.order.title:Title`;
@@ -451,6 +481,7 @@ export class SongbookDownloadDialog {
   protected readonly topCenterLabel = $localize`:@@songbookDownload.topCenter:Top, centred`;
   protected readonly topLeftLabel = $localize`:@@songbookDownload.topLeft:Top left`;
   protected readonly topRightLabel = $localize`:@@songbookDownload.topRight:Top right`;
+  protected readonly beforeSongTitleLabel = $localize`:@@songbookDownload.beforeSongTitle:Before the song title`;
 
   // Only `classic` renders today; the rest are named so the choice is real and
   // land later. The "(soon)" is on the label so a screen-reader user hears it,

@@ -76,26 +76,52 @@ export const SongStore = signalStore(
     const claim = (): number => ++fetchSeq;
     const isStale = (seq: number): boolean => seq !== fetchSeq;
 
+    /**
+     * Put `loading` down — **the newest fetch's job, and nobody else's.**
+     *
+     * This is the other half of the stamp, and it is what kept the infinite list
+     * from being infinite. A superseded fetch used to bail on `isStale` and
+     * simply return, on the reasoning that the newer one owns the flag; but
+     * `refresh` claimed a stamp without ever touching `loading`, so a scroll that
+     * was overtaken by a favourite, a rename or an import left the flag raised
+     * with nothing left to lower it. `loadMore` no-ops while `loading`, so from
+     * that moment on the list would not grow again for the rest of the session —
+     * and the gesture that broke it (star a row while the next page is in flight)
+     * is one nobody would connect to a list that stopped loading.
+     *
+     * Called from a `finally`, so it also covers the case the stamp never
+     * addressed: a page read that **throws**. A failed fetch that leaves the flag
+     * raised is the same dead list by another route.
+     */
+    const settle = (seq: number): void => {
+      if (!isStale(seq)) {
+        patchState(store, { loading: false });
+      }
+    };
+
     // Reset the window and refetch page 1. Every sort/search change funnels here
     // so the cache never mixes rows from two different queries (§4).
     async function reload(): Promise<void> {
       const seq = claim();
       patchState(store, { loading: true });
-      const page = await repo.page({
-        limit: PAGE_LIMIT,
-        sort: store.sort(),
-        dir: store.dir(),
-        favoritesFirst: store.favoritesFirst(),
-        query: store.query(),
-      });
-      if (isStale(seq)) {
-        return; // a newer fetch owns the window (and `loading`) now
+      try {
+        const page = await repo.page({
+          limit: PAGE_LIMIT,
+          sort: store.sort(),
+          dir: store.dir(),
+          favoritesFirst: store.favoritesFirst(),
+          query: store.query(),
+        });
+        if (isStale(seq)) {
+          return; // a newer fetch owns the window (and `loading`) now
+        }
+        patchState(store, setAllEntities(page.rows), {
+          nextCursor: page.nextCursor,
+          loaded: true,
+        });
+      } finally {
+        settle(seq);
       }
-      patchState(store, setAllEntities(page.rows), {
-        nextCursor: page.nextCursor,
-        loading: false,
-        loaded: true,
-      });
     }
 
     return {
@@ -111,21 +137,24 @@ export const SongStore = signalStore(
         }
         const seq = claim();
         patchState(store, { loading: true });
-        const page = await repo.page({
-          limit: PAGE_LIMIT,
-          sort: store.sort(),
-          dir: store.dir(),
-          favoritesFirst: store.favoritesFirst(),
-          query: store.query(),
-          cursor: store.nextCursor(),
-        });
-        if (isStale(seq)) {
-          return; // the query changed under us; this page belongs to the old one
+        try {
+          const page = await repo.page({
+            limit: PAGE_LIMIT,
+            sort: store.sort(),
+            dir: store.dir(),
+            favoritesFirst: store.favoritesFirst(),
+            query: store.query(),
+            cursor: store.nextCursor(),
+          });
+          if (isStale(seq)) {
+            return; // the query changed under us; this page belongs to the old one
+          }
+          patchState(store, setEntities(page.rows), {
+            nextCursor: page.nextCursor,
+          });
+        } finally {
+          settle(seq);
         }
-        patchState(store, setEntities(page.rows), {
-          nextCursor: page.nextCursor,
-          loading: false,
-        });
       },
 
       /**
@@ -142,34 +171,44 @@ export const SongStore = signalStore(
        * Keeps the extent the user scrolled to rather than snapping back to page 1,
        * and keeps tombstones in the map (they are invisible to `live`, and sync
        * still needs them).
+       *
+       * It raises `loading` like any other fetch. It is a re-query of the whole
+       * window, so a `loadMore` starting underneath it would be paging against a
+       * cursor this call is about to redraw — and, more plainly, whatever holds
+       * the flag has to be the thing that puts it down (see `settle`).
        */
       async refresh(): Promise<void> {
         if (!store.loaded()) {
           return;
         }
         const seq = claim();
-        const page = await repo.page({
-          limit: Math.max(PAGE_LIMIT, store.live().length),
-          sort: store.sort(),
-          dir: store.dir(),
-          favoritesFirst: store.favoritesFirst(),
-          query: store.query(),
-        });
-        if (isStale(seq)) {
-          return;
+        patchState(store, { loading: true });
+        try {
+          const page = await repo.page({
+            limit: Math.max(PAGE_LIMIT, store.live().length),
+            sort: store.sort(),
+            dir: store.dir(),
+            favoritesFirst: store.favoritesFirst(),
+            query: store.query(),
+          });
+          if (isStale(seq)) {
+            return;
+          }
+          // The fresh query is authoritative for every id it returns. A tombstone
+          // still in the map for one of those ids is stale — the row was revived
+          // (an import that replaces a soft-deleted song writes it back live), and
+          // re-appending the old tombstone would let `setAllEntities` place it
+          // last and win by id, so a replaced song came back looking deleted.
+          const liveIds = new Set(page.rows.map((song) => song.id));
+          const tombstones = store
+            .entities()
+            .filter((song) => song.deletedAt !== null && !liveIds.has(song.id));
+          patchState(store, setAllEntities([...page.rows, ...tombstones]), {
+            nextCursor: page.nextCursor,
+          });
+        } finally {
+          settle(seq);
         }
-        // The fresh query is authoritative for every id it returns. A tombstone
-        // still in the map for one of those ids is stale — the row was revived
-        // (an import that replaces a soft-deleted song writes it back live), and
-        // re-appending the old tombstone would let `setAllEntities` place it
-        // last and win by id, so a replaced song came back looking deleted.
-        const liveIds = new Set(page.rows.map((song) => song.id));
-        const tombstones = store
-          .entities()
-          .filter((song) => song.deletedAt !== null && !liveIds.has(song.id));
-        patchState(store, setAllEntities([...page.rows, ...tombstones]), {
-          nextCursor: page.nextCursor,
-        });
       },
 
       /** Change the sort axis (and optional direction) — resets and refetches. */

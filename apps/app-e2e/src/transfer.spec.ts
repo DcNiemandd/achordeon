@@ -737,6 +737,96 @@ test.describe('download a songbook', () => {
     expect(complaints).toEqual([]);
   });
 
+  test('a page number in the song heading still comes out as a whole book', async ({
+    page,
+  }) => {
+    // `before-title` writes the number into the AST title, so an *untitled* song
+    // gets a title region it did not have — a real change to the layout, and the
+    // one that could throw or drop a page. Alpha is titled and Beta is not, so
+    // both paths are in the one file.
+    await createTitledSong(page, 'Alpha', 'Wonderwall', 'Oasis');
+    await createSong(page, 'Beta');
+
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    for (const name of ['Alpha', 'Beta']) {
+      await page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first()
+        .click();
+      await page.getByTestId('add-end').click();
+    }
+    await expect(page.getByTestId('entry-row')).toHaveCount(2);
+
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('pdf-summary').check();
+    await page.getByTestId('pdf-number-position').selectOption('before-title');
+    // The number goes on one side of the title, so the summary is asked which.
+    await page.getByTestId('pdf-summary-number').selectOption('before');
+    const file = await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    const raw = file.toString('latin1');
+    expect(raw.startsWith('%PDF-')).toBe(true);
+    // Title page + summary + the two songs. Numbering adds no sheet of its own.
+    expect(countPages(raw)).toBe(4);
+    // The contents list still links, one annotation per entry — the number rides
+    // inside the line either way, so it cannot cost an entry its link.
+    expect(raw).toContain('/Link');
+  });
+
+  test('the summary only offers a side for the number once it exists', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    await page.getByTestId('songbook-detail-download').click();
+    // No summary, no question about where its number sits.
+    await page.getByTestId('pdf-summary').uncheck();
+    await expect(page.getByTestId('pdf-summary-number')).toHaveCount(0);
+    await page.getByTestId('pdf-summary').check();
+    // The reference table is the default, so no book changes shape on an upgrade.
+    await expect(page.getByTestId('pdf-summary-number')).toHaveValue('after');
+
+    // The ZIP's contents page is a render with a numbering of its own, so there
+    // is nothing here to choose.
+    await page.getByTestId('songbook-format').selectOption('zip-png');
+    await expect(page.getByTestId('pdf-summary-number')).toHaveCount(0);
+  });
+
+  test('the print dialog remembers where the numbers went', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+    await page.getByTestId('songbooks-add').click();
+    await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
+    await page.getByTestId('add-end').click();
+
+    // Remembered on *confirm*, like every other print choice — cancelling is
+    // not an answer.
+    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('pdf-summary').check();
+    await page.getByTestId('pdf-number-position').selectOption('before-title');
+    await page.getByTestId('pdf-summary-number').selectOption('before');
+    await download(page, () =>
+      page.getByTestId('songbook-download-confirm').click(),
+    );
+
+    await page.reload();
+    await page.getByTestId('songbook-detail-download').click();
+    await expect(page.getByTestId('pdf-number-position')).toHaveValue(
+      'before-title',
+    );
+    await expect(page.getByTestId('pdf-summary-number')).toHaveValue('before');
+  });
+
   test('All songs can be downloaded and exported, but not renamed or deleted', async ({
     page,
   }) => {

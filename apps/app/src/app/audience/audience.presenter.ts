@@ -8,7 +8,7 @@ import {
   RenderService,
 } from '@achordeon/shared/data-access';
 import type { LobbySummaryRow } from '@achordeon/shared/domain';
-import { AudienceSession } from '../shared/layout';
+import { AudienceSession, UiStore } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
 
@@ -28,6 +28,13 @@ export class AudiencePresenter {
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
   private readonly session = inject(AudienceSession);
+  /**
+   * The dark page, this viewer's own. It sits beside `hideChords` in intent —
+   * both are answers about the device in your hands, neither is in the payload
+   * — but in `UiStore` rather than `AudienceSession`, because unlike a panel
+   * flag it must survive a reload and must never sync (PRD-UI-SHELL.md §7).
+   */
+  private readonly ui = inject(UiStore);
 
   private readonly _summaryQuery = signal('');
 
@@ -42,6 +49,8 @@ export class AudiencePresenter {
    * render reads it here.
    */
   readonly hideChords = this.session.hideChords;
+  /** Viewer-local dark page — read by the page for the frame behind the SVG. */
+  readonly isDark = this.ui.isSongDark;
 
   readonly songName = computed(() => this.payload()?.song.name ?? '');
   /** Where the performer stands in the setlist, for the read-only summary mark. */
@@ -53,6 +62,7 @@ export class AudiencePresenter {
     const ast = this.parser.parse(p.song.content);
     return this.renderer.layout(ast, p.settings, {
       hideChords: this.session.hideChords(),
+      dark: this.ui.isSongDark(),
     });
   });
 

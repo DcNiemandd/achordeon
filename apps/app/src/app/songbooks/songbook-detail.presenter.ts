@@ -13,13 +13,7 @@ import {
   SongbookStore,
   SyncService,
 } from '@achordeon/shared/data-access';
-import {
-  ALL_SONGS_ID,
-  isAllSongs,
-  type Song,
-  type Songbook,
-  type Uuid,
-} from '@achordeon/shared/domain';
+import type { Song, Songbook, Uuid } from '@achordeon/shared/domain';
 import {
   RowSelection,
   type ExplorerSort,
@@ -46,11 +40,12 @@ import {
 /**
  * The songbook builder's half of the app's state.
  *
- * Signals in, commands out (PRD-UI-SHELL.md §3). It serves **two books that are
- * not the same kind of thing**: a stored `Songbook`, and the virtual *All songs*
- * — which has no record, no settings and no editable order. Everything that
- * writes therefore asks `isVirtual` first, in one place, rather than each button
- * remembering.
+ * Signals in, commands out (PRD-UI-SHELL.md §3). It serves a stored `Songbook`
+ * and only that. The virtual *All songs* used to be a second, record-less kind of
+ * book here — a screen you could open to sort the library under a songbook's
+ * heading — but it cannot be opened any more and its order is asked for in the
+ * Stage picker, where the answer shows. So `/songbooks/all-songs` is now an id
+ * with no record, and reads as one.
  */
 @Injectable()
 export class SongbookDetailPresenter {
@@ -64,23 +59,21 @@ export class SongbookDetailPresenter {
   private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
 
-  /** The last-used print options, for the download dialog to open on (#3). */
+  /** The last-used print options, for the download dialog to open on (#3). The
+   * saved All songs order is not folded in — the dialog asks about order itself,
+   * and that setting is about performing (see the songbooks presenter). */
   readonly printOptions = this.print.options;
+
   private readonly route = inject(ActivatedRoute);
 
   /** The book being built, or null for the virtual one (and while loading). */
   private readonly _book = signal<Songbook | null>(null);
-  private readonly _id = signal<Uuid>(ALL_SONGS_ID);
-  /** The virtual book's entries: the whole library, name-ordered, read-only. */
-  private readonly _allSongIds = signal<readonly Uuid[]>([]);
+  private readonly _id = signal<Uuid>('');
 
   readonly id = this._id.asReadonly();
-  readonly isVirtual = computed(() => isAllSongs(this._id()));
 
-  /** True when the Perform button should be active: a real book with entries. */
-  readonly canPerform = computed(
-    () => !this.isVirtual() && (this._book()?.entries.length ?? 0) > 0,
-  );
+  /** True when the Perform button should be active: a book with entries. */
+  readonly canPerform = computed(() => (this._book()?.entries.length ?? 0) > 0);
 
   /** True once the route's book is known — a missing id must not read as empty. */
   private readonly _isFound = signal(false);
@@ -94,13 +87,13 @@ export class SongbookDetailPresenter {
    * bearing: the action bar's heading is a rename field bound to this, so a
    * value that arrives late overwrites what the user has already typed into it.
    */
-  readonly name = computed(() =>
-    this.isVirtual()
-      ? $localize`:@@songbooks.allSongs:All songs`
-      : (this._book()?.name ?? ''),
-  );
+  readonly name = computed(() => this._book()?.name ?? '');
 
   // --- Pane A: the library, in reduced-capability form. -------------------
+  //
+  // …and, for the virtual All songs, the book itself: that screen has no library
+  // pane, because there is nothing to add to it, so this window is what `entries`
+  // draws (see below). One query, one order, one answer to "which songs".
 
   readonly rows = computed<SongRow[]>(() =>
     this.songs.live().map((song, index) => ({
@@ -134,31 +127,27 @@ export class SongbookDetailPresenter {
    * came from may never have been loaded.
    */
   async load(id: string): Promise<void> {
-    // **All songs has no editable detail view.** Its order is chosen at
-    // download, and it is browsed through the Songs module — so a link straight
-    // to it (an old bookmark, a hand-typed URL) bounces back to the list rather
-    // than opening a page the UI no longer offers a way into.
-    if (isAllSongs(id)) {
-      void this.router.navigate(['/songbooks']);
-      return;
-    }
     this._id.set(id);
     this.slotSelection.clear();
     this._currentSlotKey.set(null);
-    if (isAllSongs(id)) {
-      this._book.set(null);
-      this._isFound.set(true);
-      await this.refreshVirtual();
-    } else {
-      const book = await this.books.byId(id);
-      this._book.set(book ?? null);
-      this._isFound.set(book !== undefined && book.deletedAt === null);
-    }
+    const book = await this.books.byId(id);
+    this._book.set(book ?? null);
+    this._isFound.set(book !== undefined && book.deletedAt === null);
     await this.hydrate();
   }
 
-  /** Keep the store's query in line with the URL — the URL is the source of
-   * truth for search and sort (§7), exactly as on `/songs`. */
+  /**
+   * Keep the store's query in line with the URL — the URL is the source of
+   * truth for search and sort (§7), exactly as on `/songs`.
+   *
+   * **One query, whichever list this screen is showing.** For a stored book that
+   * is pane A, the library you pick songs from; for the virtual *All songs* there
+   * is no pane A, and the same window IS the book (see `entries`). Either way the
+   * axis, the direction and favourites-first come from the address bar and go to
+   * `SongStore`, which re-reads from page one on every change — so All songs is
+   * sorted by the very machinery the Songs module's list is sorted by, rather
+   * than by a second copy of the rules that could drift from it.
+   */
   async syncQuery(params: {
     query: string;
     sort: ExplorerSort;
@@ -210,37 +199,6 @@ export class SongbookDetailPresenter {
     this.navigate({ fav: isFirst ? '1' : null });
   }
 
-  // --- The virtual book's own order ---------------------------------------
-
-  /**
-   * How **All songs** is sorted.
-   *
-   * It is the one thing that book can be told: it has no arrangement of its own
-   * to protect (CONTEXT.md §Songbook — read-only order), so "sorted how" is the
-   * only question it can answer. Kept here rather than in the URL because it
-   * belongs to one pane of one book, not to the screen's address.
-   */
-  private readonly _entrySort = signal<ExplorerSort>('name');
-  private readonly _entryDir = signal<ExplorerSortDir | undefined>(undefined);
-  private readonly _entryFavoritesFirst = signal(false);
-
-  readonly entrySort = this._entrySort.asReadonly();
-  readonly entryDir = computed(
-    () => this._entryDir() ?? DEFAULT_SORT_DIR[this._entrySort()],
-  );
-  readonly isEntryFavoritesFirst = this._entryFavoritesFirst.asReadonly();
-
-  async setEntrySort(change: SortChange): Promise<void> {
-    this._entrySort.set(change.key);
-    this._entryDir.set(change.dir);
-    await this.refreshVirtual();
-  }
-
-  async setEntryFavoritesFirst(isFirst: boolean): Promise<void> {
-    this._entryFavoritesFirst.set(isFirst);
-    await this.refreshVirtual();
-  }
-
   /** The row body: pick exactly this song, and make it the current one — so a
    * click is enough to then press Add (see `RowSelection`). */
   activate(id: Uuid): void {
@@ -278,11 +236,12 @@ export class SongbookDetailPresenter {
    * The current book's slots, in order.
    *
    * One list for both kinds of book: the stored one carries its own `entries`,
-   * the virtual one *is* the library. Everything downstream reads this and never
-   * has to ask which book it is looking at.
+   * the virtual one *is* the library — the window of it the sort and the search
+   * in the URL have asked for. Everything downstream reads this and never has to
+   * ask which book it is looking at.
    */
-  readonly entryIds = computed<readonly Uuid[]>(() =>
-    this.isVirtual() ? this._allSongIds() : (this._book()?.entries ?? []),
+  readonly entryIds = computed<readonly Uuid[]>(
+    () => this._book()?.entries ?? [],
   );
 
   // --- Pane B: the songbook's own order. ----------------------------------
@@ -316,6 +275,13 @@ export class SongbookDetailPresenter {
   /**
    * The songbook's slots, in the **same row shape the library list uses** — it
    * is the same component (`ENTRY_CAPABILITIES`), so it is the same contract.
+   *
+   * **Two books, one list.** A stored book's rows are slots: keyed by position,
+   * because the same song may fill several of them, and named from songs fetched
+   * by id (`hydrate`). The virtual *All songs* has no slots — its rows are the
+   * library itself, so they are keyed by song id and named from the window the
+   * sort already ordered. Marking them `isReadOnly` is what tells the row there
+   * is nothing here to rename, remove or reorder.
    */
   readonly entries = computed<SongRow[]>(() => {
     const byId = this._songsById();
@@ -393,7 +359,7 @@ export class SongbookDetailPresenter {
   async addSelected(where: InsertPosition): Promise<void> {
     const book = this._book();
     const selected = this.selection.ids();
-    if (!book || this.isVirtual() || selected.size === 0) {
+    if (!book || selected.size === 0) {
       return;
     }
     const songIds = this.rows()
@@ -420,7 +386,7 @@ export class SongbookDetailPresenter {
    */
   insertAt(where: InsertPosition): number | null {
     const book = this._book();
-    if (!book || this.isVirtual() || this.selection.isEmpty()) {
+    if (!book || this.selection.isEmpty()) {
       return null;
     }
     return insertionIndex(book.entries.length, this.selectedIndexes(), where);
@@ -434,7 +400,7 @@ export class SongbookDetailPresenter {
    */
   async moveSelected(where: MoveWhere): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual() || this.slotSelection.isEmpty()) {
+    if (!book || this.slotSelection.isEmpty()) {
       return;
     }
     const moved = moveEntries(book.entries, this.selectedIndexes(), where);
@@ -456,7 +422,7 @@ export class SongbookDetailPresenter {
   async moveSlot(key: string, where: MoveWhere): Promise<void> {
     const book = this._book();
     const index = Number(key);
-    if (!book || this.isVirtual() || !Number.isInteger(index)) {
+    if (!book || !Number.isInteger(index)) {
       return;
     }
     const positions = book.entries.map((_, at) => String(at));
@@ -487,7 +453,7 @@ export class SongbookDetailPresenter {
    */
   async dropIntoEntries(songId: string, at: number): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual()) {
+    if (!book) {
       return;
     }
     const selected = this.selection.ids();
@@ -513,7 +479,7 @@ export class SongbookDetailPresenter {
   async dropReorder(key: string, at: number): Promise<void> {
     const book = this._book();
     const index = Number(key);
-    if (!book || this.isVirtual() || !Number.isInteger(index)) {
+    if (!book || !Number.isInteger(index)) {
       return;
     }
     const selected = this.selectedIndexes();
@@ -546,7 +512,7 @@ export class SongbookDetailPresenter {
    */
   async removeSlots(keys: readonly string[]): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual() || keys.length === 0) {
+    if (!book || keys.length === 0) {
       return;
     }
     const dropped = new Set(keys.map(Number));
@@ -620,7 +586,7 @@ export class SongbookDetailPresenter {
    */
   async patchSettings(patch: Record<string, unknown>): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual()) {
+    if (!book) {
       return;
     }
     const settings: Record<string, unknown> = { ...book.settings };
@@ -636,7 +602,7 @@ export class SongbookDetailPresenter {
 
   private async patchBook(changes: Partial<Songbook>): Promise<void> {
     const book = this._book();
-    if (!book || this.isVirtual()) {
+    if (!book) {
       return;
     }
     const updated: Songbook = { ...book, ...changes, updatedAt: Date.now() };
@@ -645,20 +611,6 @@ export class SongbookDetailPresenter {
     // A reorder / metadata / settings commit is a coarse sync boundary
     // (ADR-0004) — schedule a debounced push. No-op unless sync is active.
     this.sync.pushSoon();
-  }
-
-  /** The library, in the virtual book's own order — see `_entrySort`. */
-  private async refreshVirtual(): Promise<void> {
-    if (!this.isVirtual()) {
-      return;
-    }
-    const songs = await this.songs.allLive({
-      sort: this._entrySort(),
-      dir: this._entryDir(),
-      favoritesFirst: this._entryFavoritesFirst(),
-    });
-    this._songsById.set(new Map(songs.map((song) => [song.id, song])));
-    this._allSongIds.set(songs.map((song) => song.id));
   }
 
   /** Persist a new order and keep the entry list able to name its slots. */
@@ -705,9 +657,7 @@ export class SongbookDetailPresenter {
   /** How far a running download has generated — the dialog's spinner and count. */
   readonly downloadProgress = this._progress.asReadonly();
 
-  readonly isTransferable = computed(
-    () => !this.isVirtual() && this._book() !== null,
-  );
+  readonly isTransferable = computed(() => this._book() !== null);
 
   openDownload(): void {
     if (this.isTransferable()) this._isDownloadOpen.set(true);

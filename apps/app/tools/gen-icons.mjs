@@ -127,6 +127,13 @@ const ICONS = {
   // inward-pointing exit.
   fullscreen: 'maximize',
   fullscreenExit: 'minimize',
+  // The dark page, on Stage and in the Audience. A moon, not a contrast disc or
+  // a lightbulb: what the toggle is really about is the room you are playing in
+  // after dark, and the moon is the only one of the three that says so without
+  // a label. Deliberately NOT paired with a `sun` — the control is a checkbox
+  // that stays put and lights up, not a two-state swap like fullscreen, so a
+  // second glyph would only make the row change shape under the thumb.
+  moon: 'moon',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

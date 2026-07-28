@@ -50,19 +50,45 @@ export const SongbookStore = signalStore(
   withMethods((store) => {
     const repo = inject(SONGBOOK_REPOSITORY);
 
+    /**
+     * Fetch stamping and the `loading` handover, exactly as `SongStore` explains
+     * them at length — the two stores answer the same shape of question and must
+     * not answer it two different ways.
+     *
+     * The short of it: the newest fetch owns the window and the flag, an
+     * overtaken one drops its answer on the floor, and whoever still owns the
+     * flag when the call unwinds is the one that puts it down — including when
+     * the page read threw. A flag left raised is a list that never pages again.
+     */
+    let fetchSeq = 0;
+    const claim = (): number => ++fetchSeq;
+    const isStale = (seq: number): boolean => seq !== fetchSeq;
+    const settle = (seq: number): void => {
+      if (!isStale(seq)) {
+        patchState(store, { loading: false });
+      }
+    };
+
     async function reload(): Promise<void> {
+      const seq = claim();
       patchState(store, { loading: true });
-      const page = await repo.page({
-        limit: PAGE_LIMIT,
-        sort: store.sort(),
-        dir: store.dir(),
-        query: store.query(),
-      });
-      patchState(store, setAllEntities(page.rows), {
-        nextCursor: page.nextCursor,
-        loading: false,
-        loaded: true,
-      });
+      try {
+        const page = await repo.page({
+          limit: PAGE_LIMIT,
+          sort: store.sort(),
+          dir: store.dir(),
+          query: store.query(),
+        });
+        if (isStale(seq)) {
+          return;
+        }
+        patchState(store, setAllEntities(page.rows), {
+          nextCursor: page.nextCursor,
+          loaded: true,
+        });
+      } finally {
+        settle(seq);
+      }
     }
 
     return {
@@ -74,18 +100,25 @@ export const SongbookStore = signalStore(
         if (store.loading() || store.nextCursor() === null) {
           return;
         }
+        const seq = claim();
         patchState(store, { loading: true });
-        const page = await repo.page({
-          limit: PAGE_LIMIT,
-          sort: store.sort(),
-          dir: store.dir(),
-          query: store.query(),
-          cursor: store.nextCursor(),
-        });
-        patchState(store, setEntities(page.rows), {
-          nextCursor: page.nextCursor,
-          loading: false,
-        });
+        try {
+          const page = await repo.page({
+            limit: PAGE_LIMIT,
+            sort: store.sort(),
+            dir: store.dir(),
+            query: store.query(),
+            cursor: store.nextCursor(),
+          });
+          if (isStale(seq)) {
+            return;
+          }
+          patchState(store, setEntities(page.rows), {
+            nextCursor: page.nextCursor,
+          });
+        } finally {
+          settle(seq);
+        }
       },
 
       /**
@@ -99,23 +132,32 @@ export const SongbookStore = signalStore(
         if (!store.loaded()) {
           return;
         }
-        const page = await repo.page({
-          limit: Math.max(PAGE_LIMIT, store.live().length),
-          sort: store.sort(),
-          dir: store.dir(),
-          query: store.query(),
-        });
-        // The fresh query wins for every id it returns: a stale tombstone left
-        // in the map for a revived book would be placed last by `setAllEntities`
-        // and shadow the live row by id — the same soft-delete trap the Song
-        // store guards against.
-        const liveIds = new Set(page.rows.map((book) => book.id));
-        const tombstones = store
-          .entities()
-          .filter((book) => book.deletedAt !== null && !liveIds.has(book.id));
-        patchState(store, setAllEntities([...page.rows, ...tombstones]), {
-          nextCursor: page.nextCursor,
-        });
+        const seq = claim();
+        patchState(store, { loading: true });
+        try {
+          const page = await repo.page({
+            limit: Math.max(PAGE_LIMIT, store.live().length),
+            sort: store.sort(),
+            dir: store.dir(),
+            query: store.query(),
+          });
+          if (isStale(seq)) {
+            return;
+          }
+          // The fresh query wins for every id it returns: a stale tombstone left
+          // in the map for a revived book would be placed last by `setAllEntities`
+          // and shadow the live row by id — the same soft-delete trap the Song
+          // store guards against.
+          const liveIds = new Set(page.rows.map((book) => book.id));
+          const tombstones = store
+            .entities()
+            .filter((book) => book.deletedAt !== null && !liveIds.has(book.id));
+          patchState(store, setAllEntities([...page.rows, ...tombstones]), {
+            nextCursor: page.nextCursor,
+          });
+        } finally {
+          settle(seq);
+        }
       },
 
       /**

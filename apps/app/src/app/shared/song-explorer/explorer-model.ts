@@ -265,19 +265,6 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   hasInlineDuplicate: false,
 };
 
-/** The virtual All songs book: a read-only order, so nothing may be moved out. */
-export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
-  ...ENTRY_CAPABILITIES,
-  // The virtual All songs book: nothing to arrange, so **sorting is the one
-  // thing it can be told** (CONTEXT.md §Songbook — read-only order).
-  canSort: true,
-  canSelect: false,
-  canRemove: false,
-  canReorder: false,
-  canDrag: false,
-  canDrop: false,
-};
-
 /**
  * The songbook list (Epic 6): the same component a fourth time.
  *

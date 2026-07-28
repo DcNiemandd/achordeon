@@ -117,7 +117,6 @@ test.describe('songbooks', () => {
     await page.goto('songbooks');
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
-    await expect(page.getByTestId('open-all-songs')).toBeVisible();
     // It has no record behind it, so it wears no identity actions — neither on
     // the row nor inside the ⋯ it does have (it can still be handed out).
     await page.getByTestId('songbook-row').hover();
@@ -129,28 +128,31 @@ test.describe('songbooks', () => {
   });
 
   // It looks like a book you made and is not one, so it says so out loud.
-  test('All songs explains itself, and cannot be opened', async ({ page }) => {
+  test('All songs explains itself, and does not open', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
     await page.getByTestId('hint-all-songs').click();
     await expect(page.getByRole('tooltip')).toContainText('library');
 
-    // It has no editable detail view — its order is chosen at download, and the
-    // library is browsed in the Songs module. A double click does not open it.
-    await page.getByTestId('open-all-songs').dblclick();
-    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
-    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
+    // Nothing to edit and nothing to open: there is no record behind the row, and
+    // what it stands for is the Songs module. It is performed, downloaded and
+    // exported — and the order it performs in is asked for in the Stage picker.
+    await expect(page.getByTestId('edit-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('view-all-songs')).toHaveCount(0);
+
+    await page.getByTestId('songbook-row').dblclick();
+    await expect(page).toHaveURL(/\/songbooks(\?|$)/);
   });
 
-  test('a link straight to All songs bounces back to the list', async ({
+  /** The screen it used to open is gone, so its URL is an id with no record. */
+  test('a link straight to All songs finds no such songbook', async ({
     page,
   }) => {
     await createSong(page, 'Wonderwall');
-    // An old bookmark, a hand-typed URL: there is no page to land on.
     await page.goto('songbooks/all-songs');
-    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
-    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
+
+    await expect(page.getByTestId('entry-row')).toHaveCount(0);
   });
 
   test('creates a songbook, names it, and it survives a reload', async ({

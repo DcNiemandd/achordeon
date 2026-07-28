@@ -1,0 +1,168 @@
+---
+sidebar_position: 30
+---
+
+# AI import
+
+An AI chatbot can read a photo of a song and write it out for Achordeon. You send
+it the photo, it gives you a file, you import the file. No typing.
+
+## 1. Take a photo
+
+- one song per photo, the whole sheet in the frame
+- two photos if the song runs over two pages, sent together
+- the chords must be readable when you zoom in
+
+## 2. Send it to a chatbot
+
+Any of these will do. All of them read photos on the free plan, and all you need
+is an account:
+
+| Chatbot     | Where               | Made by   |
+| ----------- | ------------------- | --------- |
+| **Gemini**  | `gemini.google.com` | Google    |
+| **Claude**  | `claude.ai`         | Anthropic |
+| **ChatGPT** | `chatgpt.com`       | OpenAI    |
+
+Open a new chat, attach the photo, and paste the whole prompt below into the same
+message. Use the copy button in the corner of the block.
+
+````text
+I'm attaching a photo of a song's chord sheet. Transcribe it into Achordeon
+markup and give me the three things asked for at the end.
+
+# The markup
+
+- `* Title` is the song's title, `** Author` is the subtitle. The marker sits at
+  the very start of the line, followed by a space. If several appear, the last
+  one counts.
+- A blank line starts a new block (verse, chorus, bridge...).
+- A block may start with a label: text ending in a colon followed by a space or
+  the end of the line — `1.: `, `R:: `, `Solo:`. The last colon is swallowed, so
+  `R::` prints as `R:`.
+- A colon that is not followed by a space is ordinary text (`12:30` is fine). If
+  a lyric would become a label by accident, escape it: `Narrator\: hello`.
+- Chords go inside the lyric line, in square brackets, immediately before the
+  character they sit above: `tr[C]ade` prints C above the `a`.
+- Several chords in one bracket sit in the same spot: `[Em G A]`. A line with
+  chords and no words is a chord-only line, and a block made only of those prints
+  larger — the usual intro/solo/bridge look.
+- Bracket text that is not a real chord — `[Solo]`, `[2x]`, `[N.C.]`, `[||: :||]`
+  — is printed above the line exactly as written. Keep it, don't "fix" it.
+- Use English note names. Convert other systems: German `H` becomes `B`, German
+  `B` becomes `Bb`.
+- A backslash makes the next character literal: `\:`, `\*`, `\[`.
+- There are no commands for transposing, capo, key, columns or colours. A capo or
+  key note from the sheet stays a plain line of text or a bracket annotation.
+
+# How to read the sheet
+
+- Transcribe everything: lyrics, chords, section labels, repeat counts, and notes
+  in the margin ("slowly", "solo = verse", capo, key, tuning). Leave out only
+  what is about the paper itself, like a page number.
+- Chord placement matters most. On the sheet the chords sit on a line above the
+  words — put each `[chord]` right before the character it stands over.
+- Fix obvious typos, missing accents and broken words, but keep the songwriter's
+  own words and dialect. Never invent anything you cannot read — say so instead.
+- Keep a short list of every correction and every chord you were unsure about.
+
+# The settings
+
+Settings are not part of the text, they travel beside it. Set only what the sheet
+plainly shows — usually that is just `aspectRatio` and `columns` — and leave the
+rest out, so the app's own defaults apply.
+
+| Setting         | Values                                       | Default     | Set it when                                                          |
+| --------------- | -------------------------------------------- | ----------- | -------------------------------------------------------------------- |
+| `aspectRatio`   | `"A4"`, a ratio like `"4/3"`, or a number    | `"A4"`      | portrait page: `"A4"`. A wide sheet: its width divided by its height |
+| `columns`       | `1`, `2`, `3`                                | `1`         | the lyrics are printed in more than one column                       |
+| `titlePosition` | `"top"`, `"left"`                            | `"top"`     | `"left"` only if the title runs sideways up the edge of the page     |
+| `titleLayout`   | `"stacked"`, `"inline"`                      | `"stacked"` | the author sits beside the title instead of under it                 |
+| `titleFont`     | `"body"`, `"serif"`, `"display"`, `"script"` | `"body"`    | the title is clearly in a different style of lettering               |
+| `padding`       | a number, in em                              | `0.5`       | the margin around the words is unusually wide or tight                |
+| `contentX`      | `"left"`, `"center"`, `"right"`               | `"center"`  | leave it out                                                         |
+| `contentY`      | `"top"`, `"middle"`, `"bottom"`               | `"middle"`  | leave it out                                                         |
+| `scale`         | `"auto"` or a number                         | `"auto"`    | leave it out                                                         |
+| `chordSize`     | a number, `1` is normal                      | `1`         | the chords are clearly bigger or smaller than the words              |
+| `chordColor`    | `"#rrggbb"`                                  | app default | only if I ask for a colour — ink colour on a scan means nothing       |
+| `notation`      | `"english"`, `"german"`                      | `"english"` | only if I ask for German (H/B) spelling                              |
+
+# What to give me
+
+1. **Settings** — a table of the settings you chose, with one line of reasoning
+   each, then your list of corrections and uncertain chords.
+2. **Content** — the markup, in one code block, ready to copy.
+3. **Import file** — the JSON below, filled in. Offer it as a `.json` file to
+   download if you are able to make files; otherwise print it in one code block
+   and I will save it myself.
+
+```json
+{
+  "schemaVersion": 1,
+  "deviceId": "ai-import",
+  "updatedAt": 1753660800000,
+  "data": {
+    "user": [],
+    "songbooks": [],
+    "songs": [
+      {
+        "id": "6f9619ff-8b86-d011-b42d-00c04fc964ff",
+        "createdAt": 1753660800000,
+        "updatedAt": 1753660800000,
+        "deletedAt": null,
+        "name": "Wish You Were Here",
+        "content": "* Wish You Were Here\n** Pink Floyd\n\n[Em G Em G Em A Em A G]\n",
+        "favorite": false,
+        "settings": { "aspectRatio": "A4", "columns": 1 },
+        "cache": { "title": "Wish You Were Here", "subtitle": "Pink Floyd" }
+      }
+    ]
+  }
+}
+```
+
+- `content` is the same markup as #2, as a single JSON string: `\n` for line
+  breaks, `\"` for quotes.
+- `id` is any random UUID. The three time fields are the current time in
+  milliseconds since 1970 (a 13-digit number).
+- `name` is my label for the song in the library — use the title.
+- `cache` holds exactly the text of the effective `*` and `**` lines, or `""`
+  when the song has none.
+- `settings` holds only keys from the table above, `{}` if none. Never invent a
+  key that is not listed.
+- Leave `schemaVersion`, `deviceId`, `user`, `songbooks`, `favorite` and
+  `deletedAt` exactly as they are.
+- The JSON must be valid and complete: no comments, no trailing commas, nothing
+  left out.
+````
+
+## 3. Import the file
+
+You get three things back - a settings table, the song text, and the import file.
+The import file is the one you need, it has the other two in it.
+
+- save it with a name ending in `.json` - take the download if the chatbot offers
+  one, otherwise copy the JSON code block into a plain text file
+- in `Songs` press `Import` and pick the file
+- the [rules of importing](/export-import.mdx#import) are the same as for any
+  other import
+
+The other way round, without a file: create a new song, paste the song text into
+the [editor](/songs/editing.mdx), and set the settings from the table by hand.
+
+:::note[Check the chords]
+The chatbot reads what it sees and it can be wrong - a chord one letter off, a
+word misread from bad handwriting. Compare the render with your photo before you
+play from it. Everything is editable afterwards.
+:::
+
+## Next song
+
+Send the next photo in the same chat with 'same again for this photo', the
+instructions are still there. One song at a time - ten songs in one answer is
+where mistakes multiply.
+
+:::note[File can't be read]
+The JSON was cut off. Ask for it again in one code block and save it without
+editing it.
+:::

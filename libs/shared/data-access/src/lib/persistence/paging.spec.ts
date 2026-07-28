@@ -141,6 +141,63 @@ describe('pageRecords', () => {
     expect(third.nextCursor).toBeNull();
   });
 
+  /**
+   * The contract the infinite list is built on, stated once over a library big
+   * enough for it to matter: following the cursor to exhaustion visits every live
+   * row exactly once, in the order the sort promised, and then stops. A gap loses
+   * songs the user can never scroll to; a repeat would have the window show the
+   * same song twice under two positions.
+   */
+  it('walks a whole library through the cursor with no gaps and no repeats', () => {
+    const rows = Array.from({ length: 137 }, (_, i) =>
+      song(`s${String(i).padStart(3, '0')}`),
+    );
+
+    const seen: string[] = [];
+    let cursor = null as string | null;
+    let pages = 0;
+    do {
+      const page = pageRecords(
+        rows,
+        { limit: 50, sort: 'name', cursor },
+        config,
+      );
+      seen.push(...page.rows.map((s) => s.id));
+      cursor = page.nextCursor;
+      pages += 1;
+      expect(pages).toBeLessThan(10); // a cursor that never advances would spin
+    } while (cursor !== null);
+
+    expect(seen).toEqual(rows.map((s) => s.id));
+    expect(new Set(seen).size).toBe(rows.length);
+  });
+
+  /** Tombstones are filtered before the slice, so a page-boundary delete must not
+   * take a live row down with it — the deleted rows simply are not in the walk. */
+  it('walks past tombstones without dropping the live rows around them', () => {
+    const rows = Array.from({ length: 12 }, (_, i) =>
+      song(`s${String(i).padStart(2, '0')}`, {
+        deletedAt: i % 3 === 0 ? 99 : null,
+      }),
+    );
+
+    const seen: string[] = [];
+    let cursor = null as string | null;
+    do {
+      const page = pageRecords(
+        rows,
+        { limit: 3, sort: 'name', cursor },
+        config,
+      );
+      seen.push(...page.rows.map((s) => s.id));
+      cursor = page.nextCursor;
+    } while (cursor !== null);
+
+    expect(seen).toEqual(
+      rows.filter((s) => s.deletedAt === null).map((s) => s.id),
+    );
+  });
+
   it('ranks metadata (Title) matches above content matches', () => {
     const meta = song('meta', { cache: { title: 'Wonderwall', subtitle: '' } });
     const body = song('body', {

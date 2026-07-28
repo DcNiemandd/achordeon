@@ -40,6 +40,13 @@ import {
 } from './page-geometry';
 import { createPdf, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
+import {
+  layoutSummary,
+  type MeasureText,
+  type SummaryItem,
+  type SummaryLayout,
+  type SummaryNumberPlace,
+} from './summary-layout';
 import type { jsPDF } from 'jspdf';
 
 /** The axis All songs is ordered by for print. `title` is the printed heading;
@@ -100,6 +107,30 @@ export function librarySongOrder(
   ];
 }
 
+/**
+ * The song's page number, in front of its title — "7. Wonderwall". What
+ * `pageNumberPosition: 'before-title'` draws, instead of a number in a corner.
+ *
+ * **Unpadded** (1, 2, … 10, 11). Padding is a *filename's* problem: `01-` exists
+ * in the image ZIP only so a lexical sort keeps ten songs in order. A reader
+ * sorts nothing, and "07" on a printed page reads as a serial number rather than
+ * as the seventh song. (The summary pads *after* the number instead, with
+ * whitespace, so its titles line up without the digits being disfigured.)
+ *
+ * Written into the AST rather than drawn over the finished render, because a
+ * title *is* content: the number then wears the title's own face and colour, and
+ * follows the title onto the left-hand spine when the settings put it there
+ * (§4.5) — none of which a number painted onto the page afterwards would do.
+ *
+ * A song with no title of its own gets the bare number, not a dangling "7.":
+ * the number still has to reach the page, or the summary sends a reader to a
+ * sheet with nothing on it to confirm they arrived.
+ */
+export function numberedAst(ast: SongAst, n: number): SongAst {
+  const title = ast.title?.trim();
+  return { ...ast, title: title ? `${n}. ${title}` : String(n) };
+}
+
 /** What a single song can come out as. */
 export type SongFormat = 'png' | 'pdf';
 
@@ -114,13 +145,25 @@ export type SongbookFormat = 'pdf' | 'zip-png';
  * UI turns it into a spinner and an "n of N" count. */
 export type DownloadProgress = (done: number, total: number) => void;
 
+/**
+ * Where a song's page number goes.
+ *
+ * Five of these are a spot on the paper. **`before-title` is not**: it puts the
+ * number into the song's heading — "7. Wonderwall" — which is how a book is used
+ * out loud ("turn to 7") and how a photocopied or re-bound page still says which
+ * song it is, long after the corner it was printed in has been trimmed off.
+ *
+ * One choice rather than two toggles, because a number in the heading and a
+ * number in the corner of the same sheet are the same number twice.
+ */
 export type PageNumberPosition =
   | 'bottom-center'
   | 'bottom-right'
   | 'bottom-left'
   | 'top-center'
   | 'top-right'
-  | 'top-left';
+  | 'top-left'
+  | 'before-title';
 
 /** The title-page layouts. Only `classic` is drawn today (the render centres a
  * title block on the page); the others are named so the dialog can offer them
@@ -139,6 +182,8 @@ export interface SongbookPdfOptions {
   readonly hasTitlePage?: boolean;
   readonly titlePageVariant?: TitlePageVariant;
   readonly hasSummary?: boolean;
+  /** Which side of the title the summary's page number sits on. */
+  readonly summaryNumberPlace?: SummaryNumberPlace;
   readonly hasPageNumbers?: boolean;
   readonly pageNumberPosition?: PageNumberPosition;
   /** The order All songs prints in — ignored for a real songbook. */
@@ -153,6 +198,7 @@ const DEFAULT_SONGBOOK_OPTIONS: Required<SongbookPdfOptions> = {
   hasTitlePage: true,
   titlePageVariant: 'classic',
   hasSummary: false,
+  summaryNumberPlace: 'after',
   hasPageNumbers: true,
   pageNumberPosition: 'bottom-center',
   songOrder: DEFAULT_SONG_ORDER,
@@ -260,7 +306,12 @@ export class DownloadService {
     const book = await this.bookFor(id, opts.songOrder);
     if (!book) return;
 
-    const rendered = await this.render(book.entries, book);
+    // `before-title` is the one page-number position the *render* has to know
+    // about: the number is part of the heading, so it has to be there before the
+    // song is laid out, not stamped on afterwards like a corner number.
+    const isNumberInTitle =
+      opts.hasPageNumbers && opts.pageNumberPosition === 'before-title';
+    const rendered = await this.render(book.entries, book, isNumberInTitle);
 
     // The other shape a book can take: a folder of pictures instead of a
     // document. Everything below is about paper, which a ZIP has none of.
@@ -278,6 +329,21 @@ export class DownloadService {
     registerFonts(doc, this.fonts.book([BODY_FAMILY]));
     for (const one of rendered) registerFonts(doc, one.plan.fonts);
 
+    // Laid out before anything is drawn, because a summary that lists page 7 has
+    // to know how many pages it will itself take up first — and because the
+    // column split is what decides that count. Measuring needs the body face
+    // registered, which it now is.
+    const summary = opts.hasSummary
+      ? layoutSummary(
+          summaryItems(rendered),
+          page,
+          margin,
+          measureWith(doc),
+          opts.summaryNumberPlace,
+        )
+      : undefined;
+    const summaryPages = summary?.pages ?? 0;
+
     // The title page is a *render*, not drawn text: it obeys the songbook's own
     // fonts and colours, which is what makes it the book's title page rather
     // than a header the exporter invented. This is what replaces the plain-text
@@ -290,11 +356,6 @@ export class DownloadService {
       isFirst = false;
     }
 
-    // Counted before anything is drawn, because a summary that lists page 7 has
-    // to know how many pages it will itself take up first.
-    const summaryPages = opts.hasSummary
-      ? this.summaryPageCount(rendered.length, page, margin)
-      : 0;
     /**
      * How many sheets come before the songs.
      *
@@ -307,8 +368,8 @@ export class DownloadService {
      */
     const frontMatter = (opts.hasTitlePage ? 1 : 0) + summaryPages;
 
-    if (opts.hasSummary) {
-      this.drawSummary(doc, rendered, page, margin, frontMatter, isFirst);
+    if (summary && summary.pages > 0) {
+      this.drawSummary(doc, summary, page, frontMatter, isFirst);
       isFirst = false;
     }
 
@@ -321,7 +382,9 @@ export class DownloadService {
       if (drawn < rendered.length) await yieldToPaint();
     }
 
-    if (opts.hasPageNumbers) {
+    // …and the corner is skipped when the number went into the heading instead:
+    // it is one number in one place, not a number and its echo.
+    if (opts.hasPageNumbers && !isNumberInTitle) {
       this.drawPageNumbers(
         doc,
         page,
@@ -447,6 +510,7 @@ export class DownloadService {
   private async render(
     ids: readonly Uuid[],
     book?: Songbook,
+    isNumberInTitle = false,
   ): Promise<RenderedSong[]> {
     const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
     const songs = rows.filter(
@@ -459,8 +523,12 @@ export class DownloadService {
     await this.renderer.ensureFonts(settings);
 
     return songs.map((song, i) => {
+      const ast = this.parser.parse(song.content);
+      // The number is the song's place in *this* list — the filtered one, which
+      // is also what the summary numbers off, so the two agree even when a
+      // songbook points at a song that has since been deleted.
       const plan = this.renderer.layout(
-        this.parser.parse(song.content),
+        isNumberInTitle ? numberedAst(ast, i + 1) : ast,
         settings[i],
       );
       // `inlineFonts` — a downloaded file has no CSS to lean on, and Safari
@@ -526,72 +594,67 @@ export class DownloadService {
     };
   }
 
-  /** Height of one summary line, in points. */
-  private summaryLineHeight(page: Size): number {
-    return Math.max(page.height / 40, 12);
-  }
-
-  private summaryLinesPerPage(page: Size, margin: number): number {
-    const usable = page.height - margin * 2 - this.summaryLineHeight(page) * 2;
-    return Math.max(Math.floor(usable / this.summaryLineHeight(page)), 1);
-  }
-
-  private summaryPageCount(count: number, page: Size, margin: number): number {
-    return Math.max(
-      Math.ceil(count / this.summaryLinesPerPage(page, margin)),
-      1,
-    );
-  }
-
   /**
    * The summary, drawn as PDF text rather than rendered as an SVG.
    *
    * It is the one page that is not a song: a list of names against page numbers,
    * where the page number is only knowable after the pagination is decided. A
    * two-pass render for typography nobody is reading as music would buy nothing.
+   *
+   * Where each entry *goes* is `summary-layout`'s answer — the columns, the wide
+   * gutter and the truncation are arithmetic, and arithmetic belongs somewhere a
+   * test can reach without a PDF. This method is the hand that holds the pen.
    */
   private drawSummary(
     doc: jsPDF,
-    songs: readonly RenderedSong[],
+    layout: SummaryLayout,
     page: Size,
-    margin: number,
     frontMatter: number,
     isFirstPage: boolean,
   ): void {
-    const lineHeight = this.summaryLineHeight(page);
-    const perPage = this.summaryLinesPerPage(page, margin);
-    let y = margin + lineHeight * 2;
-
     // The bundled body face, not jsPDF's built-in Helvetica: Helvetica is
     // WinAnsi-encoded and has no `ě ř ů`, so a Czech title came out of the
     // summary with holes in it while the song two pages later was perfect.
-    doc.setFont(BODY_FAMILY, 'normal');
+    const setPen = (): void => {
+      doc.setFont(BODY_FAMILY, 'normal');
+      doc.setFontSize(layout.metrics.fontSize);
+    };
+    setPen();
 
-    songs.forEach((one, index) => {
-      if (index > 0 && index % perPage === 0) {
-        doc.addPage([page.width, page.height]);
-        y = margin + lineHeight * 2;
-      } else if (index === 0 && !isFirstPage) {
-        doc.addPage([page.width, page.height]);
+    let sheet = -1;
+    for (const entry of layout.placements) {
+      if (entry.page !== sheet) {
+        // The first summary page is only a NEW page when something (a title
+        // page) already claimed the one the document opened with.
+        if (entry.page > 0 || !isFirstPage) {
+          doc.addPage([page.width, page.height]);
+          setPen();
+        }
+        sheet = entry.page;
       }
-      doc.setFontSize(lineHeight * 0.7);
 
-      // The printed number, and the sheet it is actually on — different by the
-      // front matter, which carries no number of its own.
-      const printed = String(index + 1);
-      const sheet = frontMatter + index + 1;
-      const title = one.song.cache.title || one.song.name;
+      // The sheet the entry points at — the printed number plus the front
+      // matter, which carries no number of its own. Every song is one page, so
+      // the entry's index is its printed number minus one.
+      const target = frontMatter + entry.index + 1;
 
       // **The whole line links**, not only the digits: a page number is a
       // two-character target, and the thing a reader is pointing at is the
-      // title. Both go to the same page.
-      doc.textWithLink(title, margin, y, { pageNumber: sheet });
-      doc.textWithLink(printed, page.width - margin, y, {
-        align: 'right',
-        pageNumber: sheet,
+      // title. The leader is part of that line, so it carries the link too —
+      // a run of dots that is not clickable is a hole across the middle of it.
+      doc.textWithLink(entry.title, entry.titleX, entry.y, {
+        pageNumber: target,
       });
-      y += lineHeight;
-    });
+      doc.textWithLink(entry.number, entry.numberX, entry.y, {
+        align: entry.numberAlign,
+        pageNumber: target,
+      });
+      if (entry.leader) {
+        doc.textWithLink(entry.leader, entry.leaderX, entry.y, {
+          pageNumber: target,
+        });
+      }
+    }
   }
 
   /**
@@ -601,6 +664,9 @@ export class DownloadService {
    * song page 2, and then every number the summary prints is one more than the
    * number of songs the reader has counted past. Numbering starts where the
    * songs start.
+   *
+   * Never called for `before-title` — that number is drawn by the *render*, in
+   * the heading, and the caller skips this so the page does not get both.
    */
   private drawPageNumbers(
     doc: jsPDF,
@@ -624,6 +690,43 @@ export class DownloadService {
       doc.text(String(sheet - frontMatter), x, y, { align });
     }
   }
+}
+
+/**
+ * The contents list as the layout wants it: a title and a printed number per
+ * song, in book order.
+ *
+ * The number is the song's **printed page number**, which is its index plus one
+ * because every song in a songbook occupies exactly one page (each render is
+ * scaled to fit one sheet, §8). Front matter is deliberately not in it — the
+ * title page and the summary carry no number, so "1" means the first song, which
+ * is the number a reader can actually use.
+ *
+ * Which SIDE of the title that number is drawn on is `summary-layout`'s business
+ * (`SummaryNumberPlace`), not this function's: the number is the same fact either
+ * way, and where it lands is arithmetic.
+ */
+function summaryItems(songs: readonly RenderedSong[]): SummaryItem[] {
+  return songs.map((one, index) => ({
+    title: one.song.cache.title || one.song.name,
+    number: String(index + 1),
+  }));
+}
+
+/**
+ * The layout's measurement seam, bound to the document that will draw the text.
+ *
+ * The face and size are set on every call rather than once up front, because
+ * between the layout and the drawing sits `svg2pdf`, which sets whatever the
+ * song's SVG asked for. A width measured under a font the summary is not set in
+ * is a width that describes nothing.
+ */
+function measureWith(doc: jsPDF): MeasureText {
+  return (text, fontSize) => {
+    doc.setFont(BODY_FAMILY, 'normal');
+    doc.setFontSize(fontSize);
+    return doc.getTextWidth(text);
+  };
 }
 
 /**

@@ -4,15 +4,19 @@
     "description": "The title in the navbar"
   },
   "item.label.Docs": {
-    "message": "Docs",
+    "message": "Dokumentace",
     "description": "Navbar item with label Docs"
   },
   "item.label.Launch App": {
-    "message": "Launch App",
+    "message": "Spustit aplikaci",
     "description": "Navbar item with label Launch App"
   },
   "item.label.GitHub": {
     "message": "GitHub",
     "description": "Navbar item with label GitHub"
+  },
+  "logo.alt": {
+    "message": "Achordeon",
+    "description": "The alt text of navbar logo"
   }
 }

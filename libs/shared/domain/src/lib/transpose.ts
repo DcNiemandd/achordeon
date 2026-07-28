@@ -5,8 +5,16 @@
 // a chord token is preserved byte-for-byte. Reuses the parser's chord sub-grammar
 // (one bracket recogniser) via the injected ChordTheory port — kept pure by
 // taking the port as a parameter.
+//
+// **Notation is an argument, not an ambient setting.** A rewrite has to choose a
+// spelling, and which alphabet the author reads is a preference the domain cannot
+// guess — so it arrives per call, defaulting to `english` so a caller that has no
+// opinion gets exactly the behaviour this file has always had. The German half of
+// the choice is `spellNoteInSource` (notation.ts), shared with the render's
+// speller so the two cannot drift on what `H` means.
 
-import { findClosingBracket } from './chords';
+import { findClosingBracket, type ChordNotation } from './chords';
+import { spellNoteInSource } from './notation';
 import type { ChordTheory } from './theory';
 
 // Direction-based spelling (product policy, not theory): up prefers sharps, down
@@ -21,11 +29,17 @@ function transposeToken(
   table: readonly string[],
   semitones: number,
   theory: ChordTheory,
+  notation: ChordNotation,
 ): string {
   const parsed = theory.parseChord(token);
   if (!parsed) {
     return token; // invalid-as-annotation ([Solo], [x2], [N.C.]) — never transposed
   }
+  // The direction table picks the accidental; the notation picks the alphabet.
+  // Two independent questions about one note, answered in that order.
+  const spell = (chroma: number) =>
+    spellNoteInSource(table[mod12(chroma + semitones)], notation);
+
   const rootChroma = theory.noteChroma(parsed.root);
   if (rootChroma === null) {
     return token;
@@ -36,21 +50,31 @@ function transposeToken(
     if (bassChroma === null) {
       return token;
     }
-    bass = '/' + table[mod12(bassChroma + semitones)];
+    bass = '/' + spell(bassChroma);
   }
   // root + verbatim quality + /bass — root and /bass move by the same interval.
-  return table[mod12(rootChroma + semitones)] + parsed.quality + bass;
+  return spell(rootChroma) + parsed.quality + bass;
 }
 
 /**
  * Shift every valid chord in `content` by `semitones` (sign = direction) and
  * return the rewritten source. Non-chord text, annotations, escapes, titles, and
  * labels are preserved exactly. `semitones === 0` is a no-op (no re-spelling).
+ *
+ * `notation` is the alphabet the rewrite is written in — the caller's resolved
+ * `notation` setting, or `english` for a caller that has none. Under `german` a
+ * transposed B natural comes back as `H` instead of `B`, which is what stops a
+ * German author's own text turning English the first time they transpose it: they
+ * typed `[H]`, the page has been printing `H` all along, and now the editor agrees
+ * with the page again. It is a spelling and nothing more — `H` is B natural under
+ * either setting, so the file still means the same thing everywhere, and the
+ * printed page does not move by a pixel.
  */
 export function transposeContent(
   content: string,
   semitones: number,
   theory: ChordTheory,
+  notation: ChordNotation = 'english',
 ): string {
   if (semitones === 0) {
     return content;
@@ -84,7 +108,7 @@ export function transposeContent(
       const inner = content.slice(i + 1, close);
       // Replace only chord tokens; whitespace/commas between them are preserved.
       const rewritten = inner.replace(/[^\s,]+/g, (token) =>
-        transposeToken(token, table, semitones, theory),
+        transposeToken(token, table, semitones, theory, notation),
       );
       out += '[' + rewritten + ']';
       i = close + 1;
@@ -107,12 +131,18 @@ export function transposeContent(
  * insert guard uses). Returns the rewritten content and the new index of that
  * bracket's `]` (so the caret can stay inside it), or `null` when the caret is not
  * in a chord bracket — nothing to change.
+ *
+ * `notation` means what it means in {@link transposeContent}, and has to be passed
+ * for the same reason: these buttons and the whole-song ones write into the same
+ * text, so a `♭` that spelled a chord one way and a transpose that spelled it
+ * another would leave two alphabets in one song.
  */
 export function transposeChordAt(
   content: string,
   index: number,
   semitones: number,
   theory: ChordTheory,
+  notation: ChordNotation = 'english',
 ): { content: string; bracketEnd: number } | null {
   if (semitones === 0) {
     return null;
@@ -135,7 +165,7 @@ export function transposeChordAt(
       if (i < index && index <= close) {
         const inner = content.slice(i + 1, close);
         const rewritten = inner.replace(/[^\s,]+/g, (token) =>
-          transposeToken(token, table, semitones, theory),
+          transposeToken(token, table, semitones, theory, notation),
         );
         return {
           content: content.slice(0, i + 1) + rewritten + content.slice(close),

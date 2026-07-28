@@ -40,7 +40,7 @@ const ALL_SONGS_NAME = $localize`:@@songbooks.allSongs:All songs`;
  * which is the sort of thing a list should say out loud rather than leave you
  * to discover by finding its buttons missing.
  */
-const ALL_SONGS_HINT = $localize`:@@songbooks.allSongs.help:Every song in your library, always up to date. You cannot reorder it or remove songs from it — but you can choose how it is sorted.`;
+const ALL_SONGS_HINT = $localize`:@@songbooks.allSongs.help:Every song in your library, always up to date. You cannot reorder it or remove songs from it. Choose the order it is performed in on the Stage.`;
 
 /** A songbook delete the user has asked for and not yet confirmed. */
 export interface PendingSongbookDelete {
@@ -65,8 +65,17 @@ export class SongbooksPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly print = inject(PrintOptionsStore);
 
-  /** The last-used print options, for the download dialog to open on (#3). */
+  /**
+   * The last-used print options, for the download dialog to open on (#3).
+   *
+   * The All songs order does **not** reach here, and that is deliberate: the
+   * download dialog already asks the question itself, with an axis the account
+   * setting cannot express (`title` — a printed contents page is flipped through by
+   * heading, not by library name). Two controls for one question is one too many, so
+   * the one that prints keeps its own, and the saved order stays about performing.
+   */
   readonly printOptions = this.print.options;
+
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
@@ -191,6 +200,21 @@ export class SongbooksPresenter {
       await this.store.load();
     }
     this._librarySize.set((await this.songs.allLive()).length);
+  }
+
+  /**
+   * Grow the window as the list nears its end — the same infinite scroll the
+   * Songs module has.
+   *
+   * `SongbookStore` has always been paged, but nothing ever asked it for the
+   * second page: this list mounted the explorer without binding `loadMore`, so
+   * the window stayed at whatever the first read returned and a library of more
+   * than `PAGE_LIMIT` books simply ended. A cap you cannot see is worse than a
+   * pager you can — nothing said the list was truncated, so the missing books
+   * read as books that were never saved.
+   */
+  loadMore(): void {
+    void this.store.loadMore();
   }
 
   open(id: string): void {

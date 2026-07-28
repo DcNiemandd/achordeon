@@ -94,6 +94,15 @@ export function chordTheoryContract(make: () => ChordTheory): void {
         expect(theory.noteChroma('Gb')).toBe(theory.noteChroma('F#'));
       });
 
+      it('reads H as the same note as B', () => {
+        // What makes a German transpose safe: it writes `H` into the SOURCE, and
+        // the next parse has to get B natural back out of it — under either
+        // notation, since reading follows no preference. An engine that read `H`
+        // as anything else would silently shift every German song.
+        expect(theory.noteChroma('H')).toBe(theory.noteChroma('B'));
+        expect(theory.noteChroma('H')).toBe(11);
+      });
+
       it('returns null for things that are not notes', () => {
         expect(theory.noteChroma('Solo')).toBeNull();
         expect(theory.noteChroma('')).toBeNull();

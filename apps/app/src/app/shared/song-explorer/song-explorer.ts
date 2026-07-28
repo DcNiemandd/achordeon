@@ -47,14 +47,11 @@ import {
   type SongRow,
   type SortChange,
 } from './explorer-model';
+import { isNearWindowEnd } from './window-end';
 
 /** Row height, in px. `cdk-virtual-scroll-viewport` needs it as a constant, and
  * the CSS below must agree with it — one number in two languages. */
 const ROW_HEIGHT = 52;
-
-/** Fetch the next page this many rows before the window's end, so the list has
- * already grown by the time the user reaches the bottom. */
-const PREFETCH_ROWS = 10;
 
 /** Search debounce. Each settled edit is a store refetch AND a router
  * navigation, so this is not the parser's ~80ms — it is "stopped typing". */
@@ -386,9 +383,11 @@ const ARM_MOVE_TOLERANCE = 8;
                  action with a tail of afterthoughts. Perform kept the primary
                  tint until it moved into the ⋯ (see the menu below).
 
-                 A read-only row has no record to open — the virtual All songs
-                 book, which is downloaded and previewed but never opened into an
-                 editable view (its order is chosen at download, not here). -->
+                 A read-only row carries neither: there is no record to edit, and
+                 nothing to open either (see onOpen below). The virtual All songs
+                 book is performed, downloaded and exported, and the order it
+                 performs in is asked for in the Stage picker, beside the press it
+                 changes. -->
             @if (capabilities().canEdit && !row.isReadOnly) {
               <button
                 appButton
@@ -1662,19 +1661,31 @@ export class SongExplorer {
   }
 
   /**
-   * `scrolledIndexChange` reports the first rendered index; the viewport renders
-   * about a screenful past it. Growing the window a screenful early is what makes
-   * the list feel endless rather than paged. `loadMore` is a no-op while loading
-   * or exhausted, so firing it often is safe — the store owns that guard.
+   * `scrolledIndexChange` reports the **first visible** index, so the screenful
+   * below it has to be added back before the number means anything about the end
+   * of the list — see `isNearWindowEnd`, which is where that reasoning (and the
+   * bug it fixes) lives. The viewport is measured rather than assumed because the
+   * explorer's height is the pane's, and the pane's is the window's.
+   *
+   * Growing the window a screenful early is what makes the list feel endless
+   * rather than paged. `loadMore` is a no-op while loading or exhausted, so
+   * firing it often is safe — the store owns that guard.
    */
   protected onScrolledIndex(index: number): void {
-    if (index + PREFETCH_ROWS >= this.rows().length) {
+    // Before the first measurement the viewport reports nothing; one screenful
+    // of zero rows is the honest answer, and the next scroll asks again.
+    const size = this.viewport()?.getViewportSize() ?? 0;
+    const visibleRows = Math.ceil(size / ROW_HEIGHT);
+    if (isNearWindowEnd(index, visibleRows, this.rows().length)) {
       this.loadMore.emit();
     }
   }
 
   protected onOpen(row: SongRow): void {
-    // A read-only row (All songs) has nothing to open — see the edit button.
+    // A read-only row does not open. There is no record behind it to show, and
+    // what it stands for — the library — is a click away in the Songs module, so a
+    // screen here would be the same list under a second name. What the row *can*
+    // be told is how it is ordered, and that is the gear (see the row's buttons).
     if (this.capabilities().canEdit && !row.isReadOnly) {
       this.opened.emit(row.id);
     }

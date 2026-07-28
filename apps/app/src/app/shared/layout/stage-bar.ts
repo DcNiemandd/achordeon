@@ -13,16 +13,18 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { Fullscreen } from './fullscreen';
 import { StageSession } from './stage-session';
+import { UiStore } from './ui-store';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
  * **one** bar (the shell's), not a second one of the feature's. The docs order
  * is `Prev | Summary | Menu | Next`; the menu carries the rarer acts —
- * Fullscreen, Create audience, Exit — so the four thumb targets stay big.
+ * Fullscreen, the audience, Exit — so the four thumb targets stay big.
  *
- * It reads `StageSession`, never a store: the shell may not touch the business
- * layer (the presenter rule, PRD-UI-SHELL.md §3), and the render-derived state
- * it does not need lives in the route-scoped presenter. The menu is a CDK
+ * It reads `StageSession`, never a business store: the shell may not touch the
+ * business layer (the presenter rule, PRD-UI-SHELL.md §3), and the
+ * render-derived state it does not need lives in the route-scoped presenter.
+ * (`UiStore` is fair game — it is shell state itself, §7.) The menu is a CDK
  * overlay opening upward, the same composition as `ModuleSwitcher`.
  */
 @Component({
@@ -121,15 +123,37 @@ import { StageSession } from './stage-session';
           }}
         </button>
 
+        <!-- The dark page. A checkbox, not an act: it stays on until the
+             performer turns it off, so the row lights up rather than swapping
+             its label the way Fullscreen above does. It changes only what THIS
+             device draws — the audience keeps its own answer. -->
+        <button
+          type="button"
+          class="item"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="ui.isSongDark()"
+          [class.is-active]="ui.isSongDark()"
+          data-testid="stage-dark-page"
+          (click)="ui.toggleSongDark()"
+        >
+          <app-icon name="moon" />
+          {{ darkPageLabel }}
+        </button>
+
+        <!-- The one action that changes its mind: create a lobby, or manage the
+             one already running. Lit brand while it is running, the same
+             is-active the summary control uses, so the row reads as live and
+             not merely as another thing to start. -->
         <button
           type="button"
           class="item"
           role="menuitem"
+          [class.is-active]="session.hasLobby()"
           data-testid="stage-audience"
           (click)="onAudience()"
         >
           <app-icon name="audience" />
-          {{ audienceLabel }}
+          {{ session.audienceLabel() }}
         </button>
 
         <button
@@ -200,6 +224,10 @@ import { StageSession } from './stage-session';
       background: var(--surface-sunken);
     }
 
+    .item.is-active {
+      color: var(--brand);
+    }
+
     .item.is-danger {
       color: var(--danger, #c0362c);
     }
@@ -212,6 +240,10 @@ import { StageSession } from './stage-session';
 export class StageBar {
   protected readonly session = inject(StageSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** The dark page is a device preference, not performance state — so it comes
+   * from `UiStore` beside the split ratio, not from `StageSession`, and it does
+   * not end when the performance does. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);
@@ -261,6 +293,8 @@ export class StageBar {
   protected readonly menuLabel = $localize`:@@stage.menu:More`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
-  protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
+  /** "Page", not "mode": what turns over is the paper the song is printed on,
+   * and the app's own theme is untouched by it. */
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
 }

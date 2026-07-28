@@ -169,3 +169,50 @@ test.describe('stage — swiping turns the page', () => {
     await expect(page.getByTestId('stage-next')).toBeEnabled();
   });
 });
+
+/**
+ * The All songs order — asked for in the picker, beside the row it orders.
+ *
+ * A stored book plays in the sequence you arranged its slots in; All songs has no
+ * slots, so its sequence has to be described. The gear is the only control on the
+ * picker, and it is on the only row that needs one.
+ */
+test.describe('stage — the All songs order', () => {
+  test('is asked for on the All songs row, and saved', async ({ page }) => {
+    await page.goto('songs?seed');
+    await expect(page.getByTestId('song-row').first()).toBeVisible();
+    await page.goto('stage');
+
+    // Only All songs carries the gear: every other row's order is its slots.
+    await expect(page.getByTestId('stage-all-songs-order')).toHaveCount(1);
+
+    await page.getByTestId('stage-all-songs-order').click();
+    await expect(page.getByTestId('all-songs-order-dialog')).toBeVisible();
+
+    await page.getByTestId('all-songs-order-axis').selectOption('created');
+    await page.getByTestId('all-songs-order-dir').selectOption('desc');
+    await page.getByTestId('all-songs-order-save').click();
+    await expect(page.getByTestId('all-songs-order-dialog')).toHaveCount(0);
+
+    // Saved to the account, not merely applied: a reload opens on it again.
+    await page.reload();
+    await page.getByTestId('stage-all-songs-order').click();
+    await expect(page.getByTestId('all-songs-order-axis')).toHaveValue(
+      'created',
+    );
+    await expect(page.getByTestId('all-songs-order-dir')).toHaveValue('desc');
+  });
+
+  test('cancel leaves the saved order alone', async ({ page }) => {
+    await page.goto('songs?seed');
+    await expect(page.getByTestId('song-row').first()).toBeVisible();
+    await page.goto('stage');
+
+    await page.getByTestId('stage-all-songs-order').click();
+    await page.getByTestId('all-songs-order-axis').selectOption('changed');
+    await page.getByTestId('all-songs-order-cancel').click();
+
+    await page.getByTestId('stage-all-songs-order').click();
+    await expect(page.getByTestId('all-songs-order-axis')).toHaveValue('name');
+  });
+});

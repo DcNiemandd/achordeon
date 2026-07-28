@@ -19,15 +19,25 @@ const A4_RATIO = 210 / 297;
  * page**. Not an illustration, not a call to action; the shape of what goes
  * there (§4).
  *
- * The page is **always light**, in either theme. The render is a *document* — it
+ * The page does not follow the app theme. The render is a *document* — it
  * prints, it downloads, it is what the Audience sees — so dark mode is the desk,
- * not the paper (§6). Its aspect ratio is a Song-scope setting; A4 is the
- * registry default.
+ * not the paper (§6), and turning the UI dark still leaves the paper white
+ * everywhere this frame is used. Its aspect ratio is a Song-scope setting; A4 is
+ * the registry default.
+ *
+ * `isDark` is the one exception, and it is a different thing wearing a similar
+ * name: not the theme, but a performer or a viewer saying *this screen, in this
+ * room, right now*. Stage and Audience pass it; nothing else does, and the
+ * default is off, so a preview pane and an export stay paper. See
+ * `UiStore.isSongDark`.
  */
 @Component({
   selector: 'app-blank-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.is-performing]': 'fullscreen.isActive()' },
+  host: {
+    '[class.is-performing]': 'fullscreen.isActive()',
+    '[class.is-dark]': 'isDark()',
+  },
   template: `
     <div class="desk">
       <div class="page" [style.--page-ratio]="ratio()">
@@ -81,6 +91,25 @@ const A4_RATIO = 210 / 297;
     :host(.is-performing) .page {
       box-shadow: none;
     }
+
+    /* The dark page. Hard-coded #000 for the same reason the white above is
+       hard-coded — this is paper, not chrome — and true black specifically: an
+       OLED panel switches those pixels off, which is the whole point of the
+       feature on a stage.
+
+       The desk goes with it. The song's own SVG paints its ground (see
+       RenderPlan.paper), so the page under it is really only there to catch the
+       sub-pixel seam at the edges — but the desk is the leftover the aspect
+       ratio could not fill, and a lit frame around a dark song is exactly the
+       glare a performer turned this on to escape. */
+    :host(.is-dark) .desk,
+    :host(.is-dark) .page {
+      background: #000;
+    }
+
+    :host(.is-dark) .page {
+      box-shadow: none;
+    }
   `,
 })
 export class BlankPage {
@@ -93,4 +122,18 @@ export class BlankPage {
    * it (see `.page`).
    */
   readonly ratio = input(A4_RATIO);
+
+  /**
+   * Black paper, for a song being performed or watched in the dark.
+   *
+   * It has to be an input rather than a read of `UiStore`: this frame is also
+   * pane B of the library and the editor's preview, and a song you are *editing*
+   * is a document you are preparing for print — it stays white whatever the
+   * stage lights are doing. Only the two views that put a song in front of a
+   * dark room pass it.
+   *
+   * The caller must hand the same flag to the render, or the paper and the ink
+   * would be arguing (see `RenderOpts.dark`).
+   */
+  readonly isDark = input(false);
 }

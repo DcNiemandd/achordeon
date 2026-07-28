@@ -6,10 +6,44 @@
 // DRAWS. It never rewrites the song. Source stays one language, so a file means
 // the same thing on every device, `transposeContent` stays a lossless token
 // rewrite, and switching the setting is a view change you can switch back.
+//
+// One rule of it reaches further than the page: transpose already rewrites the
+// source, and when it does it has to pick a spelling. `spellNoteInSource` is the
+// subset of the German rule that is safe to write into text that will be parsed
+// again — see its doc for why that subset is smaller than what the page prints.
 
 import type { Line, SongAst } from './ast';
 import type { ChordNotation } from './chords';
 import type { ChordTheory } from './theory';
+
+/**
+ * A note name as `notation` spells it **in the source** — the only re-spelling
+ * transpose may write back into the song's text.
+ *
+ * It is deliberately smaller than what {@link spellChord} prints, and by exactly
+ * one letter. German prints B♭ as a bare `B`, which is unambiguous on paper
+ * because nothing reads paper back. A bare `B` in the *source* is B natural for
+ * everyone — reading never follows a preference (`toEnglishNotation`, the mixed
+ * convention; PARSER-GRAMMAR §Notation) — so writing the printed spelling into
+ * the text would move every B♭ up a semitone the next time the file was parsed,
+ * on this device as much as on any other. B♭ therefore stays `Bb` in the text and
+ * only *prints* as `B`.
+ *
+ * That leaves one re-spelling that survives the round trip: B natural → `H`, which
+ * reads back as the same note under either setting. So this is what a German
+ * transpose is allowed to leave behind, and it changes the text the author sees
+ * without changing a note of what the page draws (`B` and `H` both print as `H`).
+ *
+ * `germanNote` is built **on** this rather than beside it, so the `H` rule cannot
+ * drift between what a page prints and what a transpose writes.
+ */
+export function spellNoteInSource(
+  note: string,
+  notation: ChordNotation,
+): string {
+  if (notation !== 'german') return note;
+  return note === 'B' ? 'H' : note;
+}
 
 /**
  * A note name as German spells it.
@@ -17,11 +51,13 @@ import type { ChordTheory } from './theory';
  * The whole difference is one letter: German calls B natural `H` and keeps the
  * plain `B` for B♭. `C#`, `Eb`, `A` are spelled the same in both, so this is two
  * cases and not a table. (`Cis`/`Es`/`As` is a third notation, not this one.)
+ *
+ * The `Bb` → `B` half is print-only and lives here alone; the `B` → `H` half is
+ * shared with the source, so it is taken from {@link spellNoteInSource}.
  */
 function germanNote(note: string): string {
-  if (note === 'B') return 'H';
   if (note === 'Bb') return 'B';
-  return note;
+  return spellNoteInSource(note, 'german');
 }
 
 /**

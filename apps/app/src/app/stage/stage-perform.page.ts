@@ -29,6 +29,7 @@ import {
   Fullscreen,
   StageSession,
   TierGuard,
+  UiStore,
   Viewport,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
@@ -137,14 +138,37 @@ const SWIPE_THRESHOLD_PX = 60;
               />
             </button>
 
-            <!-- Audience: icon-only, plain button; the premium tint lives in
-                 the dialog, not on the bar. -->
+            <!-- The dark page. Desktop's bar has no overflow menu — its actions
+                 are unwrapped — so the control the phone hides behind ⋯ is a
+                 button here, next to Fullscreen it belongs with: both are about
+                 the screen you are performing off, not about the song. -->
             <button
               appButton
               type="button"
               [isIconOnly]="true"
-              [attr.aria-label]="audienceLabel"
-              [appTooltip]="audienceLabel"
+              [class.is-active]="ui.isSongDark()"
+              [attr.aria-pressed]="ui.isSongDark()"
+              [attr.aria-label]="darkPageLabel"
+              [appTooltip]="darkPageLabel"
+              data-testid="stage-dark-page"
+              (click)="ui.toggleSongDark()"
+            >
+              <app-icon name="moon" />
+            </button>
+
+            <!-- Audience: icon-only, plain button; the premium tint lives in
+                 the dialog, not on the bar. A live lobby lights the button the
+                 same way an open summary lights its own — brand-subtle, the
+                 ghost variant's is-active skin — so "someone is watching" is
+                 readable without opening anything. The label says which act it
+                 is (create vs manage), and how many are listening. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="session.hasLobby()"
+              [attr.aria-label]="session.audienceLabel()"
+              [appTooltip]="session.audienceLabel()"
               data-testid="stage-audience"
               (click)="session.openAudience()"
             >
@@ -210,7 +234,10 @@ const SWIPE_THRESHOLD_PX = 60;
             data-testid="stage-perform-empty"
           />
         } @else {
-          <app-blank-page [ratio]="presenter.pageRatio()">
+          <app-blank-page
+            [ratio]="presenter.pageRatio()"
+            [isDark]="ui.isSongDark()"
+          >
             @if (presenter.svg(); as svg) {
               <app-song-render [svg]="svg" />
             }
@@ -283,7 +310,7 @@ const SWIPE_THRESHOLD_PX = 60;
            behind it worth keeping visible (unlike the editor settings dialog). -->
       @if (session.audienceState() !== 'closed') {
         <app-dialog
-          [title]="audienceDialogTitle"
+          [title]="audienceDialogTitle()"
           mode="viewport"
           data-testid="stage-audience-dialog"
           (closed)="session.closeAudience()"
@@ -656,6 +683,10 @@ export class StagePerformPage {
   protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
+  /** The dark page: a device preference, so it comes from the shell's own store
+   * and never from the songbook, the song or the lobby. The presenter reads the
+   * same signal for the render itself — the paper and the ink must agree. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
@@ -821,7 +852,7 @@ export class StagePerformPage {
   protected readonly closeSummaryLabel = $localize`:@@stage.closeSummary:Close song list`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
-  protected readonly audienceLabel = $localize`:@@stage.audience:Create an audience`;
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   /** What the browser tab says while a performance is on: "Performing - Achordeon". */
   private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;
@@ -831,7 +862,22 @@ export class StagePerformPage {
   protected readonly emptySongbookText = $localize`:@@stage.emptySongbook:This songbook has no songs.`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
 
-  protected readonly audienceDialogTitle = $localize`:@@stage.audienceDialog.title:Create an audience`;
+  /**
+   * The dialog's own heading follows the act that opened it — the panel is one
+   * dialog doing two jobs (allocate a PIN; hold the PIN, the count, the link,
+   * the QR and the way out), and a fixed "Create an audience" over the second
+   * of them described the wrong one. The button's label is not reused here: a
+   * heading that carried the live count would restate what the list below it
+   * already spells out.
+   */
+  protected readonly audienceDialogTitle = computed(() =>
+    this.session.hasLobby()
+      ? this.manageAudienceDialogTitle
+      : this.createAudienceDialogTitle,
+  );
+
+  private readonly createAudienceDialogTitle = $localize`:@@stage.audienceDialog.title:Create an audience`;
+  private readonly manageAudienceDialogTitle = $localize`:@@stage.audienceDialog.titleManage:Manage audience`;
   protected readonly audienceCreateInfo = $localize`:@@stage.audienceDialog.info:Share the code or link with your audience so they can follow along on their devices.`;
   protected readonly createLobbyLabel = $localize`:@@stage.audienceDialog.create:Create lobby`;
   protected readonly endLobbyLabel = $localize`:@@stage.audienceDialog.end:End lobby`;

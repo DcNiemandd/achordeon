@@ -6,7 +6,13 @@
 // flattened into `songbook_songs` and folded back — kept here, and tested, so
 // neither the backend nor the DB schema has to know the other's shape.
 
-import type { Song, Songbook, SongCache, User } from '@achordeon/shared/domain';
+import type {
+  AllSongsOrder,
+  Song,
+  Songbook,
+  SongCache,
+  User,
+} from '@achordeon/shared/domain';
 import type {
   GlobalSettings,
   SongSettings,
@@ -59,6 +65,11 @@ export interface ProfileRow {
   record_id: string | null;
   username: string;
   settings: GlobalSettings;
+  // The All songs order. Nullable rather than defaulted, so "this account has
+  // never said" stays distinguishable from "this account chose the default" —
+  // and so a profile written by a client that predates the column reads back as
+  // null instead of as somebody's choice.
+  all_songs_order: AllSongsOrder | null;
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
@@ -152,6 +163,7 @@ export function userToProfilePatch(
     record_id: user.id,
     username: user.username,
     settings: user.settings,
+    all_songs_order: user.allSongsOrder ?? null,
     created_at: user.createdAt,
     updated_at: user.updatedAt,
     deleted_at: user.deletedAt,
@@ -167,6 +179,10 @@ export function profileToUser(row: ProfileRow): User | null {
     username: row.username,
     planCache: row.plan,
     settings: row.settings ?? ({} as GlobalSettings),
+    // `?? undefined` rather than `?? DEFAULT`: an absent order must stay absent
+    // through the LWW merge, or every pull would look like a device that had
+    // deliberately chosen alphabetical and would overwrite one that had not.
+    allSongsOrder: row.all_songs_order ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,

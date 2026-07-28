@@ -2,7 +2,8 @@
 // Spec: docs/achordeon-implementation.md §Epic 8
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Button, EmptyState, Icon } from '../primitives';
+import { Button, EmptyState, Icon, Tooltip } from '../primitives';
+import { AllSongsOrderDialog } from './all-songs-order-dialog';
 import { ActionBar } from '../shared/layout';
 import { StagePresenter } from './stage.presenter';
 
@@ -19,11 +20,21 @@ import { StagePresenter } from './stage.presenter';
  *
  * "All songs" is always listed first.
  */
+/**
+ * How close to the bottom, in px, the picker grows its window.
+ *
+ * Roughly a screenful on a phone: far enough out that the next page has landed
+ * by the time you reach it, so the list reads as endless rather than as one that
+ * stops and then jerks forward.
+ */
+const PREFETCH_PX = 600;
+
 @Component({
   selector: 'app-stage-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StagePresenter],
-  imports: [ActionBar, EmptyState, Button, Icon],
+  host: { '(scroll)': 'onScroll($event)' },
+  imports: [ActionBar, EmptyState, Button, Icon, Tooltip, AllSongsOrderDialog],
   template: `
     <app-action-bar [title]="title" />
 
@@ -42,6 +53,23 @@ import { StagePresenter } from './stage.presenter';
               <span class="name">{{ row.name }}</span>
               <span class="count">{{ countLabel(row.entryCount) }}</span>
             </div>
+            <!-- All songs is the one row with an order to answer for: a stored
+                 book plays in the sequence you arranged, this one plays in the
+                 sequence you describe. The gear sits beside Perform because that
+                 is the press it changes. -->
+            @if (row.isAllSongs) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="orderLabel"
+                [appTooltip]="orderLabel"
+                data-testid="stage-all-songs-order"
+                (click)="presenter.openOrder(row.id)"
+              >
+                <app-icon name="settings" />
+              </button>
+            }
             <button
               appButton
               type="button"
@@ -56,6 +84,14 @@ import { StagePresenter } from './stage.presenter';
           </li>
         }
       </ul>
+
+      @if (presenter.isOrderOpen()) {
+        <app-all-songs-order-dialog
+          [order]="presenter.allSongsOrder()"
+          (saved)="presenter.saveOrder($event)"
+          (closed)="presenter.closeOrder()"
+        />
+      }
 
       @if (presenter.hiddenCount() > 0) {
         <p class="hidden-note" data-testid="stage-hidden-note">
@@ -128,6 +164,7 @@ export class StagePage {
   protected readonly title = $localize`:@@stage.title:Stage`;
   protected readonly emptyText = $localize`:@@stage.empty:No songs yet. Add songs to start performing.`;
   protected readonly performShort = $localize`:@@stage.perform:Perform`;
+  protected readonly orderLabel = $localize`:@@stage.allSongsOrder:All songs sorting`;
 
   protected performLabel(name: string): string {
     return $localize`:@@stage.performLabel:Perform "${name}:name:"`;
@@ -139,6 +176,27 @@ export class StagePage {
 
   protected hiddenNote(count: number): string {
     return $localize`:@@stage.hiddenEmpty:${count}:count: empty songbooks are hidden`;
+  }
+
+  /**
+   * Grow the window as the picker nears its bottom.
+   *
+   * `SongbookStore` is paged, so this list only ever held the first page — a
+   * library past `PAGE_LIMIT` books simply ended, and silently, since the note
+   * under the list counts the *empty* books it hides and knew nothing about the
+   * ones that were never fetched.
+   *
+   * A scroll handler rather than the virtual viewport the Song explorer uses:
+   * this is a plain `<ul>` of a handful of rows by design (§Epic 8 — the stage
+   * is a performance context, not a management one), and swapping it for a
+   * virtualised list to page a second fifty would cost the simplicity that
+   * decision bought.
+   */
+  protected onScroll(event: Event): void {
+    const box = event.target as HTMLElement;
+    if (box.scrollHeight - box.scrollTop - box.clientHeight <= PREFETCH_PX) {
+      this.presenter.loadMore();
+    }
   }
 
   constructor() {

@@ -107,6 +107,33 @@ export class StageSession {
   );
 
   /**
+   * What the audience action calls itself — in both chromes at once.
+   *
+   * The perform page's own top bar and the shell's bottom-bar menu draw the
+   * *same* single action, and both of them used to offer "Create an audience"
+   * whether or not one already existed: a performer who was already hosting was
+   * being invited to start over, and nothing on the control said a lobby was
+   * live. So the word has to follow `hasLobby` — and it has to follow it here.
+   * A ternary copied into each chrome would be two labels to keep in step, and
+   * this holder is the one thing the two already share (they may not reach a
+   * store or the route-scoped presenter — the presenter rule, PRD-UI-SHELL.md
+   * §3). It is UI copy inside a state holder for that reason alone; nothing
+   * else's copy belongs here.
+   *
+   * The live count deliberately stays out of it. It is the one number a performer
+   * glances at mid-set, but a label that grows a parenthetical is a label that
+   * changes width under the thumb — and on the phone, where this is a menu row of
+   * text rather than an icon, it was the longest row on the bar. The lit
+   * `is-active` state already says a lobby is running; the dialog one tap away
+   * says how many are in it.
+   */
+  readonly audienceLabel = computed(() =>
+    this.hasLobby()
+      ? $localize`:@@stage.audience.manage:Manage audience`
+      : $localize`:@@stage.audience:Create an audience`,
+  );
+
+  /**
    * The join URL, base-href-aware. `prepareExternalUrl` folds in the app's
    * deploy base (`/app/`, plus the locale sub-path) — a bare
    * `/audience/…` would point at the domain root, which is not where the app

@@ -24,6 +24,7 @@ import {
   ChordTheory,
   resolveSettings,
   transposeContent,
+  type ChordNotation,
   type Song,
   type SongAst,
 } from '@achordeon/shared/domain';
@@ -84,6 +85,22 @@ export class SongEditorPresenter {
    */
   readonly settingsForSong = computed(() =>
     resolveSettings(this.settings.global(), undefined, this._song()?.settings),
+  );
+
+  /**
+   * Which alphabet a transpose writes back into the source.
+   *
+   * Read off the **same** resolved cascade the preview renders with, not a second
+   * lookup: the editor's two panes have to agree about a chord's name, and the way
+   * to guarantee that is for one value to feed both (ADR-0006 — the effective
+   * value is resolved at render time, in one place, and never stored).
+   *
+   * `?? 'english'` for the same reason `RenderService.layout` does it: a settings
+   * bag persisted before this key existed is a complete cascade to the type system
+   * and not quite one at runtime.
+   */
+  readonly notation = computed<ChordNotation>(
+    () => this.settingsForSong().notation ?? 'english',
   );
 
   /**
@@ -311,9 +328,20 @@ export class SongEditorPresenter {
    *
    * Invalid brackets (`[Solo]`, `[x2]`) are left exactly as written, and so is
    * every other character — `transposeContent` is a token rewrite, not a reformat.
+   *
+   * The rewrite is spelled in this song's resolved `notation`, so a German author
+   * gets `H` back where they wrote `H` rather than the English `B` — the editor
+   * and the preview stop contradicting each other about the same chord. Only the
+   * text changes: `H` and `B` print identically under German, and identically to
+   * before under English.
    */
   transpose(semitones: number): void {
-    const next = transposeContent(this._content(), semitones, this.theory);
+    const next = transposeContent(
+      this._content(),
+      semitones,
+      this.theory,
+      this.notation(),
+    );
     if (next !== this._content()) {
       this.setContent(next);
     }

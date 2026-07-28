@@ -97,6 +97,7 @@ import {
           [capabilities]="capabilities"
           [currentId]="presenter.currentId()"
           [emptyText]="emptyText"
+          (loadMore)="presenter.loadMore()"
           (activated)="presenter.select($event)"
           (opened)="presenter.open($event)"
           (performed)="presenter.perform($event)"
