@@ -87,11 +87,13 @@ export function inspect(content) {
       }
     }
   }
-  const chordOnlyBlocks = ast.blocks.filter(
-    (b) =>
-      b.lines.length > 0 &&
-      b.lines.every((l) => l.text.trim() === '' && l.chords.length > 0),
-  ).length;
+  // Rows with chords and no words: their chords render IN the line, at lyric size.
+  const chordRows = ast.blocks
+    .flatMap((b) => b.lines)
+    .filter((l) => l.text.trim() === '' && l.chords.length > 0).length;
+  const subLabels = ast.blocks
+    .flatMap((b) => b.lines)
+    .filter((l) => l.label !== undefined).length;
 
   return {
     title: ast.title,
@@ -99,7 +101,8 @@ export function inspect(content) {
     blockCount: ast.blocks.length,
     chordCount,
     verbatim: [...new Set(verbatim)],
-    chordOnlyBlocks,
+    chordRows,
+    subLabels,
     warnings: ast.warnings.map((w) => ({
       code: w.code,
       line: w.line,

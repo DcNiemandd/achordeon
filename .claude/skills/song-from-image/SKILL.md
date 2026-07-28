@@ -202,6 +202,6 @@ Input (a chord-sheet photo of the intro + first line):
 ```
 
 Following `song-worker.md`, `validate.mjs` reports: Title `Wish You Were Here`,
-Subtitle `Pink Floyd`, 2 blocks (one chord-only bridge block), no warnings. Wrapped
+Subtitle `Pink Floyd`, 2 blocks (one a block of chords only), no warnings. Wrapped
 in a one-entry manifest and run through `build-import.mjs`, it becomes an import
 JSON carrying that one song, settings and all.

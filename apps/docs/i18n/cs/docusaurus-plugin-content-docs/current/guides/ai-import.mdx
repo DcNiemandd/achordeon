@@ -35,18 +35,25 @@ tři věci, o které si říkám na konci.
 
 - `* Název` je název písničky, `** Autor` je podtitul. Značka stojí na úplném
   začátku řádku a je za ní mezera. Když se jich objeví víc, platí ta poslední.
-- Prázdný řádek začíná nový blok (strofa, refrén, mezihra...).
+- Prázdný řádek začíná nový blok (strofa, refrén, mezihra...) — a nic jiného ho
+  nezačíná.
 - Blok může začínat návěštím: text končící dvojtečkou, za kterou je mezera nebo
   konec řádku — `1.: `, `R:: `, `Sólo:`. Poslední dvojtečka se spolkne, takže
   `R::` se vytiskne jako `R:`.
+- Návěští napsané na dalším řádku téhož bloku je podnávěští a pojmenovává jen ten
+  jeden řádek — popisek u řádku akordů. `Předehra:`, pak `Kl. + Bas: [Am F G]`,
+  pak `Housle: [Am F G]` je jeden blok se dvěma pojmenovanými řádky.
 - Dvojtečka, po které mezera není, je obyčejný text (`12:30` je v pořádku). Když
   by se z řádku textu omylem stalo návěští, dej před dvojtečku zpětné lomítko:
   `Vypravěč\: ahoj`.
 - Akordy patří dovnitř řádku s textem, do hranatých závorek, přímo před znak, nad
   kterým stojí: `pro[C]dal` vytiskne C nad `d`.
 - Několik akordů v jedné závorce stojí na stejném místě: `[Em G A]`. Řádek, kde
-  jsou akordy a žádná slova, je akordový řádek, a blok složený jen z takových
-  řádků se vytiskne větší — obvyklá podoba předehry, sóla a mezihry.
+  jsou akordy a žádná slova, je vytiskne přímo v řádku, ve velikosti textu —
+  obvyklá podoba předehry, sóla a mezihry.
+- Zdvojené závorky dají akord do řádku místo nad něj: `[[C]]`. Je to potřeba jen
+  na řádku, kde jsou i slova; na řádku se samotnými akordy se `[Em G A]` tiskne
+  v řádku už tak.
 - Text v závorce, který není akord — `[Sólo]`, `[2x]`, `[N.C.]`, `[||: :||]` — se
   vytiskne nad řádek přesně tak, jak je napsaný. Nech ho být, neopravuj ho.
 - Používej anglické názvy not. Jiné systémy převeď: německé `H` je `B`, německé

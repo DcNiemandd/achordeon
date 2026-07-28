@@ -47,13 +47,15 @@ Block {
   lines:        Line[]
 }
 Line {
+  label?: string             // SUB-label: a labelled line that did not open the block
   text:   string             // final rendered chars (brackets removed, escapes resolved)
   chords: ChordAnchor[]      // overlay by index; spans?: Span[] later (markdown)
 }
 ChordAnchor {
-  raw:   string              // bracket content as written; rendered verbatim
-  at:    number              // index into `text` (char the anchor sits above)
-  valid: boolean             // true = transposable chord; false = verbatim annotation
+  raw:    string             // bracket content as written; rendered verbatim
+  at:     number             // index into `text` (char the anchor sits above)
+  valid:  boolean            // true = transposable chord; false = verbatim annotation
+  inline?: boolean           // written `[[…]]`: renders IN the line, not above it
 }
 ```
 
@@ -123,9 +125,20 @@ kill legitimate multi-word labels like `Chorus 2:`.
    blocks. **Consecutive blanks collapse** to one boundary; leading/trailing blanks
    are ignored; **no empty blocks are emitted.** Blocks never contain interior
    blanks (a blank already closed the block).
-2. **A labelled line always starts a new block** — even immediately after another
-   labelled line with no blank between. Its post-delimiter content becomes the
-   block's first content line **only if non-empty**.
+2. **A labelled line starts a new block only when no block is open** [decided].
+   Opening one, it becomes the block's `label`, and its post-delimiter content
+   becomes the block's first content line **only if non-empty**. **Inside an open
+   block it is a sub-label** on a line of its own (`Line.label`), carrying its
+   post-delimiter content as that line's text.
+   - So a label no longer implies a gap: `Intro:` followed by `Kl. + Bas: …` and
+     `Housle: …` is **one** block with two annotated rows. A blank line is how you
+     ask for the next block, which is the same rule as everywhere else.
+   - **Only the line that OPENS a block can name it.** A label after a bare lyric
+     line is subordinate — the block already started without one, and a block label
+     renders above or beside the block as a whole.
+   - Reversing the old rule changes how existing text renders: two adjacent
+     labelled lines used to be two blocks with a gap between them. Recovering the
+     gap is one blank line.
 3. **Consecutive unlabelled non-blank lines** stay in the **same** block.
 4. **Title/Subtitle lines are boundaries** (decision ii): a `*`/`**` line is lifted
    to song-level _and_ separates blocks. It is neither blank nor content, so it
@@ -139,7 +152,7 @@ kill legitimate multi-word labels like `Chorus 2:`.
    space is kept with the `\ ` escape: the strip is a `[ \t]` run so it stops at
    the backslash, and Phase 2 resolves `\ ` to a bare space. **Only leading**
    whitespace, and **only content lines** — interior spacing is significant
-   (chord-only distribution, alignment) and is preserved; title/subtitle bodies
+   (it spaces the chords of a chord row, alignment) and is preserved; title/subtitle bodies
    are left as typed (they carry no escapes and are positional). Trailing
    whitespace is left untouched.
 6. **A block may have a label with zero content lines** (label-only, e.g. `Verse:`
@@ -170,13 +183,23 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
    lyric require the `\[` escape.
 3. **Multiple chords in one bracket** split on spaces/commas → multiple anchors **at
    the same index**, in order; each validated independently. A line whose `text` is
-   empty/whitespace but carries chords is a **chord-only line** (a render property,
-   not a parse type).
+   empty/whitespace but carries chords renders those chords **in** the line rather
+   than above it (a render property, not a parse type — see "Rendering notes").
 4. **Invalid bracket = annotation, not literal text** (decision Q). `[Solo]`,
    `[x2]`, `[N.C.]` still become anchors (`parsed: null`), rendered **verbatim** and
    never transposed — they float above like a chord, matching real chord-sheet
    convention. Validity only decides transposable-vs-verbatim; truly literal
    brackets are the `\[` case.
+5. **A doubled bracket `[[…]]` is an INLINE chord group** [decided]. Same tokens,
+   same anchor index, same validity rule — the one difference is that its chords
+   render **in** the line rather than above it (see "Rendering notes"). Content runs
+   to the first unescaped `]]`, so a lone `]` inside one is just a character.
+   - **Unterminated `[[` is not an error.** The first `[` becomes literal text and
+     the scan resumes after it, which is the lone-`[` rule one level up: `[[C]`
+     reads as a literal `[` plus an ordinary chord. Keeps the parser total.
+   - **No new escape.** `[` and `]` are already escapable, so `\[\[` writes a
+     literal doubled bracket.
+   - `[[]]` yields no anchors, exactly as `[]` does.
 
 ### Chord validity & transpose [decided]
 
@@ -236,9 +259,11 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
 
 Chords and markdown never nest: no chord inside a chord, no `[` inside `[…]`, and
 (future) no same-type markdown inside itself (bold-in-bold). Inside `[…]`, everything
-up to the first unescaped `]` is chord content. The editor's insert buttons enforce
-this by disabling the action when it would nest — the enforcement itself is a future
-upgrade (see Authoring notes).
+up to the first unescaped `]` is chord content; inside `[[…]]`, everything up to the
+first unescaped `]]`. The editor's insert buttons enforce this by disabling the action
+when it would nest — the enforcement itself is a future upgrade (see Authoring notes).
+The **Chord** button is the exception, and not a violation of the rule: inside a
+bracket it rewrites that bracket instead of writing a second one.
 
 ### Escapes [decided]
 
@@ -309,9 +334,34 @@ complexity to a deliberately pure module.
 Editor insert buttons write markup at the cursor; they constrain the grammar (hence
 noted) but are an editor concern:
 
-- **Chord** / **Markdown (bold, italic)** — inserted at the exact cursor location,
-  following chord/markdown rules. **Disabled when it would nest** (inside a chord, or
-  same-type markdown inside itself). The disable guard is a **future upgrade**.
+- **Markdown (bold, italic) — each flips ONE bit of the asterisk run** [decided].
+  Emphasis is a run whose _length_ is the state (1 italic, 2 bold, 3 both), not a
+  pair of markers, so each button reads the run already around the selection or the
+  word at the caret, flips its own bit, and rewrites the run to what the new pair of
+  bits spells. Hence `*x*` + bold ⇒ `***x***`, and `***x***` + italic ⇒ `**x**`.
+  Wrapping blindly instead would write a **fourth** asterisk — which this grammar
+  reads as literal text — and could not tell `**` from `*` well enough to keep Italic
+  from un-bolding a bold run. A run of four or more is already literal and counts as
+  no emphasis. Still **disabled inside a chord** (the asterisks would be chord text);
+  that guard is a **future upgrade**.
+- **Chord — three states in one button** [decided]. Not disabled inside a bracket,
+  because in there it has something to say:
+  1. **not in a bracket** → wrap the selection, else the word at the caret, else
+     open an empty `[]` with the caret between the brackets;
+  2. **in `[…]`** → double the brackets, making the chord inline;
+  3. **in `[[…]]`** → take both brackets off, leaving the chord as plain text.
+
+  Three presses come back to where they started. States 2 and 3 are a pure source
+  rewrite in the domain (`cycleChordAt`); state 1 stays in the editor, which is the
+  only side that knows what "the word at the caret" is.
+
+- **A selection survives an insert, still selected** [decided]. What the user picked
+  out is what they are working on; wrapping it moves it right by the opener and is
+  not done with it. So the three chord states can be pressed straight through on one
+  chosen word, and Bold then Italic on one selection gives `***both***` without
+  re-selecting in between. A wrapped WORD (no selection) still leaves a caret — the
+  user never made a selection, so the button does not invent one.
+
 - **Label** — inserts the block's label marker and moves the cursor in front of it.
 - **Title / Subtitle** — mark the current row (`*` / `**`), no rules.
 
@@ -362,7 +412,14 @@ parser. The parser only preserves the information; the renderer acts on it.
   one line** (label then content). A label whose content starts on the **next**
   source line renders on **two lines** (label, then content below). This is special,
   intentional behaviour, driven by the `labelInline` flag on the block.
-- **Chord-only line / block** — a line whose `text` is empty/whitespace but carries
-  chords renders its chords **distributed across the width**; a block whose lines are
-  all chord-only renders **slightly larger** (the bridge convention, CONTEXT). Both
-  are render properties read off the AST, not parse types.
+- **`Line.label`** (sub-label) renders at the line's own start, in the flow, with the
+  line's content following after it. It does **not** join the block's label gutter —
+  a long instrument name would otherwise indent every line in the column.
+- **Chords in the flow** — a chord renders **in** the line, taking horizontal space,
+  when it is `inline` **or** when its line carries no lyric text (there is no
+  character to float over, and a row of chords is the line). Flow chords are scaled
+  back up to lyric size by a tuning multiplier; a chord above a lyric is not. This is
+  a render property read off the AST, not a parse type, and it replaces the older
+  "chord-only line distributed across the width" plus "all-chord-only block renders
+  slightly larger" pair — same look, keyed on the chord instead of on the block it
+  happened to sit in.

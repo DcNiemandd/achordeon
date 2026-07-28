@@ -47,6 +47,53 @@ describe('phase2 — inline scan', () => {
     expect(line.chords.map((c) => c.raw)).toEqual(['C', 'G']);
   });
 
+  describe('inline chord groups (`[[…]]`)', () => {
+    it('marks a doubled bracket inline, anchored where it was written', () => {
+      expect(scan('run the [[C]] then')).toEqual({
+        text: 'run the  then',
+        chords: [{ raw: 'C', at: 8, valid: true, inline: true }],
+      });
+    });
+
+    it('splits its tokens like any bracket, annotations included', () => {
+      const line = scan('[[Am F G Am (2×)]]');
+      expect(line.text).toBe('');
+      expect(line.chords).toEqual([
+        { raw: 'Am', at: 0, valid: true, inline: true },
+        { raw: 'F', at: 0, valid: true, inline: true },
+        { raw: 'G', at: 0, valid: true, inline: true },
+        { raw: 'Am', at: 0, valid: true, inline: true },
+        { raw: '(2×)', at: 0, valid: false, inline: true },
+      ]);
+    });
+
+    it('emits nothing for an empty group, like `[]`', () => {
+      expect(scan('a[[]]b')).toEqual({ text: 'ab', chords: [] });
+    });
+
+    it('reads an unterminated group as a literal bracket plus a chord', () => {
+      // The lone-`[` rule, one level up: the first bracket is text and the scan
+      // resumes after it, so `[C]` is still an ordinary anchor.
+      expect(scan('[[C]x')).toEqual({
+        text: '[x',
+        chords: [{ raw: 'C', at: 1, valid: true }],
+      });
+      expect(scan('[[C')).toEqual({ text: '[[C', chords: [] });
+    });
+
+    it('does not treat an escaped bracket as the start of a group', () => {
+      expect(scan('\\[[C]]x')).toEqual({
+        text: '[]x',
+        chords: [{ raw: 'C', at: 1, valid: true }],
+      });
+    });
+
+    it('stops at the first unescaped `]]`, so a lone `]` is content', () => {
+      const line = scan('[[x\\] y]]');
+      expect(line.chords.map((c) => c.raw)).toEqual(['x]', 'y']);
+    });
+  });
+
   describe('escapes', () => {
     it('resolves \\[ \\* \\: \\\\ to literal characters', () => {
       expect(scan('a\\[b').text).toBe('a[b');

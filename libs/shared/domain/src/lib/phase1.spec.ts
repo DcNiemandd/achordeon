@@ -1,20 +1,27 @@
 import { phase1 } from './phase1';
 
+/** Phase 1 keeps a line's optional sub-label beside its content; most have none. */
+const lines = (...contents: string[]) =>
+  contents.map((content) => ({ content }));
+
 describe('phase1 — classification & blocking', () => {
   describe('blocks & blank boundaries', () => {
     it('groups consecutive lyric lines into one block', () => {
       const { blocks } = phase1('one\ntwo\nthree');
-      expect(blocks).toEqual([{ lines: ['one', 'two', 'three'] }]);
+      expect(blocks).toEqual([{ lines: lines('one', 'two', 'three') }]);
     });
 
     it('splits blocks on a blank line', () => {
       const { blocks } = phase1('a\nb\n\nc');
-      expect(blocks).toEqual([{ lines: ['a', 'b'] }, { lines: ['c'] }]);
+      expect(blocks).toEqual([
+        { lines: lines('a', 'b') },
+        { lines: lines('c') },
+      ]);
     });
 
     it('collapses consecutive blanks and ignores leading/trailing blanks', () => {
       const { blocks } = phase1('\n\na\n\n\n\nb\n\n');
-      expect(blocks).toEqual([{ lines: ['a'] }, { lines: ['b'] }]);
+      expect(blocks).toEqual([{ lines: lines('a') }, { lines: lines('b') }]);
     });
 
     it('emits no blocks for empty or whitespace-only input', () => {
@@ -26,14 +33,16 @@ describe('phase1 — classification & blocking', () => {
       // Leading spaces/tabs are almost always accidental indentation and pulled
       // every chord on the line off its character — so they go.
       const { blocks } = phase1('   indented\n\tby a tab\nflush');
-      expect(blocks).toEqual([{ lines: ['indented', 'by a tab', 'flush'] }]);
+      expect(blocks).toEqual([
+        { lines: lines('indented', 'by a tab', 'flush') },
+      ]);
     });
 
     it('keeps a leading space that is escaped', () => {
       // The strip stops at the backslash; Phase 2 turns `\ ` back into a space.
-      expect(phase1('\\ kept').blocks).toEqual([{ lines: ['\\ kept'] }]);
+      expect(phase1('\\ kept').blocks).toEqual([{ lines: lines('\\ kept') }]);
       // An unescaped run before an escaped space: the run goes, the escape stays.
-      expect(phase1('  \\ one').blocks).toEqual([{ lines: ['\\ one'] }]);
+      expect(phase1('  \\ one').blocks).toEqual([{ lines: lines('\\ one') }]);
     });
   });
 
@@ -41,7 +50,7 @@ describe('phase1 — classification & blocking', () => {
     it('lifts a title and its body verbatim, and it is a boundary', () => {
       const { blocks, titles } = phase1('a\n* My Song\nb');
       expect(titles).toEqual([{ value: 'My Song', line: 1, range: [0, 9] }]);
-      expect(blocks).toEqual([{ lines: ['a'] }, { lines: ['b'] }]);
+      expect(blocks).toEqual([{ lines: lines('a') }, { lines: lines('b') }]);
     });
 
     it('lifts a subtitle (longest match: ** before *)', () => {
@@ -67,9 +76,9 @@ describe('phase1 — classification & blocking', () => {
       expect(titles).toEqual([]);
       expect(subtitles).toEqual([]);
       expect(blocks).toEqual([
-        { lines: ['a'] },
-        { lines: ['b'] },
-        { lines: ['c'] },
+        { lines: lines('a') },
+        { lines: lines('b') },
+        { lines: lines('c') },
       ]);
     });
 
@@ -77,14 +86,14 @@ describe('phase1 — classification & blocking', () => {
       const { titles, subtitles, blocks } = phase1('*** whoa\n*bold*\n*x');
       expect(titles).toEqual([]);
       expect(subtitles).toEqual([]);
-      expect(blocks).toEqual([{ lines: ['*** whoa', '*bold*', '*x'] }]);
+      expect(blocks).toEqual([{ lines: lines('*** whoa', '*bold*', '*x') }]);
     });
   });
 
   describe('labelled content (colon-run rule)', () => {
     const label = (line: string) => {
       const { blocks } = phase1(line);
-      return { label: blocks[0].label, content: blocks[0].lines[0] };
+      return { label: blocks[0].label, content: blocks[0].lines[0]?.content };
     };
 
     it('matches the grammar table', () => {
@@ -105,17 +114,17 @@ describe('phase1 — classification & blocking', () => {
     });
 
     it('a colon not followed by space-or-EOL is not a delimiter', () => {
-      expect(phase1('http://x').blocks).toEqual([{ lines: ['http://x'] }]);
+      expect(phase1('http://x').blocks).toEqual([{ lines: lines('http://x') }]);
       expect(phase1('12:30 set').blocks[0].label).toBe(undefined);
     });
 
     it('empty label text is not a label', () => {
-      expect(phase1(': foo').blocks).toEqual([{ lines: [': foo'] }]);
+      expect(phase1(': foo').blocks).toEqual([{ lines: lines(': foo') }]);
     });
 
     it('an escaped colon never counts as a delimiter', () => {
       const { blocks } = phase1('Narrator\\: hi');
-      expect(blocks).toEqual([{ lines: ['Narrator\\: hi'] }]);
+      expect(blocks).toEqual([{ lines: lines('Narrator\\: hi') }]);
     });
 
     it('strips the content indent, delimiter space and all', () => {
@@ -135,14 +144,14 @@ describe('phase1 — classification & blocking', () => {
     it('records labelInline=true when content shares the label line', () => {
       const { blocks } = phase1('Verse: foo\nbar');
       expect(blocks).toEqual([
-        { label: 'Verse', labelInline: true, lines: ['foo', 'bar'] },
+        { label: 'Verse', labelInline: true, lines: lines('foo', 'bar') },
       ]);
     });
 
     it('records labelInline=false when the body starts on the next line', () => {
       const { blocks } = phase1('Verse:\nfoo');
       expect(blocks).toEqual([
-        { label: 'Verse', labelInline: false, lines: ['foo'] },
+        { label: 'Verse', labelInline: false, lines: lines('foo') },
       ]);
     });
 
@@ -152,12 +161,60 @@ describe('phase1 — classification & blocking', () => {
         { label: 'Verse', labelInline: false, lines: [] },
       ]);
     });
+  });
 
-    it('starts a new block at each labelled line with no blank between', () => {
+  describe('sub-labels', () => {
+    it('keeps a labelled line inside an open block, as a sub-label', () => {
+      // The issue-#64 shape: one Intro block, one annotated row per instrument.
+      const { blocks } = phase1('Intro:\nKl. + Bas: [Am F G]\nHousle: [Am F]');
+      expect(blocks).toEqual([
+        {
+          label: 'Intro',
+          labelInline: false,
+          lines: [
+            { label: 'Kl. + Bas', content: '[Am F G]' },
+            { label: 'Housle', content: '[Am F]' },
+          ],
+        },
+      ]);
+    });
+
+    it('does not start a new block at a labelled line any more', () => {
       const { blocks } = phase1('A: x\nB: y');
       expect(blocks).toEqual([
-        { label: 'A', labelInline: true, lines: ['x'] },
-        { label: 'B', labelInline: true, lines: ['y'] },
+        {
+          label: 'A',
+          labelInline: true,
+          lines: [{ content: 'x' }, { label: 'B', content: 'y' }],
+        },
+      ]);
+    });
+
+    it('only the line that OPENS a block can set the block label', () => {
+      // A label after a lyric line is subordinate: the block already started
+      // without one, and a block label renders above/left of the whole block.
+      const { blocks } = phase1('sing\nVerse: x');
+      expect(blocks).toEqual([
+        { lines: [{ content: 'sing' }, { label: 'Verse', content: 'x' }] },
+      ]);
+    });
+
+    it('allows a sub-label with no content of its own', () => {
+      const { blocks } = phase1('Intro:\nHousle:');
+      expect(blocks).toEqual([
+        {
+          label: 'Intro',
+          labelInline: false,
+          lines: [{ label: 'Housle', content: '' }],
+        },
+      ]);
+    });
+
+    it('a blank line still closes the block, so the next label is a block label', () => {
+      const { blocks } = phase1('A: x\n\nB: y');
+      expect(blocks).toEqual([
+        { label: 'A', labelInline: true, lines: lines('x') },
+        { label: 'B', labelInline: true, lines: lines('y') },
       ]);
     });
   });

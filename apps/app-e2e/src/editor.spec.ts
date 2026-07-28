@@ -206,28 +206,27 @@ test.describe('song editor', () => {
     await expect(label).toBeEnabled();
   });
 
-  // Brackets do not nest: a second `[` inside one closes nothing, and the parser
-  // reads the whole thing as a single malformed bracket.
-  test('the chord button is disabled while the caret is inside a chord', async ({
+  // Brackets do not nest, so the button cannot write a second `[` in here — but
+  // it has something to say instead: make this chord inline, then plain again.
+  test('the chord button cycles the chord the caret is inside', async ({
     page,
   }) => {
     const chord = page.getByTestId('insert-chord');
+    const editor = page.getByTestId('editor');
 
     await type(page, 'sing [C] here');
-    await expect(chord).toBeEnabled();
-
     // Into the middle of the bracket.
     await page.keyboard.press('Home');
     for (let i = 0; i < 6; i++) {
       await page.keyboard.press('ArrowRight');
     }
-    await expect(chord).toBeDisabled();
-
-    // Out the other side of it.
-    for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('ArrowRight');
-    }
     await expect(chord).toBeEnabled();
+
+    await chord.click();
+    await expect(editor).toContainText('sing [[C]] here');
+
+    await chord.click();
+    await expect(editor).toContainText('sing C here');
   });
 
   // One label per line: a second press used to prepend another delimiter,
@@ -393,15 +392,88 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('[Am]');
   });
 
+  // What you picked out is what you are working on: wrapping it moved it right,
+  // it did not finish with it. Collapsing to a caret meant re-selecting the same
+  // word to bold it too, or to press Chord again.
+  test('the text stays selected after a button wraps it', async ({ page }) => {
+    await type(page, 'Am');
+    await page.keyboard.press('Shift+Home');
+    await page.getByTestId('insert-chord').click();
+
+    const selected = () => page.evaluate(() => getSelection()?.toString());
+    await expect.poll(selected).toBe('Am');
+
+    // …so the three chord states can be pressed straight through on one word.
+    await page.getByTestId('insert-chord').click();
+    await expect(page.getByTestId('editor')).toContainText('[[Am]]');
+    await expect.poll(selected).toBe('Am');
+
+    await page.getByTestId('insert-chord').click();
+    await expect(page.getByTestId('editor')).toContainText('Am');
+    await expect.poll(selected).toBe('Am');
+  });
+
+  // Emphasis is a RUN of asterisks whose length is the state (1 italic, 2 bold, 3
+  // both), so each button owns one bit of it. Wrapping instead of flipping stacked
+  // a fourth asterisk — which the grammar reads as literal text — and let Italic
+  // inside a bold run quietly un-bold it.
+  test('bold and italic each flip their own bit of the emphasis run', async ({
+    page,
+  }) => {
+    const editor = page.getByTestId('editor');
+    const bold = page.getByTestId('insert-bold');
+    const italic = page.getByTestId('insert-italic');
+
+    await type(page, 'loud');
+    await page.keyboard.press('Shift+Home');
+
+    await bold.click();
+    await expect(editor).toContainText('**loud**');
+
+    // They compose: bold + italic is the three-asterisk run, not two pairs.
+    await italic.click();
+    await expect(editor).toContainText('***loud***');
+
+    // And each undoes itself, leaving the other bit alone.
+    await italic.click();
+    await expect(editor).toContainText('**loud**');
+    await bold.click();
+    await expect(editor).toContainText('loud');
+    await expect(editor).not.toContainText('*');
+  });
+
+  test('bold toggles off on the word at the caret, with nothing selected', async ({
+    page,
+  }) => {
+    const editor = page.getByTestId('editor');
+    await type(page, 'loud');
+    await page.getByTestId('insert-bold').click();
+    await expect(editor).toContainText('**loud**');
+
+    await page.getByTestId('insert-bold').click();
+    await expect(editor).toContainText('loud');
+    await expect(editor).not.toContainText('*');
+  });
+
+  test('the chord button brackets the word at the caret', async ({ page }) => {
+    // The chord names on a chord row are usually typed out first, so with no
+    // selection the button takes the word the caret is on.
+    await type(page, 'Am');
+    await page.getByTestId('insert-chord').click();
+
+    await expect(page.getByTestId('editor')).toContainText('[Am]');
+  });
+
   test('the chord button leaves the caret inside an empty bracket', async ({
     page,
   }) => {
-    await type(page, 'sing');
+    // No word under the caret (a space), so it opens an empty pair instead.
+    await type(page, 'sing ');
     await page.getByTestId('insert-chord').click();
     // The caret must be BETWEEN the brackets — that is where the chord goes.
     await page.keyboard.type('C');
 
-    await expect(page.getByTestId('editor')).toContainText('sing[C]');
+    await expect(page.getByTestId('editor')).toContainText('sing [C]');
   });
 
   test('the title button marks the line, not the cursor', async ({ page }) => {

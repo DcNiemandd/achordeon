@@ -165,6 +165,11 @@ test.describe('song explorer', () => {
     await page.getByTestId('songs-add').click();
     await expect(page.getByTestId('editor')).toContainText('My first song');
     await expect(page.getByTestId('editor')).toContainText('[C]');
+    // It is the language's shop window, so it shows the whole language — a
+    // construct missing from here is one nobody discovers.
+    await expect(page.getByTestId('editor')).toContainText('[[C]]');
+    await expect(page.getByTestId('editor')).toContainText('Softly:');
+    await expect(page.getByTestId('editor')).toContainText('***both***');
 
     // It has to be a *correct* example — a starter song that warns at the user
     // on sight teaches them the language is fussy rather than how it works.

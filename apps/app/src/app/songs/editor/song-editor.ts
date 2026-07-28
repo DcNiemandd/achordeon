@@ -32,6 +32,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import {
   ChordTheory,
+  cycleChordAt,
   findLabelDelimiter,
   transposeChordAt,
   type ChordNotation,
@@ -346,40 +347,22 @@ export class SongEditor {
     if (from === to && request.wrapsWord) {
       const word = view.state.wordAt(from);
       if (word) {
-        // Already wrapped in exactly these markers → toggle them OFF, keeping the
-        // caret on the same character (it shifts left by the removed opener). This
-        // is what makes a second press undo the first.
-        const hasBefore =
-          request.before.length > 0 &&
-          word.from >= request.before.length &&
-          view.state.sliceDoc(word.from - request.before.length, word.from) ===
-            request.before;
-        const hasAfter =
-          view.state.sliceDoc(word.to, word.to + after.length) === after;
-        if (hasBefore && hasAfter) {
-          view.dispatch({
-            changes: [
-              { from: word.from - request.before.length, to: word.from },
-              { from: word.to, to: word.to + after.length },
-            ],
-            selection: { anchor: from - request.before.length },
-            scrollIntoView: true,
-          });
-          view.focus();
-          return;
-        }
         start = word.from;
         end = word.to;
         wrappedWord = true;
       }
     }
 
+    if (request.togglesEmphasis) {
+      this.flipEmphasis(request.togglesEmphasis, start, end, wrappedWord);
+      return;
+    }
+
     const selected = view.state.sliceDoc(start, end);
     const text = request.before + selected + after;
     // A wrapped word keeps the caret on the character it was on — the word only
-    // shifted right by the opener. A user SELECTION puts the caret after the
-    // wrapping (the wrap was the point). An empty pair uses `caretOffset` to land
-    // the caret where the next keystroke goes — between the brackets of `[]`.
+    // shifted right by the opener. An empty pair uses `caretOffset` to land the
+    // caret where the next keystroke goes — between the brackets of `[]`.
     const caret = wrappedWord
       ? from + request.before.length
       : start +
@@ -387,10 +370,137 @@ export class SongEditor {
           ? request.before.length + request.caretOffset
           : text.length);
 
+    // **A user selection survives the wrap, still selected.** What you picked out
+    // is what you are working on, and wrapping it does not change that: it has
+    // only moved right by the opener. Collapsing to a caret afterwards made every
+    // second press start from nothing — you had to re-select the same word to
+    // bold it as well, or to press Chord again and make it inline.
+    const hadSelection = from !== to;
+    const innerStart = start + request.before.length;
+    const anchor = hadSelection ? innerStart : caret;
+    const head = hadSelection ? innerStart + selected.length : caret;
+
     view.dispatch({
       changes: { from: start, to: end, insert: text },
-      selection: { anchor: caret },
+      selection: { anchor, head },
       scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  /**
+   * Flip one emphasis bit over `[start, end)` — the Bold and Italic buttons.
+   *
+   * The markers are a **run** of asterisks, not a pair: its length is the state
+   * (1 italic, 2 bold, 3 both — PARSER-GRAMMAR §Phase 2). So this reads the run
+   * already around the range, flips its own bit, and rewrites the run to whatever
+   * length the new pair of bits spells. That is what makes Bold and Italic compose
+   * (`*x*` + bold → `***x***`) and undo themselves (`***x***` + italic → `**x**`)
+   * instead of stacking a fourth asterisk, which the grammar reads as literal text.
+   *
+   * A run of four or more is already literal, so it is left alone and treated as no
+   * emphasis at all — the same reading Phase 2 gives it.
+   */
+  private flipEmphasis(
+    kind: 'italic' | 'bold',
+    start: number,
+    end: number,
+    wrappedWord: boolean,
+  ): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const { from, to } = view.state.selection.main;
+
+    // The matched run around the range — the shorter side wins, so a half-written
+    // `**x*` is read as the one asterisk it really closes.
+    const runBefore = this.emphasisRun(start, -1);
+    const runAfter = this.emphasisRun(end, 1);
+    const run = Math.min(runBefore, runAfter);
+    const held = run > 3 ? 0 : run;
+
+    let italic = held === 1 || held === 3;
+    let bold = held === 2 || held === 3;
+    if (kind === 'italic') italic = !italic;
+    else bold = !bold;
+    const markers = '*'.repeat((italic ? 1 : 0) + (bold ? 2 : 0));
+
+    const inner = view.state.sliceDoc(start, end);
+    const shift = markers.length - held;
+    const innerStart = start + shift;
+
+    view.dispatch({
+      // One change over the old run, the text, and the old run — never two edits at
+      // one empty position, which is what an empty range would otherwise produce.
+      changes: {
+        from: start - held,
+        to: end + held,
+        insert: markers + inner + markers,
+      },
+      selection:
+        from !== to
+          ? { anchor: innerStart, head: innerStart + inner.length }
+          : { anchor: wrappedWord ? from + shift : innerStart },
+      scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  /** Length of the run of `*` running away from `at` in `step` direction. */
+  private emphasisRun(at: number, step: 1 | -1): number {
+    const view = this.view;
+    if (!view) {
+      return 0;
+    }
+    const doc = view.state.doc;
+    let n = 0;
+    for (;;) {
+      const index = step === 1 ? at + n : at - n - 1;
+      if (index < 0 || index >= doc.length) {
+        return n;
+      }
+      if (view.state.sliceDoc(index, index + 1) !== '*') {
+        return n;
+      }
+      n++;
+    }
+  }
+
+  /**
+   * The Chord button, which has three states in one press: bracket the selection
+   * (or the word at the caret), make an existing chord inline, then take the
+   * brackets off again.
+   *
+   * The last two are a source rewrite the domain owns (`cycleChordAt`); only the
+   * first needs the editor, because only the editor knows what "the word at the
+   * caret" is. So the domain is asked first and the insert is the fallback.
+   *
+   * A selection survives every state, so the three presses can be made in a row on
+   * one chosen word: both ends move by the same amount the caret does, because both
+   * sit inside the bracket being rewritten and the rewrite only happens outside
+   * them (`[` doubles in front, `]` doubles behind).
+   */
+  cycleChord(request: InsertRequest): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const { anchor, head } = view.state.selection.main;
+    const cycled = cycleChordAt(view.state.doc.toString(), head);
+    if (!cycled) {
+      this.insert(request);
+      return;
+    }
+    const shift = cycled.caret - head;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: cycled.content },
+      selection:
+        anchor === head
+          ? { anchor: cycled.caret }
+          : { anchor: anchor + shift, head: cycled.caret },
+      scrollIntoView: true,
+      userEvent: 'input.chord',
     });
     view.focus();
   }

@@ -5,11 +5,17 @@
  * A chord floating above a line by character index (overlay-by-index, not
  * interleaved runs). The renderer turns `at` into a pixel x via
  * `measureText(text.slice(0, at))`.
+ *
+ * `inline` marks a chord written `[[…]]`, which renders **in** the text flow at
+ * `at` instead of above it — it takes horizontal space and pushes the rest of the
+ * line right. The renderer treats every chord on a line with no lyric text as
+ * inline too, whichever way it was written.
  */
 export interface ChordAnchor {
   raw: string; // one chord/annotation token as written; rendered verbatim
   at: number; // index into the line's `text`: the char this anchor sits above
   valid: boolean; // true = transposable chord; false = verbatim annotation ([Solo], [x2])
+  inline?: boolean; // written `[[…]]`: renders in the flow, not above the line
 }
 
 /**
@@ -29,8 +35,14 @@ export interface Span {
  * One rendered line: a clean `text` string with chords overlaid by index.
  * Brackets are removed and escapes resolved in `text`. `spans` overlay emphasis
  * by index the same way — absent when the line has none.
+ *
+ * `label` is a **sub-label**: a labelled line that did not open its block. Only
+ * the line that opens a block can set the block's own label, so a `Line.label` is
+ * always the subordinate one. It renders in the flow at the line's start with the
+ * content after it — never in the block's label gutter.
  */
 export interface Line {
+  label?: string; // sub-label (the delimiter colon consumed); absent on a plain line
   text: string; // final rendered characters
   chords: ChordAnchor[]; // overlay by index; same-index groups allowed, kept in order
   spans?: Span[]; // emphasis overlay by index; absent when the line is plain

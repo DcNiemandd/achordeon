@@ -53,11 +53,21 @@ describe('assignColumns — balancing (§4.2)', () => {
 
 describe('layoutColumns — placement (§4.2)', () => {
   it('stacks blocks vertically in a single column', () => {
-    const r = layoutColumns([lyric('aa'), lyric('bb')], 1, ctx());
+    // Derived, not hard-coded. Every magnitude here is one the renderer's author
+    // tunes (§4.7 "spacing magnitudes are tunable internal constants"), so baking
+    // today's numbers in makes the test fail on a change of taste rather than on
+    // a defect. What it is really asserting is the stacking arithmetic — slot,
+    // gap, slot — and that survives any base size or gap factor.
+    const c = ctx();
+    const slot = c.metrics.lyric.height;
+    const baseline = c.metrics.lyric.ascent;
+    const interBlockGap = DEFAULT_TUNING.spacing.interBlockGapFactor * slot;
+
+    const r = layoutColumns([lyric('aa'), lyric('bb')], 1, c);
     const ys = r.items.filter((i) => i.role === 'lyric').map((i) => i.y);
-    expect(ys[0]).toBeCloseTo(12.8); // first block lyric baseline
-    expect(ys[1]).toBeCloseTo(40 + 12.8); // 16 slot + 24 inter-block gap, then baseline
-    expect(r.height).toBeCloseTo(56); // 16 + 24 gap + 16
+    expect(ys[0]).toBeCloseTo(baseline); // first block lyric baseline
+    expect(ys[1]).toBeCloseTo(slot + interBlockGap + baseline);
+    expect(r.height).toBeCloseTo(slot + interBlockGap + slot);
   });
 
   it('places columns left to right with the column gap', () => {

@@ -30,6 +30,13 @@ There are other action buttons to help you with editing:
 - transpose up / down - transpose all valid chords
 - undo / redo - history only from current session
 
+:::note[The chord button has three states]
+Pressing it off a chord brackets the selection, or the word the caret is on. Pressing it
+with the caret already in a chord makes that chord [inline](./syntax.mdx#inline-chords),
+and pressing it once more takes the brackets off again - so three presses come back to
+where you started.
+:::
+
 :::note[Valid chord]
 A valid chord is a root + accidental + quality, with an optional `/bass`; brackets that are not a valid chord are never transposed.
 :::

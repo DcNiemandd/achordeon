@@ -48,10 +48,13 @@ if (r.verbatim.length) {
   );
   for (const raw of r.verbatim) console.log(`  • [${raw}]`);
 }
-if (r.chordOnlyBlocks) {
+if (r.chordRows) {
   console.log(
-    `\nChord-only blocks (render larger, bridge convention): ${r.chordOnlyBlocks}`,
+    `\nRows of chords with no words (chords render in the line, at lyric size): ${r.chordRows}`,
   );
+}
+if (r.subLabels) {
+  console.log(`Sub-labelled lines (a label inside a block): ${r.subLabels}`);
 }
 
 console.log('\n' + bar);

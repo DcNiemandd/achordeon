@@ -10,7 +10,7 @@ download. Complements `PARSER-GRAMMAR.md` (the AST it consumes), `PRD-DOMAIN-MOD
 > seam (§1–§3); the geometry requirements (§4 scale-to-fit, columns, aspect ratio, title
 > region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts); the
 > `RenderPlan` shape + `layout` signature (§5); songbook page chrome (§6). Some §4 policy
-> is flagged **experimental / tunable** (gutter, chord-only distribution, spacing
+> is flagged **experimental / tunable** (gutter, flow-chord size, spacing
 > constants) — the _seams_ are stable; the magnitudes are the author's to tune. The
 > layout algorithm itself is authored by hand; implementation tracks under **P1**.
 
@@ -158,7 +158,7 @@ guardrail. Other docs link here; none restate it.**
 
 > Being grilled as behavioural requirements; the algorithm is authored by hand.
 > More sections land here as decisions crystallize: column layout + breaking,
-> title position, `labelInline`, chord-only sizing (bridge convention), chord
+> title position, `labelInline`, flow-chord sizing, chord
 > x-positioning via `measureText`.
 
 ### 4.1 Boxes and the single scale
@@ -343,23 +343,58 @@ the fit (§4.1) — so spacing never drives a reflow.
 - **Variants parked (tunable/future):** song-global vs per-block gutter, label left- vs
   right-aligned within the gutter, and a per-line offset.
 
-### 4.9 Chord-only lines & the bridge convention
+#### Sub-labels — in the flow, never in the gutter
 
-> Captured from `CONTEXT.md` / `PARSER-GRAMMAR.md`; recommended default, **tunable** —
-> not separately grilled. Both are **render properties read off the AST**, not parse types.
+A `Line.label` (PARSER-GRAMMAR §Block boundaries: a labelled line inside an open block)
+renders at that line's own start and the line's content follows it, one `gutterGapEm`
+later. Consequences, all deliberate:
 
-- **Chord-only line** (a line whose `text` is empty/whitespace but carries anchors) —
-  its chords are **distributed along the line** rather than measured over characters
-  (there are none). Default: **packed from the left at a fixed gap** (`chordOnlyGapEm`).
-  Justified-across-the-column is the other implemented mode and was the original default,
-  changed because it made the gap a function of the column width — the same four chords
-  sat inches apart in a one-column song and tight in a three-column one. Exact
-  distribution remains a visual-tuning detail.
-- **Bridge convention** — a Block whose lines are **all** chord-only renders **slightly
-  larger** than normal blocks. Recommended mechanism: a per-block size multiplier applied
-  in base units (so the uniform fit still scales the whole song afterward, §4.1). The
-  multiplier magnitude is a tunable constant; the **trigger** (all-lines-chord-only ⇒
-  bridge) is the fixed rule.
+- **It does not size the gutter.** `inlineLabelWidth` still counts inline BLOCK labels
+  only. A gutter is a promise that every line in the column starts at the same x, and
+  charging the column for `Kl. + Bas` would indent every other inline-labelled block
+  in the song (with the default `columns: 1`, that is the whole song). This is the
+  cost the issue-#64 discussion named, and not paying it is why sub-labels flow.
+- **So sub-labelled rows do not align with each other** — each starts right after its
+  own label. Accepted: they are annotations on a row, not a column of labels.
+- **The role is `sublabel`**: lyric-sized, **italic**, normal weight (§4.10). Bold
+  names the section, italic names a row inside it.
+- An inline block label on a sub-labelled first line still rides that row's baseline.
+
+### 4.9 Chords in the flow
+
+> A **render property read off the AST**, not a parse type. The multiplier is tunable;
+> the trigger is the fixed rule.
+
+**Two kinds of chord.** One floats above the line, over the exact character it was
+written on (§4.6). The other sits **in** the line: it takes horizontal space, pushes
+everything after it right, and shares the lyric baseline. A chord is in the flow when:
+
+- it is **`inline`** — written `[[…]]` (PARSER-GRAMMAR §Phase 2), which is the only way
+  to put a chord among words; **or**
+- its **line carries no lyric text**, however the chord was written. There is no
+  character to float over, and a row of chords _is_ the line.
+
+**Size — the flow multiplier (`flowChordMultiplier`, default `1.43 ≈ 1/0.7`).** A chord
+above a lyric is set small (0.7em) so it does not compete with the words; a chord that is
+itself the line has no words to defer to, so it comes back up to lyric size. Applied in
+base units, so the uniform fit still scales the whole song afterwards (§4.1), and carried
+on `TextItem.sizeScale`. It stacks on the `chordSize` setting like everything else.
+
+**Spacing is the author's.** Flow chords are placed by the cursor, so what separates two
+of them is whatever the author typed between the brackets. This replaces the older
+`chordOnlyGapEm` / `chordOnlyDistribution` pair (a fixed 1.5em gap, with a justify mode
+behind it): the gap being a renderer constant meant the same four chords could not be
+written tighter or wider, and justifying made it a function of the column width — the
+same four chords sat inches apart in a one-column song and tight in a three-column one.
+
+**This subsumes the old bridge convention.** "A block whose lines are all chord-only
+renders slightly larger" is gone as a rule and survives as its effect: every line of such
+a block is lyric-less, so every one of its chords is a flow chord and takes the
+multiplier. The difference shows on a chord row that sits **inside** a block with lyrics —
+it used to stay small, and now it does not, which is the more consistent answer.
+
+**Reflow-safety holds (§4.6).** `hideChords` omits a flow chord's glyph but keeps its
+advance, so the lyrics around it do not move.
 
 ### 4.10 Fonts, chord colour & chord size
 
@@ -536,7 +571,7 @@ fontBoundingBoxAscent, fontBoundingBoxDescent }`. The **only** way `layout` obta
   §1 testability win). The songbook **outer** fit (§4.3) is a _second_ transform applied
   by `DownloadService` when composing pages — **not** in the per-song plan.
 - **Flat positioned `items`, not a block/column tree.** Every geometry rule (same-index
-  groups §4.6, chord-only distribution §4.9, gutter offset §4.8) is already resolved into
+  groups §4.6, flow chords §4.9, gutter offset §4.8) is already resolved into
   concrete `x/y` by `layout`; `emit` needs no structure.
 - **`hideChords` lives in `layout`, reflow-proof.** Chord-row reservation is driven by the
   **AST** (does the line carry anchors? §4.6), never by the flag — so all lyric `y` are

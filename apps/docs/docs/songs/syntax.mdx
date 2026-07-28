@@ -32,7 +32,7 @@ The renderer will always use the last title and subtitle in the file.
 
 The song is divided into blocks. One block can be verse, chorus, etc. You can give labels to blocks. Trailing colon marks the delimiter - it is consumed and everything before it becomes the rendered label. Add an extra colon to keep a literal colon in the label: `1.:` renders `1.`, `1::` renders `1:`, `1:::` renders `1::`.
 
-New block is created after an empty line or with a label.
+New block is created after an empty line.
 
 ```
 Block without a label.
@@ -40,11 +40,27 @@ Block without a label.
 1.: First verse with a label.
 
 R:: Block with a 'R:' as a label.
-2.: This is a new block because of label.
 
 This is a new block because of a new line.
 
 ```
+
+### Sub-label
+
+Only the first line of a block can name the block. A label written on any later line
+names that one line instead - a sub-label. It is rendered italic where the block's own
+label is bold, and the line's content follows right after it.
+
+```
+Intro:
+Kl. + Bas: [Am F G Am (2×)]
+Housle: [Am F G Am (4×)]
+```
+
+:::note
+A sub-label does not indent the rest of the song the way a block label does - it sits
+in the line, so however long it is, no other line moves.
+:::
 
 ## Chords
 
@@ -52,7 +68,8 @@ Chords are defined by square brackets. You can have multiple chords at once divi
 
 Chords are inserted in the lyrics, but will be rendered above the exact place you put them in.
 
-Block with chords only will be rendered a little bigger, as commonly used for bridge.
+A line with no lyrics has nothing to render the chords above, so they are rendered in the
+line itself, at the size of the lyrics - the row of chords a bridge or an intro is made of.
 
 ```
 2.: And did they get you to [C]trade your heroes for[D] ghosts,
@@ -70,15 +87,28 @@ Block with chords only will be rendered a little bigger, as commonly used for br
    The same old [Am]fears. Wish you were [G]here!
 ```
 
+### Inline chords
+
+Doubled brackets put a chord in the line instead of above it, so it can be read as part of
+the text. Everything else about it is the same: it is transposed, coloured and sized like
+any other chord.
+
+```
+Play the [[C]] and then back to [[G]].
+
+Kl. + Bas: [[Am F G Am (2×)]]
+```
+
+:::note
+On a line with no lyrics both spellings render the same, so `[Am F G]` and `[[Am F G]]` are
+interchangeable there. The doubled brackets are what you need on a line that _has_ lyrics.
+:::
+
 ## Escape
 
-A backslash renders a markup character literally. The main use is the colon, so a line like `Narrator\:` stays a lyric instead of becoming a label. It also works for `*`.
+A backslash renders a markup character literally. The main use is the colon, so a line like `Narrator\:` stays a lyric instead of becoming a label. It also works for `*` and for `[`.
 
 ## Markdown
-
-:::danger[Future]
-This is idea for the future. If you see this, it's not implemented yet.
-:::
 
 There is some Markdown support available to enable marking lyrics. For example to split the main voice and choir / everybody.
 

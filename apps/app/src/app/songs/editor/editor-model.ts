@@ -90,6 +90,20 @@ export interface InsertRequest {
    * the caret; on whitespace it falls back to the empty pair.
    */
   readonly wrapsWord?: boolean;
+  /**
+   * This insert TOGGLES one emphasis bit instead of wrapping blindly.
+   *
+   * Emphasis is not a pair of markers you add, it is a **run** of asterisks whose
+   * length says which bits are on — one is italic, two is bold, three is both
+   * (PARSER-GRAMMAR §Phase 2). So Bold on `*x*` has to write `***x***`, and Italic
+   * on `***x***` has to write `**x**`: the button flips its own bit and leaves the
+   * other one exactly as it was. Wrapping instead of flipping is how a second press
+   * used to pile up a fourth asterisk (which the grammar reads as literal text),
+   * and how Italic inside a bold run used to quietly un-bold it — the two markers
+   * are the same character, so "is it already wrapped in `*`" cannot tell them
+   * apart. Only the run length can.
+   */
+  readonly togglesEmphasis?: 'italic' | 'bold';
 }
 
 /**

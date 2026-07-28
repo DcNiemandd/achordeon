@@ -41,7 +41,12 @@ export function parse(content: string, theory: ChordTheory): SongAst {
   warnings.sort((a, b) => a.line - b.line);
 
   const blocks: Block[] = rawBlocks.map((rb) => {
-    const lines = rb.lines.map((raw) => scanContent(raw, theory));
+    const lines = rb.lines.map((raw) => {
+      // The sub-label rides through Phase 2 untouched: label text is plain, so it
+      // never reaches the inline scan (PARSER-GRAMMAR §Phase 2).
+      const line = scanContent(raw.content, theory);
+      return raw.label !== undefined ? { label: raw.label, ...line } : line;
+    });
     return rb.label !== undefined
       ? { label: rb.label, labelInline: rb.labelInline ?? false, lines }
       : { lines };

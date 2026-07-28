@@ -16,6 +16,7 @@ const styles = (
   title: style({ family: 'Title', weight: 'bold' }),
   subtitle: style({ family: 'Title' }),
   label: style({ weight: 'bold' }),
+  sublabel: style(), // body-normal here, so it dedupes into `lyric`
   lyric: style(),
   chord: style({ weight: 'bold' }),
   ...over,
