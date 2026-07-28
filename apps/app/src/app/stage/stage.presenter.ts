@@ -80,6 +80,11 @@ export class StagePresenter {
     this._librarySize.set((await this.songs.allLive()).length);
   }
 
+  /** Fetch the next page of songbooks; a no-op once the window is exhausted. */
+  loadMore(): void {
+    void this.books.loadMore();
+  }
+
   perform(id: string): void {
     void this.router.navigate(['/stage', id]);
   }

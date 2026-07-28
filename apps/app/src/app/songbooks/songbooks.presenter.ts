@@ -193,6 +193,21 @@ export class SongbooksPresenter {
     this._librarySize.set((await this.songs.allLive()).length);
   }
 
+  /**
+   * Grow the window as the list nears its end — the same infinite scroll the
+   * Songs module has.
+   *
+   * `SongbookStore` has always been paged, but nothing ever asked it for the
+   * second page: this list mounted the explorer without binding `loadMore`, so
+   * the window stayed at whatever the first read returned and a library of more
+   * than `PAGE_LIMIT` books simply ended. A cap you cannot see is worse than a
+   * pager you can — nothing said the list was truncated, so the missing books
+   * read as books that were never saved.
+   */
+  loadMore(): void {
+    void this.store.loadMore();
+  }
+
   open(id: string): void {
     void this.router.navigate(['/songbooks', id]);
   }

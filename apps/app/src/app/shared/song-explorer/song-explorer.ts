@@ -47,14 +47,11 @@ import {
   type SongRow,
   type SortChange,
 } from './explorer-model';
+import { isNearWindowEnd } from './window-end';
 
 /** Row height, in px. `cdk-virtual-scroll-viewport` needs it as a constant, and
  * the CSS below must agree with it — one number in two languages. */
 const ROW_HEIGHT = 52;
-
-/** Fetch the next page this many rows before the window's end, so the list has
- * already grown by the time the user reaches the bottom. */
-const PREFETCH_ROWS = 10;
 
 /** Search debounce. Each settled edit is a store refetch AND a router
  * navigation, so this is not the parser's ~80ms — it is "stopped typing". */
@@ -1662,13 +1659,22 @@ export class SongExplorer {
   }
 
   /**
-   * `scrolledIndexChange` reports the first rendered index; the viewport renders
-   * about a screenful past it. Growing the window a screenful early is what makes
-   * the list feel endless rather than paged. `loadMore` is a no-op while loading
-   * or exhausted, so firing it often is safe — the store owns that guard.
+   * `scrolledIndexChange` reports the **first visible** index, so the screenful
+   * below it has to be added back before the number means anything about the end
+   * of the list — see `isNearWindowEnd`, which is where that reasoning (and the
+   * bug it fixes) lives. The viewport is measured rather than assumed because the
+   * explorer's height is the pane's, and the pane's is the window's.
+   *
+   * Growing the window a screenful early is what makes the list feel endless
+   * rather than paged. `loadMore` is a no-op while loading or exhausted, so
+   * firing it often is safe — the store owns that guard.
    */
   protected onScrolledIndex(index: number): void {
-    if (index + PREFETCH_ROWS >= this.rows().length) {
+    // Before the first measurement the viewport reports nothing; one screenful
+    // of zero rows is the honest answer, and the next scroll asks again.
+    const size = this.viewport()?.getViewportSize() ?? 0;
+    const visibleRows = Math.ceil(size / ROW_HEIGHT);
+    if (isNearWindowEnd(index, visibleRows, this.rows().length)) {
       this.loadMore.emit();
     }
   }

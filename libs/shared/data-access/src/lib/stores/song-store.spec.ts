@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import type { Song } from '@achordeon/shared/domain';
 import { MemoryEntitySource } from '../persistence/memory-entity-source';
 import { PagedRepository } from '../persistence/paged-repository';
-import type { Page } from '../persistence/paging';
+import type { Page, PageQuery } from '../persistence/paging';
 import { PAGE_LIMIT, SONG_REPOSITORY, songPagingConfig } from './repositories';
 import { SongStore } from './song-store';
 
@@ -49,6 +49,38 @@ function racingRepo(answers: Song[][], delaysMs: number[]) {
       return { rows: answers[mine], nextCursor: null };
     },
   } as unknown as PagedRepository<Song>;
+}
+
+/**
+ * A real repository over `seed`, with each successive `page()` held back by its
+ * own delay — so "a refresh overtakes the page that is still in flight" can be
+ * staged as an ordering rather than hoped for.
+ */
+function pacedRepo(seed: Song[], delaysMs: number[]): PagedRepository<Song> {
+  const real = new PagedRepository(
+    new MemoryEntitySource<Song>(seed),
+    songPagingConfig,
+  );
+  let call = 0;
+  return {
+    page: async (query: PageQuery): Promise<Page<Song>> => {
+      const delay = delaysMs[call++] ?? 0;
+      const page = await real.page(query);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return page;
+    },
+    get: (id: string) => real.get(id),
+    put: (record: Song) => real.put(record),
+    softDelete: (id: string, at: number) => real.softDelete(id, at),
+    all: () => real.all(),
+  } as unknown as PagedRepository<Song>;
+}
+
+/** A library of `count` name-sortable songs. */
+function library(count: number): Song[] {
+  return Array.from({ length: count }, (_, i) =>
+    song(`s${String(i).padStart(3, '0')}`),
+  );
 }
 
 describe('SongStore', () => {
@@ -286,5 +318,74 @@ describe('SongStore', () => {
     // Exhausted window: a further loadMore is a no-op.
     await store.loadMore();
     expect(store.entities()).toHaveLength(PAGE_LIMIT + 5);
+  });
+
+  /**
+   * The reason the "infinite" list would stop growing mid-session.
+   *
+   * Starring, renaming or importing while the next page is still being read
+   * overtakes it: the scroll's fetch comes back stale and drops its answer, which
+   * is right — but it used to leave `loading` raised, and `refresh` never lowered
+   * the flag it had just taken ownership of. `loadMore` no-ops while `loading`,
+   * so the window was frozen at whatever it had reached, for good.
+   */
+  it('keeps growing after a refresh overtakes a page in flight', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SONG_REPOSITORY,
+          // load fast, the scroll's page slow, the refresh fast — so the refresh
+          // lands first and the overtaken page arrives to a window it no longer owns.
+          useValue: pacedRepo(library(PAGE_LIMIT * 3), [0, 30, 0]),
+        },
+      ],
+    });
+    const store = TestBed.inject(SongStore);
+    await store.load();
+
+    const scrolled = store.loadMore();
+    const restyled = store.refresh(); // as a favourite or a rename would
+    await Promise.all([scrolled, restyled]);
+
+    expect(store.loading()).toBe(false);
+
+    const before = store.live().length;
+    await store.loadMore();
+    expect(store.live().length).toBeGreaterThan(before);
+  });
+
+  /** A page read that throws is a bad moment, not a permanent one: the flag has
+   * to come down or the list never asks for another row. */
+  it('keeps growing after a page read fails', async () => {
+    const seed = library(PAGE_LIMIT * 2);
+    const real = new PagedRepository(
+      new MemoryEntitySource<Song>(seed),
+      songPagingConfig,
+    );
+    let hasFailed = false;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SONG_REPOSITORY,
+          useValue: {
+            page: async (query: PageQuery): Promise<Page<Song>> => {
+              if (query.cursor && !hasFailed) {
+                hasFailed = true;
+                throw new Error('IndexedDB said no');
+              }
+              return real.page(query);
+            },
+          } as unknown as PagedRepository<Song>,
+        },
+      ],
+    });
+    const store = TestBed.inject(SongStore);
+    await store.load();
+
+    await expect(store.loadMore()).rejects.toThrow('IndexedDB said no');
+    expect(store.loading()).toBe(false);
+
+    await store.loadMore();
+    expect(store.live()).toHaveLength(PAGE_LIMIT * 2);
   });
 });
