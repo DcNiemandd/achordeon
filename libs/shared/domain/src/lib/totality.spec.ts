@@ -17,6 +17,13 @@ const ADVERSARIAL = [
   '[/G]',
   ']]][[[',
   '[[C]]',
+  '[[', // half-typed inline group
+  '[[C', // …with a chord started
+  '[[C]', // …one bracket short of closing
+  '[[]]',
+  '[[C]]]',
+  '[[C\\]]',
+  ']]',
   '][',
   '::::',
   ':::: ',

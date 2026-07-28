@@ -5,11 +5,17 @@
  * A chord floating above a line by character index (overlay-by-index, not
  * interleaved runs). The renderer turns `at` into a pixel x via
  * `measureText(text.slice(0, at))`.
+ *
+ * `inline` marks a chord written `[[…]]`, which renders **in** the text flow at
+ * `at` instead of above it — it takes horizontal space and pushes the rest of the
+ * line right. The renderer treats every chord on a line with no lyric text as
+ * inline too, whichever way it was written.
  */
 export interface ChordAnchor {
   raw: string; // one chord/annotation token as written; rendered verbatim
   at: number; // index into the line's `text`: the char this anchor sits above
   valid: boolean; // true = transposable chord; false = verbatim annotation ([Solo], [x2])
+  inline?: boolean; // written `[[…]]`: renders in the flow, not above the line
 }
 
 /**

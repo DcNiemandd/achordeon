@@ -75,6 +75,29 @@ export function findClosingBracket(s: string, open: number): number {
 }
 
 /**
+ * Index of the first `]` of the `]]` that closes an INLINE chord group opened at
+ * `open` (which points at the first of its two `[`), or -1 if unterminated.
+ *
+ * Same escape rule as {@link findClosingBracket} — `\]` does not close — and the
+ * same no-nesting rule: everything up to the first unescaped `]]` is the group's
+ * content, so a lone `]` inside one is just a character. Unterminated is not an
+ * error: the caller falls back to treating the first `[` as literal text, exactly
+ * as it does for a lone unterminated `[`.
+ */
+export function findClosingDoubleBracket(s: string, open: number): number {
+  for (let j = open + 2; j < s.length - 1; j++) {
+    if (s[j] === '\\') {
+      j++; // skip the escaped char
+      continue;
+    }
+    if (s[j] === ']' && s[j + 1] === ']') {
+      return j;
+    }
+  }
+  return -1;
+}
+
+/**
  * Split a bracket's inner content into chord tokens on spaces/commas. Multiple
  * tokens = multiple anchors at the same index (PARSER-GRAMMAR §Line model).
  */

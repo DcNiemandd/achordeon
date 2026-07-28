@@ -9,6 +9,7 @@ import type { Line, Span } from './ast';
 import {
   ESCAPABLE,
   findClosingBracket,
+  findClosingDoubleBracket,
   splitChordTokens,
   unescape,
 } from './chords';
@@ -18,6 +19,8 @@ import type { ChordTheory } from './theory';
  * Scan one content string into a `Line`. Anchors sit above the character
  * immediately after their closing bracket (chord-over-next-char); an end-of-line
  * bracket anchors at `text.length`. An unterminated `[` is a literal bracket.
+ * A doubled bracket `[[…]]` is an **inline** chord group — same tokens, same
+ * anchor index, but rendered in the flow rather than above the line.
  *
  * **Emphasis is a toggle over runs of `*`** (docs/PARSER-GRAMMAR §Emphasis): a
  * run of one flips italic, two flips bold, three flips both; four or more is
@@ -71,6 +74,32 @@ export function scanContent(content: string, theory: ChordTheory): Line {
       if (run === 2 || run === 3) bold = !bold;
       if (italic || bold) styleStart = text.length;
       i += run;
+      continue;
+    }
+
+    if (c === '[' && content[i + 1] === '[') {
+      // An INLINE chord group: `[[Am F G]]` renders where it is written instead of
+      // above the line. Tokenised exactly like a normal bracket, so `(2×)` rides
+      // along as a verbatim annotation. Unterminated → the first `[` is literal
+      // text and the scan resumes after it, which leaves `[[C]` reading as a
+      // literal bracket plus an ordinary chord (the lone-`[` rule, one level up).
+      const close = findClosingDoubleBracket(content, i);
+      if (close !== -1) {
+        const at = text.length;
+        for (const token of splitChordTokens(content.slice(i + 2, close))) {
+          const raw = unescape(token);
+          chords.push({
+            raw,
+            at,
+            valid: theory.parseChord(raw) !== null,
+            inline: true,
+          });
+        }
+        i = close + 2;
+        continue;
+      }
+      text += '[';
+      i += 1;
       continue;
     }
 
