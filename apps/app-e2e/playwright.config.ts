@@ -32,9 +32,10 @@ export default defineConfig({
     // file's `freshLibrary()` because most specs never clear the database at all:
     // they rely on a fresh context being empty, and would quietly gain a song.
     //
-    // The two tests that DO want content ask for it: `?seed` for the demo set
-    // (clearing this flag as it goes), or clearing the key by hand for the
-    // first-run guide song.
+    // The specs that DO want content ask for it by clearing this key and booting
+    // again — `withStarterLibrary` in `starter-library.ts`. There is no param for it:
+    // a fresh library gets the starter set by default, so `?empty` (which sets this
+    // key) has no opposite.
     storageState: {
       cookies: [],
       origins: [

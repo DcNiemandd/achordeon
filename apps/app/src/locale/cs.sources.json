@@ -418,6 +418,7 @@
   "songs.exportOne": "Export this song to a file",
   "songs.exportSelected": "Export the selected songs to a file",
   "songs.import": "Import songs from a file",
+  "songs.newContent": "* New song\n** Subtitle\n\nVerse: A chord in [C]brackets lands over the [G]letter after it.\n",
   "songs.newName": "New song",
   "songs.noMatches": "No songs match your search.",
   "songs.title": "Songs",

@@ -12,8 +12,7 @@ import { TonalChordTheory } from './tonal-chord-theory/tonal-chord-theory';
 import { ACHORDEON_DB } from './stores/repositories';
 import { BootGate } from './persistence/boot-gate';
 import { bootstrap } from './persistence/gateway';
-import { applyGuideSong } from './persistence/guide-song';
-import { seedDatabase } from './persistence/seed';
+import { applyFirstRun } from './persistence/guide-song';
 import { ParserService } from './parser/parser-service';
 import { SettingsStore } from './stores/settings-store';
 import { AuthService } from './auth/auth-service';
@@ -67,34 +66,31 @@ export function provideAchordeonBoot(): EnvironmentProviders {
  *
  * Sticky rather than a param that has to ride on every URL because a test that
  * wants the empty state navigates many times after clearing the database, and each
- * of those navigations is a full boot that would seed again. `?empty` sets it,
- * `?seed` clears it — the two params are opposites, so asking for content is also
- * how you stop asking for none.
+ * of those navigations is a full boot that would seed again. `?empty` sets it;
+ * nothing clears it from the URL, so opting back in means removing the key (which is
+ * what the e2e suite does — see `playwright.config.ts`).
  */
 const SEED_OFF_KEY = 'achordeon.seed';
 
 /**
  * Give a first-time user something to look at, and keep it in their language.
  *
- * Three behaviours, one initializer, because they are one decision — *what a boot
- * does about content it did not find*:
+ * Two behaviours, one initializer, because they are one decision — *what a boot does
+ * about content it did not find*:
  *
- * - **A fresh database** gets the guide song: the `@@songs.tutorial` tour, in the
- *   language the app booted in, and nothing else. A blank library teaches nothing
- *   and renders nothing, and the render pane's auto-selection
- *   (`SongsPresenter.autoSelect`) makes that one song the one on screen. `guide` is
- *   passed in because the copy is `$localize`d and lives in the app
+ * - **A fresh database** gets the starter library: the `@@songs.tutorial` tour in the
+ *   language the app booted in, plus `seed.ts`'s songs, songbook and favourite. A
+ *   blank library teaches nothing and renders nothing, and every module would open on
+ *   its own empty state. The render pane's auto-selection
+ *   (`SongsPresenter.autoSelect`) lands on the tour, which is the newest row. `guide`
+ *   is passed in because the copy is `$localize`d and lives in the app
  *   (PRD-UI-SHELL.md §Where the help text lives) — this library must not hold it —
  *   and it is a factory so the message is read only on the boots that need it.
- * - **`?seed`** still fills an empty library with the five-song demo set instead:
- *   several songs, a songbook, a second column, a favourite. That is a developer's
- *   and the e2e suite's affordance, and it is deliberately *not* what a real user
- *   gets — a starter library of somebody else's songs is a chore to delete.
- * - **`?empty`** suppresses both, for the tests that assert the real empty state
+ * - **`?empty`** suppresses it, for the tests that assert the real empty state
  *   ("No songs yet") and for anyone who wants to see a first-run without content.
  *
- * `applyGuideSong` owns *when* it writes and re-language; the only thing decided
- * here is which of the three a boot is.
+ * `applyFirstRun` owns *when* it writes and re-language; the only thing decided here
+ * is which of the two a boot is.
  *
  * An app initializer, awaited, so the row exists before the first list query runs —
  * pane B is never briefly empty on the boot that seeds. A refused boot writes
@@ -113,11 +109,6 @@ export function provideAchordeonSeed(
     }
 
     const params = new URLSearchParams(location.search);
-    if (params.has('seed')) {
-      setSeedOff(false);
-      await seedDatabase(db);
-      return;
-    }
     if (params.has('empty')) {
       // The param decides this boot whether or not the write stuck: with storage
       // blocked, `?empty` still has to mean empty.
@@ -134,7 +125,7 @@ export function provideAchordeonSeed(
     // language's tour calls itself (PRD-DOMAIN-MODEL §Song — cache is derived).
     const ast = parser.parse(content);
     const title = ast.title ?? '';
-    await applyGuideSong(db, {
+    await applyFirstRun(db, {
       // The library label is the song's own title, so it needs no message of its
       // own — "My first song" and "Moje první píseň" are already translated.
       name: title,

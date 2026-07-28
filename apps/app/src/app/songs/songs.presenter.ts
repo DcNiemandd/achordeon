@@ -36,7 +36,7 @@ import type {
   ImportFailure,
   ImportPreview,
 } from '../shared/transfer';
-import { TUTORIAL_CONTENT } from './new-song';
+import { NEW_SONG_CONTENT } from './new-song';
 import { ReturnUrl } from './return-url';
 
 /** The name a song is born with, before the user has said what it is. */
@@ -624,7 +624,7 @@ export class SongsPresenter {
     // The cache is derived from content, so seeded content has to seed it too —
     // otherwise the new row shows a blank title until the first keystroke
     // rewrites it (PRD-DOMAIN-MODEL §Song: derived, never authored).
-    const ast = this.parser.parse(TUTORIAL_CONTENT);
+    const ast = this.parser.parse(NEW_SONG_CONTENT);
     return {
       id: crypto.randomUUID(),
       createdAt: now,
@@ -636,7 +636,7 @@ export class SongsPresenter {
       // asking the repository for every name on every create, to protect an
       // invariant no code relies on. Left unenforced deliberately.
       name: NEW_SONG_NAME,
-      content: TUTORIAL_CONTENT,
+      content: NEW_SONG_CONTENT,
       favorite: false,
       settings: {},
       cache: { title: ast.title ?? '', subtitle: ast.subtitle ?? '' },

@@ -1,15 +1,18 @@
-// Dev/demo seeding — Epic 4 follow-up
+// The starter library — Epic 4 follow-up
 // Spec: PRD-INFRASTRUCTURE.md §2 (this, the guide song and the gateway are the only
 // writers of IndexedDB). Not part of the Snapshot and never synced — seed rows are
 // ordinary songs the moment they land, indistinguishable from ones you typed.
 //
-// This is the `?seed` demo set, NOT what a first-time user gets: a real fresh
-// library gets the one localized guide song (`guide-song.ts`). What lives here is
-// several songs, a songbook and a favourite — the shape you need to exercise the
-// list, and the shape nobody wants handed to them as their own library.
+// This is what a first-time user's library holds *besides* the localized guide song:
+// several songs, a songbook and a favourite, so that every module opens on content
+// instead of on its own empty state.
+//
+// It builds rows and hands them back — no database, no emptiness check. Whether a
+// library wants this content is a question about the library, and `guide-song.ts`
+// is the one place that asks it, so the guide song and the whole starter set land
+// in a single transaction behind a single guard.
 
 import type { Song, Songbook, SongSettings } from '@achordeon/shared/domain';
-import type { AchordeonDb } from './db';
 
 /**
  * A curated starter library, as source text.
@@ -124,9 +127,11 @@ function buildSongs(now: number): Song[] {
   return SEED_SONGS.map((s, i) => ({
     id: crypto.randomUUID(),
     // Spread the timestamps so "recently changed" has a real order rather than a
-    // five-way tie — the first entry reads as the most recent.
-    createdAt: now - i * 1000,
-    updatedAt: now - i * 1000,
+    // five-way tie — the first entry reads as the most recent of these. All of them
+    // sit *behind* `now`, which the guide song keeps, so the tour stays the row
+    // `SongsPresenter.autoSelect` opens on a first run.
+    createdAt: now - (i + 1) * 1000,
+    updatedAt: now - (i + 1) * 1000,
     deletedAt: null,
     name: s.name,
     content: s.content,
@@ -151,27 +156,24 @@ function buildBooks(now: number, songs: readonly Song[]): Songbook[] {
   }));
 }
 
+/** The rows a fresh library is born with, the guide song aside. */
+export interface StarterLibrary {
+  readonly songs: readonly Song[];
+  readonly books: readonly Songbook[];
+}
+
 /**
- * Fill an **empty** library with the starter set. Returns the number of songs
- * written, `0` when it declined.
+ * Build the starter rows, stamped relative to `now`.
  *
- * **Only ever touches an empty library** — never clobbers or duplicates what is
- * already there, so a second call (a reload with the trigger still in the URL) is
- * a no-op, and a user who has deleted the samples does not get them resurrected.
- * Clearing the whole database is the way back to a clean seed. The trigger itself
- * (a `?seed` query param, a dev toggle) lives in the composition layer, not here;
- * this function only knows how to seed, not when.
+ * Pure: it takes no database and writes nothing, so it cannot decide *whether* a
+ * library should have this content — `applyFirstRun` owns that question and the
+ * write. Keeping the two apart is what lets the guide song and these rows land
+ * together, behind one emptiness check, in one transaction.
+ *
+ * `now` is passed in rather than read here so every row in that one write shares a
+ * clock, and so a test can pin it.
  */
-export async function seedDatabase(db: AchordeonDb): Promise<number> {
-  if ((await db.songs.count()) > 0) {
-    return 0;
-  }
-  const now = Date.now();
+export function starterLibrary(now: number): StarterLibrary {
   const songs = buildSongs(now);
-  const books = buildBooks(now, songs);
-  await db.transaction('rw', db.songs, db.songbooks, async () => {
-    await db.songs.bulkPut(songs);
-    await db.songbooks.bulkPut(books);
-  });
-  return songs.length;
+  return { songs, books: buildBooks(now, songs) };
 }

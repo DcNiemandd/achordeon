@@ -14,7 +14,7 @@ import {
   provideAchordeonSync,
 } from '@achordeon/shared/data-access';
 import { appRoutes } from './app.routes';
-import { TUTORIAL_CONTENT } from './songs/new-song';
+import { GUIDE_SONG_CONTENT } from './songs/guide-song-content';
 import { SUPABASE } from './supabase.config';
 
 export const appConfig: ApplicationConfig = {
@@ -29,13 +29,13 @@ export const appConfig: ApplicationConfig = {
     // The ADR-0007 ingest gateway over the local database, before any store reads
     // a row. Must come before the seeder and sync for the same reason.
     provideAchordeonBoot(),
-    // A fresh library gets one song: the same syntax tour a new song is born as,
-    // in the language this boot loaded. `?seed` asks for the demo set instead,
-    // `?empty` for neither. The content is passed in because it is `$localize`d
-    // copy and `shared/*` holds none. Safe to import here only because `main.ts`
-    // imports this file *dynamically*, after the catalog has loaded — a static
-    // import of a module-scope `$localize` const is the one trap in runtime i18n.
-    provideAchordeonSeed(() => TUTORIAL_CONTENT),
+    // A fresh library gets the starter set: the syntax tour in the language this
+    // boot loaded, plus the seeded songs, songbook and favourite. `?empty` asks for
+    // none of it. The tour is passed in because it is `$localize`d copy and
+    // `shared/*` holds none. Safe to import here only because `main.ts` imports this
+    // file *dynamically*, after the catalog has loaded — a static import of a
+    // module-scope `$localize` const is the one trap in runtime i18n.
+    provideAchordeonSeed(() => GUIDE_SONG_CONTENT),
     // Audience/lobby backend (ADR-0003). `null`/empty url → offline-only build.
     { provide: SUPABASE_CONFIG, useValue: SUPABASE?.url ? SUPABASE : null },
     // Account + cloud sync (Epic 10). No-op without a backend or a session.

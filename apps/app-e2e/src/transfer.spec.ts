@@ -10,6 +10,7 @@
 
 import { expect, test, type Download, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { createSong } from './create-song';
 
 const ROOMY = { width: 1440, height: 900 };
 
@@ -28,29 +29,6 @@ async function freshLibrary(page: Page): Promise<void> {
       }),
   );
   await page.reload();
-}
-
-/** Create a song and name it, coming back to the explorer (creating opens the
- * editor). The row is found by name, never by position — the list is sorted. */
-async function createSong(page: Page, name: string): Promise<void> {
-  await page.getByTestId('songs-add').click();
-  await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
-  await page.goBack();
-
-  const row = page
-    .getByTestId('song-row')
-    .filter({ hasText: 'New song' })
-    .first();
-  await expect(row).toBeVisible();
-  const id = await row.getAttribute('data-song-id');
-
-  await row.hover();
-  await page.getByTestId(`rename-${id}`).click();
-  await page.getByTestId(`rename-input-${id}`).fill(name);
-  await page.getByTestId(`rename-input-${id}`).press('Enter');
-  await expect(
-    page.getByTestId('song-row').filter({ hasText: name }),
-  ).toHaveCount(1);
 }
 
 /**

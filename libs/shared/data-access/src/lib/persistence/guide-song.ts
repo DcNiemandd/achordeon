@@ -1,10 +1,17 @@
-// The one song a fresh library is born with
+// What a fresh library is born with
 // Spec: PRD-INFRASTRUCTURE.md §2 (this, the seeder and the gateway are the only
-// writers of IndexedDB). Not part of the Snapshot's bookkeeping — the row it writes
-// is an ordinary song the moment it lands, and syncs like any other.
+// writers of IndexedDB). Not part of the Snapshot's bookkeeping — the rows it writes
+// are ordinary songs the moment they land, and sync like any other.
+//
+// Two jobs, one file, because they share a guard: seeding a first-ever boot (the
+// localized guide song plus `seed.ts`'s starter library) and keeping the guide song
+// in the user's language for as long as it is still ours. Splitting them would mean
+// two writers each asking "is this library empty?", and whichever answered first
+// would lock the other out.
 
 import type { Song, SongCache } from '@achordeon/shared/domain';
 import type { AchordeonDb } from './db';
+import { starterLibrary } from './seed';
 
 /**
  * The guide song's text, supplied by the composition layer.
@@ -21,7 +28,7 @@ export interface GuideSongText {
   readonly cache: SongCache;
 }
 
-/** What `applyGuideSong` did, for the caller's logs and the tests. */
+/** What `applyFirstRun` did, for the caller's logs and the tests. */
 export type GuideSongOutcome = 'seeded' | 'relanguaged' | 'nothing';
 
 /** The `meta` key holding which song is the guide, and what we last wrote to it. */
@@ -39,11 +46,21 @@ interface GuideSongStamp {
 }
 
 /**
- * Give a first-time user one song to look at, and keep it in their language.
+ * Give a first-time user a library to look at, and keep the guide song in their
+ * language.
  *
- * **First run** — an empty library and no stamp: write the guide song. `count()`
- * includes tombstones, so a user who deleted the samples is never re-seeded, and a
- * library that already has songs (every existing install) never gains one.
+ * **First run** — an empty library and no stamp: write the guide song *and* the
+ * starter library (`seed.ts`), in one transaction. `count()` includes tombstones, so
+ * a user who deleted the samples is never re-seeded, and a library that already has
+ * songs (every existing install) never gains any.
+ *
+ * The guide song keeps `now` and the starter rows sit behind it, so
+ * `SongsPresenter.autoSelect` — which picks the most recently changed row — opens on
+ * the tour rather than on whichever sample happened to sort first.
+ *
+ * **Only the guide song is stamped**, and so only it is re-languaged. The starter
+ * songs are fixed source text with nothing to translate, and stamping them would
+ * mean a user editing one of them could make the *tour* look untouched.
  *
  * **Every boot after** — the stamp says which row it is and whether it is still
  * ours. Anything the user does to the song goes through a write that bumps
@@ -62,7 +79,7 @@ interface GuideSongStamp {
  * row, and swallowing it would leave two devices disagreeing about the same id. The
  * fresh stamp is what keeps the song pristine for the next switch.
  */
-export async function applyGuideSong(
+export async function applyFirstRun(
   db: AchordeonDb,
   guide: GuideSongText,
 ): Promise<GuideSongOutcome> {
@@ -83,8 +100,15 @@ export async function applyGuideSong(
       settings: {},
       cache: guide.cache,
     };
-    await db.songs.put(song);
-    await writeStamp(db, { id: song.id, stamp: now });
+    const starter = starterLibrary(now);
+    // One transaction over all three tables, the stamp included: a first run that
+    // wrote the songs and then failed to record which one is the guide would leave a
+    // library whose tour can never be re-languaged, and no way to tell.
+    await db.transaction('rw', db.songs, db.songbooks, db.meta, async () => {
+      await db.songs.bulkPut([song, ...starter.songs]);
+      await db.songbooks.bulkPut([...starter.books]);
+      await writeStamp(db, { id: song.id, stamp: now });
+    });
     return 'seeded';
   }
 

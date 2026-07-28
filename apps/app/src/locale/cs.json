@@ -1,6 +1,5 @@
 {
   "locale": "cs",
-  "stale": [],
   "translations": {
     "actionBar.label": "Akce",
     "actionBar.rename": "Název",
@@ -421,6 +420,7 @@
     "songs.exportOne": "Exportovat tuto píseň do souboru",
     "songs.exportSelected": "Exportovat vybrané písně do souboru",
     "songs.import": "Importovat písně ze souboru",
+    "songs.newContent": "* Nová píseň\n** Podtitul\n\nSloka: Akord v [C]hranatých závorkách se vykreslí nad [G]písmenem, které za ním následuje.\n",
     "songs.newName": "Nová píseň",
     "songs.noMatches": "Hledání neodpovídá žádná píseň.",
     "songs.title": "Písně",
