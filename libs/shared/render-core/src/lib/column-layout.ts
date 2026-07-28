@@ -83,8 +83,8 @@ function isEmpty(block: Block): boolean {
 /**
  * Assign `blocks` into `columns` balanced columns and place every item in
  * content-box coordinates. Per-column gutter = widest inline label in the column
- * (§4.8); per-column width = widest block; chord-only lines then justify to it
- * (§4.9). Columns run left→right, blocks top→bottom (document order, §4.2).
+ * (§4.8); per-column width = widest block. Columns run left→right, blocks
+ * top→bottom (document order, §4.2).
  */
 export function layoutColumns(
   blocks: Block[],
@@ -123,15 +123,13 @@ export function layoutColumns(
       widestLabel > 0
         ? widestLabel + tuning.spacing.gutterGapEm * tuning.baseSizePx
         : 0;
-    // Column width from natural block widths, then justify chord-only lines to it.
-    const colWidth = Math.max(
-      0,
-      ...colBlocks.map((b) => layoutBlock(b, ctx, gutter).width),
-    );
+    // Column width from natural block widths — nothing stretches to fill it, so
+    // one layout pass per block is all it takes.
+    const laid = colBlocks.map((b) => layoutBlock(b, ctx, gutter));
+    const colWidth = Math.max(0, ...laid.map((bl) => bl.width));
 
     let y = 0;
-    for (const block of colBlocks) {
-      const bl = layoutBlock(block, ctx, gutter, colWidth);
+    for (const bl of laid) {
       for (const it of bl.items)
         items.push({ ...it, x: it.x + x, y: it.y + y });
       y += bl.height + interBlockGap;

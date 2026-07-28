@@ -82,7 +82,7 @@ export interface RenderTuning {
     chordRowGapFactor: number;
     /** Horizontal gap between content columns, × `baseSizePx` (§4.2). */
     columnGapEm: number;
-    /** Gap after an inline label before content begins, × `baseSizePx` (§4.8 gutter). */
+    /** Gap after an inline label or a sub-label before content begins, × `baseSizePx` (§4.8). */
     gutterGapEm: number;
     /** Gap between the title block and content, × a lyric slot (top) / `baseSizePx` (spine) (§4.5). */
     titleGapFactor: number;
@@ -90,8 +90,6 @@ export interface RenderTuning {
     titleStackGapFactor: number;
     /** Gap between title and subtitle when inline, × `baseSizePx` (§4.5). */
     titleInlineGapEm: number;
-    /** Natural gap between chords on a chord-only line (`left` / packing), × `baseSizePx` (§4.9). */
-    chordOnlyGapEm: number;
   };
 
   /**
@@ -106,11 +104,16 @@ export interface RenderTuning {
    */
   minBoxEm: number;
 
-  /** All-chord-only Block renders larger (§4.9 bridge). Applied in base units before the fit. */
-  bridgeSizeMultiplier: number;
-
-  /** How a chord-only line spreads its chords across the column width (§4.9). */
-  chordOnlyDistribution: 'justified' | 'left';
+  /**
+   * Size of a chord that sits IN the line rather than above it (§4.9), × its
+   * chord size. Applied in base units before the fit.
+   *
+   * A chord above a lyric is set small so it does not compete with the words;
+   * a chord that IS the line has no words to defer to, so it comes back up to
+   * lyric size. This is the old bridge multiplier: same number, same look, now
+   * keyed on the chord rather than on the block it happened to sit in.
+   */
+  flowChordMultiplier: number;
 
   /** Members of a same-index anchor group are joined by this string in the chord font (§4.6). */
   sameIndexJoiner: string;
@@ -184,6 +187,10 @@ export const DEFAULT_TUNING: RenderTuning = {
       darkColor: '#8b8b8b',
     }, // PoC h2
     label: { sizeFactor: 1.0, weight: 'bold' },
+    // A sub-label is subordinate to the block's label, so it takes the other
+    // emphasis rather than a smaller size: bold names the section, italic names
+    // a row inside it.
+    sublabel: { sizeFactor: 1.0, weight: 'normal', style: 'italic' },
     lyric: { sizeFactor: 1.0, weight: 'normal' },
     // PoC chords over a lyric line are 0.7em; `chordSize: 1` means "the PoC
     // default", not "the lyric size". A user who wants them lyric-sized sets
@@ -199,21 +206,15 @@ export const DEFAULT_TUNING: RenderTuning = {
     titleGapFactor: 2.0, // PoC `.titles` margin-bottom 24px + the 8px flex gap
     titleStackGapFactor: 0.2, // PoC `.titles` row-gap 4px ÷ the 19.2px subtitle slot
     titleInlineGapEm: 1.5, // PoC `.titles` column-gap 24px
-    chordOnlyGapEm: 1.5,
   },
   // 24 ≈ "a line of lyrics is never wider than a third of the page". Roughly a
   // full A4 of song at natural size; tune to taste.
   minBoxEm: 24,
-  // The PoC had no per-block bridge rule; it sized any chord row sitting over an
-  // EMPTY lyric at the full 1em while a chorded lyric line got 0.7em. 1/0.7
-  // reproduces that exactly through the bridge knob.
-  bridgeSizeMultiplier: 1.43,
-  // Packed from the left at a fixed gap, not spread across the column. Justifying
-  // made the gaps a function of the column width, so the same four chords sat
-  // inches apart in a one-column song and tight in a three-column one — and a
-  // chord-only line reads as a sequence you play through, which spacing should
-  // not stretch. `chordOnlyGapEm` is that gap.
-  chordOnlyDistribution: 'left',
+  // The PoC sized any chord row sitting over an EMPTY lyric at the full 1em while
+  // a chorded lyric line got 0.7em. 1/0.7 reproduces that exactly — which is also
+  // why this is keyed on the chord and not on the block: the PoC's rule was about
+  // the row the chord sat on all along.
+  flowChordMultiplier: 1.43,
   sameIndexJoiner: ' ',
   overlapChords: true,
   fontBoundingBoxFallbackLeading: 1.2,

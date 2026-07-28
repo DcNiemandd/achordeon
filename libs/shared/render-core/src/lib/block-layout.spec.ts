@@ -2,7 +2,7 @@ import type { Block, GlobalSettings } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
 import { DEFAULT_TUNING } from './tuning';
 import { createContext } from './context';
-import { inlineLabelWidth, isChordOnly, layoutBlock } from './block-layout';
+import { inlineLabelWidth, layoutBlock } from './block-layout';
 
 // base 16 → glyph advance 9.6, font box height 16 (ascent 12.8, descent 3.2).
 const settings: GlobalSettings = {
@@ -21,18 +21,6 @@ const settings: GlobalSettings = {
 };
 const ctx = (hideChords = false) =>
   createContext(settings, createFakeMeasurer(), DEFAULT_TUNING, hideChords);
-
-describe('isChordOnly', () => {
-  it('is true for anchors over blank text, false otherwise', () => {
-    expect(
-      isChordOnly({ text: '   ', chords: [{ raw: 'C', at: 0, valid: true }] }),
-    ).toBe(true);
-    expect(
-      isChordOnly({ text: 'la', chords: [{ raw: 'C', at: 0, valid: true }] }),
-    ).toBe(false);
-    expect(isChordOnly({ text: '', chords: [] })).toBe(false);
-  });
-});
 
 describe('layoutBlock — label gutter (§4.8)', () => {
   it('starts an unlabelled block at x = 0', () => {
@@ -82,12 +70,16 @@ describe('layoutBlock — label gutter (§4.8)', () => {
   });
 });
 
-describe('layoutBlock — bridge convention (§4.9)', () => {
-  it('flags an all-chord-only block as a bridge and scales its chords', () => {
+describe('layoutBlock — chords in the flow (§4.9)', () => {
+  const flow = DEFAULT_TUNING.flowChordMultiplier;
+  // A chord advance is 6.72 at the fake measurer's 0.7em chord size.
+  const chordAdvance = 6.72 * flow;
+
+  it('sets a lyric-less line’s chords in the flow, at the flow size', () => {
     const block: Block = {
       lines: [
         {
-          text: '',
+          text: ' ',
           chords: [
             { raw: 'C', at: 0, valid: true },
             { raw: 'G', at: 1, valid: true },
@@ -95,70 +87,35 @@ describe('layoutBlock — bridge convention (§4.9)', () => {
         },
       ],
     };
-    const r = layoutBlock(block, ctx());
-    expect(r.isBridge).toBe(true);
-    const chord = r.items.find((i) => i.role === 'chord');
-    expect(chord?.sizeScale).toBeCloseTo(DEFAULT_TUNING.bridgeSizeMultiplier);
-    // The chord font box is 11.2 (chords are 0.7em), scaled by the bridge.
-    expect(r.height).toBeCloseTo(11.2 * DEFAULT_TUNING.bridgeSizeMultiplier);
+    const chords = layoutBlock(block, ctx()).items.filter(
+      (i) => i.role === 'chord',
+    );
+    expect(chords[0]).toMatchObject({ x: 0 });
+    expect(chords[0].sizeScale).toBeCloseTo(flow);
+    // Packed on the author's own space, not on a fixed gap of the renderer's.
+    expect(chords[1].x).toBeCloseTo(chordAdvance + 9.6);
   });
 
-  it('does not bridge a block that mixes chord-only and lyric lines', () => {
+  it('gives a lyric-less line the taller of the lyric slot and the flow chord', () => {
+    const block: Block = {
+      lines: [{ text: '', chords: [{ raw: 'C', at: 0, valid: true }] }],
+    };
+    // The chord font box is 11.2 (chords are 0.7em), scaled by the flow.
+    expect(layoutBlock(block, ctx()).height).toBeCloseTo(11.2 * flow);
+  });
+
+  it('treats a lyric-less line the same inside a block that has lyrics', () => {
+    // The old rule scaled chords only when EVERY line of the block was chords;
+    // one lyric line beside them left the row small. It is per line now.
     const block: Block = {
       lines: [
         { text: '', chords: [{ raw: 'C', at: 0, valid: true }] },
         { text: 'aaaa', chords: [] },
       ],
     };
-    expect(layoutBlock(block, ctx()).isBridge).toBe(false);
-  });
-});
-
-describe('layoutBlock — chord-only distribution (§4.9)', () => {
-  const mixed: Block = {
-    lines: [
-      {
-        text: '',
-        chords: [
-          { raw: 'C', at: 0, valid: true },
-          { raw: 'G', at: 1, valid: true },
-        ],
-      },
-      { text: 'aaaa', chords: [] },
-    ],
-  };
-
-  const gap = DEFAULT_TUNING.spacing.chordOnlyGapEm * 16; // 24
-
-  // The default. A chord-only line reads as a sequence you play through, and a
-  // fixed gap keeps it looking the same whatever column it lands in.
-  it('packs chords from the left at a fixed gap, even inside a wide column', () => {
-    const r = layoutBlock(mixed, ctx(), 0, 200);
-    const chords = r.items.filter((i) => i.role === 'chord');
-    expect(chords[0].x).toBeCloseTo(0);
-    // A chord advance is 6.72 at the fake measurer's 0.7em chord size.
-    expect(chords[1].x).toBeCloseTo(6.72 + gap);
-  });
-
-  it('packs at the same gap when no column width is given at all', () => {
-    const r = layoutBlock(mixed, ctx());
-    const chords = r.items.filter((i) => i.role === 'chord');
-    expect(chords[1].x).toBeCloseTo(6.72 + gap);
-  });
-
-  // Still implemented, and still the other half of the seam — just no longer the
-  // default (see `chordOnlyDistribution`).
-  it('spreads chords across the column when told to justify', () => {
-    const justified = createContext(
-      settings,
-      createFakeMeasurer(),
-      { ...DEFAULT_TUNING, chordOnlyDistribution: 'justified' },
-      false,
-    );
-    const chords = layoutBlock(mixed, justified, 0, 200).items.filter(
+    const chord = layoutBlock(block, ctx()).items.find(
       (i) => i.role === 'chord',
     );
-    expect(chords[0].x).toBeCloseTo(0);
-    expect(chords[1].x + 6.72).toBeCloseTo(200);
+    expect(chord?.sizeScale).toBeCloseTo(flow);
   });
 });

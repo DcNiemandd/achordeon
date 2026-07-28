@@ -134,6 +134,114 @@ describe('layoutLine — hideChords is reflow-safe (§4.6)', () => {
   });
 });
 
+describe('layoutLine — chords in the flow (§4.9)', () => {
+  const flow = DEFAULT_TUNING.flowChordMultiplier;
+  const chordAdvance = 6.72 * flow; // one chord glyph at the flow size
+
+  it('sets an inline chord in the line and pushes the rest of it right', () => {
+    const r = layoutLine(
+      line('ab', [{ raw: 'C', at: 1, valid: true, inline: true }]),
+      ctx(),
+      0,
+    );
+    const chord = r.items.find((i) => i.role === 'chord');
+    const lyrics = r.items.filter((i) => i.role === 'lyric');
+    expect(chord).toMatchObject({ text: 'C', x: 9.6 });
+    expect(chord?.sizeScale).toBeCloseTo(flow);
+    // It sits ON the lyric baseline, so no chord row is reserved above the line.
+    expect(chord?.y).toBeCloseTo(lyrics[0].y);
+    expect(r.hasChordRow).toBe(false);
+    expect(lyrics.map((i) => i.text)).toEqual(['a', 'b']);
+    expect(lyrics[1].x).toBeCloseTo(9.6 + chordAdvance);
+  });
+
+  it('treats every chord on a lyric-less line as inline, brackets or not', () => {
+    const r = layoutLine(
+      line('', [{ raw: 'Am', at: 0, valid: true }]),
+      ctx(),
+      0,
+    );
+    const chord = r.items.find((i) => i.role === 'chord');
+    expect(chord).toMatchObject({ x: 0 });
+    expect(chord?.sizeScale).toBeCloseTo(flow);
+    expect(r.hasChordRow).toBe(false);
+    expect(r.height).toBeCloseTo(11.2 * flow);
+  });
+
+  it('floats a same-line anchor over the character the flow moved', () => {
+    const r = layoutLine(
+      line('ab', [
+        { raw: 'C', at: 1, valid: true, inline: true },
+        { raw: 'G', at: 2, valid: true },
+      ]),
+      ctx(),
+      0,
+    );
+    const above = r.items.filter((i) => i.role === 'chord' && !i.sizeScale);
+    expect(r.hasChordRow).toBe(true);
+    // 'a' + the flow chord + 'b' — the anchored character is that far along now.
+    expect(above[0].x).toBeCloseTo(9.6 + chordAdvance + 9.6);
+  });
+
+  it('keeps the flow advance when the chords are hidden (§4.6)', () => {
+    const chords: Line['chords'] = [
+      { raw: 'C', at: 1, valid: true, inline: true },
+    ];
+    const shown = layoutLine(line('ab', chords), ctx(false), 0);
+    const hidden = layoutLine(line('ab', chords), ctx(true), 0);
+    expect(hidden.items.some((i) => i.role === 'chord')).toBe(false);
+    const x = (r: typeof shown) =>
+      r.items.filter((i) => i.role === 'lyric').map((i) => i.x);
+    expect(x(hidden)).toEqual(x(shown));
+    expect(hidden.height).toBeCloseTo(shown.height);
+  });
+
+  it('draws no lyric item for the space between two flow chords', () => {
+    const r = layoutLine(
+      line(' ', [
+        { raw: 'C', at: 0, valid: true },
+        { raw: 'G', at: 1, valid: true },
+      ]),
+      ctx(),
+      0,
+    );
+    expect(r.items.some((i) => i.role === 'lyric')).toBe(false);
+    const chords = r.items.filter((i) => i.role === 'chord');
+    expect(chords[1].x).toBeCloseTo(chordAdvance + 9.6);
+  });
+});
+
+describe('layoutLine — sub-labels (§4.8)', () => {
+  const gutterGap = DEFAULT_TUNING.spacing.gutterGapEm * 16; // 4
+
+  it('opens the row with the sub-label and starts the content after it', () => {
+    const r = layoutLine({ label: 'Kl', text: 'ab', chords: [] }, ctx(), 0);
+    const label = r.items.find((i) => i.role === 'sublabel');
+    const lyric = r.items.find((i) => i.role === 'lyric');
+    expect(label).toMatchObject({ text: 'Kl', x: 0, y: 12.8 });
+    expect(lyric?.x).toBeCloseTo(2 * 9.6 + gutterGap);
+    // One row: the sub-label shares the lyric's baseline.
+    expect(lyric?.y).toBeCloseTo(12.8);
+    expect(r.height).toBeCloseTo(16);
+  });
+
+  it('offsets the chords of a lyric-less row by the sub-label too', () => {
+    const r = layoutLine(
+      { label: 'Kl', text: '', chords: [{ raw: 'Am', at: 0, valid: true }] },
+      ctx(),
+      0,
+    );
+    expect(r.items.find((i) => i.role === 'chord')?.x).toBeCloseTo(
+      2 * 9.6 + gutterGap,
+    );
+  });
+
+  it('rides the lineOrigin like everything else on the row', () => {
+    const r = layoutLine({ label: 'Kl', text: 'ab', chords: [] }, ctx(), 100);
+    expect(r.items.find((i) => i.role === 'sublabel')?.x).toBe(100);
+  });
+});
+
 describe('layoutLine — emphasis runs (§4.10 markdown)', () => {
   const emph = (
     text: string,

@@ -6,7 +6,13 @@
 // open (§1).
 
 /** The only thing `emit` branches on when styling an item. */
-export type TextRole = 'title' | 'subtitle' | 'label' | 'lyric' | 'chord';
+export type TextRole =
+  | 'title'
+  | 'subtitle'
+  | 'label'
+  | 'sublabel'
+  | 'lyric'
+  | 'chord';
 
 export interface TextItem {
   text: string;
@@ -14,7 +20,7 @@ export interface TextItem {
   y: number; // baseline y, base units
   role: TextRole; // → styles[role]
   rotate?: -90; // title CCW spine only (§4.5); absent = upright
-  sizeScale?: number; // per-item multiple of styles[role].sizePx (bridge, §4.9); absent = 1
+  sizeScale?: number; // per-item multiple of styles[role].sizePx (flow chords, §4.9); absent = 1
   // Per-item emphasis overrides for markdown runs (§4.10): they replace the
   // role's own weight/style when present, and pick a different embedded face of
   // the SAME family. Absent = the role's style.
