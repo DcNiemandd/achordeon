@@ -265,12 +265,33 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   hasInlineDuplicate: false,
 };
 
-/** The virtual All songs book: a read-only order, so nothing may be moved out. */
+/**
+ * The virtual All songs book: a read-only order, so nothing may be moved out.
+ *
+ * **Sorting is the one thing it can be told** (CONTEXT.md §Songbook — read-only
+ * order). Every other book on this screen is an arrangement, and re-sorting an
+ * arrangement is meaningless; this one has no arrangement of its own to protect,
+ * so the axis, the direction and favourites-first are the only questions it can
+ * answer — and they are the *same* questions the Songs module's list asks, so the
+ * two behave alike rather than each inventing an ordering vocabulary.
+ *
+ * Search comes with them. The rows here are the library's own paged window, and a
+ * five-hundred-song book you cannot find a song in is a list you scroll rather
+ * than read; it is also what keeps a `?q=` arriving in the URL from filtering the
+ * list with nothing on screen to explain why.
+ *
+ * And **no ordinals**, unlike a stored book's slots. A slot number is a promise
+ * about position, which is exactly what this book does not have: sorted by name
+ * today and by date tomorrow, there is no "number 4" to point at.
+ */
 export const READONLY_ENTRY_CAPABILITIES: ExplorerCapabilities = {
   ...ENTRY_CAPABILITIES,
-  // The virtual All songs book: nothing to arrange, so **sorting is the one
-  // thing it can be told** (CONTEXT.md §Songbook — read-only order).
+  canSearch: true,
   canSort: true,
+  hasOrdinals: false,
+  // A library fact, and the one the sort leans on: favourites-first orders by a
+  // star the list would otherwise never show (CONTEXT.md §Favorite).
+  canFavorite: true,
   canSelect: false,
   canRemove: false,
   canReorder: false,

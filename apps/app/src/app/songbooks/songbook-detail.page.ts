@@ -26,13 +26,7 @@ import {
   Tooltip,
   type IconName,
 } from '../primitives';
-import {
-  ActionBar,
-  DocumentTitle,
-  SplitPane,
-  UiStore,
-  Viewport,
-} from '../shared/layout';
+import { ActionBar, DocumentTitle, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
   ENTRY_CAPABILITIES,
@@ -57,6 +51,13 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
  * duplicate and delete go. You are picking songs here, not administering them —
  * renaming a song from inside a songbook edits the *library*, which is a
  * different job in a different module (CONTEXT.md §Song explorer).
+ *
+ * **The virtual All songs book is a single pane**, and the exception that proves
+ * the shape: there is nothing to add to it, so there is no library pane to pick
+ * from and no transfer column to cross. What is left is the book itself — the
+ * whole library, read-only, sorted and searched by the same controls the Songs
+ * module's list wears, because sorting is the one thing a book with no order of
+ * its own can be told (CONTEXT.md §Songbook).
  */
 @Component({
   selector: 'app-songbook-detail-page',
@@ -384,9 +385,19 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       </app-split-pane>
 
       <!-- **The same list component as pane A**, a third capability set:
-         numbered, removable, no search or sort (a stored book's order IS the
-         content; the virtual one may only be sorted). Written once because it
-         has two homes: pane B normally, pane A when the library pane is gone. -->
+         numbered and removable for a stored book, whose order IS its content and
+         so has nothing to search or sort; searchable and sortable for the virtual
+         one, which has no order of its own to protect and is therefore the one
+         book that CAN be told how to sort itself (CONTEXT.md §Songbook).
+
+         The sort controls hand back the same commands pane A's list uses,
+         because they mean the same thing: the axis, the direction and
+         favourites-first go into the URL, and syncQuery reads them back out into
+         the song store. For a stored book the pair is inert — that list offers
+         neither box nor select — so one set of bindings serves both.
+
+         Written once because it has two homes: pane B beside the library, and
+         pane A alone when there is no library pane (the virtual book). -->
       <ng-template #entryList>
         <app-song-explorer
           class="entries"
@@ -398,11 +409,15 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           [currentId]="presenter.currentSlot()"
           [insertAt]="previewIndex()"
           [emptyText]="entriesEmptyText()"
-          [sort]="presenter.entrySort()"
-          [dir]="presenter.entryDir()"
-          [isFavoritesFirst]="presenter.isEntryFavoritesFirst()"
-          (sortChange)="presenter.setEntrySort($event)"
-          (favoritesFirstChange)="presenter.setEntryFavoritesFirst($event)"
+          [query]="query()"
+          [sort]="sortKey()"
+          [dir]="presenter.effectiveDir(sortKey(), sortDir())"
+          [isFavoritesFirst]="isFavoritesFirst()"
+          (queryChange)="presenter.setQuery($event)"
+          (sortChange)="presenter.setSort($event)"
+          (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
+          (favorited)="presenter.toggleFavorite($event)"
+          (loadMore)="onEntriesEnd()"
           (selectToggled)="presenter.toggleSelectSlot($event)"
           (activated)="presenter.activateSlot($event)"
           (removed)="presenter.removeSlots($event)"
@@ -549,7 +564,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
 })
 export class SongbookDetailPage {
   protected readonly ui = inject(UiStore);
-  protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbookDetailPresenter);
   private readonly router = inject(Router);
 
@@ -605,19 +619,19 @@ export class SongbookDetailPage {
   protected readonly sortDir = computed(() => toExplorerSortDir(this.dir()));
   protected readonly isFavoritesFirst = computed(() => this.fav() === '1');
   /**
-   * **All songs loses its library pane when the screen is narrow.**
+   * **All songs has no library pane.**
    *
    * That pane exists to pick songs to add, and there is nothing to add them to:
-   * the virtual book takes no entries (CONTEXT.md §Songbook). On a wide screen
-   * it still earns its place as the library beside the list; on a phone it is
-   * half the screen spent on a pane whose every button is off.
+   * the virtual book takes no entries (CONTEXT.md §Songbook). It used to stay on
+   * a wide screen as "the library beside the list", which is the library twice —
+   * the same songs, in two orders, with the transfer column between them greyed
+   * out for good. So the virtual book is one pane: the whole library, read-only,
+   * in whatever order you have told it to take.
    *
    * Pane A is the one that goes, and `<app-split-pane>` drops pane B — so the
    * entries are mounted as pane A when this is the case. See the template.
    */
-  protected readonly hasTwoPanes = computed(
-    () => !(this.presenter.isVirtual() && this.viewport.isStacked()),
-  );
+  protected readonly hasTwoPanes = computed(() => !this.presenter.isVirtual());
 
   /** The Songbooks panel's capability set: identity/destructive actions off. */
   protected readonly capabilities = REDUCED_CAPABILITIES;
@@ -795,13 +809,29 @@ export class SongbookDetailPage {
     },
   ];
 
-  /** "All songs" is never empty for a reason the user can act on; a book you
-   * made is. Different facts, different sentences. */
+  /** "All songs" is empty for the library's reasons — an empty library, or a
+   * search that matched nothing — so it borrows the library's own sentences. A
+   * book you made is empty because you have not filled it yet. */
   protected readonly entriesEmptyText = computed(() =>
     this.presenter.isVirtual()
-      ? $localize`:@@songs.empty:No songs yet. Create one to get started.`
+      ? this.emptyText()
       : $localize`:@@entries.empty:No songs in this songbook yet.`,
   );
+
+  /**
+   * The entry list scrolled within a screenful of its end.
+   *
+   * Only the virtual book answers it: its rows are a window onto a paged query
+   * and there is always more library to read (PRD-INFRA §3). A stored book's
+   * slots are all in hand — its order is a stored array, not a page of one — so
+   * growing the library window on its behalf would fetch songs nothing is about
+   * to draw.
+   */
+  protected onEntriesEnd(): void {
+    if (this.presenter.isVirtual()) {
+      this.presenter.loadMore();
+    }
+  }
 
   constructor() {
     effect(() => {

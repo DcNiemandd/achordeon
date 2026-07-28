@@ -383,21 +383,36 @@ const ARM_MOVE_TOLERANCE = 8;
                  action with a tail of afterthoughts. Perform kept the primary
                  tint until it moved into the ⋯ (see the menu below).
 
-                 A read-only row has no record to open — the virtual All songs
-                 book, which is downloaded and previewed but never opened into an
-                 editable view (its order is chosen at download, not here). -->
-            @if (capabilities().canEdit && !row.isReadOnly) {
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="editRowLabel(row)"
-                [appTooltip]="EDIT"
-                [attr.data-testid]="'edit-' + row.id"
-                (click)="opened.emit(row.id)"
-              >
-                <app-icon name="edit" />
-              </button>
+                 A read-only row has no record to *edit*, but it still has
+                 something to look at — the virtual All songs book, which opens
+                 into a view of the library it stands for. So the same slot, the
+                 same output, a different verb: a pencil edits, a list opens. -->
+            @if (capabilities().canEdit) {
+              @if (row.isReadOnly) {
+                <button
+                  appButton
+                  type="button"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="viewRowLabel(row)"
+                  [appTooltip]="VIEW"
+                  [attr.data-testid]="'view-' + row.id"
+                  (click)="opened.emit(row.id)"
+                >
+                  <app-icon name="list" />
+                </button>
+              } @else {
+                <button
+                  appButton
+                  type="button"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="editRowLabel(row)"
+                  [appTooltip]="EDIT"
+                  [attr.data-testid]="'edit-' + row.id"
+                  (click)="opened.emit(row.id)"
+                >
+                  <app-icon name="edit" />
+                </button>
+              }
             }
             @if (
               capabilities().canRename && !row.isReadOnly && !isRenameInMenu()
@@ -1281,6 +1296,9 @@ export class SongExplorer {
   protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
   protected readonly PERFORM = $localize`:@@explorer.perform:Perform`;
   protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
+  /** What a read-only row offers instead of Edit: there is nothing to change in
+   * it, and everything to look at. */
+  protected readonly VIEW = $localize`:@@explorer.view:Open`;
   protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
   protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
   protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
@@ -1551,6 +1569,10 @@ export class SongExplorer {
     return $localize`:@@explorer.editRow:Edit ${row.name}:name:`;
   }
 
+  protected viewRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.viewRow:Open ${row.name}:name:`;
+  }
+
   protected renameRowLabel(row: SongRow): string {
     return $localize`:@@explorer.renameRow:Rename ${row.name}:name:`;
   }
@@ -1680,8 +1702,9 @@ export class SongExplorer {
   }
 
   protected onOpen(row: SongRow): void {
-    // A read-only row (All songs) has nothing to open — see the edit button.
-    if (this.capabilities().canEdit && !row.isReadOnly) {
+    // A read-only row opens too — see the row's button above, where the verb
+    // (edit or open) differs but the act does not.
+    if (this.capabilities().canEdit) {
       this.opened.emit(row.id);
     }
   }

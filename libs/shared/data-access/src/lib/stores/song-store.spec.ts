@@ -120,6 +120,47 @@ describe('SongStore', () => {
     expect(store.entities().map((s) => s.id)).toEqual(['b', 'a']);
   });
 
+  /**
+   * The window is a **prefix of a sorted query**, so a new sort is a new query:
+   * it has to start again at page one, not re-order the pages already in hand.
+   *
+   * This is what the virtual *All songs* book leans on. Its rows are this very
+   * window (there is no record to re-read), so telling that book to sort itself
+   * must throw the scrolled extent away and ask again — otherwise the first
+   * screenful would be the new order over the old *selection* of songs, which is
+   * the wrong fifty rows sorted correctly.
+   */
+  it('a sort change re-reads from page one, not over the scrolled window', async () => {
+    const seed = library(PAGE_LIMIT * 3);
+    const store = storeWith(seed);
+    await store.load();
+    await store.loadMore();
+    expect(store.live()).toHaveLength(PAGE_LIMIT * 2);
+
+    await store.setSort('name', 'desc');
+
+    // One page again, and it opens on the library's last name — the window was
+    // refetched, not reversed in place.
+    expect(store.live()).toHaveLength(PAGE_LIMIT);
+    expect(store.live()[0].id).toBe(seed[seed.length - 1].id);
+    expect(store.nextCursor()).not.toBeNull();
+  });
+
+  /** Favourites-first is a flag over the axis, not an axis of its own — both
+   * groups stay ordered by the sort the user chose (CONTEXT.md §Favorite). */
+  it('floats favourites over the sort, and re-reads to do it', async () => {
+    const store = storeWith([
+      song('a', { name: 'Alpha' }),
+      song('b', { name: 'Bravo' }),
+      song('z', { name: 'Zeta', favorite: true }),
+    ]);
+    await store.load();
+    expect(store.live().map((s) => s.id)).toEqual(['a', 'b', 'z']);
+
+    await store.setFavoritesFirst(true);
+    expect(store.live().map((s) => s.id)).toEqual(['z', 'a', 'b']);
+  });
+
   it('persists and reflects an upsert', async () => {
     const store = storeWith([song('a', { name: 'Alpha' })]);
     await store.load();

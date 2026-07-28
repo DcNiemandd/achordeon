@@ -129,28 +129,93 @@ test.describe('songbooks', () => {
   });
 
   // It looks like a book you made and is not one, so it says so out loud.
-  test('All songs explains itself, and cannot be opened', async ({ page }) => {
+  test('All songs explains itself, and opens read-only', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
     await page.getByTestId('hint-all-songs').click();
     await expect(page.getByRole('tooltip')).toContainText('library');
 
-    // It has no editable detail view — its order is chosen at download, and the
-    // library is browsed in the Songs module. A double click does not open it.
+    // It has no record to edit, so the row leads with Open rather than Edit —
+    // and a double click means the same thing.
+    await expect(page.getByTestId('edit-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('view-all-songs')).toBeVisible();
     await page.getByTestId('open-all-songs').dblclick();
-    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
-    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
+
+    await expect(page).toHaveURL(/\/songbooks\/all-songs/);
+    await expect(page.getByTestId('songbook-detail')).toBeVisible();
+    await expect(
+      page.getByTestId('entry-row').filter({ hasText: 'Wonderwall' }),
+    ).toHaveCount(1);
+    // One pane: there is nothing to add to it, so there is no library to pick
+    // from and no transfer column to cross.
+    await expect(page.getByTestId('songbook-add')).toHaveCount(0);
+    await expect(page.getByTestId('entry-tools')).toHaveCount(0);
   });
 
-  test('a link straight to All songs bounces back to the list', async ({
+  test('a link straight to All songs lands on the book itself', async ({
     page,
   }) => {
     await createSong(page, 'Wonderwall');
-    // An old bookmark, a hand-typed URL: there is no page to land on.
+    // A bookmark, a hand-typed URL: the virtual book is a place, like any other.
     await page.goto('songbooks/all-songs');
-    await expect(page).toHaveURL(/\/songbooks(\?.*)?$/);
-    await expect(page.getByTestId('songbook-detail')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/songbooks\/all-songs/);
+    await expect(page.getByTestId('songbook-detail')).toBeVisible();
+  });
+
+  /**
+   * The one thing a book with no order of its own can be told (CONTEXT.md
+   * §Songbook) — and by the very controls the Songs module's list wears, so the
+   * two are sorted the same ways.
+   */
+  test('All songs sorts by the same axes as the songs list', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Zulu');
+    await page.goto('songbooks/all-songs');
+
+    const rows = page.getByTestId('entry-row');
+    await expect(rows).toHaveCount(2);
+    // Name, A→Z by default.
+    await expect(rows.first()).toContainText('Alpha');
+
+    // The direction toggle turns the book around, and says so in the URL — the
+    // source of truth for sort, exactly as on /songs.
+    await page.getByTestId('explorer-sort-dir').click();
+    await expect(page).toHaveURL(/dir=desc/);
+    await expect(rows.first()).toContainText('Zulu');
+
+    // A different axis: Zulu was created last, and "created" means newest first.
+    await page.getByTestId('explorer-sort').selectOption('created');
+    await expect(page).toHaveURL(/sort=created/);
+    await expect(rows.first()).toContainText('Zulu');
+
+    // …and it survives a reload, because the choice lives in the address.
+    await page.reload();
+    await expect(page.getByTestId('entry-row').first()).toContainText('Zulu');
+
+    // Favourites first is a flag over the axis, not an axis of its own.
+    await page.getByTestId('explorer-favorites-first').click();
+    await expect(page).toHaveURL(/fav=1/);
+  });
+
+  /** Sorting is not reordering: the read-only book keeps every arranging tool
+   * off, whatever axis it is showing. */
+  test('All songs cannot be reordered, only sorted', async ({ page }) => {
+    await createSong(page, 'Wonderwall');
+    await page.goto('songbooks/all-songs');
+
+    const row = page.getByTestId('entry-row').first();
+    await expect(row).toBeVisible();
+    await row.hover();
+    // No handle to drag, no move buttons, no remove, no checkbox.
+    await expect(
+      page.getByTestId('entry-row').getByRole('checkbox'),
+    ).toHaveCount(0);
+    await expect(row.locator('[data-testid^="row-up-"]')).toHaveCount(0);
+    await expect(row.locator('[data-testid^="remove-"]')).toHaveCount(0);
+    await expect(row.locator('[data-testid^="drag-"]')).toHaveCount(0);
   });
 
   test('creates a songbook, names it, and it survives a reload', async ({
