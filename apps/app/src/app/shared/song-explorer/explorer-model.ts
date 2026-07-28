@@ -177,10 +177,12 @@ export interface ExplorerCapabilities {
   /**
    * Keep **duplicate** out of the `⋯` and on the row itself.
    *
-   * The songbook list's third action: copying a book is how you make next
-   * week's set out of last week's, so it is an everyday act there in a way that
-   * copying a song is not. Only meaningful alongside `usesRowMenu` — without a
-   * menu every action is already on the row.
+   * The third action in both libraries: copying a book is how you make next
+   * week's set out of last week's, and copying a song is how you try an
+   * arrangement without risking the one that works. Both are everyday acts on
+   * **one row**, which is the whole reason they are here and not in the page's
+   * bulk bar. Only meaningful alongside `usesRowMenu` — without a menu every
+   * action is already on the row.
    */
   readonly hasInlineDuplicate: boolean;
 }
@@ -205,7 +207,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canExport: true,
   canDropRemove: false,
   usesRowMenu: true,
-  hasInlineDuplicate: false,
+  hasInlineDuplicate: true,
 };
 
 /**

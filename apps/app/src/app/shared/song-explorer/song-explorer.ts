@@ -417,8 +417,10 @@ const ARM_MOVE_TOLERANCE = 8;
               </button>
             }
             <!-- Third, where copying is an everyday act (hasInlineDuplicate —
-                 the songbook list): next week's set is last week's, copied.
-                 Everywhere else it stays behind the ⋯ with the rest. -->
+                 both libraries): next week's set is last week's, copied, and a
+                 new arrangement is the old song, copied. It acts on **this
+                 row**, which is why it is on the row and not in the page's bulk
+                 bar. Everywhere else it stays behind the ⋯ with the rest. -->
             @if (
               capabilities().canDuplicate &&
               capabilities().hasInlineDuplicate &&

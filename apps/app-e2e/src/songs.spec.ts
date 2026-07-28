@@ -43,8 +43,8 @@ async function firstRun(page: Page): Promise<void> {
 }
 
 /**
- * Open a row's ⋯ menu — duplicate, download, export and delete moved behind it
- * (Epic 7). Edit and rename stay direct on the row.
+ * Open a row's ⋯ menu — download, export and delete moved behind it (Epic 7).
+ * Edit, rename and duplicate stay direct on the row.
  */
 async function openRowMenu(page: Page, id: string | null): Promise<void> {
   await page
@@ -264,15 +264,25 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toContainText('Wonderwall');
   });
 
+  // Duplicate is a **row** button, not a menu item and not a bulk action: it
+  // copies the one song it sits beside, so it is reachable without opening the ⋯
+  // and it is not offered in the page's action bar at all.
   test('duplicates a song into a second, independent row', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await openRowMenu(page, id);
+    await page.getByTestId('song-row').hover();
     await page.getByTestId(`duplicate-${id}`).click();
 
     await expect(page.getByTestId('song-row')).toHaveCount(2);
     await expect(page.getByTestId('song-row').nth(1)).toContainText('(copy)');
+
+    // …and it did not also stay behind the ⋯, which would offer the same act
+    // twice on one row.
+    await openRowMenu(page, id);
+    await expect(
+      page.getByTestId(`more-${id}-panel`).getByTestId(`duplicate-${id}`),
+    ).toHaveCount(0);
   });
 
   test('favorites a song, and the flag survives a reload', async ({ page }) => {

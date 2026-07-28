@@ -114,6 +114,10 @@ import {
               />
             </button>
 
+            <!-- Duplicate is deliberately NOT here: copying answers one song,
+                 so it lives on the row it copies (hasInlineDuplicate), where it
+                 is now a visible button rather than a trip through the ⋯. -->
+
             <!-- Download and Export sit with the bulk actions because they act
                  on the same subject: the ticked rows, or the song you are
                  looking at. They are enabled where the delete is not, because
@@ -131,22 +135,13 @@ import {
               <app-icon name="download" />
             </button>
 
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!hasTransferTarget() || presenter.isBusy()"
-              [attr.aria-label]="exportLabel()"
-              [appTooltip]="exportLabel()"
-              data-testid="songs-export"
-              (click)="presenter.exportSelection()"
-            >
-              <app-icon name="export" />
-            </button>
-
             <!-- Import takes no selection, so it is the one transfer control
                  that is never disabled. It opens the shared import panel's file
-                 picker; the panel owns the file input and the dialogs. -->
+                 picker; the panel owns the file input and the dialogs.
+
+                 **Before Export**, because that is the order the pair is used
+                 in: a file comes in before one goes out, and a library with
+                 nothing in it has nothing to export. -->
             <button
               appButton
               type="button"
@@ -163,6 +158,24 @@ import {
             <button
               appButton
               type="button"
+              [isIconOnly]="true"
+              [disabled]="!hasTransferTarget() || presenter.isBusy()"
+              [attr.aria-label]="exportLabel()"
+              [appTooltip]="exportLabel()"
+              data-testid="songs-export"
+              (click)="presenter.exportSelection()"
+            >
+              <app-icon name="export" />
+            </button>
+
+            <!-- Red, like the same act in the row's ⋯ menu. A destructive
+                 button that wears the neutral ghost tint in one place and the
+                 danger tone in another is asking to be pressed by mistake in
+                 whichever place looks safer. -->
+            <button
+              appButton
+              type="button"
+              variant="danger"
               [isIconOnly]="true"
               [disabled]="!hasSelection()"
               [attr.aria-label]="bulkDeleteLabel"
