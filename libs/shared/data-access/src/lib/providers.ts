@@ -12,7 +12,9 @@ import { TonalChordTheory } from './tonal-chord-theory/tonal-chord-theory';
 import { ACHORDEON_DB } from './stores/repositories';
 import { BootGate } from './persistence/boot-gate';
 import { bootstrap } from './persistence/gateway';
+import { applyGuideSong } from './persistence/guide-song';
 import { seedDatabase } from './persistence/seed';
+import { ParserService } from './parser/parser-service';
 import { SettingsStore } from './stores/settings-store';
 import { AuthService } from './auth/auth-service';
 import { SyncService } from './sync/sync-service';
@@ -61,29 +63,103 @@ export function provideAchordeonBoot(): EnvironmentProviders {
 }
 
 /**
- * Seed the starter library at boot **when the URL asks for it** (`?seed`).
+ * The opt-out, sticky in `localStorage` (same idiom as the chosen language).
  *
- * Opt-in on purpose. Auto-seeding every fresh database would resurrect the
- * samples for anyone who cleared them, and would replace the deliberate empty
- * state ("No songs yet") that the tests and a real first-run depend on. `?seed`
- * makes it a thing a developer does once — navigate to any route with the param —
- * rather than a behaviour the app has. `seedDatabase` is itself a no-op on a
- * non-empty library, so the lingering param never duplicates.
- *
- * An app initializer, so the rows exist before the first list query runs. It
- * awaits the seed — a handful of `bulkPut`s, a few milliseconds — so pane B is
- * never briefly empty on the boot that seeds.
+ * Sticky rather than a param that has to ride on every URL because a test that
+ * wants the empty state navigates many times after clearing the database, and each
+ * of those navigations is a full boot that would seed again. `?empty` sets it,
+ * `?seed` clears it — the two params are opposites, so asking for content is also
+ * how you stop asking for none.
  */
-export function provideSeedOnDemand(): EnvironmentProviders {
+const SEED_OFF_KEY = 'achordeon.seed';
+
+/**
+ * Give a first-time user something to look at, and keep it in their language.
+ *
+ * Three behaviours, one initializer, because they are one decision — *what a boot
+ * does about content it did not find*:
+ *
+ * - **A fresh database** gets the guide song: the `@@songs.tutorial` tour, in the
+ *   language the app booted in, and nothing else. A blank library teaches nothing
+ *   and renders nothing, and the render pane's auto-selection
+ *   (`SongsPresenter.autoSelect`) makes that one song the one on screen. `guide` is
+ *   passed in because the copy is `$localize`d and lives in the app
+ *   (PRD-UI-SHELL.md §Where the help text lives) — this library must not hold it —
+ *   and it is a factory so the message is read only on the boots that need it.
+ * - **`?seed`** still fills an empty library with the five-song demo set instead:
+ *   several songs, a songbook, a second column, a favourite. That is a developer's
+ *   and the e2e suite's affordance, and it is deliberately *not* what a real user
+ *   gets — a starter library of somebody else's songs is a chore to delete.
+ * - **`?empty`** suppresses both, for the tests that assert the real empty state
+ *   ("No songs yet") and for anyone who wants to see a first-run without content.
+ *
+ * `applyGuideSong` owns *when* it writes and re-language; the only thing decided
+ * here is which of the three a boot is.
+ *
+ * An app initializer, awaited, so the row exists before the first list query runs —
+ * pane B is never briefly empty on the boot that seeds. A refused boot writes
+ * nothing at all: the ingest gateway has left the database alone on purpose
+ * (ADR-0007) and the shell is about to demand an update, so seeding behind that
+ * prompt would be writing into a library we have just admitted we cannot read.
+ */
+export function provideAchordeonSeed(
+  guide: () => string,
+): EnvironmentProviders {
   return provideAppInitializer(async () => {
-    if (
-      typeof location === 'undefined' ||
-      !new URLSearchParams(location.search).has('seed')
-    ) {
+    const db = inject(ACHORDEON_DB);
+    const parser = inject(ParserService);
+    if (inject(BootGate).mustUpdate() || typeof location === 'undefined') {
       return;
     }
-    await seedDatabase(inject(ACHORDEON_DB));
+
+    const params = new URLSearchParams(location.search);
+    if (params.has('seed')) {
+      setSeedOff(false);
+      await seedDatabase(db);
+      return;
+    }
+    if (params.has('empty')) {
+      // The param decides this boot whether or not the write stuck: with storage
+      // blocked, `?empty` still has to mean empty.
+      setSeedOff(true);
+      return;
+    }
+    if (isSeedOff()) {
+      return;
+    }
+
+    const content = guide();
+    // Derived, not authored: `seed.ts` can hand-write its caches because its songs
+    // are one fixed English set, but the guide song's title is whatever this
+    // language's tour calls itself (PRD-DOMAIN-MODEL §Song — cache is derived).
+    const ast = parser.parse(content);
+    const title = ast.title ?? '';
+    await applyGuideSong(db, {
+      // The library label is the song's own title, so it needs no message of its
+      // own — "My first song" and "Moje první píseň" are already translated.
+      name: title,
+      content,
+      cache: { title, subtitle: ast.subtitle ?? '' },
+    });
   });
+}
+
+function isSeedOff(): boolean {
+  try {
+    return localStorage.getItem(SEED_OFF_KEY) === 'off';
+  } catch {
+    // Private mode, or storage blocked. Seeding is the default answer.
+    return false;
+  }
+}
+
+function setSeedOff(off: boolean): void {
+  try {
+    if (off) localStorage.setItem(SEED_OFF_KEY, 'off');
+    else localStorage.removeItem(SEED_OFF_KEY);
+  } catch {
+    // The param still governs this boot; only its stickiness is lost.
+  }
 }
 
 /**

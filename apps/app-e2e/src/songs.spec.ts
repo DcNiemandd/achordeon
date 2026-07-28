@@ -28,6 +28,20 @@ async function freshLibrary(page: Page): Promise<void> {
 }
 
 /**
+ * A genuinely first-ever boot: no database, and seeding **on**.
+ *
+ * The suite opts out of seeding for every test (`storageState` in
+ * playwright.config.ts) so that a fresh context means an empty library. Opting back
+ * in is what a real first-time user is, and only the first-run tests want it.
+ */
+async function firstRun(page: Page): Promise<void> {
+  await freshLibrary(page);
+  await page.evaluate(() => localStorage.removeItem('achordeon.seed'));
+  await page.reload();
+  await expect(page.getByTestId('song-row').first()).toBeVisible();
+}
+
+/**
  * Create a song, name it, and come back to the explorer — creating opens the
  * editor.
  *
@@ -142,8 +156,61 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(1);
   });
 
-  // Opt-in: `?seed` fills an empty library once; a plain boot stays empty, which
-  // is why every other test here still starts from the empty state.
+  // What a real first-time user meets. Every other test in the suite opts out of
+  // seeding (`storageState` in playwright.config.ts), so this is the one place the
+  // first-run path runs — and the empty-state test above is what the opt-out buys.
+  test('a first run lands one song, the guide, already showing in the render pane', async ({
+    page,
+  }) => {
+    await firstRun(page);
+
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+    await expect(page.getByTestId('song-row')).toContainText('My first song');
+    // Preselected: the pane next door is already drawing it, so the app opens on
+    // something rather than on a blank page with an instruction.
+    await expect(page.getByTestId('song-render')).toBeVisible();
+
+    // A reload is not a second first run.
+    await page.reload();
+    await expect(page.getByTestId('song-row')).toHaveCount(1);
+  });
+
+  // It is the same text a new song is born as, so it has to be as correct here:
+  // the whole language, and no warnings on sight.
+  test('the guide song holds the tutorial, and it parses cleanly', async ({
+    page,
+  }) => {
+    await firstRun(page);
+    const row = page.getByTestId('song-row');
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`edit-${id}`).click();
+
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+    const editor = page.getByTestId('editor');
+    await expect(editor).toContainText('[[C]]');
+    await expect(editor).toContainText('Softly:');
+    await expect(editor).toContainText('***both***');
+    await expect(editor).toContainText('R::');
+    await expect(editor.locator('.cm-lintRange-warning')).toHaveCount(0);
+  });
+
+  // A sample the user threw away stays thrown away — the guide song is stamped, so
+  // deleting it is a decision the next boot respects.
+  test('a deleted guide song does not come back', async ({ page }) => {
+    await firstRun(page);
+    const id = await page.getByTestId('song-row').getAttribute('data-song-id');
+    await openRowMenu(page, id);
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('delete-confirm').click();
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByTestId('explorer-empty')).toBeVisible();
+  });
+
+  // Opt-in: `?seed` fills an empty library with the demo set — several songs and a
+  // songbook, which is not what a first-time user gets.
   test('the ?seed param fills an empty library, and does not duplicate', async ({
     page,
   }) => {

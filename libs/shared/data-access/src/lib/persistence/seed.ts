@@ -1,7 +1,12 @@
 // Dev/demo seeding — Epic 4 follow-up
-// Spec: PRD-INFRASTRUCTURE.md §2 (this and the gateway are the only writers of
-// IndexedDB). Not part of the Snapshot and never synced — seed rows are ordinary
-// songs the moment they land, indistinguishable from ones you typed.
+// Spec: PRD-INFRASTRUCTURE.md §2 (this, the guide song and the gateway are the only
+// writers of IndexedDB). Not part of the Snapshot and never synced — seed rows are
+// ordinary songs the moment they land, indistinguishable from ones you typed.
+//
+// This is the `?seed` demo set, NOT what a first-time user gets: a real fresh
+// library gets the one localized guide song (`guide-song.ts`). What lives here is
+// several songs, a songbook and a favourite — the shape you need to exercise the
+// list, and the shape nobody wants handed to them as their own library.
 
 import type { Song, Songbook, SongSettings } from '@achordeon/shared/domain';
 import type { AchordeonDb } from './db';

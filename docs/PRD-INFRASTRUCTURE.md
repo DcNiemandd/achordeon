@@ -129,6 +129,28 @@ RxJS-flavoured) — stores refresh via async methods, keeping the no-RxJS rule.
   `deletedAt` tombstone. Deletes are soft (set `deletedAt`); rows are never
   physically removed.
 
+### What a fresh library contains [decided]
+
+A first-ever boot writes **one** song: the same syntax tour a new song is born as
+(`@@songs.tutorial`), in the language the app booted in. Nothing else — no sample
+library. A blank explorer renders nothing and teaches nothing, and a starter set of
+somebody else's songs is a chore to delete.
+
+- **Once, and only into an empty library.** `meta.guideSong` records which row it is
+  and the `updatedAt` last written to it; `songs.count()` includes tombstones, so
+  deleting it is a decision the next boot respects, and an existing library never
+  gains one.
+- **It follows the language while it is untouched.** `updatedAt !== ` the stamp means
+  the user has edited, renamed, favourited or restyled it — from then on it is theirs
+  and is never rewritten. Untouched, a language switch replaces its content, name and
+  cache (a normal `updatedAt` bump, so the change syncs). The stamp is a timestamp
+  rather than a hash of the seeded text because runtime `$localize` only exposes the
+  _active_ catalog — booted in English there is no Czech text to compare against.
+- **`?seed`** still fills an empty library with the dev/demo set instead (several
+  songs, a songbook, a favourite, a two-column render); **`?empty`** suppresses both
+  and sticks in `localStorage`, which is how the e2e suite keeps asserting the real
+  "No songs yet" screen.
+
 ### Paging from day one [requested]
 
 The store exposes a **paged/cursor interface** so the frontend can do **infinite
