@@ -199,7 +199,7 @@ export const DEFAULT_TUNING: RenderTuning = {
   },
   spacing: {
     lineLeadingFactor: 0, // PoC `line-height: 1em` — the font box is the pitch
-    interBlockGapFactor: 1.5, // PoC 24px between sections ÷ the 16px lyric slot
+    interBlockGapFactor: 0.8, // PoC 24px between sections ÷ the 16px lyric slot
     chordRowGapFactor: 0, // PoC chord row abuts its lyric
     columnGapEm: 1.0, // PoC relied on the CSS `columns` default gap, 1em
     gutterGapEm: 0.25, // PoC section `gap: 4px` between label and content
