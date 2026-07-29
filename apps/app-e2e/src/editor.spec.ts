@@ -167,6 +167,26 @@ test.describe('song editor', () => {
     await expect(page.getByTestId('editor')).toContainText('** Hello there');
   });
 
+  test('the title and subtitle buttons take their own marker back off', async ({
+    page,
+  }) => {
+    await type(page, 'Hello there');
+
+    // Pressing the kind the line already is means "it is not that after all".
+    await page.getByTestId('insert-title').click();
+    await expect(page.getByTestId('editor')).toContainText('* Hello there');
+    await page.getByTestId('insert-title').click();
+    await expect(page.getByTestId('editor')).toContainText('Hello there');
+    await expect(page.getByTestId('editor')).not.toContainText('* Hello there');
+
+    // Subtitle over a title converts — only the same kind unmakes it.
+    await page.getByTestId('insert-title').click();
+    await page.getByTestId('insert-subtitle').click();
+    await expect(page.getByTestId('editor')).toContainText('** Hello there');
+    await page.getByTestId('insert-subtitle').click();
+    await expect(page.getByTestId('editor')).not.toContainText('* Hello there');
+  });
+
   test('the label button opens an empty label and puts the caret in it', async ({
     page,
   }) => {
@@ -315,17 +335,16 @@ test.describe('song editor', () => {
     expect(focusedInEditor).toBe(true);
   });
 
-  test('pressing Title on a title line just goes to the end of it', async ({
-    page,
-  }) => {
+  test('pressing Title on a title line unmakes the title', async ({ page }) => {
     await type(page, '* My title');
     await page.keyboard.press('Home'); // caret to column 0
 
     await page.getByTestId('insert-title').click();
     await page.keyboard.insertText('!');
 
-    // No second marker, and the caret landed where you would write.
-    await expect(page.getByTestId('editor')).toContainText('* My title!');
+    // The marker is gone, and the caret stayed at the head of the words — which
+    // is where column 0 ends up once the two characters in front of it leave.
+    await expect(page.getByTestId('editor')).toContainText('!My title');
   });
 
   test('the block button breaks after the line, not at the cursor', async ({
