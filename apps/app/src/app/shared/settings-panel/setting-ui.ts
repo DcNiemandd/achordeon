@@ -2,7 +2,12 @@
 // Spec: PRD-UI-SHELL.md §4 (one panel, three homes), §5.2 (where help text lives)
 
 import { SETTINGS, SCOPES } from '@achordeon/shared/domain';
-import { tryParseAspectRatio } from '@achordeon/shared/render-core';
+import {
+  DEFAULT_TUNING,
+  resolveFontChoice,
+  tryParseAspectRatio,
+  type FontChoiceName,
+} from '@achordeon/shared/render-core';
 import { ASPECT_OPTION_GROUPS } from './aspect-options';
 
 export type Scope = (typeof SCOPES)[number];
@@ -67,6 +72,20 @@ export const GROUP_LABELS: Record<Group, string> = {
   chords: $localize`:@@settingGroup.chords:Chords`,
 };
 
+/**
+ * A line of text drawn the way the current value would draw it.
+ *
+ * A label can only *name* a face, and every name is a guess at what the letters
+ * look like — "Same as song" names nothing at all. The sample shows them.
+ */
+export interface Sample {
+  readonly text: string;
+  /** The family to fetch bytes for, spelled as the render catalog spells it. */
+  readonly family: string;
+  /** `family` plus its CSS fallbacks, for the style binding. */
+  readonly stack: string;
+}
+
 export interface SettingUi {
   readonly label: string;
   /** Shown by the `(?)` toggle tip — see the note below on why it lives here. */
@@ -86,6 +105,14 @@ export interface SettingUi {
    * the page, and the user would be the one to find out.
    */
   readonly validate?: (raw: string) => string | null;
+  /**
+   * The line to draw under this row's control, in the face its value selects —
+   * absent on every row whose value is not a font.
+   *
+   * A function of the value rather than a fixed string, because the whole point
+   * is that it changes with the choice.
+   */
+  readonly sample?: (value: string) => Sample;
 }
 
 /**
@@ -191,6 +218,27 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     // choosing between a serif and a handwritten one, and "Crimson Text" tells
     // them nothing they can act on. The family behind each is the render's
     // business (`resolveFontChoice`).
+    //
+    // Which leaves the labels doing the one thing no label does well: describing
+    // letterforms. "Handwritten" is a promise, "Same as song" is not even that —
+    // it names no face at all. So the row also draws a sample in the chosen face
+    // (see `Sample`), and the label is free to stay a plain-language name.
+    sample: (value) => {
+      // The catalog is asked, never copied: it is the same call the renderer
+      // makes, so the sample cannot end up showing a face the page won't use.
+      // `DEFAULT_TUNING` because `body` means "the song's own font" and the
+      // panel is a form — it has no song, and every song's body face is this
+      // one until a tuning override exists to say otherwise.
+      const font = resolveFontChoice(value as FontChoiceName, DEFAULT_TUNING);
+      return {
+        // Says what it is rather than standing in for the title, and short
+        // enough to survive a 300px dialog column without wrapping.
+        text: $localize`:@@titleFont.sample:Sample of font`,
+        family: font.family,
+        // Quoted: two of the four families have a space in the name.
+        stack: `'${font.family}', ${font.fallback}`,
+      };
+    },
     control: {
       kind: 'select',
       options: [

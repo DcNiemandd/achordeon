@@ -464,6 +464,7 @@
   "theme.system": "System",
   "titleFont.body": "Same as song",
   "titleFont.display": "Condensed",
+  "titleFont.sample": "Sample of font",
   "titleFont.script": "Handwritten",
   "titleFont.serif": "Serif",
   "update.available": "A new version of Achordeon is ready.",

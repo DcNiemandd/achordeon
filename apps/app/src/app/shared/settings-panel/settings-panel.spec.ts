@@ -2,6 +2,12 @@
 // Spec: docs/superpowers/specs/2026-07-27-aspect-ratio-devices-design.md
 
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { FontLoader } from '@achordeon/shared/data-access';
+import {
+  DEFAULT_TUNING,
+  FONT_CHOICES,
+  resolveFontChoice,
+} from '@achordeon/shared/render-core';
 import { ScreenShape } from '../layout';
 import { ASPECT_OPTION_GROUPS, MATCH_SCREEN } from './aspect-options';
 import { SettingsPanel } from './settings-panel';
@@ -15,6 +21,15 @@ describe('SettingsPanel', () => {
     }
   }
 
+  /** The real loader fetches; here we only care what it was asked for. */
+  class FakeFonts {
+    readonly asked: { families: readonly string[]; weights?: unknown }[] = [];
+    ensure(families: readonly string[], weights?: unknown): Promise<void> {
+      this.asked.push({ families, weights });
+      return Promise.resolve();
+    }
+  }
+
   let fixture: ComponentFixture<SettingsPanel>;
   let patches: Record<string, unknown>[];
 
@@ -22,7 +37,10 @@ describe('SettingsPanel', () => {
     FakeScreen.shape = shape;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [{ provide: ScreenShape, useClass: FakeScreen }],
+      providers: [
+        { provide: ScreenShape, useClass: FakeScreen },
+        { provide: FontLoader, useClass: FakeFonts },
+      ],
     });
     fixture = TestBed.createComponent(SettingsPanel);
     fixture.componentRef.setInput('scope', 'global');
@@ -123,6 +141,91 @@ describe('SettingsPanel', () => {
       expect(
         picker('aspectRatio').querySelectorAll('optgroup').length,
       ).toBeGreaterThan(0);
+    });
+  });
+
+  describe('font sample', () => {
+    /**
+     * Feed a value back in, the way the host does.
+     *
+     * The panel is a controlled form: picking an option emits a patch and
+     * changes nothing on screen until the owner of the value says so. So a test
+     * about what the panel *draws* sets the input, not the select.
+     */
+    function chosen(value: string): void {
+      fixture.componentRef.setInput('values', { titleFont: value });
+      fixture.detectChanges();
+    }
+
+    function sample(key: string): HTMLElement {
+      const el = fixture.nativeElement.querySelector(
+        `[data-testid="sample-${key}"]`,
+      );
+      expect(el).not.toBeNull();
+      return el as HTMLElement;
+    }
+
+    /**
+     * The face each choice is drawn in, asked of the catalog rather than named
+     * here — the same call `resolveFontChoice` makes for the page. A test that
+     * spelled "Caveat" out would pass while the sample showed a face the render
+     * had stopped using.
+     */
+    it.each(FONT_CHOICES)('draws %s in the face it selects', (choice) => {
+      mount();
+
+      chosen(choice);
+
+      const family = resolveFontChoice(choice, DEFAULT_TUNING).family;
+      expect(sample('titleFont').style.fontFamily).toContain(family);
+    });
+
+    it('shows the song\'s own face for "same as song"', () => {
+      // The reason the sample exists: that option names no font, so the label
+      // cannot say what it looks like and only the letters can.
+      mount();
+
+      chosen('body');
+
+      expect(sample('titleFont').style.fontFamily).toContain(
+        DEFAULT_TUNING.fontFamily,
+      );
+    });
+
+    it('asks the loader for the face it is about to draw', () => {
+      // On the Settings page nothing has rendered a song, so the bytes for a
+      // title face have never been fetched — a sample that did not ask for them
+      // would quietly draw in the CSS fallback.
+      mount();
+
+      chosen('script');
+
+      const fonts = TestBed.inject(FontLoader) as unknown as FakeFonts;
+      const last = fonts.asked[fonts.asked.length - 1];
+      expect(last.families).toContain(
+        resolveFontChoice('script', DEFAULT_TUNING).family,
+      );
+      // One line at one weight — not a quarter-megabyte of bold nobody sees.
+      expect(last.weights).toEqual(['normal']);
+    });
+
+    it('is hidden from screen readers', () => {
+      // It repeats the chosen option's own words; what it adds is the shape of
+      // the letters, which is not something that can be read out.
+      mount();
+
+      expect(sample('titleFont').getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('is only on rows whose value is a font', () => {
+      mount();
+
+      const samples = fixture.nativeElement.querySelectorAll(
+        '[data-testid^="sample-"]',
+      );
+      expect(
+        [...samples].map((el: Element) => el.getAttribute('data-testid')),
+      ).toEqual(['sample-titleFont']);
     });
   });
 
