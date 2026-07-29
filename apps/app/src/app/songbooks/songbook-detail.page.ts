@@ -201,8 +201,26 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               (closed)="presenter.closeSettings()"
             >
               <section class="fields">
-                <h3 class="fields-title">{{ titlePageHeading }}</h3>
-                <p class="fields-help">{{ titlePageHelp }}</p>
+                <!-- The help is a (?) hint beside the heading, not a paragraph
+                     under it: the fields say what they are, and the one thing
+                     worth adding — that this is the book's OWN title, not a
+                     song's — is a tip for whoever wonders, not a line everyone
+                     re-reads. -->
+                <div class="fields-head">
+                  <h3 class="fields-title">{{ titlePageHeading }}</h3>
+                  <button
+                    appButton
+                    type="button"
+                    class="hint"
+                    [isIconOnly]="true"
+                    [appTooltip]="titlePageHelp"
+                    appTooltipTrigger="help"
+                    [attr.aria-label]="titlePageHelp"
+                    data-testid="songbook-titlePage-hint"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
 
                 @for (field of titleFields; track field.key) {
                   <label class="field">
@@ -454,6 +472,13 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       border-block-end: 1px solid var(--border);
     }
 
+    /* The heading and its (?) hint, on one line. */
+    .fields-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
     .fields-title {
       margin: 0;
       font-size: var(--text-xs);
@@ -463,9 +488,11 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       letter-spacing: 0.06em;
     }
 
-    .fields-help {
-      margin: 0;
-      font-size: var(--text-xs);
+    .hint {
+      --icon-size: 14px;
+      block-size: 24px;
+      min-inline-size: 24px;
+      flex: none;
       color: var(--text-faint);
     }
 

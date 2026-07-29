@@ -318,6 +318,103 @@ export class SongbooksPresenter {
     }
   }
 
+  // --- Settings (Epic 6) -----------------------------------------------
+  //
+  // The book's own scope of the render cascade (chord colour, size) and its
+  // title-page fields, in a dialog opened from the row's ⋯ — the very panel the
+  // builder mounts, on a book you have not opened. The virtual All songs has no
+  // record, and so nothing to configure; its row carries no settings action.
+
+  /** The book whose settings dialog is open, or null. */
+  private readonly _settingsId = signal<string | null>(null);
+  readonly isSettingsOpen = computed(() => this._settingsId() !== null);
+
+  /**
+   * The book the dialog is bound to, read **live from the window** so an edit
+   * written below flows straight back into the open dialog rather than through a
+   * snapshot that would go stale the moment it is saved.
+   */
+  private readonly settingsBook = computed(() => {
+    const id = this._settingsId();
+    return id === null ? undefined : this.find(id);
+  });
+
+  readonly settingsName = computed(() => this.settingsBook()?.name ?? '');
+
+  /** Title-page fields — authored via GUI, never parsed (ADR-0001). */
+  readonly titleFields = computed(() => ({
+    title: this.settingsBook()?.title ?? '',
+    subtitle: this.settingsBook()?.subtitle ?? '',
+    author: this.settingsBook()?.author ?? '',
+  }));
+
+  /** This scope's sparse overrides (ADR-0006), for the settings panel. */
+  readonly songbookSettings = computed(
+    () => (this.settingsBook()?.settings ?? {}) as Record<string, unknown>,
+  );
+
+  /**
+   * What the songbook scope inherits: the Global defaults, the only thing below
+   * it in the cascade (ADR-0006). The panel needs them for the "inherited" badge
+   * and as the value it draws while nothing is overridden.
+   */
+  readonly inheritedSettings = computed(
+    () => this.settings.global() as Record<string, unknown>,
+  );
+
+  /** The read-only All songs never reaches here (its row has no settings
+   * action), but guard anyway — there is no record to open a dialog on. */
+  openSettings(id: string): void {
+    if (this.find(id)) {
+      this._settingsId.set(id);
+    }
+  }
+
+  closeSettings(): void {
+    this._settingsId.set(null);
+  }
+
+  async setTitleField(
+    field: 'title' | 'subtitle' | 'author',
+    value: string,
+  ): Promise<void> {
+    await this.patchSettingsBook({ [field]: value });
+  }
+
+  /**
+   * A sparse patch from the settings panel — the songbook theme that re-styles
+   * every song performed in this book (CONTEXT.md §Render settings). `undefined`
+   * for a key resets it to inherited, which at this scope is a **deletion**, not
+   * a write of the global value: overrides are stored sparse so the cascade can
+   * keep resolving through them (ADR-0006).
+   */
+  async patchSettings(patch: Record<string, unknown>): Promise<void> {
+    const book = this.settingsBook();
+    if (!book) {
+      return;
+    }
+    const settings: Record<string, unknown> = { ...book.settings };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        delete settings[key];
+      } else {
+        settings[key] = value;
+      }
+    }
+    await this.patchSettingsBook({
+      settings: settings as Songbook['settings'],
+    });
+  }
+
+  private async patchSettingsBook(changes: Partial<Songbook>): Promise<void> {
+    const book = this.settingsBook();
+    if (!book) {
+      return;
+    }
+    await this.store.upsert({ ...book, ...changes, updatedAt: Date.now() });
+    await this.store.refresh();
+  }
+
   // --- Transfer (Epic 7) -----------------------------------------------
   //
   // Download lives on the **row's own menu** (Epic 7 follow-up), with the other

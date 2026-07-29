@@ -12,7 +12,7 @@ import {
   computed,
   inject,
 } from '@angular/core';
-import { Button, Dialog, Icon, Tooltip } from '../primitives';
+import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
@@ -20,6 +20,7 @@ import {
   UiStore,
   Viewport,
 } from '../shared/layout';
+import { SettingsPanel } from '../shared/settings-panel';
 import {
   SONGBOOK_LIST_CAPABILITIES,
   SongExplorer,
@@ -43,8 +44,10 @@ import {
     SongRender,
     SongbookDownloadDialog,
     ImportPanel,
+    SettingsPanel,
     Button,
     Dialog,
+    Field,
     Icon,
     Tooltip,
   ],
@@ -104,6 +107,7 @@ import {
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (downloaded)="presenter.openDownloadRow($event)"
+          (configured)="presenter.openSettings($event)"
           (deleted)="presenter.requestDelete($event[0])"
         />
 
@@ -178,6 +182,56 @@ import {
       </app-dialog>
     }
 
+    <!-- The picked book's settings, opened from its row's ⋯ — the same fields
+         and the same panel the builder mounts, on a book you have not opened.
+         Its structure mirrors the builder's dialog (songbook-detail.page); the
+         presenter it binds to is this list's. -->
+    @if (presenter.isSettingsOpen()) {
+      <app-dialog
+        [title]="settingsLabel"
+        data-testid="songbook-settings-dialog"
+        (closed)="presenter.closeSettings()"
+      >
+        <section class="fields">
+          <div class="fields-head">
+            <h3 class="fields-title">{{ titlePageHeading }}</h3>
+            <button
+              appButton
+              type="button"
+              class="fields-hint"
+              [isIconOnly]="true"
+              [appTooltip]="titlePageHelp"
+              appTooltipTrigger="help"
+              [attr.aria-label]="titlePageHelp"
+              data-testid="songbook-titlePage-hint"
+            >
+              <app-icon name="help" />
+            </button>
+          </div>
+
+          @for (field of titleFieldDefs; track field.key) {
+            <label class="field">
+              <span class="field-label">{{ field.label }}</span>
+              <input
+                appField
+                type="text"
+                [value]="presenter.titleFields()[field.key]"
+                [attr.data-testid]="'songbook-' + field.key"
+                (change)="setField(field.key, $event)"
+              />
+            </label>
+          }
+        </section>
+
+        <app-settings-panel
+          scope="songbook"
+          [values]="presenter.songbookSettings()"
+          [inherited]="presenter.inheritedSettings()"
+          (changed)="presenter.patchSettings($event)"
+        />
+      </app-dialog>
+    }
+
     <!-- The file input and the import/error dialogs, shared with Songs. The
          Import button above opens its picker. -->
     <app-import-panel
@@ -231,6 +285,49 @@ import {
     .keeps {
       color: var(--text-muted);
     }
+
+    /* The settings dialog's title-page fields — mirrors the builder's dialog. */
+    .fields {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: 0 var(--space-3) var(--space-3);
+      border-block-end: 1px solid var(--border);
+    }
+
+    /* The heading and its (?) hint, on one line. */
+    .fields-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .fields-title {
+      margin: 0;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .fields-hint {
+      --icon-size: 14px;
+      block-size: 24px;
+      min-inline-size: 24px;
+      flex: none;
+      color: var(--text-faint);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .field-label {
+      font-size: var(--text-sm);
+    }
   `,
 })
 export class SongbooksPage {
@@ -248,6 +345,36 @@ export class SongbooksPage {
   protected readonly keepsSongsText = $localize`:@@songbooks.delete.keeps:The songs themselves stay in your library.`;
   protected readonly cancelLabel = $localize`:@@songbooks.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songbooks.deleteAction:Delete`;
+
+  // The settings dialog's strings — the SAME message ids the builder's dialog
+  // uses (songbook-detail.page), so the two never drift and the translation is
+  // authored once.
+  protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
+  protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
+  protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
+
+  /** The book's own metadata — authored here, never parsed (ADR-0001). */
+  protected readonly titleFieldDefs = [
+    {
+      key: 'title' as const,
+      label: $localize`:@@songbooks.field.title:Title`,
+    },
+    {
+      key: 'subtitle' as const,
+      label: $localize`:@@songbooks.field.subtitle:Subtitle`,
+    },
+    {
+      key: 'author' as const,
+      label: $localize`:@@songbooks.field.author:Author`,
+    },
+  ];
+
+  protected setField(key: 'title' | 'subtitle' | 'author', event: Event): void {
+    void this.presenter.setTitleField(
+      key,
+      (event.target as HTMLInputElement).value,
+    );
+  }
 
   protected deleteQuestion(pending: PendingSongbookDelete): string {
     return $localize`:@@songbooks.delete.question:“${pending.name}:name:” and its ${pending.count}:count: entries will be removed.`;
