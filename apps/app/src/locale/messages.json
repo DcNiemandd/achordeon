@@ -164,6 +164,7 @@
     "nav.stage": "Stage",
     "nav.trigger": "{$module} — open navigation",
     "premium.note": "Premium feature available for testing",
+    "premium.note.paid": "Premium feature",
     "rail.label": "Main",
     "scale.auto": "Auto",
     "setting.aspectRatio": "Aspect ratio",
