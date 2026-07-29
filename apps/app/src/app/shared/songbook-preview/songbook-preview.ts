@@ -108,21 +108,21 @@ const WHEEL_STEP_PX = 90;
       outline: none;
     }
 
-    /* Under the paper. Three columns so the page number sits dead-centre of the
-       whole bar whatever the zoom controls' width: empty | range | zoom. */
+    /* Under the paper, kept low. Three columns so the page number sits dead-centre
+       of the whole bar whatever the zoom controls' width: empty | range | zoom. */
     .bar {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
       gap: var(--space-2);
-      padding: var(--space-2) var(--space-3);
+      padding: 2px var(--space-2);
       border-block-start: 1px solid var(--border);
     }
 
     .range {
       grid-column: 2;
       text-align: center;
-      font-size: var(--text-sm);
+      font-size: var(--text-xs);
       color: var(--text-faint);
       font-variant-numeric: tabular-nums;
     }
@@ -133,6 +133,13 @@ const WHEEL_STEP_PX = 90;
       display: flex;
       align-items: center;
       gap: var(--space-1);
+    }
+
+    /* Compact icon buttons, so the bar is a slim strip rather than a toolbar. */
+    .zoom button {
+      --icon-size: 15px;
+      block-size: 26px;
+      min-inline-size: 26px;
     }
 
     /* The desk the pages sit on. A definite-size box (container units below
@@ -169,8 +176,12 @@ const WHEEL_STEP_PX = 90;
       box-shadow: var(--shadow-2);
       /* The tallest page must fit the desk: cap each page's height to the desk and
          let the aspect ratio drive the width down to match. */
-      max-block-size: calc(100cqb - var(--space-4) * 0);
+      max-block-size: 100cqb;
       overflow: hidden;
+      /* A query container so the folio can size itself off the page's own width
+         (cqi) — it shrinks with the page as columns are added, the way the SVG's
+         own text does; a fixed size would loom huge on a contact-sheet page. */
+      container-type: inline-size;
     }
 
     .content {
@@ -181,10 +192,11 @@ const WHEEL_STEP_PX = 90;
       inset: 0;
     }
 
-    /* A page number sits where the PDF prints it — the corner, a margin in. */
+    /* A page number sits where the PDF prints it — the corner, a margin in — and
+       scales with the page (see the container above). */
     .folio {
       position: absolute;
-      font-size: var(--text-xs);
+      font-size: clamp(4px, 2.6cqi, 12px);
       color: #1a1a1a;
       font-variant-numeric: tabular-nums;
     }
