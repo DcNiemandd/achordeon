@@ -6,6 +6,7 @@ export * from './lib/migration';
 export * from './lib/import-plan';
 export * from './lib/lobby';
 export * from './lib/title-page';
+export * from './lib/songbook-print';
 export * from './lib/theory';
 export * from './lib/ast';
 // The chord/label sub-grammar recognisers. Public because the editor's highlight

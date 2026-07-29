@@ -10,6 +10,7 @@ import type {
   AllSongsOrder,
   Song,
   Songbook,
+  SongbookPrint,
   SongCache,
   User,
 } from '@achordeon/shared/domain';
@@ -42,6 +43,10 @@ export interface SongbookRow {
   subtitle: string;
   author: string;
   settings: SongbookSettings;
+  // The book-bound print settings. Nullable rather than defaulted, so "never
+  // said" stays distinct from "chose the standard layout" — the client maps null
+  // to undefined and resolves the default at the point of use.
+  print: SongbookPrint | null;
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
@@ -111,6 +116,7 @@ export function songbookToRow(book: Songbook): SongbookRow {
     subtitle: book.subtitle,
     author: book.author,
     settings: book.settings,
+    print: book.print ?? null,
     created_at: book.createdAt,
     updated_at: book.updatedAt,
     deleted_at: book.deletedAt,
@@ -147,6 +153,10 @@ export function rowToSongbook(
     subtitle: row.subtitle,
     author: row.author,
     settings: row.settings ?? {},
+    // `?? undefined` (not the default): an absent value must stay absent through
+    // the LWW merge, so it resolves to the default at use rather than looking
+    // like a book that deliberately chose it.
+    print: row.print ?? undefined,
     entries,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

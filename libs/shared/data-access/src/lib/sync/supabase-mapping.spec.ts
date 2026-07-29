@@ -70,6 +70,33 @@ describe('songbook row mapping', () => {
     const back = rowToSongbook(songbookToRow(book), [...shuffled, foreign]);
     expect(back).toEqual(book);
   });
+
+  // The book-bound print settings travel with the book, so they have to survive
+  // the trip like any other field on the row.
+  it('carries the book-bound print settings both ways', () => {
+    const book = songbook({
+      print: {
+        hasTitlePage: false,
+        titlePageVariant: 'classic',
+        hasSummary: true,
+        summaryNumberPlace: 'before',
+        hasPageNumbers: true,
+        pageNumberPosition: 'before-title',
+      },
+    });
+    expect(songbookToRow(book).print).toEqual(book.print);
+    expect(rowToSongbook(songbookToRow(book), songbookEntryRows(book))).toEqual(
+      book,
+    );
+  });
+
+  // "Never said" and "chose the standard layout" are different facts: an absent
+  // value maps to null on the row and back to undefined, so it resolves to the
+  // default at use rather than winning an LWW merge as somebody's choice.
+  it('leaves unset print settings unset rather than inventing a default', () => {
+    expect(songbookToRow(songbook()).print).toBeNull();
+    expect(rowToSongbook(songbookToRow(songbook()), []).print).toBeUndefined();
+  });
 });
 
 describe('profile ⇄ user mapping', () => {
