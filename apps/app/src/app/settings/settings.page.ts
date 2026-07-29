@@ -537,6 +537,57 @@ const MIN_PASSWORD = 8;
                 <span class="check-label">{{ splitSharedOnLabel }}</span>
               </label>
             </div>
+
+            <!-- The extra usage statistics. The always-on half asks for nothing
+                 and so has no control here; this switch governs only what has to
+                 be read off the device. The hint links to the docs page rather
+                 than restating it — that page is the one place the fields are
+                 listed, and it carries the same switch. -->
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ statsLabel }}</span>
+                <button
+                  appButton
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="statsHelp"
+                  appTooltipTrigger="help"
+                  [attr.aria-label]="aboutStats"
+                  data-testid="help-stats"
+                >
+                  <app-icon name="help" />
+                </button>
+              </div>
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  class="check"
+                  [checked]="
+                    presenter.isStatsAllowed() &&
+                    !presenter.isStatsRefusedByBrowser
+                  "
+                  [disabled]="presenter.isStatsRefusedByBrowser"
+                  data-testid="stats"
+                  (change)="onStats($event)"
+                />
+                <span class="check-label">{{ statsOnLabel }}</span>
+              </label>
+              @if (presenter.isStatsRefusedByBrowser) {
+                <p class="hint">{{ statsRefused }}</p>
+              }
+              <div class="actions">
+                <a
+                  appButton
+                  variant="secondary"
+                  [href]="privacyUrl()"
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="stats-privacy"
+                  >{{ statsPrivacyButton }}</a
+                >
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1472,6 +1523,16 @@ export class SettingsPage {
   protected onSplitShared(event: Event): void {
     this.presenter.setSplitShared((event.target as HTMLInputElement).checked);
   }
+  protected readonly statsLabel = $localize`:@@settings.stats:Usage statistics`;
+  protected readonly statsOnLabel = $localize`:@@settings.stats.on:Share anonymous usage statistics`;
+  protected readonly statsHelp = $localize`:@@settings.stats.help:Off: which pages get opened is still counted, without anything read from this device.`;
+  protected readonly aboutStats = $localize`:@@settings.stats.about:About usage statistics`;
+  protected readonly statsRefused = $localize`:@@settings.stats.refused:Your browser asks sites not to track you, so this stays off.`;
+  protected readonly statsPrivacyButton = $localize`:@@settings.stats.privacyButton:What is counted`;
+
+  protected onStats(event: Event): void {
+    this.presenter.setStatsAllowed((event.target as HTMLInputElement).checked);
+  }
   protected readonly syncHeading = $localize`:@@settings.sync:Sync`;
   protected readonly autoSyncLabel = $localize`:@@settings.autoSync:Automatic sync`;
   protected readonly autoSyncOnLabel = $localize`:@@settings.autoSync.on:Sync automatically`;
@@ -1650,6 +1711,15 @@ export class SettingsPage {
     const language = this.presenter.language();
     const path =
       language === SOURCE_LANGUAGE ? 'docs/intro' : `${language}/docs/intro`;
+    return new URL(path, new URL('../', document.baseURI)).href;
+  });
+  /** The statistics page, by the same reasoning as `docsUrl` above. */
+  protected readonly privacyUrl = computed(() => {
+    const language = this.presenter.language();
+    const path =
+      language === SOURCE_LANGUAGE
+        ? 'docs/privacy'
+        : `${language}/docs/privacy`;
     return new URL(path, new URL('../', document.baseURI)).href;
   });
   protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;

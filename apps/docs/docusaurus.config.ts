@@ -24,6 +24,19 @@ const appLink = /^([a-z]+:)?\/\//i.test(rawAppLink)
 
 const repoUrl = 'https://github.com/dcniemandd/achordeon';
 
+// Where the usage beacon points (docs/privacy.mdx). `/count` under this origin
+// answers a GET with a 1x1 GIF, so counting needs no third-party script here at
+// all — `src/clientModules/stats.ts` sends an Image and forgets it. Unset means
+// no counting: the client module gets '' and returns early.
+const rawGoatcounter = process.env.GOATCOUNTER_URL || '';
+const goatcounterUrl =
+  rawGoatcounter === ''
+    ? ''
+    : new URL(
+        'count',
+        rawGoatcounter.endsWith('/') ? rawGoatcounter : `${rawGoatcounter}/`,
+      ).href;
+
 const baseUrl = process.env.DOCS_BASE_URL || '/';
 
 // `docusaurus start` vs `docusaurus build` — the CLI sets NODE_ENV before it
@@ -151,7 +164,11 @@ const config: Config = {
   // Where the Angular app is, for the landing page and `<AppLink>` in .mdx (the
   // navbar/footer read `appLink` directly). One source, so a domain or base-path
   // move is the DOCS_URL/APP_LINK envs in the deploy workflow and nothing else.
-  customFields: { appLink },
+  // `goatcounterUrl` rides along for the same reason: the client module needs it
+  // at runtime, and this is how a build-time env reaches the browser.
+  customFields: { appLink, goatcounterUrl },
+
+  clientModules: ['./src/clientModules/stats.ts'],
 
   organizationName: 'dcniemandd',
   projectName: 'achordeon',

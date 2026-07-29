@@ -11,25 +11,25 @@ yourself.
 
 ## What is counted
 
-Every visit, in the docs and in the app, sends four things:
+Every visit, in the docs and in the app, is one request that looks like this:
 
-```json
-{
-  "site": "docs",
-  "path": "/docs/privacy",
-  "locale": "en",
-  "referrer_host": "google.com"
-}
+```
+GET /count?p=/docs/privacy&r=google.com
 ```
 
-- **site** — these docs, or the app
-- **path** — which page. Song and songbook ids are stripped out first
-- **locale** — EN or CS
-- **referrer_host** — the domain that linked you here, never the full address
+- **p** — which page. Song and songbook ids are stripped out first, so
+  `/songs/<id>` is counted as `/songs/:id` and every library folds into one row.
+  The prefix says whether it was the docs or the app, and which language
+- **r** — the domain that linked you here, never the full address. Our own
+  domain counts as nothing, so moving around inside Achordeon reports no source
 
-Those get added up, so what comes out is "40 visits to the syntax page today".
-There is no visitor id, which means three visits by you and one visit each by
-three other people look exactly the same.
+That is the whole request, and no script runs to make it: the answer is a 1×1
+image. The counts get added up, so what comes out is "40 visits to the syntax
+page today". There is no visitor id, which means three visits by you and one
+visit each by three other people look exactly the same.
+
+The counting is done by [GoatCounter](https://www.goatcounter.com), on servers
+in the EU.
 
 :::note[Why there is nothing to consent to]
 Putting anything on your device, or reading anything off it, needs your
@@ -47,9 +47,13 @@ fingerprint — so no permission is needed and no bar appears.
 
 ## Extra statistics
 
-Off unless you turn it on. It adds your browser, operating system and screen
-size to the count above — the three things that tell us which devices are worth
-fixing first. Still no ip address, still no visitor id.
+Off unless you turn it on. It adds one field to the request above, `s` — your
+screen size — which is what tells us whether the render settings are being used
+on phones or on desktops. Still no ip address, still no visitor id.
+
+It is separate for one reason: everything above is something the browser told us
+in the act of asking for a page, while the screen size has to be read off your
+device, and reading your device is the part that needs your say-so.
 
 <StatsToggle />
 

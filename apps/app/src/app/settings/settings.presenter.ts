@@ -13,6 +13,7 @@ import {
 } from '@achordeon/shared/data-access';
 import {
   Localization,
+  Stats,
   TierGuard,
   UiStore,
   WarnUnsynced,
@@ -73,9 +74,20 @@ export class SettingsPresenter {
    */
   private readonly unload = inject(WarnUnsynced);
 
+  /**
+   * The extra usage statistics (docs/privacy.mdx). Device-local like the shell's
+   * own preferences, and deliberately NOT in SettingsStore: syncing a consent to
+   * the cloud would carry a decision made on one device onto another, where it
+   * was never given.
+   */
+  private readonly stats = inject(Stats);
+
   readonly theme = this.store.theme;
   readonly language = this.store.language;
   readonly isSplitShared = this.ui.isSplitShared;
+  readonly isStatsAllowed = this.stats.isAllowed;
+  /** The browser refused for the reader; the row says so and stands down. */
+  readonly isStatsRefusedByBrowser = this.stats.isRefusedByBrowser;
 
   // --- Account & sync (Epic 10) --------------------------------------------
   readonly authStatus = this.auth.status;
@@ -378,6 +390,11 @@ export class SettingsPresenter {
     // No current scope: the settings page has no splitter of its own to adopt a
     // ratio from, so linking falls back to the shared value already stored.
     this.ui.setSplitShared(isShared);
+  }
+
+  /** Allow (or stop) the extra statistics. Takes effect on the next navigation. */
+  setStatsAllowed(isAllowed: boolean): void {
+    this.stats.allow(isAllowed);
   }
 
   /** Dump the whole library to a file (#11). */
