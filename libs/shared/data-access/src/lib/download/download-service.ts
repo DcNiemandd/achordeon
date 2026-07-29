@@ -40,6 +40,7 @@ import {
 } from './page-geometry';
 import { createPdf, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
+import { planSongbook } from './songbook-plan';
 import {
   layoutSummary,
   type MeasureText,
@@ -344,6 +345,14 @@ export class DownloadService {
       : undefined;
     const summaryPages = summary?.pages ?? 0;
 
+    // The one definition of the page sequence and its numbering, shared with the
+    // on-screen preview so the two cannot disagree on which sheet is page 7.
+    const plan = planSongbook({
+      hasTitlePage: opts.hasTitlePage,
+      summaryPages,
+      songCount: rendered.length,
+    });
+
     // The title page is a *render*, not drawn text: it obeys the songbook's own
     // fonts and colours, which is what makes it the book's title page rather
     // than a header the exporter invented. This is what replaces the plain-text
@@ -366,7 +375,7 @@ export class DownloadService {
      * physical sheet index and the printed number therefore differ by exactly
      * this, and every link below converts.
      */
-    const frontMatter = (opts.hasTitlePage ? 1 : 0) + summaryPages;
+    const frontMatter = plan.frontMatter;
 
     if (summary && summary.pages > 0) {
       this.drawSummary(doc, summary, page, frontMatter, isFirst);

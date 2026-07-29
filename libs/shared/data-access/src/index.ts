@@ -16,6 +16,7 @@ export * from './lib/persistence/guide-song';
 export * from './lib/persistence/snapshot-blob';
 export * from './lib/download/page-geometry';
 export * from './lib/download/summary-layout';
+export * from './lib/download/songbook-plan';
 export * from './lib/download/raster';
 export * from './lib/download/download-service';
 export * from './lib/transfer/file-io';
