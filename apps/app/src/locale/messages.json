@@ -99,6 +99,8 @@
     "explorer.clear": "Clear the selection",
     "explorer.clearCount": "Clear ({$count})",
     "explorer.clearSearch": "Clear search",
+    "explorer.configure": "Settings",
+    "explorer.configureRow": "Settings for {$name}",
     "explorer.delete": "Delete",
     "explorer.deleteRow": "Delete {$name}",
     "explorer.dir.asc": "Ascending",

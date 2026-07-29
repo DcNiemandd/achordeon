@@ -170,6 +170,15 @@ export interface ExplorerCapabilities {
    */
   readonly canDownload: boolean;
   /**
+   * Configure this row — the songbook's own scope of the render cascade plus
+   * its title-page fields (CONTEXT.md §Render settings). Only the songbook list
+   * has it: a song carries no such scope, and the builder configures the book it
+   * has open from the action bar instead. A secondary action, so it rides in the
+   * `⋯` menu with the rest; off for the read-only All songs, which has no record
+   * to configure.
+   */
+  readonly canConfigure: boolean;
+  /**
    * Fold the secondary row actions (perform, duplicate, download, delete)
    * behind a `⋯` menu, keeping the everyday ones in reach. True where a row
    * carries many actions and few of them are everyday.
@@ -209,6 +218,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
+  canConfigure: false,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,
@@ -235,6 +245,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
+  canConfigure: false,
   canDropRemove: true,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -264,6 +275,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
+  canConfigure: false,
   canDropRemove: false,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -298,6 +310,9 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
+  // The one mount that configures: a settings item in the ⋯ opens the book's
+  // own scope of the cascade and its title-page fields.
+  canConfigure: true,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,

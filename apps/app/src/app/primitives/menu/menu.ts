@@ -31,6 +31,7 @@ import {
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { Button } from '../button/button';
 import { Icon } from '../icon/icon';
+import { Tooltip } from '../tooltip/tooltip';
 
 /**
  * One command in the popup. A plain button that closes the menu when pressed —
@@ -67,7 +68,14 @@ export class MenuItem {
 @Component({
   selector: 'app-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkConnectedOverlay, CdkOverlayOrigin, CdkTrapFocus, Button, Icon],
+  imports: [
+    CdkConnectedOverlay,
+    CdkOverlayOrigin,
+    CdkTrapFocus,
+    Button,
+    Icon,
+    Tooltip,
+  ],
   // On the document, not the panel: the panel is not focusable, so a keydown
   // bound to it would never fire once focus moves onto an item. Escape has to
   // work from wherever focus is.
@@ -80,6 +88,7 @@ export class MenuItem {
       cdkOverlayOrigin
       #origin="cdkOverlayOrigin"
       [attr.aria-label]="label()"
+      [appTooltip]="tooltip() || label()"
       [attr.aria-expanded]="isOpen()"
       aria-haspopup="menu"
       [attr.data-testid]="testid()"
@@ -172,6 +181,13 @@ export class MenuItem {
 export class Menu {
   /** The trigger's accessible name — it shows only `⋯`, so this is all it says. */
   readonly label = input.required<string>();
+  /**
+   * The tooltip on hover, when it should differ from the accessible name. The
+   * `aria-label` names the row it acts on ("More actions for Wonderwall"); a
+   * pointer reads the tip beside that row, so it wants only the act ("More
+   * actions"). Falls back to `label` when a caller has nothing shorter to say.
+   */
+  readonly tooltip = input('');
   readonly testid = input<string | null>(null);
 
   /** Open/closed, for a host that must react — the explorer keeps the row's

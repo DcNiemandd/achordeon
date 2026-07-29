@@ -17,7 +17,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  inject,
   input,
   linkedSignal,
   output,
@@ -70,6 +72,20 @@ const DRAG_START_DELAY = { touch: 250, mouse: 0 };
  * arm cue is called off — the CDK cancels its own delayed drag the same way, so
  * a false "picked up" tick on a scroll never fires. */
 const ARM_MOVE_TOLERANCE = 8;
+
+/**
+ * Below this width the list is **narrow** and folds its foldable row actions
+ * (currently just rename) into the `⋯` menu — a container query on the list
+ * itself, not the viewport, so the fold answers the room *this* list has rather
+ * than the size of the window. The songbook builder mounts two of these side by
+ * side, and either can be the cramped one.
+ *
+ * A `ResizeObserver` rather than a CSS `@container`, because the fold moves an
+ * action into the `⋯` popover — which the CDK mounts in an overlay outside this
+ * element — so a container query scoped here could never reach the item it needs
+ * to reveal. The observer feeds a signal the template branches on instead.
+ */
+const NARROW_WIDTH = 480;
 
 /**
  * The rich Song list: search, sort, multi-select, row actions
@@ -490,22 +506,24 @@ const ARM_MOVE_TOLERANCE = 8;
                 <app-icon name="transferOut" />
               </button>
             }
-            <!-- The secondary actions — perform, duplicate, download, delete.
-                 Two ways to wear them, chosen per mount (usesRowMenu):
+            <!-- The secondary actions — perform, settings, duplicate, download,
+                 delete. Two ways to wear them, and **the list's width chooses**:
 
-                 - Menu: the everyday actions stay in reach and the rest fold
-                   behind one dots button, because a row that lays seven icons
-                   out is a strip you aim within rather than read.
-                 - Laid out: for a mount whose secondary actions are few enough
-                   to read as buttons.
+                 - Menu, only while the list is narrow: below the breakpoint a row
+                   that lays seven icons out is a strip you aim within rather than
+                   read, so the rest fold behind one dots button.
+                 - Laid out, once there is room: above the breakpoint every icon
+                   is unfolded and the ⋯ disappears — the whole point of the fold
+                   was the missing room, so it comes back the moment the room does.
 
                  **…and laid out anyway when there is only one of them**, even
-                 where the mount asked for a menu. A ⋯ concealing a single item
-                 is a click that buys a click: it hides nothing worth hiding and
-                 costs a guess about what is behind it. The count is the whole
-                 justification for the menu, so it is also the condition. -->
+                 while narrow. A ⋯ concealing a single item is a click that buys a
+                 click: it hides nothing worth hiding and costs a guess about what
+                 is behind it. -->
             @if (secondaryActionCount(row); as actionCount) {
-              @if (capabilities().usesRowMenu && actionCount > 1) {
+              @if (
+                capabilities().usesRowMenu && isNarrow() && actionCount > 1
+              ) {
                 <!-- Inlined, not an ng-template outlet: a MenuItem finds its
                      enclosing Menu by injector, and an embedded view's injector
                      follows where the template was *declared* (here), not where
@@ -514,12 +532,14 @@ const ARM_MOVE_TOLERANCE = 8;
                      open backdrop then eats the next click. -->
                 <app-menu
                   [label]="moreRowLabel(row)"
+                  [tooltip]="MORE"
                   [testid]="'more-' + row.id"
                   (openChange)="onMenuOpen(row.id, $event)"
                 >
-                  <!-- Rename folds in here on a phone (isRenameInMenu), where the
-                       inline strip has no room for it; on a wider screen it is a
-                       direct row button and never appears twice. -->
+                  <!-- Rename folds in here while the list is narrow
+                       (isRenameInMenu), where the inline strip has no room for
+                       it; in a roomier list it is a direct row button and never
+                       appears twice. -->
                   @if (
                     isRenameInMenu() &&
                     capabilities().canRename &&
@@ -581,6 +601,19 @@ const ARM_MOVE_TOLERANCE = 8;
                       {{ DUPLICATE }}
                     </button>
                   }
+                  <!-- The book's own settings — its scope of the render cascade
+                       and its title-page fields. Never on the read-only All
+                       songs, which has no record to configure. -->
+                  @if (capabilities().canConfigure && !row.isReadOnly) {
+                    <button
+                      appMenuItem
+                      [attr.data-testid]="'settings-' + row.id"
+                      (chosen)="configured.emit(row.id)"
+                    >
+                      <app-icon name="settings" />
+                      {{ CONFIGURE }}
+                    </button>
+                  }
                   @if (capabilities().canDelete && !row.isReadOnly) {
                     <button
                       appMenuItem
@@ -624,9 +657,9 @@ const ARM_MOVE_TOLERANCE = 8;
          secondaryActionCount answers for both, so an action missing here would
          leave a row with a group that renders nothing. -->
     <ng-template #directActions let-row="row">
-      <!-- Rename only in the case the menu carries it (a phone). On a wider
-           screen the inline strip above already has it, and it must not appear
-           twice. -->
+      <!-- Rename only in the case the menu carries it (a narrow list). In a
+           roomier list the inline strip above already has it, and it must not
+           appear twice. -->
       @if (isRenameInMenu() && capabilities().canRename && !row.isReadOnly) {
         <button
           appButton
@@ -684,6 +717,19 @@ const ARM_MOVE_TOLERANCE = 8;
           (click)="duplicated.emit(row.id)"
         >
           <app-icon name="duplicate" />
+        </button>
+      }
+      @if (capabilities().canConfigure && !row.isReadOnly) {
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [attr.aria-label]="configureRowLabel(row)"
+          [appTooltip]="CONFIGURE"
+          [attr.data-testid]="'settings-' + row.id"
+          (click)="configured.emit(row.id)"
+        >
+          <app-icon name="settings" />
         </button>
       }
       @if (capabilities().canDelete && !row.isReadOnly) {
@@ -1097,18 +1143,38 @@ export class SongExplorer {
   readonly isFavoritesFirst = input(false);
 
   /**
-   * The page is on a phone. Passed in rather than injected, so the list stays a
-   * controlled component (rows in, intents out): on a narrow screen a menu-mount
-   * (the Songs module) also folds **rename** behind the `⋯`, keeping the row to
-   * one inline action plus the menu instead of a strip that runs off the edge.
+   * This list is narrower than `NARROW_WIDTH` right now — driven by a
+   * `ResizeObserver` on the host (see the constructor), so it is the list's own
+   * width that decides, not the viewport's. It used to be an `isCompact` input
+   * the page fed from the viewport breakpoint; a list can be cramped in a wide
+   * window (the builder's two panes) and roomy in a narrow one, and only its own
+   * box knows which.
    */
-  readonly isCompact = input(false);
+  protected readonly isNarrow = signal(false);
 
-  /** Rename lives in the `⋯` menu on a phone, where an inline strip does not fit
-   * — only where the row already has a menu (`usesRowMenu`). */
+  /** Rename lives in the `⋯` menu while the list is narrow, where an inline
+   * strip does not fit — only where the row already has a menu (`usesRowMenu`). */
   protected readonly isRenameInMenu = computed(
-    () => this.isCompact() && this.capabilities().usesRowMenu,
+    () => this.isNarrow() && this.capabilities().usesRowMenu,
   );
+
+  constructor() {
+    // Watch the list's own width and keep `isNarrow` in step with it. Guarded
+    // because `ResizeObserver` is absent in jsdom (the unit tests) and any
+    // non-browser host — there the list simply stays roomy, which is the honest
+    // default when nothing can measure it.
+    if (typeof ResizeObserver === 'function') {
+      const host = inject(ElementRef).nativeElement as HTMLElement;
+      const observer = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width ?? 0;
+        // 0 while the element is unattached — not "infinitely narrow"; leave it
+        // roomy until it has a real box.
+        this.isNarrow.set(width > 0 && width < NARROW_WIDTH);
+      });
+      observer.observe(host);
+      inject(DestroyRef).onDestroy(() => observer.disconnect());
+    }
+  }
 
   /**
    * Where an add would land, drawn as a line between rows. `null` while nothing
@@ -1154,6 +1220,9 @@ export class SongExplorer {
    * data for a computer, which the page's dialog asks about. One output, since
    * the list only says *which row*; which file is a question for the dialog. */
   readonly downloaded = output<string>();
+  /** Configure this row — open the songbook's settings (the songbook list only).
+   * The list names the book; the dialog is the page's business. */
+  readonly configured = output<string>();
   /** Move **one row**, named by id — never the selection (see the template). */
   readonly moved = output<RowMoveRequest>();
   /** A row was dropped **onto this list** — from it or from the other one. */
@@ -1292,6 +1361,7 @@ export class SongExplorer {
   protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
   protected readonly DELETE = $localize`:@@explorer.delete:Delete`;
   protected readonly DOWNLOAD = $localize`:@@explorer.download:Download`;
+  protected readonly CONFIGURE = $localize`:@@explorer.configure:Settings`;
   protected readonly MORE = $localize`:@@explorer.more:More actions`;
   protected readonly REMOVE_DROP = $localize`:@@explorer.removeDrop:Drop to remove from the songbook`;
 
@@ -1576,6 +1646,10 @@ export class SongExplorer {
     return $localize`:@@explorer.downloadRow:Download ${row.name}:name:`;
   }
 
+  protected configureRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.configureRow:Settings for ${row.name}:name:`;
+  }
+
   protected moreRowLabel(row: SongRow): string {
     return $localize`:@@explorer.moreRow:More actions for ${row.name}:name:`;
   }
@@ -1609,10 +1683,12 @@ export class SongExplorer {
     if (caps.canPerform && !row.isEmpty) count++;
     if (caps.canDownload) count++;
     if (row.isReadOnly) return count;
-    // On a phone the strip has no room for rename, so it folds in with these.
+    // While the list is narrow the strip has no room for rename, so it folds in
+    // with these.
     if (this.isRenameInMenu() && caps.canRename) count++;
     // Not when the row wears it directly — it must not be counted twice.
     if (caps.canDuplicate && !caps.hasInlineDuplicate) count++;
+    if (caps.canConfigure) count++;
     if (caps.canDelete) count++;
     return count;
   }

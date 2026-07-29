@@ -99,6 +99,8 @@
     "explorer.clear": "Zrušit výběr",
     "explorer.clearCount": "Zrušit výběr ({$count})",
     "explorer.clearSearch": "Vymazat hledání",
+    "explorer.configure": "Nastavení",
+    "explorer.configureRow": "Nastavení pro „{$name}“",
     "explorer.delete": "Smazat",
     "explorer.deleteRow": "Smazat „{$name}“",
     "explorer.dir.asc": "Vzestupně",
