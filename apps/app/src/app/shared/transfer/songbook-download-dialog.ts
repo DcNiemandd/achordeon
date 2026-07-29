@@ -22,34 +22,24 @@ import {
   output,
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
+import { SongbookPrintFields } from '../songbook-print-fields';
 import {
   DATA_FORMAT,
+  DEFAULT_SONGBOOK_CHOICE,
+  toSongbookPrint,
   type DownloadProgress,
-  type PageNumberPlace,
   type PageSizeChoice,
   type SongbookChoiceFormat,
   type SongbookPdfChoice,
   type SongOrder,
   type SongOrderAxis,
   type SongOrderDir,
-  type SummaryNumberPlace,
-  type TitlePageVariant,
 } from './transfer-model';
-import { DEFAULT_SONGBOOK_CHOICE } from './transfer-model';
-
-/** The title-page layouts the dialog offers. Only `classic` renders today; the
- * rest are declared so the choice is real and land later — marked below so the
- * user is not misled into thinking a stub already works. */
-interface VariantOption {
-  readonly value: TitlePageVariant;
-  readonly label: string;
-  readonly isReady: boolean;
-}
 
 @Component({
   selector: 'app-songbook-download-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Dialog],
+  imports: [Button, Dialog, SongbookPrintFields],
   template: `
     <app-dialog
       [title]="title()"
@@ -117,105 +107,22 @@ interface VariantOption {
               (change)="patch({ marginMm: number($event) })"
             />
           </label>
-
-          <label class="row is-toggle">
-            <input
-              type="checkbox"
-              [checked]="choice().hasTitlePage"
-              data-testid="pdf-title-page"
-              (change)="patch({ hasTitlePage: checked($event) })"
-            />
-            <span class="name">{{ titlePageLabel }}</span>
-          </label>
-
-          <!-- The layout only matters while there is a title page. A stub for
-               now: only "Classic" renders, the rest say so and land later. -->
-          @if (choice().hasTitlePage) {
-            <label class="row">
-              <span class="name">{{ variantLabel }}</span>
-              <select
-                class="control"
-                [value]="choice().titlePageVariant"
-                data-testid="pdf-title-variant"
-                (change)="patch({ titlePageVariant: variant($event) })"
-              >
-                @for (option of variants; track option.value) {
-                  <option [value]="option.value" [disabled]="!option.isReady">
-                    {{ option.label }}
-                  </option>
-                }
-              </select>
-            </label>
-          }
-
-          <label class="row is-toggle">
-            <input
-              type="checkbox"
-              [checked]="choice().hasPageNumbers"
-              data-testid="pdf-page-numbers"
-              (change)="patch({ hasPageNumbers: checked($event) })"
-            />
-            <span class="name">{{ pageNumbersLabel }}</span>
-          </label>
-
-          <!-- The position only exists while the numbers do: an enabled control
-               for something that is switched off is a question with no answer. -->
-          @if (choice().hasPageNumbers) {
-            <label class="row">
-              <span class="name">{{ positionLabel }}</span>
-              <select
-                class="control"
-                [value]="choice().pageNumberPosition"
-                data-testid="pdf-number-position"
-                (change)="patch({ pageNumberPosition: place($event) })"
-              >
-                <option value="bottom-center">{{ bottomCenterLabel }}</option>
-                <option value="bottom-left">{{ bottomLeftLabel }}</option>
-                <option value="bottom-right">{{ bottomRightLabel }}</option>
-                <option value="top-center">{{ topCenterLabel }}</option>
-                <option value="top-left">{{ topLeftLabel }}</option>
-                <option value="top-right">{{ topRightLabel }}</option>
-                <!-- Not a spot on the paper: the number joins the song's
-                     heading instead, which is what a reader says out loud and
-                     what survives the page being copied or re-bound. -->
-                <option value="before-title">{{ beforeSongTitleLabel }}</option>
-              </select>
-            </label>
-          }
         }
 
-        <!-- Summary is front matter for either *render*: the PDF's contents
-             page, or the ZIP's 00-summary.png. So it stays out of the paper
-             gate — but not out of the data one, since a JSON has no front
-             matter to put it on. -->
+        <!-- The book's own print structure — title page, contents, page numbers.
+             The SAME control the songbook settings dialog mounts, so the two can
+             never drift: both read and write the one SongbookPrint on the record.
+             A ZIP has no page numbers and no single title sheet, so those are
+             hidden for it; the summary shows for either render (the PDF's contents
+             page, the ZIP's 00-summary.png) but not for the data file. -->
         @if (!isData()) {
-          <label class="row is-toggle">
-            <input
-              type="checkbox"
-              [checked]="choice().hasSummary"
-              data-testid="pdf-summary"
-              (change)="patch({ hasSummary: checked($event) })"
-            />
-            <span class="name">{{ summaryLabel }}</span>
-          </label>
-        }
-
-        <!-- Which side of the title the contents page carries its number on.
-             The PDF's summary only: the image ZIP's contents page is a render
-             with a numbering of its own, so there is nothing here to choose. -->
-        @if (choice().hasSummary && choice().format === 'pdf') {
-          <label class="row">
-            <span class="name">{{ summaryNumberLabel }}</span>
-            <select
-              class="control"
-              [value]="choice().summaryNumberPlace"
-              data-testid="pdf-summary-number"
-              (change)="patch({ summaryNumberPlace: summaryPlace($event) })"
-            >
-              <option value="after">{{ afterTitleLabel }}</option>
-              <option value="before">{{ beforeTitleLabel }}</option>
-            </select>
-          </label>
+          <app-songbook-print-fields
+            [print]="bookPrint()"
+            [showTitlePage]="choice().format === 'pdf'"
+            [showPageNumbers]="choice().format === 'pdf'"
+            [showSummaryNumber]="choice().format === 'pdf'"
+            (changed)="patch($event)"
+          />
         }
 
         <!-- Song order — **All songs only**, and only where something is being
@@ -410,6 +317,10 @@ export class SongbookDownloadDialog {
     () => this.choice().format === DATA_FORMAT,
   );
 
+  /** The book-bound half the shared print control reads; edits come back through
+   * `patch`, which merges them into the one `choice`. */
+  protected readonly bookPrint = computed(() => toSongbookPrint(this.choice()));
+
   protected readonly title = computed(
     () => $localize`:@@songbookDownload.title:Download “${this.name()}:name:”`,
   );
@@ -437,18 +348,6 @@ export class SongbookDownloadDialog {
 
   protected size(event: Event): PageSizeChoice {
     return this.value(event) as PageSizeChoice;
-  }
-
-  protected place(event: Event): PageNumberPlace {
-    return this.value(event) as PageNumberPlace;
-  }
-
-  protected summaryPlace(event: Event): SummaryNumberPlace {
-    return this.value(event) as SummaryNumberPlace;
-  }
-
-  protected variant(event: Event): TitlePageVariant {
-    return this.value(event) as TitlePageVariant;
   }
 
   protected axis(event: Event): SongOrderAxis {
@@ -481,13 +380,6 @@ export class SongbookDownloadDialog {
   protected readonly portraitLabel = $localize`:@@songbookDownload.portrait:Portrait`;
   protected readonly landscapeLabel = $localize`:@@songbookDownload.landscape:Landscape`;
   protected readonly marginLabel = $localize`:@@songbookDownload.margin:Margin (mm)`;
-  protected readonly titlePageLabel = $localize`:@@songbookDownload.titlePage:Title page`;
-  protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
-  protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
-  protected readonly summaryNumberLabel = $localize`:@@songbookDownload.summaryNumber:Page number`;
-  protected readonly afterTitleLabel = $localize`:@@songbookDownload.afterTitle:After the title`;
-  protected readonly beforeTitleLabel = $localize`:@@songbookDownload.beforeTitle:Before the title`;
-  protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
   protected readonly orderLabel = $localize`:@@songbookDownload.order:Song order`;
   protected readonly byTitleLabel = $localize`:@@songbookDownload.order.title:Title`;
   protected readonly byNameLabel = $localize`:@@songbookDownload.order.name:Library name`;
@@ -497,41 +389,6 @@ export class SongbookDownloadDialog {
   protected readonly ascLabel = $localize`:@@songbookDownload.asc:Ascending`;
   protected readonly descLabel = $localize`:@@songbookDownload.desc:Descending`;
   protected readonly favoritesFirstLabel = $localize`:@@songbookDownload.favoritesFirst:Favorites first`;
-  protected readonly positionLabel = $localize`:@@songbookDownload.position:Number position`;
-  protected readonly bottomCenterLabel = $localize`:@@songbookDownload.bottomCenter:Bottom, centred`;
-  protected readonly bottomLeftLabel = $localize`:@@songbookDownload.bottomLeft:Bottom left`;
-  protected readonly bottomRightLabel = $localize`:@@songbookDownload.bottomRight:Bottom right`;
-  protected readonly topCenterLabel = $localize`:@@songbookDownload.topCenter:Top, centred`;
-  protected readonly topLeftLabel = $localize`:@@songbookDownload.topLeft:Top left`;
-  protected readonly topRightLabel = $localize`:@@songbookDownload.topRight:Top right`;
-  protected readonly beforeSongTitleLabel = $localize`:@@songbookDownload.beforeSongTitle:Before the song title`;
-
-  // Only `classic` renders today; the rest are named so the choice is real and
-  // land later. The "(soon)" is on the label so a screen-reader user hears it,
-  // and the option is disabled so it cannot be picked meanwhile.
-  private readonly soon = $localize`:@@songbookDownload.soon:(soon)`;
-  protected readonly variants: readonly VariantOption[] = [
-    {
-      value: 'classic',
-      label: $localize`:@@songbookDownload.variant.classic:Classic`,
-      isReady: true,
-    },
-    {
-      value: 'centered',
-      label: `${$localize`:@@songbookDownload.variant.centered:Centered`} ${this.soon}`,
-      isReady: false,
-    },
-    {
-      value: 'banner',
-      label: `${$localize`:@@songbookDownload.variant.banner:Banner`} ${this.soon}`,
-      isReady: false,
-    },
-    {
-      value: 'minimal',
-      label: `${$localize`:@@songbookDownload.variant.minimal:Minimal`} ${this.soon}`,
-      isReady: false,
-    },
-  ];
   protected readonly fitNote = $localize`:@@songbookDownload.fitNote:Each song keeps its own shape and is scaled to fit the page.`;
   /** The ZIP names its files in book order, so a viewer or a printer keeps the
    * songs in the sequence you arranged them. */

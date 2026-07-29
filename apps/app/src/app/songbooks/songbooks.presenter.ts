@@ -14,8 +14,10 @@ import {
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
+  resolveSongbookPrint,
   type ImportPlan,
   type Songbook,
+  type SongbookPrint,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
 import {
@@ -343,6 +345,21 @@ export class SongbooksPresenter {
   readonly songbookSettings = computed(
     () => (this.settingsBook()?.settings ?? {}) as Record<string, unknown>,
   );
+
+  /**
+   * The book's print structure, defaults filled in, for the shared print control.
+   * The SAME `SongbookPrint` the download dialog reads and writes, so setting a
+   * summary here shows it there — and reflows the preview, since the effect above
+   * tracks this book's record.
+   */
+  readonly songbookPrint = computed(() =>
+    resolveSongbookPrint(this.settingsBook()?.print),
+  );
+
+  /** Write the book-bound print structure from the settings dialog. */
+  async setPrint(print: SongbookPrint): Promise<void> {
+    await this.patchSettingsBook({ print });
+  }
 
   /**
    * What the songbook scope inherits: the Global defaults, the only thing below

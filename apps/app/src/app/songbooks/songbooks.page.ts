@@ -26,6 +26,7 @@ import {
   SongExplorer,
 } from '../shared/song-explorer';
 import { SongbookPreview } from '../shared/songbook-preview';
+import { SongbookPrintFields } from '../shared/songbook-print-fields';
 import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
@@ -42,6 +43,7 @@ import {
     SplitPane,
     SongExplorer,
     SongbookPreview,
+    SongbookPrintFields,
     SongbookDownloadDialog,
     ImportPanel,
     SettingsPanel,
@@ -219,6 +221,17 @@ import {
           }
         </section>
 
+        <!-- The book's print structure — the SAME control the download dialog
+             mounts, on the same SongbookPrint on the record. Set a summary here
+             and the download dialog opens with it, and the preview reflows. -->
+        <section class="fields">
+          <h3 class="fields-title">{{ printHeading }}</h3>
+          <app-songbook-print-fields
+            [print]="presenter.songbookPrint()"
+            (changed)="presenter.setPrint($event)"
+          />
+        </section>
+
         <app-settings-panel
           scope="songbook"
           [values]="presenter.songbookSettings()"
@@ -344,6 +357,7 @@ export class SongbooksPage {
   protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
+  protected readonly printHeading = $localize`:@@songbooks.print:Print`;
 
   /** The book's own metadata — authored here, never parsed (ADR-0001). */
   protected readonly titleFieldDefs = [

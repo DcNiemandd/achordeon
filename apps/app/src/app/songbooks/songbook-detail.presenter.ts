@@ -13,7 +13,13 @@ import {
   SongbookStore,
   SyncService,
 } from '@achordeon/shared/data-access';
-import type { Song, Songbook, Uuid } from '@achordeon/shared/domain';
+import {
+  resolveSongbookPrint,
+  type Song,
+  type Songbook,
+  type SongbookPrint,
+  type Uuid,
+} from '@achordeon/shared/domain';
 import {
   RowSelection,
   type ExplorerSort,
@@ -550,6 +556,17 @@ export class SongbookDetailPresenter {
   readonly songbookSettings = computed(
     () => (this._book()?.settings ?? {}) as Record<string, unknown>,
   );
+
+  /** The book's print structure, defaults filled in — the same SongbookPrint the
+   * download dialog reads and writes, mounted through the shared control. */
+  readonly songbookPrint = computed(() =>
+    resolveSongbookPrint(this._book()?.print),
+  );
+
+  /** Write the book-bound print structure from the settings dialog. */
+  async setPrint(print: SongbookPrint): Promise<void> {
+    await this.patchBook({ print });
+  }
 
   /**
    * What this scope inherits: the Global defaults, which are the only thing

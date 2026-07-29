@@ -27,6 +27,7 @@ import {
 } from '../primitives';
 import { ActionBar, DocumentTitle, SplitPane, UiStore } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { SongbookPrintFields } from '../shared/songbook-print-fields';
 import {
   ENTRY_CAPABILITIES,
   REDUCED_CAPABILITIES,
@@ -68,6 +69,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     SongExplorer,
     SelectionStatus,
     SettingsPanel,
+    SongbookPrintFields,
     SongbookDownloadDialog,
     Button,
     Dialog,
@@ -234,6 +236,16 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                     />
                   </label>
                 }
+              </section>
+
+              <!-- The book's print structure — the SAME control the download
+                   dialog mounts, on the same SongbookPrint on the record. -->
+              <section class="fields">
+                <h3 class="fields-title">{{ printHeading }}</h3>
+                <app-songbook-print-fields
+                  [print]="presenter.songbookPrint()"
+                  (changed)="presenter.setPrint($event)"
+                />
               </section>
 
               <!-- The SAME panel the Settings page and the song editor mount, at
@@ -607,6 +619,7 @@ export class SongbookDetailPage {
   protected readonly downloadLabel = $localize`:@@songbooks.download:Download this songbook`;
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
+  protected readonly printHeading = $localize`:@@songbooks.print:Print`;
 
   /** The songbook's own metadata — authored here, never parsed (ADR-0001). */
   protected readonly titleFields = [
