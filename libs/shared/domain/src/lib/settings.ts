@@ -47,7 +47,7 @@ export const SETTINGS = {
     scopes: ['song'],
   },
   padding: {
-    default: 0.5 as number,
+    default: 1.25 as number,
     scopes: ['song'],
   }, // white border inside the render box, in em (× the base font size). Inset —
   // the aspect ratio stays user-owned. The songbook's print margin ADDS to this
