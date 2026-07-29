@@ -48,6 +48,13 @@ if (r.verbatim.length) {
   );
   for (const raw of r.verbatim) console.log(`  • [${raw}]`);
 }
+if (r.labels.length) {
+  console.log(
+    '\nLabels, exactly as they will PRINT (the delimiter colon is consumed, so a',
+  );
+  console.log('sheet showing "R:" has to be written `R::`):');
+  for (const l of r.labels) console.log(`  • ${l}`);
+}
 if (r.chordRows) {
   console.log(
     `\nRows of chords with no words (chords render in the line, at lyric size): ${r.chordRows}`,

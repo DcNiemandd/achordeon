@@ -94,6 +94,14 @@ export function inspect(content) {
   const subLabels = ast.blocks
     .flatMap((b) => b.lines)
     .filter((l) => l.label !== undefined).length;
+  // Every label as it will PRINT — the delimiter colon is already consumed, so a
+  // sheet's `R:` written as `R:` surfaces here as a bare `R`. Without this the fix
+  // loop has no way to see a lost colon.
+  const labels = [];
+  for (const b of ast.blocks) {
+    if (b.label !== undefined) labels.push(b.label);
+    for (const ln of b.lines) if (ln.label !== undefined) labels.push(ln.label);
+  }
 
   return {
     title: ast.title,
@@ -102,6 +110,7 @@ export function inspect(content) {
     chordCount,
     verbatim: [...new Set(verbatim)],
     chordRows,
+    labels,
     subLabels,
     warnings: ast.warnings.map((w) => ({
       code: w.code,
