@@ -139,7 +139,7 @@ import {
     @if (presenter.isDownloadOpen()) {
       <app-songbook-download-dialog
         [name]="presenter.downloadName()"
-        [initial]="presenter.printOptions()"
+        [initial]="presenter.downloadInitial()"
         [showSongOrder]="presenter.isDownloadAllSongs()"
         [busy]="presenter.isBusy()"
         [progress]="presenter.downloadProgress()"

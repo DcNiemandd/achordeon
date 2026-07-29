@@ -23,6 +23,9 @@ import type { SongRow } from '../shared/song-explorer';
 import {
   DATA_FORMAT,
   PrintOptionsStore,
+  composeSongbookChoice,
+  toDevicePrintOptions,
+  toSongbookPrint,
   type DownloadProgress,
   type ImportChoice,
   type ImportFailure,
@@ -67,15 +70,16 @@ export class SongbooksPresenter {
   private readonly print = inject(PrintOptionsStore);
 
   /**
-   * The last-used print options, for the download dialog to open on (#3).
-   *
-   * The All songs order does **not** reach here, and that is deliberate: the
-   * download dialog already asks the question itself, with an axis the account
-   * setting cannot express (`title` — a printed contents page is flipped through by
-   * heading, not by library name). Two controls for one question is one too many, so
-   * the one that prints keeps its own, and the saved order stays about performing.
+   * What the download dialog opens on: the device's last-used paper (#3) composed
+   * with the picked book's own print structure. A real book carries its title
+   * page / summary / page-number choices on its record and they show pre-filled;
+   * the record-less All songs falls back to the default structure.
    */
-  readonly printOptions = this.print.options;
+  readonly downloadInitial = computed<SongbookPdfChoice>(() => {
+    const id = this._downloadId();
+    const book = id && id !== ALL_SONGS_ID ? this.find(id) : undefined;
+    return composeSongbookChoice(this.print.options(), book?.print);
+  });
 
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
@@ -489,7 +493,20 @@ export class SongbooksPresenter {
       this._downloadId.set(null);
       return;
     }
-    this.print.save(choice); // remember it for next time (#3)
+    // Split the confirmed choice back to its two homes: the paper is remembered
+    // device-local (#3), and a real book's own structure is written onto its
+    // record so it opens pre-filled next time and its preview matches. All songs
+    // has no record, so only its paper is kept.
+    this.print.save(toDevicePrintOptions(choice));
+    const book = id === ALL_SONGS_ID ? undefined : this.find(id);
+    if (book) {
+      await this.store.upsert({
+        ...book,
+        print: toSongbookPrint(choice),
+        updatedAt: Date.now(),
+      });
+      await this.store.refresh();
+    }
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>

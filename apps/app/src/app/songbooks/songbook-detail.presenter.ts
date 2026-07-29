@@ -24,6 +24,9 @@ import {
 import {
   DATA_FORMAT,
   PrintOptionsStore,
+  composeSongbookChoice,
+  toDevicePrintOptions,
+  toSongbookPrint,
   type DownloadProgress,
   type SongbookPdfChoice,
 } from '../shared/transfer';
@@ -60,10 +63,12 @@ export class SongbookDetailPresenter {
   private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
 
-  /** The last-used print options, for the download dialog to open on (#3). The
-   * saved All songs order is not folded in — the dialog asks about order itself,
-   * and that setting is about performing (see the songbooks presenter). */
-  readonly printOptions = this.print.options;
+  /** What the download dialog opens on: the device's last-used paper (#3)
+   * composed with this book's own print structure, so its title page / summary /
+   * page-number choices show pre-filled and match its preview. */
+  readonly downloadInitial = computed<SongbookPdfChoice>(() =>
+    composeSongbookChoice(this.print.options(), this._book()?.print),
+  );
 
   private readonly route = inject(ActivatedRoute);
 
@@ -693,7 +698,11 @@ export class SongbookDetailPresenter {
       this._isDownloadOpen.set(false);
       return;
     }
-    this.print.save(choice); // remember it for next time (#3)
+    // Split the confirmed choice back to its two homes: the paper is remembered
+    // device-local (#3), and this book's own structure is written onto its record
+    // so it opens pre-filled next time and its preview matches.
+    this.print.save(toDevicePrintOptions(choice));
+    await this.patchBook({ print: toSongbookPrint(choice) });
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>

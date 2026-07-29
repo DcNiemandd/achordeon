@@ -35,7 +35,7 @@ import {
   type SummaryNumberPlace,
   type TitlePageVariant,
 } from './transfer-model';
-import { DEFAULT_PRINT_OPTIONS } from './print-options-store';
+import { DEFAULT_SONGBOOK_CHOICE } from './transfer-model';
 
 /** The title-page layouts the dialog offers. Only `classic` renders today; the
  * rest are declared so the choice is real and land later — marked below so the
@@ -375,9 +375,9 @@ interface VariantOption {
 })
 export class SongbookDownloadDialog {
   readonly name = input.required<string>();
-  /** The options the dialog opens on — the last-used set, so a person's usual
-   * paper is not re-chosen every time (persisted by `PrintOptionsStore`). */
-  readonly initial = input<SongbookPdfChoice>(DEFAULT_PRINT_OPTIONS);
+  /** The options the dialog opens on — the device's last-used paper composed with
+   * this book's own print structure (the presenter merges the two homes). */
+  readonly initial = input<SongbookPdfChoice>(DEFAULT_SONGBOOK_CHOICE);
   /** Show the song-order controls — **only for All songs**, whose order is not
    * fixed. A real songbook prints in its arranged order, so it hides them. */
   readonly showSongOrder = input(false);
@@ -465,7 +465,7 @@ export class SongbookDownloadDialog {
     // song printed off the edge of the paper.
     return Number.isFinite(raw)
       ? Math.max(raw, 0)
-      : DEFAULT_PRINT_OPTIONS.marginMm;
+      : DEFAULT_SONGBOOK_CHOICE.marginMm;
   }
 
   protected checked(event: Event): boolean {
