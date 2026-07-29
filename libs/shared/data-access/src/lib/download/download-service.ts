@@ -40,14 +40,16 @@ import {
 } from './page-geometry';
 import { createPdf, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
-import { planSongbook } from './songbook-plan';
 import {
   layoutSummary,
+  summaryToSvg,
   type MeasureText,
   type SummaryItem,
   type SummaryLayout,
   type SummaryNumberPlace,
+  type SummarySvgStyle,
 } from './summary-layout';
+import { planSongbook, type SongbookPageKind } from './songbook-plan';
 import type { jsPDF } from 'jspdf';
 
 /** The axis All songs is ordered by for print. `title` is the printed heading;
@@ -211,6 +213,38 @@ interface RenderedSong {
   readonly svg: string;
   readonly plan: RenderPlan;
 }
+
+/** One sheet of the on-screen print preview. */
+export interface SongbookPreviewPage {
+  readonly kind: SongbookPageKind;
+  /** A screen SVG — the CSS-loaded face, not inlined bytes (far lighter per page,
+   * and the screen has CSS to lean on where an exported file does not). */
+  readonly svg: string;
+  /** The printed number, or null for front matter. The preview overlays it in a
+   * corner unless it is baked into the heading (`before-title`) or off. */
+  readonly number: number | null;
+}
+
+/** The whole songbook, laid out for the screen — a WYSIWYG of its PDF. */
+export interface SongbookPreview {
+  readonly pages: readonly SongbookPreviewPage[];
+  /** width / height of the paper each sheet shows on. */
+  readonly aspect: number;
+  /** The margin as a fraction of the paper's width and height, so a page frame
+   * insets a song into the sheet the way the PDF does (the summary carries its
+   * own margin and is shown full-bleed). */
+  readonly marginRatioX: number;
+  readonly marginRatioY: number;
+  /** Where a corner page number sits, and whether the preview draws one. */
+  readonly pageNumberPosition: PageNumberPosition;
+  readonly hasCornerNumbers: boolean;
+}
+
+/** The summary's face and ink in the preview: the body family, printed black. */
+const SUMMARY_PREVIEW_STYLE: SummarySvgStyle = {
+  fontFamily: BODY_FAMILY,
+  color: '#1a1a1a',
+};
 
 @Injectable({ providedIn: 'root' })
 export class DownloadService {
@@ -520,6 +554,7 @@ export class DownloadService {
     ids: readonly Uuid[],
     book?: Songbook,
     isNumberInTitle = false,
+    inlineFonts = true,
   ): Promise<RenderedSong[]> {
     const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
     const songs = rows.filter(
@@ -540,9 +575,11 @@ export class DownloadService {
         isNumberInTitle ? numberedAst(ast, i + 1) : ast,
         settings[i],
       );
-      // `inlineFonts` — a downloaded file has no CSS to lean on, and Safari
-      // will not fetch a font from inside an SVG (ADR-0002).
-      return { song, svg: this.renderer.emit(plan, true), plan };
+      // `inlineFonts` — a downloaded FILE has no CSS to lean on and Safari will
+      // not fetch a font from inside an SVG (ADR-0002), so exports inline the
+      // bytes. The on-screen preview leans on the CSS-loaded face and leaves them
+      // out, which is far lighter per page.
+      return { song, svg: this.renderer.emit(plan, inlineFonts), plan };
     });
   }
 
@@ -587,6 +624,7 @@ export class DownloadService {
   /** The songbook's title page, as a song with no lines. */
   private async renderTitlePage(
     book: Songbook,
+    inlineFonts = true,
   ): Promise<{ svg: string; box: Size; fonts: RenderPlan['fonts'] }> {
     const settings = resolveSettings(this.settings.global(), book.settings);
     await this.renderer.ensureFonts([settings]);
@@ -597,9 +635,101 @@ export class DownloadService {
       align: 'center',
     });
     return {
-      svg: this.renderer.emit(plan, true),
+      svg: this.renderer.emit(plan, inlineFonts),
       box: plan.box,
       fonts: plan.fonts,
+    };
+  }
+
+  /**
+   * The whole songbook as on-screen pages — the print preview `/songbooks` pane B
+   * shows, WYSIWYG of the PDF `downloadSongbook` would write.
+   *
+   * The same assembly as the PDF, drawn for the screen instead of the page: it
+   * reuses `bookFor` (so the virtual All songs works), `render` (screen SVGs,
+   * fonts left to the CSS-loaded face), `renderTitlePage`, `layoutSummary` and the
+   * one `planSongbook` — so the two sinks cannot disagree about which sheet is
+   * page 7. The only thing drawn by a different hand is the summary, which the PDF
+   * types and the preview emits as SVG off the identical placements.
+   */
+  async previewSongbook(
+    id: Uuid,
+    options: SongbookPdfOptions = {},
+  ): Promise<SongbookPreview> {
+    const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
+    const page = orient(PAGE_SIZES[opts.pageSize], opts.isLandscape);
+    const margin = opts.marginMm * MM;
+    const empty: SongbookPreview = {
+      pages: [],
+      aspect: page.width / page.height,
+      marginRatioX: margin / page.width,
+      marginRatioY: margin / page.height,
+      pageNumberPosition: opts.pageNumberPosition,
+      hasCornerNumbers: false,
+    };
+
+    const book = await this.bookFor(id, opts.songOrder);
+    if (!book) return empty;
+
+    const isNumberInTitle =
+      opts.hasPageNumbers && opts.pageNumberPosition === 'before-title';
+    const rendered = await this.render(
+      book.entries,
+      book,
+      isNumberInTitle,
+      false,
+    );
+
+    const summary = opts.hasSummary
+      ? layoutSummary(
+          summaryItems(rendered),
+          page,
+          margin,
+          previewMeasure(),
+          opts.summaryNumberPlace,
+        )
+      : undefined;
+    const summaryPages = summary?.pages ?? 0;
+
+    const plan = planSongbook({
+      hasTitlePage: opts.hasTitlePage,
+      summaryPages,
+      songCount: rendered.length,
+    });
+
+    const title = opts.hasTitlePage
+      ? await this.renderTitlePage(book, false)
+      : undefined;
+
+    const pages: SongbookPreviewPage[] = plan.pages.map((entry) => {
+      if (entry.kind === 'title') {
+        return { kind: entry.kind, svg: title?.svg ?? '', number: null };
+      }
+      if (entry.kind === 'summary') {
+        return {
+          kind: entry.kind,
+          svg: summary
+            ? summaryToSvg(
+                summary,
+                page,
+                entry.sourceIndex ?? 0,
+                SUMMARY_PREVIEW_STYLE,
+              )
+            : '',
+          number: null,
+        };
+      }
+      return {
+        kind: entry.kind,
+        svg: rendered[entry.sourceIndex ?? 0].svg,
+        number: entry.number,
+      };
+    });
+
+    return {
+      ...empty,
+      pages,
+      hasCornerNumbers: opts.hasPageNumbers && !isNumberInTitle,
     };
   }
 
@@ -720,6 +850,25 @@ function summaryItems(songs: readonly RenderedSong[]): SummaryItem[] {
     title: one.song.cache.title || one.song.name,
     number: String(index + 1),
   }));
+}
+
+/**
+ * A canvas-backed text measurer for the preview's summary — the screen's answer
+ * to `measureWith(doc)`.
+ *
+ * The summary's page COUNT does not depend on it (rows and columns are geometry,
+ * not text width), so the preview and the PDF agree on how many summary sheets
+ * there are regardless of which measurer laid them out; this only decides the
+ * leader-dot runs and where a long title is clipped. A no-op width in a
+ * canvas-less environment simply drops the leaders.
+ */
+function previewMeasure(): MeasureText {
+  const ctx = globalThis.document?.createElement('canvas').getContext('2d');
+  if (!ctx) return () => 0;
+  return (text, fontSize) => {
+    ctx.font = `${fontSize}px ${BODY_FAMILY}`;
+    return ctx.measureText(text).width;
+  };
 }
 
 /**

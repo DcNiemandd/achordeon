@@ -348,6 +348,64 @@ export function layoutSummary(
   return { metrics, pages, placements };
 }
 
+/** The face and ink the preview draws the summary in — the body family the PDF
+ * registers, and a near-black, because the preview is a sheet of paper and not a
+ * themed surface. */
+export interface SummarySvgStyle {
+  readonly fontFamily: string;
+  readonly color: string;
+}
+
+const XML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+};
+
+function escapeXml(text: string): string {
+  return text.replace(/[&<>]/g, (c) => XML_ESCAPES[c]);
+}
+
+/**
+ * One summary sheet as an SVG, for the on-screen print preview.
+ *
+ * The PDF draws the summary as jsPDF text; the preview cannot, so it draws the
+ * SAME `placements` as SVG `<text>` — same columns, same leaders, same numbers on
+ * the same side. It is the one place the preview and the PDF render the summary by
+ * different means, and driving both off `layoutSummary` is what keeps them from
+ * disagreeing about anything more than a font's exact metrics. `viewBox` is the
+ * whole page (the placements already carry the margin), so the preview shows the
+ * sheet full-bleed rather than insetting it a second time.
+ */
+export function summaryToSvg(
+  layout: SummaryLayout,
+  page: Size,
+  sheet: number,
+  style: SummarySvgStyle,
+): string {
+  const texts = layout.placements
+    .filter((placement) => placement.page === sheet)
+    .flatMap((placement) => {
+      const anchor = placement.numberAlign === 'right' ? 'end' : 'start';
+      const lines = [
+        `<text x="${placement.titleX}" y="${placement.y}">${escapeXml(placement.title)}</text>`,
+        `<text x="${placement.numberX}" y="${placement.y}" text-anchor="${anchor}">${escapeXml(placement.number)}</text>`,
+      ];
+      if (placement.leader) {
+        lines.push(
+          `<text x="${placement.leaderX}" y="${placement.y}">${escapeXml(placement.leader)}</text>`,
+        );
+      }
+      return lines;
+    })
+    .join('');
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${page.width} ${page.height}"` +
+    ` font-family="${style.fontFamily}" font-size="${layout.metrics.fontSize}"` +
+    ` fill="${style.color}">${texts}</svg>`
+  );
+}
+
 /**
  * The number as it is drawn: `7.` in front of a title, a bare `7` at the column's
  * right edge.
