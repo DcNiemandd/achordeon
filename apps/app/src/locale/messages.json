@@ -362,7 +362,7 @@
     "songbookDownload.position": "Number position",
     "songbookDownload.soon": "(soon)",
     "songbookDownload.summary": "Summary (contents)",
-    "songbookDownload.summaryNumber": "Page number",
+    "songbookDownload.summaryNumber": "Contents numbering",
     "songbookDownload.title": "Download “{$name}”",
     "songbookDownload.titlePage": "Title page",
     "songbookDownload.topCenter": "Top, centred",

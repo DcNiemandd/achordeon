@@ -199,7 +199,7 @@ export class SongbookPrintFields {
   protected readonly titlePageLabel = $localize`:@@songbookDownload.titlePage:Title page`;
   protected readonly variantLabel = $localize`:@@songbookDownload.variant:Title page style`;
   protected readonly summaryLabel = $localize`:@@songbookDownload.summary:Summary (contents)`;
-  protected readonly summaryNumberLabel = $localize`:@@songbookDownload.summaryNumber:Page number`;
+  protected readonly summaryNumberLabel = $localize`:@@songbookDownload.summaryNumber:Contents numbering`;
   protected readonly afterTitleLabel = $localize`:@@songbookDownload.afterTitle:After the title`;
   protected readonly beforeTitleLabel = $localize`:@@songbookDownload.beforeTitle:Before the title`;
   protected readonly pageNumbersLabel = $localize`:@@songbookDownload.pageNumbers:Page numbers`;
