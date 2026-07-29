@@ -25,7 +25,7 @@ import {
   SONGBOOK_LIST_CAPABILITIES,
   SongExplorer,
 } from '../shared/song-explorer';
-import { SongRender } from '../shared/song-render';
+import { SongbookPreview } from '../shared/songbook-preview';
 import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
@@ -41,7 +41,7 @@ import {
     BlankPage,
     SplitPane,
     SongExplorer,
-    SongRender,
+    SongbookPreview,
     SongbookDownloadDialog,
     ImportPanel,
     SettingsPanel,
@@ -119,21 +119,17 @@ import {
         }
       </div>
 
-      <!-- Pane B: the picked songbook's title page, **rendered** — the very
-           page its PDF prints (Epic 7). It used to be a stack of styled text
-           standing in for a render nobody had written yet.
+      <!-- Pane B: the picked songbook's whole **print preview** — every page its
+           PDF would hold, scrollable a screenful at a time and zoomable by column
+           count (app-songbook-preview). It used to be only the title page.
 
-           Blank with nothing picked, and blank for All songs, which has no
-           record and so no title page: the empty paper is the honest picture of
-           "nothing to print here", and the row itself already says what it
-           holds. -->
-      <app-blank-page pane-b [ratio]="presenter.titlePageRatio()">
-        @if (presenter.titlePageSvg(); as svg) {
-          <div class="title-page" data-testid="title-page">
-            <app-song-render [svg]="svg" />
-          </div>
-        }
-      </app-blank-page>
+           Blank with nothing picked: the empty paper is the honest picture of
+           "nothing to print here", and the row already says what it holds. -->
+      @if (presenter.currentId()) {
+        <app-songbook-preview pane-b [preview]="presenter.preview()" />
+      } @else {
+        <app-blank-page pane-b />
+      }
     </app-split-pane>
 
     @if (presenter.isDownloadOpen()) {
@@ -264,10 +260,6 @@ import {
     .list {
       flex: 1;
       min-block-size: 0;
-    }
-
-    .title-page {
-      block-size: 100%;
     }
 
     .hint {

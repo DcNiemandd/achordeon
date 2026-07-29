@@ -1,21 +1,19 @@
 // Songbooks presenter — Epic 6 ▸ subtask 1
 // Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §3 (the seam), §4 (single pane)
 
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
   ImportService,
-  RenderService,
   SettingsStore,
   SongStore,
   SongbookStore,
+  type SongbookPreview,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
-  resolveSettings,
-  titlePageAst,
   type ImportPlan,
   type Songbook,
 } from '@achordeon/shared/domain';
@@ -65,7 +63,6 @@ export class SongbooksPresenter {
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly downloads = inject(DownloadService);
-  private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
   private readonly print = inject(PrintOptionsStore);
 
@@ -145,56 +142,46 @@ export class SongbooksPresenter {
   readonly currentId = this._currentId.asReadonly();
 
   /**
-   * The picked book's title page, **rendered** — the same page the PDF prints
-   * (Epic 7 ▸ subtask 6), not a second stack of styled text that would have to
-   * be kept in step with it. `titlePageAst` is the one definition of what a
-   * title page is made of; this and `DownloadService` both draw from it.
+   * The picked book, **rendered as its whole print preview** — every page the PDF
+   * would hold, WYSIWYG (`DownloadService.previewSongbook`, which reuses the same
+   * assembly, so the pane and the file cannot disagree). It used to be only the
+   * title page; now you can read the book before you print it.
    *
-   * **All songs gets one too**, generated. It has no record to carry authored
-   * fields, but it is not nothing either — it is the library, and a blank sheet
-   * where every other book shows its title page reads as a bug. So it prints its
-   * name and what it holds. No author, because nobody wrote it.
+   * All songs previews too, generated the same way it downloads — the library, in
+   * its print order.
    */
-  private readonly titlePlan = computed(() => {
-    const id = this._currentId();
-    if (id === null) return undefined;
-    const book = this.find(id) ?? (id === ALL_SONGS_ID ? this.virtual() : null);
-    if (!book) return undefined;
-    return this.renderer.layout(
-      titlePageAst(book),
-      resolveSettings(this.settings.global(), book.settings),
-      // Centred, like the printed page — this preview IS that page (§4.5 hugs
-      // the corner for songs, which a title page is not).
-      { align: 'center' },
-    );
-  });
+  private readonly _preview = signal<SongbookPreview | null>(null);
+  readonly preview = this._preview.asReadonly();
 
-  /** The virtual book as a record, for the one thing that needs it to be one. */
-  private virtual(): Songbook {
-    return {
-      id: ALL_SONGS_ID,
-      createdAt: 0,
-      updatedAt: 0,
-      deletedAt: null,
-      name: ALL_SONGS_NAME,
-      title: ALL_SONGS_NAME,
-      subtitle: this.countLabel(this._librarySize()),
-      author: '',
-      settings: {},
-      entries: [],
-    };
+  /** Bumped per request so a slow render of a book you have already clicked past
+   * cannot land in the pane after the book you are now looking at. */
+  private previewToken = 0;
+
+  constructor() {
+    // Re-render the pane when the picked book changes, when its own print
+    // structure is edited (it is read below, so this effect tracks it), or when
+    // the device paper changes. Off the render pipeline, so it is async; the
+    // token guards against a stale render winning a race.
+    effect(() => {
+      const id = this._currentId();
+      const device = this.print.options();
+      // Track the picked book's record so an edit to its print settings — or the
+      // library size behind All songs — reflows the preview.
+      const book = id && id !== ALL_SONGS_ID ? this.find(id) : undefined;
+      this._librarySize();
+
+      if (!id) {
+        this._preview.set(null);
+        return;
+      }
+      const { format, ...opts } = composeSongbookChoice(device, book?.print);
+      void format; // the preview renders every format the same; it is not paper
+      const token = ++this.previewToken;
+      void this.downloads.previewSongbook(id, opts).then((preview) => {
+        if (token === this.previewToken) this._preview.set(preview);
+      });
+    });
   }
-
-  readonly titlePageSvg = computed(() => {
-    const plan = this.titlePlan();
-    return plan ? this.renderer.emit(plan) : '';
-  });
-
-  /** The paper's shape, so the preview frame is the page it prints on. */
-  readonly titlePageRatio = computed(() => {
-    const box = this.titlePlan()?.box;
-    return box && box.height > 0 ? box.width / box.height : 210 / 297;
-  });
 
   select(id: string): void {
     this._currentId.set(id);
