@@ -564,19 +564,23 @@ action-bar buttons, everything. An icon-only control with no label is a guessing
 **One primitive, two triggers** — because the two uses have genuinely different
 interaction needs, not just different content:
 
-|                | `trigger="hover"` (default)               | `trigger="click"`                          |
+|                | `trigger="hover"` (default)               | `trigger="help"`                           |
 | -------------- | ----------------------------------------- | ------------------------------------------ |
 | Used by        | icon-button **labels** — rail, action bar | the settings **`(?)` help**                |
 | Content        | 1–3 words, the control's name             | a sentence or two explaining a setting     |
-| Opens on       | hover **and keyboard focus**              | click / tap                                |
+| Opens on       | hover **and keyboard focus**              | hover, keyboard focus, **or tap**          |
 | Stays          | until pointer leaves or Esc               | until dismissed — you need time to read it |
 | Works on touch | **no**                                    | **yes**                                    |
 
 **Why the `(?)` cannot be hover-only.** Touch has no hover, and the settings panel is
 edited on mobile (the §4 bottom sheet). A hover-only help affordance is simply absent
-on a phone. So the `(?)` is a **toggle tip**: tap to open, stays open, dismiss with Esc
-/ outside-click / re-tap. (Aria's `Disclosure` doesn't exist on v21 — §2 — so the
-toggle is ours.)
+on a phone. So the `(?)` is also a **toggle tip**: tap to open, stays open, dismiss with
+Esc / outside-click / re-tap. (Aria's `Disclosure` doesn't exist on v21 — §2 — so the
+toggle is ours.) On a pointer it opens on hover after the same short delay as a label
+[corrected: shipped click-only] — pointing at a `(?)` is the question; a click was a
+price for asking it. Keyboard focus opens it too, but only `:focus-visible` focus: a
+pointer press focuses the button before it clicks it, and opening on that focus would
+leave the toggle nothing to do but close what it just opened.
 
 **Hover tooltips must satisfy WCAG 1.4.13** (Content on Hover or Focus) — easy to miss
 when hand-rolling:

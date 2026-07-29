@@ -134,8 +134,12 @@ test.describe('songbooks', () => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
-    await page.getByTestId('hint-all-songs').click();
+    // Pointing at the (?) is the question, so hover answers it. Tap still
+    // toggles — on touch it is the only way in, and here the way back out.
+    await page.getByTestId('hint-all-songs').hover();
     await expect(page.getByRole('tooltip')).toContainText('library');
+    await page.getByTestId('hint-all-songs').click();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
 
     // Nothing to edit and nothing to open: there is no record behind the row, and
     // what it stands for is the Songs module. It is performed and downloaded —

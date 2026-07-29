@@ -70,7 +70,7 @@ export class TooltipPanel {
 }
 
 /**
- * `[appTooltip]` — a label for an icon-only control, or a help toggle-tip.
+ * `[appTooltip]` — a label for an icon-only control, or a help tip.
  *
  * Two triggers, because the two uses have genuinely different needs:
  *
@@ -78,13 +78,16 @@ export class TooltipPanel {
  *   keyboard focus. Absent on touch, by design: we do not fake it with
  *   long-press, which is why every icon-only control also carries a real
  *   `aria-label`.
- * - `click` — the settings `(?)`. Touch has no hover and the settings panel is
- *   edited on mobile, so a hover-only help affordance would simply not exist
- *   there. Stays open until dismissed, because it is prose you need time to read.
+ * - `help` — the settings `(?)`. Opens on hover after the same short delay
+ *   [corrected: shipped as click-only], because pointing at a `(?)` is how one
+ *   asks what it means; making that a click was a click we were charging for
+ *   nothing. Tap still toggles it, which is the whole story on touch, where
+ *   there is no hover — and it stays open until dismissed either way, because it
+ *   is prose you need time to read.
  *
  * Accessible naming (PRD-UI-SHELL.md §5.2): a `hover` tooltip repeats the host's
  * own `aria-label`, so its panel is `aria-hidden` and it announces once. A
- * `click` tooltip carries *different* content, so it wires `aria-describedby`.
+ * `help` tooltip carries *different* content, so it wires `aria-describedby`.
  *
  * **WCAG 1.4.13, split by trigger** [corrected: hoverable shipped broken]. Epic 13
  * made both triggers dismissible, hoverable and persistent. Hoverable turned out
@@ -94,10 +97,10 @@ export class TooltipPanel {
  * that button holds the panel over it. The neighbour became permanently
  * unclickable (the editor's Undo, found by a test that could not click it).
  *
- * So a `hover` panel is now pointer-transparent, and only a `click` panel is
+ * So a `hover` panel is now pointer-transparent, and only a `help` panel is
  * hoverable. The criterion is about content you need *time* with — prose to read,
- * text to select, a link to follow. That is exactly the `(?)` toggle-tip, which
- * keeps all three properties. A label tooltip is three words that are already the
+ * text to select, a link to follow. That is exactly the `(?)` tip, which keeps
+ * all three properties. A label tooltip is three words that are already the
  * button's `aria-label`: there is nothing to hover onto, and a name you cannot
  * reach is a worse failure than one you cannot dwell on.
  */
@@ -114,7 +117,7 @@ export class TooltipPanel {
 })
 export class Tooltip {
   readonly appTooltip = input.required<string>();
-  readonly appTooltipTrigger = input<'hover' | 'click'>('hover');
+  readonly appTooltipTrigger = input<'hover' | 'help'>('hover');
 
   private readonly overlay = inject(Overlay);
   private readonly positions = inject(OverlayPositionBuilder);
@@ -129,36 +132,41 @@ export class Tooltip {
   private showTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly describedBy = () =>
-    this.appTooltipTrigger() === 'click' && this.isOpen() ? this.id : null;
+    this.appTooltipTrigger() === 'help' && this.isOpen() ? this.id : null;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.hide());
   }
 
   protected onPointerEnter(): void {
-    if (this.appTooltipTrigger() !== 'hover') {
-      return;
-    }
+    // Both triggers open on hover, after the same delay: a tip that appears the
+    // instant the pointer crosses a control flickers on the way past it.
     this.cancelLeave();
     this.showTimer ??= setTimeout(() => this.show(), SHOW_DELAY_MS);
   }
 
   protected onPointerLeave(): void {
-    if (this.appTooltipTrigger() !== 'hover') {
-      return;
-    }
     this.scheduleLeave();
   }
 
   protected onFocus(): void {
-    // Keyboard parity: a focused icon button must name itself too.
-    if (this.appTooltipTrigger() === 'hover') {
+    // Keyboard parity: a focused icon button must name itself, and a `(?)`
+    // reached by Tab must be readable without a pointer at all.
+    //
+    // For `help` that has to be *keyboard* focus specifically. A pointer press
+    // focuses the button before it clicks it, so opening on any focus would hand
+    // the toggle below an already-open tip to close — and tapping the `(?)`,
+    // the only way in on touch, would do nothing at all.
+    if (
+      this.appTooltipTrigger() === 'hover' ||
+      (this.host.nativeElement as HTMLElement).matches(':focus-visible')
+    ) {
       this.show();
     }
   }
 
   protected onClick(): void {
-    if (this.appTooltipTrigger() !== 'click') {
+    if (this.appTooltipTrigger() !== 'help') {
       // A label tooltip has done its job the moment you act on the control, and
       // the act often removes or disables that control — taking its
       // `pointerleave` with it. Closing here is what stops a panel outliving the
@@ -166,6 +174,8 @@ export class Tooltip {
       this.hide();
       return;
     }
+    // Still a toggle. On touch it is the only way in, and on a pointer it is the
+    // way back out of a tip the hover already opened.
     if (this.isOpen()) {
       this.hide();
     } else {
@@ -296,7 +306,7 @@ export class Tooltip {
   };
 
   private readonly onDocumentPointerDown = (event: Event): void => {
-    if (this.appTooltipTrigger() !== 'click') {
+    if (this.appTooltipTrigger() !== 'help') {
       return;
     }
     const target = event.target as Node;
@@ -308,19 +318,25 @@ export class Tooltip {
   };
 
   /**
-   * Close a hover tooltip once the pointer is provably elsewhere.
+   * Close a tooltip once the pointer is provably elsewhere.
    *
-   * Only for `hover`: a `click` toggle-tip is meant to survive the pointer
-   * leaving, and closes on Esc or an outside pointerdown instead.
+   * A `help` tip is hoverable, so the panel counts as "here" too and leaving
+   * goes through the grace period rather than closing on the spot. On touch
+   * there are no pointermoves at all, which is what leaves a tapped tip open.
    */
   private readonly onDocumentPointerMove = (event: PointerEvent): void => {
-    if (this.appTooltipTrigger() !== 'hover') {
+    const target = event.target as Node | null;
+    if (target === null) {
       return;
     }
     const host = this.host.nativeElement as HTMLElement;
-    const target = event.target as Node | null;
-    if (target !== null && !host.contains(target)) {
+    const inPanel = this.ref?.overlayElement.contains(target) ?? false;
+    if (host.contains(target) || inPanel) {
+      this.cancelLeave();
+    } else if (this.appTooltipTrigger() === 'hover') {
       this.hide();
+    } else {
+      this.scheduleLeave();
     }
   };
 

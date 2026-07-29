@@ -325,15 +325,16 @@ const ARM_MOVE_TOLERANCE = 8;
           }
 
           @if (row.hint) {
-            <!-- Click, not hover: touch has no hover, and this is the one row
-                 on the screen that is not what it appears to be. -->
+            <!-- Hover opens it, and tap still does too: touch has no hover, and
+                 this is the one row on the screen that is not what it appears
+                 to be. -->
             <button
               appButton
               type="button"
               class="hint"
               [isIconOnly]="true"
               [appTooltip]="row.hint"
-              appTooltipTrigger="click"
+              appTooltipTrigger="help"
               [attr.aria-label]="hintLabel(row)"
               [attr.data-testid]="'hint-' + row.id"
             >

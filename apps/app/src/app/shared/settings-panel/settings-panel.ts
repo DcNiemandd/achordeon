@@ -99,15 +99,15 @@ interface Section {
                     row.ui.label
                   }}</label>
 
-                  <!-- Click, not hover: touch has no hover and this panel is
-                       edited on mobile, so hover-only help would not exist. -->
+                  <!-- Hover opens it, and tap still does too: touch has no
+                       hover and this panel is edited on mobile. -->
                   <button
                     appButton
                     type="button"
                     class="help"
                     [isIconOnly]="true"
                     [appTooltip]="row.ui.help"
-                    appTooltipTrigger="click"
+                    appTooltipTrigger="help"
                     [attr.aria-label]="helpLabel(row)"
                     [attr.data-testid]="'help-' + row.key"
                   >

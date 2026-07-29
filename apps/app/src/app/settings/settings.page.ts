@@ -166,7 +166,7 @@ const MIN_PASSWORD = 8;
                       class="help"
                       [isIconOnly]="true"
                       [appTooltip]="googleHelp"
-                      appTooltipTrigger="click"
+                      appTooltipTrigger="help"
                       [attr.aria-label]="aboutGoogle"
                       data-testid="help-google"
                     >
@@ -194,7 +194,7 @@ const MIN_PASSWORD = 8;
                       class="help"
                       [isIconOnly]="true"
                       [appTooltip]="emailHelp"
-                      appTooltipTrigger="click"
+                      appTooltipTrigger="help"
                       [attr.aria-label]="aboutEmail"
                       data-testid="help-email"
                     >
@@ -249,7 +249,7 @@ const MIN_PASSWORD = 8;
                       class="help"
                       [isIconOnly]="true"
                       [appTooltip]="autoSyncHelp"
-                      appTooltipTrigger="click"
+                      appTooltipTrigger="help"
                       [attr.aria-label]="aboutAutoSync"
                       data-testid="help-auto-sync"
                     >
@@ -302,7 +302,7 @@ const MIN_PASSWORD = 8;
                     class="help"
                     [isIconOnly]="true"
                     [appTooltip]="backupHelp"
-                    appTooltipTrigger="click"
+                    appTooltipTrigger="help"
                     [attr.aria-label]="aboutBackup"
                     data-testid="help-backup"
                   >
@@ -357,7 +357,7 @@ const MIN_PASSWORD = 8;
                       class="help"
                       [isIconOnly]="true"
                       [appTooltip]="driveHelp"
-                      appTooltipTrigger="click"
+                      appTooltipTrigger="help"
                       [attr.aria-label]="aboutDrive"
                       data-testid="help-drive"
                     >
@@ -480,7 +480,7 @@ const MIN_PASSWORD = 8;
                   class="help"
                   [isIconOnly]="true"
                   [appTooltip]="languageHelp"
-                  appTooltipTrigger="click"
+                  appTooltipTrigger="help"
                   [attr.aria-label]="aboutLanguage"
                   data-testid="help-language"
                 >
@@ -516,7 +516,7 @@ const MIN_PASSWORD = 8;
                   class="help"
                   [isIconOnly]="true"
                   [appTooltip]="splitSharedHelp"
-                  appTooltipTrigger="click"
+                  appTooltipTrigger="help"
                   [attr.aria-label]="aboutSplitShared"
                   data-testid="help-split-shared"
                 >

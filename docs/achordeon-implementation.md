@@ -283,7 +283,7 @@ Corrections the build forced, recorded so they aren't re-litigated:
 - **CodeMirror and the mounted SVG are styled outside component `styles`.** Both
   are built by code rather than by the template, so they carry no encapsulation
   attribute and scoped rules never match them.
-- **Hover tooltips are pointer-transparent**; only the `(?)` toggle-tip is
+- **Hover tooltips are pointer-transparent**; only the `(?)` help tip is
   hoverable. A label panel placed beside its button covered the next button, and
   WCAG 1.4.13 "hoverable" then held it there — Undo was unclickable.
 - **An outside edit isolates the undo history**, or a transpose merges into the
