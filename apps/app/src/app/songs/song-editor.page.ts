@@ -228,8 +228,11 @@ import { ReturnUrl } from './return-url';
                  that write into the text. The same borderless set as the library
                  list and the songbook detail. -->
             <div class="bar-actions">
-              <!-- Download the song as it stands: a picture, PNG or PDF, the same
-                   DownloadService the library list uses. -->
+              <!-- Take the song away, in whichever of the three shapes: a page,
+                   a picture, or the Achordeon file. One button and one dialog,
+                   as everywhere else — Export used to be a second icon here,
+                   and the pair asked you to know the difference before it would
+                   show you either. -->
               <button
                 appButton
                 type="button"
@@ -240,20 +243,6 @@ import { ReturnUrl } from './return-url';
                 (click)="presenter.openDownload()"
               >
                 <app-icon name="download" />
-              </button>
-
-              <!-- Export the song as an Achordeon file: the database, not a
-                   picture — importing it back rebuilds the song. -->
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="exportLabel"
-                [appTooltip]="exportLabel"
-                data-testid="editor-export"
-                (click)="presenter.exportSong()"
-              >
-                <app-icon name="export" />
               </button>
 
               <button
@@ -306,8 +295,9 @@ import { ReturnUrl } from './return-url';
           </app-dialog>
         }
 
-        <!-- The export sheet — one song, so it offers PNG or PDF (its count is
-             1). The same dialog the library list opens. -->
+        <!-- The download sheet — one song, so it offers PDF, PNG or the
+             Achordeon file (its count is 1). The same dialog the library list
+             opens. -->
         @if (presenter.isDownloadOpen()) {
           <app-download-dialog
             [count]="1"
@@ -515,7 +505,6 @@ export class SongEditorPage {
   protected readonly flatLabel = $localize`:@@editor.flat:Lower this chord a semitone`;
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
   protected readonly downloadLabel = $localize`:@@editor.download:Download`;
-  protected readonly exportLabel = $localize`:@@editor.export:Export`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
 

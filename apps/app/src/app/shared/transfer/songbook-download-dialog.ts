@@ -2,9 +2,16 @@
 // Spec: PRD-INFRASTRUCTURE.md §8 (title page / summary / page-number toggles +
 // position, page size, songs keep their aspect ratio scaled to fit)
 //
-// A songbook comes out as a PDF or a ZIP of per-song images, so this dialog
-// asks the format first and then, for a PDF, about the *paper*. Controlled, like
-// every other panel in `app/shared`: values in, one choice out.
+// A songbook comes out as a PDF, a ZIP of per-song images, or the Achordeon
+// file, so this dialog asks the format first and then, for a PDF, about the
+// *paper*. Controlled, like every other panel in `app/shared`: values in, one
+// choice out.
+//
+// The Achordeon file is here rather than on a button of its own for the reason
+// the song dialog gives at length: Download and Export are one act to choose
+// between, not two to know about in advance. This dialog already had the
+// control for it — the format select, which was always what decided how much of
+// the form below even applies.
 
 import {
   ChangeDetectionStrategy,
@@ -15,17 +22,18 @@ import {
   output,
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
-import type {
-  DownloadProgress,
-  PageNumberPlace,
-  PageSizeChoice,
-  SongbookFormat,
-  SongbookPdfChoice,
-  SongOrder,
-  SongOrderAxis,
-  SongOrderDir,
-  SummaryNumberPlace,
-  TitlePageVariant,
+import {
+  DATA_FORMAT,
+  type DownloadProgress,
+  type PageNumberPlace,
+  type PageSizeChoice,
+  type SongbookChoiceFormat,
+  type SongbookPdfChoice,
+  type SongOrder,
+  type SongOrderAxis,
+  type SongOrderDir,
+  type SummaryNumberPlace,
+  type TitlePageVariant,
 } from './transfer-model';
 import { DEFAULT_PRINT_OPTIONS } from './print-options-store';
 
@@ -51,7 +59,9 @@ interface VariantOption {
       <div class="rows">
         <!-- Format first: it decides which of the rows below are even asked.
              A PDF is about paper (size, margins, page numbers); a ZIP of images
-             is about none of those — so the paper block is gated on it. -->
+             is about none of those, and the Achordeon file is about none of
+             *anything* here — it is the book as data, so every question below
+             stands down and the dialog is one line and a button. -->
         <label class="row">
           <span class="name">{{ formatLabel }}</span>
           <select
@@ -62,6 +72,7 @@ interface VariantOption {
           >
             <option value="pdf">{{ pdfLabel }}</option>
             <option value="zip-png">{{ zipPngLabel }}</option>
+            <option value="json">{{ dataLabel }}</option>
           </select>
         </label>
 
@@ -173,17 +184,21 @@ interface VariantOption {
           }
         }
 
-        <!-- Summary is front matter for either format: the PDF's contents page,
-             or the ZIP's 00-summary.png. So it stays out of the paper gate. -->
-        <label class="row is-toggle">
-          <input
-            type="checkbox"
-            [checked]="choice().hasSummary"
-            data-testid="pdf-summary"
-            (change)="patch({ hasSummary: checked($event) })"
-          />
-          <span class="name">{{ summaryLabel }}</span>
-        </label>
+        <!-- Summary is front matter for either *render*: the PDF's contents
+             page, or the ZIP's 00-summary.png. So it stays out of the paper
+             gate — but not out of the data one, since a JSON has no front
+             matter to put it on. -->
+        @if (!isData()) {
+          <label class="row is-toggle">
+            <input
+              type="checkbox"
+              [checked]="choice().hasSummary"
+              data-testid="pdf-summary"
+              (change)="patch({ hasSummary: checked($event) })"
+            />
+            <span class="name">{{ summaryLabel }}</span>
+          </label>
+        }
 
         <!-- Which side of the title the contents page carries its number on.
              The PDF's summary only: the image ZIP's contents page is a render
@@ -203,10 +218,12 @@ interface VariantOption {
           </label>
         }
 
-        <!-- Song order — **All songs only**. A real songbook's order IS its
-             content; you arranged it, so it prints as arranged. All songs has no
-             order of its own, so this is where one is chosen. -->
-        @if (showSongOrder()) {
+        <!-- Song order — **All songs only**, and only where something is being
+             laid out. A real songbook's order IS its content; you arranged it,
+             so it prints as arranged. All songs has no order of its own, so
+             this is where one is chosen. A JSON keeps no order at all: it is a
+             set of records, and the receiving library sorts it its own way. -->
+        @if (showSongOrder() && !isData()) {
           <div class="group" role="group" [attr.aria-label]="orderLabel">
             <label class="row">
               <span class="name">{{ orderLabel }}</span>
@@ -388,6 +405,11 @@ export class SongbookDownloadDialog {
   // it. Local edits win until `initial` itself changes.
   protected readonly choice = linkedSignal(() => this.initial());
 
+  /** The data file is picked — nothing below the format row applies. */
+  protected readonly isData = computed(
+    () => this.choice().format === DATA_FORMAT,
+  );
+
   protected readonly title = computed(
     () => $localize`:@@songbookDownload.title:Download “${this.name()}:name:”`,
   );
@@ -409,8 +431,8 @@ export class SongbookDownloadDialog {
     return (event.target as HTMLSelectElement).value;
   }
 
-  protected format(event: Event): SongbookFormat {
-    return this.value(event) as SongbookFormat;
+  protected format(event: Event): SongbookChoiceFormat {
+    return this.value(event) as SongbookChoiceFormat;
   }
 
   protected size(event: Event): PageSizeChoice {
@@ -453,6 +475,7 @@ export class SongbookDownloadDialog {
   protected readonly formatLabel = $localize`:@@songbookDownload.format:Format`;
   protected readonly pdfLabel = $localize`:@@songbookDownload.format.pdf:PDF`;
   protected readonly zipPngLabel = $localize`:@@songbookDownload.format.zipPng:ZIP of images`;
+  protected readonly dataLabel = $localize`:@@songbookDownload.format.data:Achordeon file`;
   protected readonly pageSizeLabel = $localize`:@@songbookDownload.pageSize:Page size`;
   protected readonly orientationLabel = $localize`:@@songbookDownload.orientation:Orientation`;
   protected readonly portraitLabel = $localize`:@@songbookDownload.portrait:Portrait`;
@@ -513,8 +536,15 @@ export class SongbookDownloadDialog {
   /** The ZIP names its files in book order, so a viewer or a printer keeps the
    * songs in the sequence you arranged them. */
   protected readonly zipNote = $localize`:@@songbookDownload.zipNote:One image per song, numbered in order, plus a contents page.`;
+  /** The book **and its songs** — `ExportService` adds them, because a book of
+   * references imports as a book of nothing on a machine that lacks them. */
+  protected readonly dataNote = $localize`:@@songbookDownload.dataNote:The songbook and its songs as data, to import here or on another device.`;
   protected readonly note = computed(() =>
-    this.choice().format === 'pdf' ? this.fitNote : this.zipNote,
+    this.isData()
+      ? this.dataNote
+      : this.choice().format === 'pdf'
+        ? this.fitNote
+        : this.zipNote,
   );
   protected readonly cancelLabel = $localize`:@@songbookDownload.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@songbookDownload.confirm:Download`;

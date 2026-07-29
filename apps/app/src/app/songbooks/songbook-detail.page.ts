@@ -127,9 +127,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               (cleared)="presenter.clearSelection()"
             />
 
-            <!-- Download and Export, on the book you are already in — the
-                 same pair the songbook list offers on the one you have
-                 picked. -->
+            <!-- Download, on the book you are already in — the same act the
+                 songbook list offers on the one you have picked, and the same
+                 dialog: its format row is where the Achordeon file lives now,
+                 so the Export button that used to sit here is gone. -->
             <!-- Perform this songbook on the Stage. A link, not a button:
                  navigating to a route is exactly what a link does.
                  Disabled (pointer-events off) when empty — performing nothing
@@ -162,19 +163,6 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               (click)="presenter.openDownload()"
             >
               <app-icon name="download" />
-            </button>
-
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="presenter.isBusy()"
-              [attr.aria-label]="exportLabel"
-              [appTooltip]="exportLabel"
-              data-testid="songbook-detail-export"
-              (click)="presenter.exportBook()"
-            >
-              <app-icon name="export" />
             </button>
 
             <button
@@ -586,8 +574,10 @@ export class SongbookDetailPage {
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
   protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
   protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
-  protected readonly downloadLabel = $localize`:@@songbooks.download:Download this songbook as a PDF`;
-  protected readonly exportLabel = $localize`:@@songbooks.export:Export this songbook to a file`;
+  /** No longer "as a PDF": the dialog behind it offers a PDF, a ZIP of images
+   * and the Achordeon file, and a tooltip that names one of the three would be
+   * wrong twice out of three times. */
+  protected readonly downloadLabel = $localize`:@@songbooks.download:Download this songbook`;
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
 

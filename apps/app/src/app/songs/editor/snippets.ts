@@ -18,8 +18,9 @@ import type { InsertRequest } from './editor-model';
  * Any title/subtitle marker already on the line.
  *
  * One expression for both, so Title and Subtitle replace each other rather than
- * stacking. `\*{1,2} ` and not `\*+ `: three asterisks are not a marker in the
- * grammar, so they are content and must survive.
+ * stacking, and each takes its own marker back off. `\*{1,2} ` and not `\*+ `:
+ * three asterisks are not a marker in the grammar, so they are content and must
+ * survive.
  */
 const TITLE_MARKER = /^\*{1,2} /;
 
@@ -39,8 +40,8 @@ export const SNIPPETS = {
 
   /**
    * Line-scoped: the marker only counts at column 0, and it replaces whatever
-   * marker the line already had — so the buttons are idempotent and interchange
-   * rather than accumulating asterisks.
+   * marker the line already had — so the buttons interchange rather than
+   * accumulating asterisks, and each one unmakes what it made.
    */
   title: {
     before: '* ',

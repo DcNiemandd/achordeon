@@ -124,11 +124,20 @@ export class FontLoader {
   }
 
   /**
-   * Load every weight of the named families, once. Awaiting this is what an
-   * export must do: the screen may render a frame in the fallback face and fix
-   * itself, a downloaded file has no second chance.
+   * Load the named families, once. Awaiting this is what an export must do: the
+   * screen may render a frame in the fallback face and fix itself, a downloaded
+   * file has no second chance.
+   *
+   * `weights` narrows *which* faces — every one of them by default, because a
+   * render or an export needs whatever the page turns out to use. A caller that
+   * knows it will only ever draw one line in one weight (the settings panel's
+   * font sample) says so: Caveat's bold is a quarter of a megabyte nobody looks
+   * at.
    */
-  async ensure(families: readonly string[]): Promise<void> {
+  async ensure(
+    families: readonly string[],
+    weights: readonly ('normal' | 'bold')[] = ['normal', 'bold'],
+  ): Promise<void> {
     const jobs: Promise<void>[] = [];
     for (const family of new Set(families)) {
       const files = FONT_FILES[family];
@@ -141,6 +150,7 @@ export class FontLoader {
           'normal' | 'bold',
           'normal' | 'italic',
         ];
+        if (!weights.includes(weight)) continue;
         jobs.push(this.load({ family, weight, style }, url));
       }
     }

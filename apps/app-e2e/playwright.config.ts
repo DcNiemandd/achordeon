@@ -26,6 +26,25 @@ export default defineConfig({
     baseURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    // Every test starts with seeding OFF, so a fresh browser context means a
+    // genuinely empty library — the state the specs were written against, and the
+    // one the app's own "No songs yet" screen is about. Set here rather than in each
+    // file's `freshLibrary()` because most specs never clear the database at all:
+    // they rely on a fresh context being empty, and would quietly gain a song.
+    //
+    // The specs that DO want content ask for it by clearing this key and booting
+    // again — `withStarterLibrary` in `starter-library.ts`. There is no param for it:
+    // a fresh library gets the starter set by default, so `?empty` (which sets this
+    // key) has no opposite.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: new URL(baseURL).origin,
+          localStorage: [{ name: 'achordeon.seed', value: 'off' }],
+        },
+      ],
+    },
   },
   /* Run your local dev server before starting the tests */
   webServer: {

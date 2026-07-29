@@ -6,7 +6,10 @@ export {
   PrintOptionsStore,
   DEFAULT_PRINT_OPTIONS,
 } from './print-options-store';
+export { DATA_FORMAT } from './transfer-model';
 export type {
+  DataFormat,
+  DownloadChoice,
   DownloadFormat,
   DownloadProgress,
   ImportChoice,
@@ -18,6 +21,7 @@ export type {
   PageNumberPlace,
   PageSizeChoice,
   SongDownloadFormat,
+  SongbookChoiceFormat,
   SongbookFormat,
   SongbookPdfChoice,
   SongOrder,

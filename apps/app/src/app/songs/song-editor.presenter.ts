@@ -19,7 +19,7 @@ import {
   SyncService,
   type SongFormat,
 } from '@achordeon/shared/data-access';
-import type { DownloadFormat } from '../shared/transfer';
+import { DATA_FORMAT, type DownloadChoice } from '../shared/transfer';
 import {
   ChordTheory,
   resolveSettings,
@@ -368,27 +368,15 @@ export class SongEditorPresenter {
   }
 
   /**
-   * Export the song being edited as a PNG or PDF (Epic 7 `DownloadService`).
+   * The song being edited, as a file — a PNG or PDF through `DownloadService`,
+   * or the Achordeon `.json` through `ExportService`. One dialog asks, and this
+   * splits the answer back into the two acts (CONTEXT.md §Export, §Download).
    *
-   * The last keystrokes are flushed first: `downloadSong` renders from the saved
-   * record, not this presenter's live signal, so an unsaved edit would export a
-   * song one debounce behind what is on screen.
+   * The last keystrokes are flushed first, whichever way it goes: both services
+   * read the **saved record**, not this presenter's live signal, so an unsaved
+   * edit would write a song one debounce behind what is on screen.
    */
-  /**
-   * Export the song being edited as an Achordeon `.json` file (the database, not
-   * a picture — the counterpart to `download`). Flushes the pending autosave
-   * first so the file holds what is on screen, not a debounce behind it.
-   */
-  async exportSong(): Promise<void> {
-    const song = this._song();
-    if (!song) {
-      return;
-    }
-    await this.flushSave();
-    await this.exporter.export({ songIds: [song.id] });
-  }
-
-  async download(format: DownloadFormat): Promise<void> {
+  async download(choice: DownloadChoice): Promise<void> {
     const song = this._song();
     if (!song || this._isDownloading()) {
       return;
@@ -396,9 +384,13 @@ export class SongEditorPresenter {
     this._isDownloading.set(true);
     await this.flushSave();
     try {
-      // The dialog only offers png/pdf for one song (its count is 1), so the
-      // multi-song members of DownloadFormat never arrive here.
-      await this.downloads.downloadSong(song.id, format as SongFormat);
+      if (choice === DATA_FORMAT) {
+        await this.exporter.export({ songIds: [song.id] });
+      } else {
+        // The dialog only offers png/pdf for one song (its count is 1), so the
+        // multi-song members of DownloadFormat never arrive here.
+        await this.downloads.downloadSong(song.id, choice as SongFormat);
+      }
     } finally {
       this._isDownloading.set(false);
       this._isDownloadOpen.set(false);

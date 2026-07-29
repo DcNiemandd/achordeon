@@ -13,6 +13,7 @@
 // `data-testid` only, like the rest of the suite.
 
 import { expect, test, type Page } from '@playwright/test';
+import { withStarterLibrary } from './starter-library';
 
 const COMPACT = { width: 390, height: 844 };
 
@@ -20,7 +21,7 @@ const COMPACT = { width: 390, height: 844 };
  * Songbooks UI has its own specs, and building a book by hand here would test
  * that instead of the gesture. Returns the id to perform. */
 async function seedBook(page: Page): Promise<string> {
-  await page.goto('songs?seed');
+  await withStarterLibrary(page);
   await expect(page.getByTestId('song-row').first()).toBeVisible();
 
   return page.evaluate(
@@ -179,7 +180,7 @@ test.describe('stage — swiping turns the page', () => {
  */
 test.describe('stage — the All songs order', () => {
   test('is asked for on the All songs row, and saved', async ({ page }) => {
-    await page.goto('songs?seed');
+    await withStarterLibrary(page);
     await expect(page.getByTestId('song-row').first()).toBeVisible();
     await page.goto('stage');
 
@@ -204,7 +205,7 @@ test.describe('stage — the All songs order', () => {
   });
 
   test('cancel leaves the saved order alone', async ({ page }) => {
-    await page.goto('songs?seed');
+    await withStarterLibrary(page);
     await expect(page.getByTestId('song-row').first()).toBeVisible();
     await page.goto('stage');
 

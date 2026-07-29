@@ -26,11 +26,7 @@ import {
   type ExplorerSort,
 } from '../shared/song-explorer';
 import { DownloadDialog, ImportPanel } from '../shared/transfer';
-import {
-  SongsPresenter,
-  type PendingDelete,
-  type SongUse,
-} from './songs.presenter';
+import { SongsPresenter, type PendingDelete } from './songs.presenter';
 
 /**
  * The song explorer and the render of whatever it has focused.
@@ -114,10 +110,20 @@ import {
               />
             </button>
 
-            <!-- Download and Export sit with the bulk actions because they act
-                 on the same subject: the ticked rows, or the song you are
-                 looking at. They are enabled where the delete is not, because
-                 there is always something to download once a song is focused. -->
+            <!-- Duplicate is deliberately NOT here: copying answers one song,
+                 so it lives on the row it copies (hasInlineDuplicate), where it
+                 is now a visible button rather than a trip through the ⋯. -->
+
+            <!-- Download sits with the bulk actions because it acts on the same
+                 subject: the ticked rows, or the song you are looking at. It is
+                 enabled where the delete is not, because there is always
+                 something to download once a song is focused.
+
+                 **One button, not two.** Export used to stand beside this one,
+                 which made the first decision "picture or database?" and asked
+                 it with two icons and no explanation. It is now the last row of
+                 this button's dialog, where it sits under a sentence saying
+                 what it is for. -->
             <button
               appButton
               type="button"
@@ -131,22 +137,14 @@ import {
               <app-icon name="download" />
             </button>
 
-            <button
-              appButton
-              type="button"
-              [isIconOnly]="true"
-              [disabled]="!hasTransferTarget() || presenter.isBusy()"
-              [attr.aria-label]="exportLabel()"
-              [appTooltip]="exportLabel()"
-              data-testid="songs-export"
-              (click)="presenter.exportSelection()"
-            >
-              <app-icon name="export" />
-            </button>
-
             <!-- Import takes no selection, so it is the one transfer control
                  that is never disabled. It opens the shared import panel's file
-                 picker; the panel owns the file input and the dialogs. -->
+                 picker; the panel owns the file input and the dialogs.
+
+                 It wears the **mirror of Download's glyph** — one tray with the
+                 arrow up, one with it down — because now that Download covers
+                 every way a file leaves, in and out is the whole distinction
+                 left to draw. -->
             <button
               appButton
               type="button"
@@ -160,9 +158,14 @@ import {
               <app-icon name="import" />
             </button>
 
+            <!-- Red, like the same act in the row's ⋯ menu. A destructive
+                 button that wears the neutral ghost tint in one place and the
+                 danger tone in another is asking to be pressed by mistake in
+                 whichever place looks safer. -->
             <button
               appButton
               type="button"
+              variant="danger"
               [isIconOnly]="true"
               [disabled]="!hasSelection()"
               [attr.aria-label]="bulkDeleteLabel"
@@ -197,7 +200,6 @@ import {
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
           (downloaded)="presenter.openDownloadRow($event)"
-          (exported)="presenter.exportRow($event)"
           (deleted)="presenter.requestDelete($event)"
         />
       </div>
@@ -240,27 +242,21 @@ import {
         data-testid="delete-dialog"
         (closed)="presenter.cancelDelete()"
       >
-        <!-- The names as a LIST, not a sentence. A comma-joined paragraph of
-             twelve titles is a wall you have to parse to answer a question
-             about; a list is countable at a glance, which is the only thing
-             that makes "yes" a considered answer. -->
+        <!-- The songs themselves are not listed. The title already counts them
+             and the rows you ticked are still behind the dialog; re-reading
+             twelve titles you just picked is work that answers nothing. -->
         <p class="warn">{{ deleteQuestion(pending) }}</p>
-        <ul class="names" data-testid="delete-names">
-          @for (name of pending.names; track $index) {
-            <li>{{ name }}</li>
-          }
-        </ul>
 
-        <!-- The in-use warning: not a count, but the songbooks themselves, each
-             a way to go and look before you answer (CONTEXT.md §Delete vs
+        <!-- The one list worth having: the songbooks that lose something, each a
+             way to go and look before you answer (CONTEXT.md §Delete vs
              Remove). -->
         @if (pending.uses.length > 0) {
           <p class="warn in-use" data-testid="delete-in-use">
             <app-icon name="warning" class="warn-icon" />
-            {{ inUseText }}
+            {{ inUseText(pending) }}
           </p>
           <ul class="uses">
-            @for (use of pending.uses; track use.bookId + use.songId) {
+            @for (use of pending.uses; track use.bookId) {
               <li>
                 <button
                   appButton
@@ -269,7 +265,7 @@ import {
                   [attr.data-testid]="'in-use-' + use.bookId"
                   (click)="presenter.openSongbook(use)"
                 >
-                  {{ useLabel(use, pending) }}
+                  {{ use.bookName }}
                 </button>
               </li>
             }
@@ -348,13 +344,6 @@ import {
       color: var(--brand);
     }
 
-    .names {
-      margin: 0 0 var(--space-3);
-      padding-inline-start: var(--space-4);
-      max-block-size: 40vh;
-      overflow: auto;
-    }
-
     .uses {
       margin: 0;
       padding: 0;
@@ -363,6 +352,8 @@ import {
       flex-direction: column;
       align-items: flex-start;
       gap: 2px;
+      max-block-size: 40vh;
+      overflow: auto;
     }
   `,
 })
@@ -401,8 +392,8 @@ export class SongsPage {
     () => this.presenter.selectedIds().size > 0,
   );
 
-  /** Download and Export answer the selection, or — with none — the song in
-   * pane B. So they are live whenever there is anything to look at. */
+  /** Download answers the selection, or — with none — the song in pane B. So it
+   * is live whenever there is anything to look at. */
   protected readonly hasTransferTarget = computed(() =>
     this.presenter.hasBarTransfer(),
   );
@@ -413,12 +404,6 @@ export class SongsPage {
     this.hasSelection()
       ? $localize`:@@songs.downloadSelected:Download the selected songs`
       : $localize`:@@songs.downloadOne:Download this song`,
-  );
-
-  protected readonly exportLabel = computed(() =>
-    this.hasSelection()
-      ? $localize`:@@songs.exportSelected:Export the selected songs to a file`
-      : $localize`:@@songs.exportOne:Export this song to a file`,
   );
 
   protected readonly importLabel = $localize`:@@songs.import:Import songs from a file`;
@@ -434,7 +419,14 @@ export class SongsPage {
   protected readonly bulkDeleteLabel = $localize`:@@songs.bulkDelete:Delete the selected songs`;
   protected readonly cancelLabel = $localize`:@@songs.cancel:Cancel`;
   protected readonly deleteLabel = $localize`:@@songs.delete:Delete`;
-  protected readonly inUseText = $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`;
+
+  /** A bulk delete's warning spans songs, so the singular sentence would lie
+   * about what is leaving these songbooks. */
+  protected inUseText(pending: PendingDelete): string {
+    return pending.ids.length === 1
+      ? $localize`:@@songs.delete.inUse:It is still used here. Deleting removes it from these songbooks:`
+      : $localize`:@@songs.delete.inUseMany:They are still used here. Deleting removes them from these songbooks:`;
+  }
 
   /** A song deleted is a song gone from the library and out of every songbook —
    * so the question says both, and never a bare "are you sure?". */
@@ -444,19 +436,12 @@ export class SongsPage {
       : $localize`:@@songs.delete.titleMany:Delete ${pending.ids.length}:count: songs?`;
   }
 
-  /** The sentence above the list — which is why it names no songs itself. */
+  /** What the delete does, said once — it names no songs, no list follows, and it
+   * does not count them either: the title has already done that. */
   protected deleteQuestion(pending: PendingDelete): string {
     return pending.ids.length === 1
-      ? $localize`:@@songs.delete.one:This will be removed from your library:`
-      : $localize`:@@songs.delete.many:These ${pending.ids.length}:count: songs will be removed from your library:`;
-  }
-
-  /** A bulk delete's warning spans songs, so a bare songbook name would not say
-   * which song put it on the list. */
-  protected useLabel(use: SongUse, pending: PendingDelete): string {
-    return pending.ids.length === 1
-      ? use.bookName
-      : $localize`:@@songs.delete.useMany:${use.bookName}:book: (${use.songName}:song:)`;
+      ? $localize`:@@songs.delete.one:This will be removed from your library.`
+      : $localize`:@@songs.delete.many:These songs will be removed from your library.`;
   }
 
   /** "Nothing here" and "nothing matched" are different facts, and only one of

@@ -81,6 +81,20 @@
     }
   }
 
+  // A ghost that has swapped its neutral for the danger tone — the same red the
+  // `⋯` menu's delete item wears (primitives/menu). One act must be one colour
+  // wherever it is reached from, or the toolbar's delete and the menu's read as
+  // two different buttons. No fill: a permanently red-filled control in a bar of
+  // icons is an alarm, and this is only an action you may take.
+  &.variant-danger {
+    color: var(--danger);
+
+    &:hover:not(:disabled) {
+      background: var(--danger-subtle);
+      color: var(--danger);
+    }
+  }
+
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;

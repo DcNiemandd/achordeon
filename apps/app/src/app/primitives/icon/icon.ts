@@ -2,13 +2,14 @@
 // Spec: PRD-UI-SHELL.md §9 (self-hosted inline SVG; no CDN, ever)
 
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { inject } from '@angular/core';
 import { ICON_SET, type IconName } from './icon-set.generated';
 
 /**
@@ -27,7 +28,10 @@ import { ICON_SET, type IconName } from './icon-set.generated';
 @Component({
   selector: 'app-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'aria-hidden': 'true' },
+  host: {
+    'aria-hidden': 'true',
+    '[class]': '{ relative: badge() !== undefined }',
+  },
   template: `
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -38,8 +42,23 @@ import { ICON_SET, type IconName } from './icon-set.generated';
       stroke-linecap="round"
       stroke-linejoin="round"
       focusable="false"
-      [innerHTML]="markup()"
+      [innerHTML]="markupBase()"
     ></svg>
+    @if (badge()) {
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        [attr.fill]="isFilled() ? 'currentColor' : 'none'"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        focusable="false"
+        [innerHTML]="markupBadge()"
+        class="module-badge"
+        [class.primary]="badgePrimary()"
+      ></svg>
+    }
   `,
   styles: `
     :host {
@@ -47,6 +66,10 @@ import { ICON_SET, type IconName } from './icon-set.generated';
       flex: none;
       inline-size: var(--icon-size, 20px);
       block-size: var(--icon-size, 20px);
+
+      &.relative {
+        position: relative;
+      }
     }
 
     svg {
@@ -54,10 +77,33 @@ import { ICON_SET, type IconName } from './icon-set.generated';
       block-size: 100%;
       display: block;
     }
+
+    /* Badged into the corner, not stacked: the hamburger stays the primary mark
+       and the module reads as its state. Large enough to tell the five module
+       glyphs apart at arm's length — at 13px they were all just "a small dark
+       shape" and the badge carried no state at all. */
+    .module-badge {
+      inline-size: var(--badge-scale, 67%);
+      block-size: var(--badge-scale, 67%);
+      position: absolute;
+      inset-block-end: var(--badge-inset-block-end, -2px);
+      inset-inline-end: var(--badge-inset-inline-end, -2px);
+      inset-inline-start: var(--badge-inset-inline-start, auto);
+      inset-block-start: var(--badge-inset-block-start, auto);
+      background: var(--badge-bg, var(--surface-raised));
+      border-radius: 50%;
+      padding: 1px;
+      box-sizing: content-box;
+
+      &.primary {
+        color: var(--brand);
+      }
+    }
   `,
 })
 export class Icon {
   readonly name = input.required<IconName>();
+  readonly badge = input<IconName>();
 
   /**
    * Paint the glyph solid instead of drawing it as an outline.
@@ -68,7 +114,9 @@ export class Icon {
    * to someone who cannot separate the two hues (PRD-UI-SHELL.md §5.2). Only
    * closed-path glyphs (star, heart) look right filled.
    */
-  readonly isFilled = input(false);
+  readonly isFilled = input(false, { transform: booleanAttribute });
+
+  readonly badgePrimary = input(false, { transform: booleanAttribute });
 
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -79,7 +127,13 @@ export class Icon {
    * song content is never rendered through it (PRD-INFRASTRUCTURE.md §7).
    * `IconName` being a keyof the generated map is what keeps that true.
    */
-  protected readonly markup = computed<SafeHtml>(() =>
+  protected readonly markupBase = computed<SafeHtml>(() =>
     this.sanitizer.bypassSecurityTrustHtml(ICON_SET[this.name()]),
   );
+  protected readonly markupBadge = computed<SafeHtml | undefined>(() => {
+    const badgeName = this.badge();
+    return badgeName
+      ? this.sanitizer.bypassSecurityTrustHtml(ICON_SET[badgeName])
+      : undefined;
+  });
 }

@@ -12,6 +12,7 @@ export * from './lib/persistence/paged-repository';
 export * from './lib/persistence/gateway';
 export * from './lib/persistence/boot-gate';
 export * from './lib/persistence/seed';
+export * from './lib/persistence/guide-song';
 export * from './lib/persistence/snapshot-blob';
 export * from './lib/download/page-geometry';
 export * from './lib/download/summary-layout';

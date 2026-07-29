@@ -44,11 +44,12 @@ export interface InsertRequest {
    */
   readonly atLineStart?: boolean;
   /**
-   * A line marker this insert REPLACES rather than stacks on.
+   * A line marker this insert REPLACES rather than stacks on — and TOGGLES when
+   * the marker it finds is the one it writes.
    *
-   * Makes a line-scoped button idempotent: clicking Title twice leaves a title,
-   * not `* * `, and clicking Title on a subtitle converts it instead of producing
-   * `* ** `. Without it the buttons only worked on a line that had no marker yet —
+   * Clicking Title on a subtitle converts it instead of producing `* ** `, and
+   * clicking Title on a title takes the marker off again rather than writing
+   * `* * `. Without it the buttons only worked on a line that had no marker yet —
    * which is not how anyone uses them.
    */
   readonly replacesLineStart?: RegExp;

@@ -29,32 +29,32 @@ import {
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
-import type {
-  DownloadFormat,
-  DownloadProgress,
-  ImportChoice,
-  ImportFailure,
-  ImportPreview,
+import {
+  DATA_FORMAT,
+  type DownloadChoice,
+  type DownloadProgress,
+  type ImportChoice,
+  type ImportFailure,
+  type ImportPreview,
 } from '../shared/transfer';
-import { TUTORIAL_CONTENT } from './new-song';
+import { NEW_SONG_CONTENT } from './new-song';
 import { ReturnUrl } from './return-url';
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;
 
-/** One place a song about to be deleted is still being used (CONTEXT.md §Delete
- * vs Remove). `songName` is carried because a bulk delete's warning spans songs. */
+/** One songbook that a pending delete would take songs out of (CONTEXT.md
+ * §Delete vs Remove). `songId` is one of the songs that put it on the list — the
+ * one the link selects when it opens the songbook. */
 export interface SongUse {
   readonly bookId: string;
   readonly bookName: string;
   readonly songId: string;
-  readonly songName: string;
 }
 
 /** A delete the user has asked for and not yet confirmed. */
 export interface PendingDelete {
   readonly ids: string[];
-  readonly names: string[];
   readonly uses: SongUse[];
 }
 
@@ -361,8 +361,12 @@ export class SongsPresenter {
    * Ask to delete: gather what it would destroy, then let the user look at it.
    *
    * The songbooks are read **before** anything is written, and read per song, so
-   * the warning names the actual slots at risk rather than a count
+   * the warning names the actual songbooks at risk rather than a count
    * (CONTEXT.md §Delete vs Remove).
+   *
+   * **One entry per songbook, not per slot.** A bulk delete of ten songs out of
+   * the same songbook is one fact about one songbook, and listing it ten times
+   * says nothing the first line did not.
    */
   async requestDelete(ids: string[]): Promise<void> {
     const songs = ids
@@ -372,23 +376,23 @@ export class SongsPresenter {
       return;
     }
 
-    const uses: SongUse[] = [];
+    const uses = new Map<string, SongUse>();
     for (const song of songs) {
       const books = await this.songbooks.songbooksWith(song.id);
       for (const book of books) {
-        uses.push({
-          bookId: book.id,
-          bookName: book.name,
-          songId: song.id,
-          songName: song.name,
-        });
+        if (!uses.has(book.id)) {
+          uses.set(book.id, {
+            bookId: book.id,
+            bookName: book.name,
+            songId: song.id,
+          });
+        }
       }
     }
 
     this._pendingDelete.set({
       ids: songs.map((song) => song.id),
-      names: songs.map((song) => song.name),
-      uses,
+      uses: [...uses.values()],
     });
   }
 
@@ -493,26 +497,33 @@ export class SongsPresenter {
   }
 
   /**
-   * Render and save. One id takes the single-song formats, several take the
-   * batch ones — the dialog offers only the set that matches the count, so the
-   * two branches here can trust what they are given.
+   * Save what the dialog was asked for. One id takes the single-song formats,
+   * several take the batch ones — the dialog offers only the set that matches
+   * the count, so the branches here can trust what they are given.
+   *
+   * **The `json` branch is the old Export button.** One dialog offers both, so
+   * this is where the one choice splits back into the two acts it always was:
+   * `DownloadService` renders a picture, `ExportService` serialises the records
+   * (CONTEXT.md §Export vs §Download).
    *
    * The dialog stays open through the render to host the spinner and the count,
    * and closes when the file is saved — not the instant a format is picked.
    */
-  async download(format: DownloadFormat): Promise<void> {
+  async download(choice: DownloadChoice): Promise<void> {
     const ids = this.downloadIds();
     if (ids.length === 0) {
       this.cancelDownload();
       return;
     }
     await this.busy(async () => {
-      if (ids.length === 1) {
-        await this.downloads.downloadSong(ids[0], format as SongFormat);
+      if (choice === DATA_FORMAT) {
+        await this.exporter.export({ songIds: ids });
+      } else if (ids.length === 1) {
+        await this.downloads.downloadSong(ids[0], choice as SongFormat);
       } else {
         await this.downloads.downloadSongs(
           ids,
-          format as MultiFormat,
+          choice as MultiFormat,
           (done, total) => this._progress.set({ done, total }),
         );
       }
@@ -520,22 +531,6 @@ export class SongsPresenter {
     this._progress.set(null);
     this._isDownloadOpen.set(false);
     this._rowTarget.set(null);
-  }
-
-  /** The bulk bar's Export: the selection-or-current, no dialog (nothing to
-   * choose — Export has one format). */
-  async exportSelection(): Promise<void> {
-    await this.exportIds(this.barIds());
-  }
-
-  /** A row's menu Export: that one row. */
-  async exportRow(id: string): Promise<void> {
-    await this.exportIds([id]);
-  }
-
-  private async exportIds(songIds: readonly string[]): Promise<void> {
-    if (songIds.length === 0) return;
-    await this.busy(() => this.exporter.export({ songIds: [...songIds] }));
   }
 
   /**
@@ -624,7 +619,7 @@ export class SongsPresenter {
     // The cache is derived from content, so seeded content has to seed it too —
     // otherwise the new row shows a blank title until the first keystroke
     // rewrites it (PRD-DOMAIN-MODEL §Song: derived, never authored).
-    const ast = this.parser.parse(TUTORIAL_CONTENT);
+    const ast = this.parser.parse(NEW_SONG_CONTENT);
     return {
       id: crypto.randomUUID(),
       createdAt: now,
@@ -636,7 +631,7 @@ export class SongsPresenter {
       // asking the repository for every name on every create, to protect an
       // invariant no code relies on. Left unenforced deliberately.
       name: NEW_SONG_NAME,
-      content: TUTORIAL_CONTENT,
+      content: NEW_SONG_CONTENT,
       favorite: false,
       settings: {},
       cache: { title: ast.title ?? '', subtitle: ast.subtitle ?? '' },

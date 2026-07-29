@@ -67,8 +67,8 @@ async function createSongbook(page: Page, name: string): Promise<void> {
 }
 
 /**
- * Open a songbook row's ⋯ menu — perform, download, export and delete live
- * behind it. Edit, rename and duplicate stay direct on the row.
+ * Open a songbook row's ⋯ menu — perform, download and delete live behind it.
+ * Edit, rename and duplicate stay direct on the row.
  */
 async function openBookMenu(page: Page, id: string | null): Promise<void> {
   await page
@@ -117,12 +117,14 @@ test.describe('songbooks', () => {
     await page.goto('songbooks');
 
     await expect(page.getByTestId('songbook-row')).toHaveCount(1);
-    // It has no record behind it, so it wears no identity actions — neither on
-    // the row nor inside the ⋯ it does have (it can still be handed out).
+    // It has no record behind it, so it wears no identity actions. On an empty
+    // library it cannot be performed either, which leaves Download alone — and
+    // one action does not earn a ⋯, so it sits on the row itself.
     await page.getByTestId('songbook-row').hover();
     await expect(page.getByTestId('rename-all-songs')).toHaveCount(0);
-    await openBookMenu(page, 'all-songs');
     await expect(page.getByTestId('delete-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('more-all-songs')).toHaveCount(0);
+    await expect(page.getByTestId('download-all-songs')).toBeVisible();
     // "No songbooks yet" is about the ones you make — All songs is not one.
     await expect(page.getByTestId('songbooks-empty')).toBeVisible();
   });
@@ -132,12 +134,16 @@ test.describe('songbooks', () => {
     await createSong(page, 'Wonderwall');
     await page.goto('songbooks');
 
-    await page.getByTestId('hint-all-songs').click();
+    // Pointing at the (?) is the question, so hover answers it. Tap still
+    // toggles — on touch it is the only way in, and here the way back out.
+    await page.getByTestId('hint-all-songs').hover();
     await expect(page.getByRole('tooltip')).toContainText('library');
+    await page.getByTestId('hint-all-songs').click();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
 
     // Nothing to edit and nothing to open: there is no record behind the row, and
-    // what it stands for is the Songs module. It is performed, downloaded and
-    // exported — and the order it performs in is asked for in the Stage picker.
+    // what it stands for is the Songs module. It is performed and downloaded —
+    // and the order it performs in is asked for in the Stage picker.
     await expect(page.getByTestId('edit-all-songs')).toHaveCount(0);
     await expect(page.getByTestId('view-all-songs')).toHaveCount(0);
 
@@ -178,8 +184,8 @@ test.describe('songbooks', () => {
 
     await expect(page.getByTestId(`edit-${id}`)).toHaveCount(0);
     await expect(page.getByTestId(`rename-${id}`)).toHaveCount(0);
-    // No ⋯ menu either — that is where duplicate, delete, download and export
-    // now live, and the picking pane has none of them.
+    // No ⋯ menu either — that is where duplicate, delete and download now live,
+    // and the picking pane has none of them.
     await expect(page.getByTestId(`more-${id}`)).toHaveCount(0);
     // What stays: search, sort, select and favorite.
     await expect(page.getByTestId('explorer-search')).toBeVisible();

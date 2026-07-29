@@ -14,6 +14,7 @@
 // Selects only on `data-testid`, like the rest of the suite.
 
 import { expect, test, type Page } from '@playwright/test';
+import { withStarterLibrary } from './starter-library';
 
 /** The phone widths a real device lands on — the narrowest common phone, a
  * mid one, and the stack breakpoint's own doorstep. */
@@ -111,14 +112,14 @@ test.describe('mobile layout never overflows sideways', () => {
       await page.setViewportSize({ width, height: 780 });
       // The seeded starter set: real titles and subtitles, some longer than a
       // phone is wide — the case that used to push the row actions off-screen.
-      await page.goto('songs?seed');
+      await withStarterLibrary(page);
       await expect(page.getByTestId('song-row').first()).toBeVisible();
       await expectNoSideOverflow(page);
     });
 
     test(`the songbooks list fits at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 780 });
-      await page.goto('songbooks?seed');
+      await withStarterLibrary(page, 'songbooks');
       await expect(page.getByTestId('songbook-row').first()).toBeVisible();
       await expectNoSideOverflow(page);
     });

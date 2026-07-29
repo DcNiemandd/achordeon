@@ -129,6 +129,39 @@ RxJS-flavoured) — stores refresh via async methods, keeping the no-RxJS rule.
   `deletedAt` tombstone. Deletes are soft (set `deletedAt`); rows are never
   physically removed.
 
+### What a fresh library contains [decided]
+
+A first-ever boot writes the **starter library**, in one transaction: the localized
+syntax tour (`@@songs.tutorial`), several songs, a songbook and a favourite. A blank
+explorer renders nothing and teaches nothing, and every module would open on its own
+empty state.
+
+The tour carries the newest timestamp of everything written, so the render pane's
+auto-selection lands on it — a first-time user opens on the song that explains the
+others.
+
+The tour is **not** what a new song is born as; that is a small skeleton
+(`@@songs.newContent`) — a title, a subtitle and one labelled section with chords.
+Teaching the whole language in both places would mean maintaining the same lesson
+twice per locale, and the reader of a new song already has the tour in their library.
+
+- **Once, and only into an empty library.** `meta.guideSong` records which row the
+  tour is and the `updatedAt` last written to it; `songs.count()` includes tombstones,
+  so deleting any of it is a decision the next boot respects, and an existing library
+  never gains rows.
+- **Only the tour is stamped, and only it follows the language.** The seeded songs are
+  fixed source text with nothing to translate, and stamping them would let a user
+  editing a sample make the tour look untouched.
+- **It follows the language while it is untouched.** `updatedAt !== ` the stamp means
+  the user has edited, renamed, favourited or restyled it — from then on it is theirs
+  and is never rewritten. Untouched, a language switch replaces its content, name and
+  cache (a normal `updatedAt` bump, so the change syncs). The stamp is a timestamp
+  rather than a hash of the seeded text because runtime `$localize` only exposes the
+  _active_ catalog — booted in English there is no Czech text to compare against.
+- **`?empty`** suppresses the whole thing and sticks in `localStorage`, which is how
+  the e2e suite keeps asserting the real "No songs yet" screen. It has no opposite
+  param — content is the default now, so opting back in means clearing the key.
+
 ### Paging from day one [requested]
 
 The store exposes a **paged/cursor interface** so the frontend can do **infinite

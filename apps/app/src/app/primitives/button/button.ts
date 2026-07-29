@@ -30,7 +30,9 @@ import { Directive, input } from '@angular/core';
   },
 })
 export class Button {
-  readonly variant = input<'primary' | 'secondary' | 'ghost'>('ghost');
+  readonly variant = input<'primary' | 'secondary' | 'ghost' | 'danger'>(
+    'ghost',
+  );
   readonly size = input<'md' | 'lg'>('md');
   /** Square target; the accessible name comes from `aria-label` (§5.2). */
   readonly isIconOnly = input(false);

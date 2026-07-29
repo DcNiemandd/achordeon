@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   input,
   output,
@@ -12,6 +13,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
+import { FontLoader } from '@achordeon/shared/data-access';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { ScreenShape } from '../layout';
 import { MATCH_SCREEN } from './aspect-options';
@@ -23,6 +25,7 @@ import {
   type Group,
   type Option,
   type OptionGroup,
+  type Sample,
   type Scope,
   type SettingKey,
 } from './setting-ui';
@@ -99,15 +102,15 @@ interface Section {
                     row.ui.label
                   }}</label>
 
-                  <!-- Click, not hover: touch has no hover and this panel is
-                       edited on mobile, so hover-only help would not exist. -->
+                  <!-- Hover opens it, and tap still does too: touch has no
+                       hover and this panel is edited on mobile. -->
                   <button
                     appButton
                     type="button"
                     class="help"
                     [isIconOnly]="true"
                     [appTooltip]="row.ui.help"
-                    appTooltipTrigger="click"
+                    appTooltipTrigger="help"
                     [attr.aria-label]="helpLabel(row)"
                     [attr.data-testid]="'help-' + row.key"
                   >
@@ -318,6 +321,22 @@ interface Section {
                     [attr.data-testid]="'error-' + row.key"
                   >
                     {{ message }}
+                  </p>
+                }
+
+                @if (sample(row); as sample) {
+                  <!-- Under the control, in the face the control just chose.
+                       Hidden from the accessibility tree, because it says nothing
+                       the option text has not already said in words — it is the
+                       *shape* of the letters that is the information, and that is
+                       not something a screen reader can read out. -->
+                  <p
+                    class="sample"
+                    aria-hidden="true"
+                    [style.font-family]="sample.stack"
+                    [attr.data-testid]="'sample-' + row.key"
+                  >
+                    {{ sample.text }}
                   </p>
                 }
               </div>
@@ -544,6 +563,20 @@ interface Section {
       font-size: var(--text-xs);
       color: var(--danger);
     }
+
+    /* Bigger than the label above it, because 12px of Caveat is a squiggle: the
+       sample exists to be recognised, and a face is not recognisable at UI size.
+       Clipped rather than wrapped — the row is 300px in the editor dialog, and a
+       sample that reflowed would move every control under it. */
+    .sample {
+      margin: 2px 0 0;
+      font-size: var(--text-lg);
+      line-height: var(--leading-tight);
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   `,
 })
 export class SettingsPanel {
@@ -609,6 +642,46 @@ export class SettingsPanel {
    * tap itself, because that is when the orientation is known.
    */
   private readonly canMatchScreen = this.screen.detect() !== null;
+
+  /**
+   * The second thing that is not state: the font bytes a sample needs.
+   *
+   * Same argument as `ScreenShape`. A face is fetched on first *render* use
+   * (`FontLoader`), and a form is not a render — so on the Settings page, with no
+   * song on screen, `Caveat` has never been fetched and a sample asking for it
+   * would silently draw in `cursive`. Bubbling this out would have all three
+   * hosts preloading the same thing before mounting the same component.
+   *
+   * Declaring the faces in CSS instead was the obvious alternative and is worse:
+   * the app is built under a `/app/` base href with the fonts copied as assets,
+   * so a stylesheet `url()` either resolves to the wrong origin path or makes the
+   * bundler emit a second, fingerprinted copy of every TTF — a megabyte of
+   * duplicate bytes the service worker does not precache, fetched from a URL the
+   * renderer never uses.
+   */
+  private readonly fonts = inject(FontLoader);
+
+  constructor() {
+    // Regular only: a sample is one line of text at one weight.
+    effect(() => void this.fonts.ensure(this.sampleFaces(), ['normal']));
+  }
+
+  /** The families the visible samples are asking for, as the values change. */
+  private readonly sampleFaces = computed<string[]>(() =>
+    this.rows().flatMap((row) =>
+      row.ui.sample ? [row.ui.sample(String(row.value)).family] : [],
+    ),
+  );
+
+  /**
+   * What this row's sample line shows, or `null` on a row that has none.
+   *
+   * Recomputed from the value on every read, so picking `Handwritten` redraws the
+   * sample in Caveat with no second binding to keep in sync.
+   */
+  protected sample(row: Row): Sample | null {
+    return row.ui.sample?.(String(row.value)) ?? null;
+  }
 
   protected choices(row: Row): readonly Option[] {
     return row.ui.control.kind === 'choice' ? row.ui.control.options : [];

@@ -1,4 +1,5 @@
 import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
+import { createContext } from './context';
 import { createFakeMeasurer } from './fake-measurer';
 import { singleFamilyResolver } from './fonts';
 import { createLayout, layoutCore } from './layout';
@@ -33,6 +34,16 @@ const ast = (over: Partial<SongAst> = {}): SongAst => ({
  * would be measuring the cap instead of the layout. It has its own test.
  */
 const UNCAPPED = { tuning: { minBoxEm: 0 } };
+
+/**
+ * The same context `layoutCore` builds internally, so the placement assertions can
+ * be written in terms of slot heights and tuning factors instead of the numbers
+ * those happen to produce today (§4.7 — spacing magnitudes are tunable). `minBoxEm`
+ * is the only thing `UNCAPPED` overrides and it does not reach the metrics.
+ */
+const derived = createContext(settings, measure, DEFAULT_TUNING, false);
+const titleGap =
+  DEFAULT_TUNING.spacing.titleGapFactor * derived.metrics.lyric.height;
 
 describe('layoutCore — assembly (§1, §5)', () => {
   it('produces an empty plan for an empty song', () => {
@@ -105,10 +116,13 @@ describe('layoutCore — assembly (§1, §5)', () => {
     );
     const title = plan.items.find((i) => i.role === 'title');
     const lyric = plan.items.find((i) => i.role === 'lyric');
-    expect(title?.y).toBeCloseTo(19.2);
-    // title region height (24) + gap (32) = 56, then lyric baseline 12.8
-    expect(lyric?.y).toBeCloseTo(56 + 12.8);
-    expect(plan.box.height).toBeCloseTo(72);
+    const m = derived.metrics;
+    expect(title?.y).toBeCloseTo(m.title.ascent);
+    // title region, then the gap, then the lyric's own baseline inside its slot
+    expect(lyric?.y).toBeCloseTo(m.title.height + titleGap + m.lyric.ascent);
+    expect(plan.box.height).toBeCloseTo(
+      m.title.height + titleGap + m.lyric.height,
+    );
   });
 
   it('carries the resolved per-role styles', () => {

@@ -9,6 +9,8 @@
 // without this each test would inherit the previous one's songs.
 
 import { expect, test, type Page } from '@playwright/test';
+import { createSong } from './create-song';
+import { withStarterLibrary } from './starter-library';
 
 const ROOMY = { width: 1440, height: 900 };
 const COMPACT = { width: 390, height: 844 };
@@ -28,36 +30,21 @@ async function freshLibrary(page: Page): Promise<void> {
 }
 
 /**
- * Create a song, name it, and come back to the explorer — creating opens the
- * editor.
+ * A genuinely first-ever boot: no database, and seeding **on**.
  *
- * The new row is found by its default name, never by position: the list is
- * sorted, so "the one I just made" is not "the last one".
+ * The suite opts out of seeding for every test (`storageState` in
+ * playwright.config.ts) so that a fresh context means an empty library. Opting back
+ * in is what a real first-time user is, and only the first-run tests want it.
  */
-async function createSong(page: Page, name: string): Promise<void> {
-  await page.getByTestId('songs-add').click();
-  await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
-  await page.goBack();
-
-  const row = page
-    .getByTestId('song-row')
-    .filter({ hasText: 'New song' })
-    .first();
-  await expect(row).toBeVisible();
-  const id = await row.getAttribute('data-song-id');
-
-  await row.hover();
-  await page.getByTestId(`rename-${id}`).click();
-  await page.getByTestId(`rename-input-${id}`).fill(name);
-  await page.getByTestId(`rename-input-${id}`).press('Enter');
-  await expect(
-    page.getByTestId('song-row').filter({ hasText: name }),
-  ).toHaveCount(1);
+async function firstRun(page: Page): Promise<void> {
+  await freshLibrary(page);
+  await withStarterLibrary(page);
+  await expect(page.getByTestId('song-row').first()).toBeVisible();
 }
 
 /**
- * Open a row's ⋯ menu — duplicate, download, export and delete moved behind it
- * (Epic 7). Edit and rename stay direct on the row.
+ * Open a row's ⋯ menu — download and delete moved behind it (Epic 7).
+ * Edit, rename and duplicate stay direct on the row.
  */
 async function openRowMenu(page: Page, id: string | null): Promise<void> {
   await page
@@ -70,7 +57,7 @@ async function openRowMenu(page: Page, id: string | null): Promise<void> {
 }
 
 /**
- * Put a songbook holding `songName` into IndexedDB directly.
+ * Put a songbook holding `songNames` into IndexedDB directly.
  *
  * The Songbooks module is Epic 6, so there is no UI to build one with yet — but
  * the delete cascade and its warning are Epic 5's, and they are only real if a
@@ -80,16 +67,21 @@ async function openRowMenu(page: Page, id: string | null): Promise<void> {
 async function seedSongbook(
   page: Page,
   bookName: string,
-  songName: string,
+  ...songNames: string[]
 ): Promise<void> {
-  const songId = await page
-    .getByTestId('song-row')
-    .filter({ hasText: songName })
-    .first()
-    .getAttribute('data-song-id');
+  const songIds: (string | null)[] = [];
+  for (const name of songNames) {
+    songIds.push(
+      await page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first()
+        .getAttribute('data-song-id'),
+    );
+  }
 
   await page.evaluate(
-    ({ book, song }) =>
+    ({ book, songs }) =>
       new Promise<void>((resolve, reject) => {
         const open = indexedDB.open('achordeon');
         open.onsuccess = () => {
@@ -106,7 +98,7 @@ async function seedSongbook(
             subtitle: '',
             author: '',
             settings: {},
-            entries: [song],
+            entries: songs,
           });
           tx.oncomplete = () => {
             db.close();
@@ -116,7 +108,7 @@ async function seedSongbook(
         };
         open.onerror = () => reject(open.error);
       }),
-    { book: bookName, song: songId },
+    { book: bookName, songs: songIds },
   );
   await page.reload();
 }
@@ -142,40 +134,98 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(1);
   });
 
-  // Opt-in: `?seed` fills an empty library once; a plain boot stays empty, which
-  // is why every other test here still starts from the empty state.
-  test('the ?seed param fills an empty library, and does not duplicate', async ({
+  // What a real first-time user meets. Every other test in the suite opts out of
+  // seeding (`storageState` in playwright.config.ts), so this is the one place the
+  // first-run path runs — and the empty-state test above is what the opt-out buys.
+  test('a first run lands the starter library, the guide showing in the render pane', async ({
     page,
   }) => {
-    await page.goto('songs?seed');
-    await expect(page.getByTestId('song-row').first()).toBeVisible();
-    const seeded = await page.getByTestId('song-row').count();
-    expect(seeded).toBeGreaterThan(1);
+    await firstRun(page);
 
-    // A reload with the param still in the URL adds nothing.
+    // The guide song *and* the starter set, in one write — several rows, not one.
+    const rows = page.getByTestId('song-row');
+    const seeded = await rows.count();
+    expect(seeded).toBeGreaterThan(1);
+    await expect(rows.filter({ hasText: 'My first song' })).toHaveCount(1);
+    // Preselected, and specifically the guide: it carries the newest timestamp of
+    // everything written, so `autoSelect` opens the tour rather than whichever
+    // sample happened to sort first.
+    await expect(page.getByTestId('song-render')).toContainText(
+      'My first song',
+    );
+
+    // A reload is not a second first run, and nothing duplicates.
     await page.reload();
     await expect(page.getByTestId('song-row')).toHaveCount(seeded);
   });
 
-  // A blank page teaches nothing: the content syntax is invisible until you have
-  // seen it work, so a new song opens as a worked example that also renders.
-  test('a new song opens holding the tutorial, and it parses cleanly', async ({
+  // The songbook lands in the same write, so the songbooks module opens on content
+  // instead of its own empty state.
+  test('a first run lands the starter songbook too', async ({ page }) => {
+    await firstRun(page);
+    await page.goto('songbooks');
+    await expect(page.getByTestId('songbook-row').first()).toBeVisible();
+  });
+
+  // The one song that teaches the language, so it has to show all of it and warn at
+  // nobody on sight.
+  test('the guide song holds the tutorial, and it parses cleanly', async ({
+    page,
+  }) => {
+    await firstRun(page);
+    const row = page
+      .getByTestId('song-row')
+      .filter({ hasText: 'My first song' });
+    const id = await row.getAttribute('data-song-id');
+    await row.hover();
+    await page.getByTestId(`edit-${id}`).click();
+
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+    const editor = page.getByTestId('editor');
+    await expect(editor).toContainText('[[C]]');
+    await expect(editor).toContainText('Softly:');
+    await expect(editor).toContainText('***both***');
+    await expect(editor).toContainText('R::');
+    await expect(editor.locator('.cm-lintRange-warning')).toHaveCount(0);
+  });
+
+  // A sample the user threw away stays thrown away — the guide song is stamped, so
+  // deleting it is a decision the next boot respects.
+  test('a deleted guide song does not come back', async ({ page }) => {
+    await firstRun(page);
+    const rows = page.getByTestId('song-row');
+    const seeded = await rows.count();
+    const guide = rows.filter({ hasText: 'My first song' });
+    const id = await guide.getAttribute('data-song-id');
+    await openRowMenu(page, id);
+    await page.getByTestId(`delete-${id}`).click();
+    await page.getByTestId('delete-confirm').click();
+    await expect(guide).toHaveCount(0);
+
+    // Only the guide goes: the rest of the starter library is untouched, and the
+    // next boot resurrects nothing.
+    await page.reload();
+    await expect(guide).toHaveCount(0);
+    await expect(rows).toHaveCount(seeded - 1);
+  });
+
+  // A skeleton, not a lesson: the three things every song has, plus the one rule
+  // nothing else in the UI can show — where a chord lands. The whole language is the
+  // guide song's job, and it is sitting in the library.
+  test('a new song opens holding the skeleton, and it parses cleanly', async ({
     page,
   }) => {
     await page.getByTestId('songs-add').click();
-    await expect(page.getByTestId('editor')).toContainText('My first song');
-    await expect(page.getByTestId('editor')).toContainText('[C]');
-    // It is the language's shop window, so it shows the whole language — a
-    // construct missing from here is one nobody discovers.
-    await expect(page.getByTestId('editor')).toContainText('[[C]]');
-    await expect(page.getByTestId('editor')).toContainText('Softly:');
-    await expect(page.getByTestId('editor')).toContainText('***both***');
+    const editor = page.getByTestId('editor');
+    await expect(editor).toContainText('New song');
+    await expect(editor).toContainText('Verse:');
+    await expect(editor).toContainText('[C]');
 
-    // It has to be a *correct* example — a starter song that warns at the user
-    // on sight teaches them the language is fussy rather than how it works.
-    await expect(
-      page.getByTestId('editor').locator('.cm-lintRange-warning'),
-    ).toHaveCount(0);
+    // Small enough to type over — the tour's constructs belong to the guide song.
+    await expect(editor).not.toContainText('[[C]]');
+    // And it has to be a *correct* example: a starter song that warns at the user on
+    // sight teaches them the language is fussy rather than how it works.
+    await expect(editor.locator('.cm-lintRange-warning')).toHaveCount(0);
     // And it has to render, or the example does not demonstrate anything.
     await expect(page.getByTestId('song-render')).toBeVisible();
   });
@@ -219,15 +269,25 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toContainText('Wonderwall');
   });
 
+  // Duplicate is a **row** button, not a menu item and not a bulk action: it
+  // copies the one song it sits beside, so it is reachable without opening the ⋯
+  // and it is not offered in the page's action bar at all.
   test('duplicates a song into a second, independent row', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     const id = await page.getByTestId('song-row').getAttribute('data-song-id');
 
-    await openRowMenu(page, id);
+    await page.getByTestId('song-row').hover();
     await page.getByTestId(`duplicate-${id}`).click();
 
     await expect(page.getByTestId('song-row')).toHaveCount(2);
     await expect(page.getByTestId('song-row').nth(1)).toContainText('(copy)');
+
+    // …and it did not also stay behind the ⋯, which would offer the same act
+    // twice on one row.
+    await openRowMenu(page, id);
+    await expect(
+      page.getByTestId(`more-${id}-panel`).getByTestId(`duplicate-${id}`),
+    ).toHaveCount(0);
   });
 
   test('favorites a song, and the flag survives a reload', async ({ page }) => {
@@ -527,6 +587,30 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('explorer-empty')).toBeVisible();
     // The selection went with the songs — nothing left to act on.
     await expect(page.getByTestId('explorer-bulk-delete')).toBeDisabled();
+  });
+
+  test('the warning names each songbook once, however many songs it loses', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await createSong(page, 'Yesterday');
+    await seedSongbook(page, 'Campfire', 'Wonderwall', 'Yesterday');
+    // Seeding reloads, and `evaluateAll` does not wait for anything.
+    await expect(page.getByTestId('song-row')).toHaveCount(2);
+    const ids = await page
+      .getByTestId('song-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getAttribute('data-song-id')),
+      );
+
+    await page.getByTestId(`select-${ids[0]}`).check();
+    await page.getByTestId(`select-${ids[1]}`).check();
+    await page.getByTestId('explorer-bulk-delete').click();
+
+    // Two songs out of one songbook is one fact about one songbook.
+    const links = page.getByTestId(/^in-use-/);
+    await expect(links).toHaveCount(1);
+    await expect(links).toHaveText('Campfire');
   });
 
   test('below the breakpoint: the explorer is full width, with no render pane', async ({

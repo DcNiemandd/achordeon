@@ -268,7 +268,8 @@ export class SongEditor {
 
     if (request.atLineStart) {
       // Line-scoped: prefix the line, REPLACING any marker it already carries, so
-      // the button is idempotent and Title/Subtitle interchange.
+      // Title/Subtitle interchange — and removing its own marker, so each one is
+      // a toggle rather than a one-way door.
       const line = view.state.doc.lineAt(from);
 
       // A line can hold only one label, so on a labelled line the button goes to
@@ -291,13 +292,18 @@ export class SongEditor {
         }
       }
       const existing = request.replacesLineStart?.exec(line.text)?.[0] ?? '';
-      // Already exactly this marker: nothing to write. Rewriting it would cost
-      // an undo step for no visible change — but do move the caret to the end of
-      // the line, because pressing "Title" on a line that is already a title
-      // means "let me write the title", and leaving the caret where it was made
-      // the button look broken.
+      // Already exactly this marker: take it OFF [corrected: used to just move
+      // the caret to the end of the line]. The button says what the line IS, so
+      // pressing it on a line that is already a title is the one way to say "this
+      // is not a title after all" — and there was no other way to unmake one
+      // except deleting the asterisk by hand. Title on a *subtitle* still
+      // converts, because that press names a different kind.
       if (existing === request.before) {
-        view.dispatch({ selection: { anchor: line.to }, scrollIntoView: true });
+        view.dispatch({
+          changes: { from: line.from, to: line.from + existing.length },
+          selection: { anchor: Math.max(line.from, from - existing.length) },
+          scrollIntoView: true,
+        });
         view.focus();
         return;
       }
