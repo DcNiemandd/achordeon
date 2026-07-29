@@ -43,40 +43,6 @@ const WHEEL_STEP_PX = 90;
     '(keydown)': 'onKey($event)',
   },
   template: `
-    <div class="bar">
-      <div class="zoom" role="group" [attr.aria-label]="zoomLabel">
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [disabled]="columns() <= 1"
-          [attr.aria-label]="fewerLabel"
-          [appTooltip]="fewerLabel"
-          data-testid="preview-zoom-out"
-          (click)="setColumns(columns() - 1)"
-        >
-          <app-icon name="minus" />
-        </button>
-        <span class="count" data-testid="preview-columns">{{
-          columnsLabel()
-        }}</span>
-        <button
-          appButton
-          type="button"
-          [isIconOnly]="true"
-          [disabled]="columns() >= maxColumns()"
-          [attr.aria-label]="moreLabel"
-          [appTooltip]="moreLabel"
-          data-testid="preview-zoom-in"
-          (click)="setColumns(columns() + 1)"
-        >
-          <app-icon name="add" />
-        </button>
-      </div>
-
-      <span class="folios" data-testid="preview-range">{{ rangeLabel() }}</span>
-    </div>
-
     <div class="desk" data-testid="songbook-preview">
       <div class="spread" [style.--columns]="columns()">
         @for (page of visible(); track page.key) {
@@ -99,6 +65,40 @@ const WHEEL_STEP_PX = 90;
         }
       </div>
     </div>
+
+    <!-- The controls sit UNDER the paper: the page number centred, the zoom on
+         the right. Zoom is by column count and reads as a magnifier — zoom IN
+         shows fewer, larger pages, zoom OUT more, smaller ones — so the buttons
+         move columns the OTHER way from their sign. -->
+    <div class="bar">
+      <span class="range" data-testid="preview-range">{{ rangeLabel() }}</span>
+      <div class="zoom" role="group" [attr.aria-label]="zoomLabel">
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [disabled]="columns() >= maxColumns()"
+          [attr.aria-label]="zoomOutLabel"
+          [appTooltip]="zoomOutLabel"
+          data-testid="preview-zoom-out"
+          (click)="setColumns(columns() + 1)"
+        >
+          <app-icon name="zoomOut" />
+        </button>
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [disabled]="columns() <= 1"
+          [attr.aria-label]="zoomInLabel"
+          [appTooltip]="zoomInLabel"
+          data-testid="preview-zoom-in"
+          (click)="setColumns(columns() - 1)"
+        >
+          <app-icon name="zoomIn" />
+        </button>
+      </div>
+    </div>
   `,
   styles: `
     :host {
@@ -108,32 +108,31 @@ const WHEEL_STEP_PX = 90;
       outline: none;
     }
 
+    /* Under the paper. Three columns so the page number sits dead-centre of the
+       whole bar whatever the zoom controls' width: empty | range | zoom. */
     .bar {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: space-between;
       gap: var(--space-2);
       padding: var(--space-2) var(--space-3);
-      border-block-end: 1px solid var(--border);
+      border-block-start: 1px solid var(--border);
     }
 
-    .zoom {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-    }
-
-    .count {
-      min-inline-size: 5.5rem;
+    .range {
+      grid-column: 2;
       text-align: center;
-      font-size: var(--text-sm);
-      color: var(--text-muted);
-    }
-
-    .folios {
       font-size: var(--text-sm);
       color: var(--text-faint);
       font-variant-numeric: tabular-nums;
+    }
+
+    .zoom {
+      grid-column: 3;
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
     }
 
     /* The desk the pages sit on. A definite-size box (container units below
@@ -296,12 +295,6 @@ export class SongbookPreview {
     return `folio ${vertical} ${horizontal}`;
   });
 
-  protected readonly columnsLabel = computed(() =>
-    this.columns() === 1
-      ? $localize`:@@songbookPreview.oneColumn:1 column`
-      : $localize`:@@songbookPreview.columns:${this.columns()}:count: columns`,
-  );
-
   /** "3–4 / 20", or "3 / 20" for a single-page screenful. */
   protected readonly rangeLabel = computed(() => {
     const count = this.pageCount();
@@ -359,7 +352,7 @@ export class SongbookPreview {
     this.cursor.set(Math.min(Math.max(0, next), this.lastStart()));
   }
 
-  protected readonly zoomLabel = $localize`:@@songbookPreview.zoom:Columns`;
-  protected readonly fewerLabel = $localize`:@@songbookPreview.fewer:Fewer columns`;
-  protected readonly moreLabel = $localize`:@@songbookPreview.more:More columns`;
+  protected readonly zoomLabel = $localize`:@@songbookPreview.zoom:Zoom`;
+  protected readonly zoomInLabel = $localize`:@@songbookPreview.zoomIn:Zoom in`;
+  protected readonly zoomOutLabel = $localize`:@@songbookPreview.zoomOut:Zoom out`;
 }
