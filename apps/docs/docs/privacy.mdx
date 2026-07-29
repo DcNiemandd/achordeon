@@ -1,0 +1,71 @@
+---
+sidebar_position: 20
+---
+
+# Privacy
+
+Achordeon counts page visits, so we can see which parts get used and which ones
+to fix first. Nothing here identifies you, and there is no cookie bar, because
+there is nothing to ask you about — until you switch the second part on
+yourself.
+
+## What is counted
+
+Every visit, in the docs and in the app, sends four things:
+
+```json
+{
+  "site": "docs",
+  "path": "/docs/privacy",
+  "locale": "en",
+  "referrer_host": "google.com"
+}
+```
+
+- **site** — these docs, or the app
+- **path** — which page. Song and songbook ids are stripped out first
+- **locale** — EN or CS
+- **referrer_host** — the domain that linked you here, never the full address
+
+Those get added up, so what comes out is "40 visits to the syntax page today".
+There is no visitor id, which means three visits by you and one visit each by
+three other people look exactly the same.
+
+:::note[Why there is nothing to consent to]
+Putting anything on your device, or reading anything off it, needs your
+permission first. This does neither — no cookie, no local storage, no
+fingerprint — so no permission is needed and no bar appears.
+:::
+
+## What is never collected
+
+- Your IP address
+- Your browser or operating system
+- Your screen size
+- Any visitor id, hashed or otherwise
+- Anything you wrote: song titles, lyrics, chords, file names
+
+## Extra statistics
+
+Off unless you turn it on. It adds your browser, operating system and screen
+size to the count above — the three things that tell us which devices are worth
+fixing first. Still no ip address, still no visitor id.
+
+<StatsToggle />
+
+The switch is remembered on this device, and it covers the app as well as these
+docs. Turning it back off takes effect immediately.
+
+:::danger[TODO]
+The same switch in the app's [Settings](/settings.mdx).
+:::
+
+## How long it is kept
+
+The raw counts for 90 days, then the daily totals only. Nothing is ever read
+back while the app runs.
+
+:::info[There is nothing to delete]
+Since no row can be traced to a person, we could not find your data if you asked
+us to — there is no id to look you up by. That is rather the point.
+:::
