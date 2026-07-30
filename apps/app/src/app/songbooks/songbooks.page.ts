@@ -27,6 +27,7 @@ import {
 } from '../shared/song-explorer';
 import { SongbookPreview } from '../shared/songbook-preview';
 import { SongbookPrintFields } from '../shared/songbook-print-fields';
+import { SongOrderFields } from '../shared/song-order-fields';
 import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
@@ -44,6 +45,7 @@ import {
     SongExplorer,
     SongbookPreview,
     SongbookPrintFields,
+    SongOrderFields,
     SongbookDownloadDialog,
     ImportPanel,
     SettingsPanel,
@@ -138,7 +140,6 @@ import {
       <app-songbook-download-dialog
         [name]="presenter.downloadName()"
         [initial]="presenter.downloadInitial()"
-        [showSongOrder]="presenter.isDownloadAllSongs()"
         [busy]="presenter.isBusy()"
         [progress]="presenter.downloadProgress()"
         (chosen)="presenter.download($event)"
@@ -226,7 +227,7 @@ import {
         }
 
         <!-- The book's print structure — set here, drawn by the download and the
-             preview. For All songs this is the whole dialog. -->
+             preview. For All songs this is (with the order below) the whole dialog. -->
         <section class="fields">
           <h3 class="fields-title">{{ printHeading }}</h3>
           <app-songbook-print-fields
@@ -234,6 +235,18 @@ import {
             (changed)="presenter.setPrint($event)"
           />
         </section>
+
+        <!-- The order All songs is arranged in — its alone, because a real book's
+             order is its content. It rode in the download dialog before. -->
+        @if (presenter.isSettingsAllSongs()) {
+          <section class="fields">
+            <h3 class="fields-title">{{ orderHeading }}</h3>
+            <app-song-order-fields
+              [order]="presenter.allSongsOrder()"
+              (changed)="presenter.setAllSongsOrder($event)"
+            />
+          </section>
+        }
 
         @if (!presenter.isSettingsAllSongs()) {
           <app-settings-panel
@@ -363,6 +376,7 @@ export class SongbooksPage {
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
   protected readonly printHeading = $localize`:@@songbooks.print:Print`;
+  protected readonly orderHeading = $localize`:@@songbookDownload.order:Song order`;
 
   /** The book's own metadata — authored here, never parsed (ADR-0001). */
   protected readonly titleFieldDefs = [

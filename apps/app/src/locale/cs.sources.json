@@ -400,6 +400,7 @@
   "songbooks.import": "Import from a file",
   "songbooks.name": "Songbook name",
   "songbooks.newName": "New songbook",
+  "songbooks.orderBy": "Order by",
   "songbooks.perform": "Perform this songbook",
   "songbooks.print": "Print",
   "songbooks.settings": "Songbook settings",

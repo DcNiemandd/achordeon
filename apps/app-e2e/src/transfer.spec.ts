@@ -972,7 +972,7 @@ test.describe('download a songbook', () => {
     expect(countPages(raw)).toBe(3);
   });
 
-  test('the download dialog offers a song order for All songs only', async ({
+  test("All songs' settings offer a song order; a real book's do not", async ({
     page,
   }) => {
     await createSong(page, 'Alpha');
@@ -982,16 +982,12 @@ test.describe('download a songbook', () => {
     await expect(page).toHaveURL(/\/songbooks\/.+$/);
     await page.goto('songbooks');
 
-    // All songs: the song-order controls are there.
-    const all = page
-      .getByTestId('songbook-row')
-      .filter({ hasText: 'All songs' });
-    const allId = await all.getAttribute('data-song-id');
-    await openBookMenu(page, allId);
-    await page.getByTestId(`download-${allId}`).click();
+    // All songs: the song-order controls are in its settings dialog now.
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await expect(page.getByTestId('pdf-song-order')).toBeVisible();
     await expect(page.getByTestId('pdf-favorites-first')).toBeVisible();
-    await page.getByTestId('songbook-download-cancel').click();
+    await page.getByTestId('dialog-close').click();
 
     // A real songbook: its order is its content, so no song-order controls.
     const real = page
@@ -999,31 +995,25 @@ test.describe('download a songbook', () => {
       .filter({ hasText: 'New songbook' });
     const realId = await real.getAttribute('data-song-id');
     await openBookMenu(page, realId);
-    await page.getByTestId(`download-${realId}`).click();
+    await page.getByTestId(`settings-${realId}`).click();
     await expect(page.getByTestId('pdf-song-order')).toHaveCount(0);
-    await expect(page.getByTestId('pdf-favorites-first')).toHaveCount(0);
   });
 
-  test('the chosen song order is remembered next time', async ({ page }) => {
+  test('the chosen All songs order is remembered', async ({ page }) => {
     await createSong(page, 'Alpha');
     await page.goto('songbooks');
-    const all = page
-      .getByTestId('songbook-row')
-      .filter({ hasText: 'All songs' });
-    const id = await all.getAttribute('data-song-id');
 
-    await openBookMenu(page, id);
-    await page.getByTestId(`download-${id}`).click();
+    // Set in its settings dialog; the order commits on change.
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await page.getByTestId('pdf-song-order').selectOption('created');
     await page.getByTestId('pdf-favorites-first').check();
-    // Confirming the download is what remembers the choice (persisted options).
-    await download(page, () =>
-      page.getByTestId('songbook-download-confirm').click(),
-    );
+    await page.getByTestId('dialog-close').click();
 
-    // Reopen — the last choice is still set.
-    await openBookMenu(page, id);
-    await page.getByTestId(`download-${id}`).click();
+    // Device-local, so it survives a reload.
+    await page.reload();
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await expect(page.getByTestId('pdf-song-order')).toHaveValue('created');
     await expect(page.getByTestId('pdf-favorites-first')).toBeChecked();
   });

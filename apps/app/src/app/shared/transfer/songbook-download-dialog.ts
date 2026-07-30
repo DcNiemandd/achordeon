@@ -29,9 +29,6 @@ import {
   type PageSizeChoice,
   type SongbookChoiceFormat,
   type SongbookPdfChoice,
-  type SongOrder,
-  type SongOrderAxis,
-  type SongOrderDir,
 } from './transfer-model';
 
 @Component({
@@ -107,57 +104,10 @@ import {
           </label>
         }
 
-        <!-- The book's own structure — title page, contents, page numbers — is
-             NOT here: it belongs to the book, set in its settings dialog (and for
-             All songs, its own), and this dialog only asks about format and paper.
-             The download draws the book with whatever structure it was given. -->
-
-        <!-- Song order — **All songs only**, and only where something is being
-             laid out. A real songbook's order IS its content; you arranged it,
-             so it prints as arranged. All songs has no order of its own, so
-             this is where one is chosen. A JSON keeps no order at all: it is a
-             set of records, and the receiving library sorts it its own way. -->
-        @if (showSongOrder() && !isData()) {
-          <div class="group" role="group" [attr.aria-label]="orderLabel">
-            <label class="row">
-              <span class="name">{{ orderLabel }}</span>
-              <select
-                class="control"
-                [value]="choice().songOrder.axis"
-                data-testid="pdf-song-order"
-                (change)="patchOrder({ axis: axis($event) })"
-              >
-                <option value="title">{{ byTitleLabel }}</option>
-                <option value="name">{{ byNameLabel }}</option>
-                <option value="created">{{ byCreatedLabel }}</option>
-                <option value="changed">{{ byChangedLabel }}</option>
-              </select>
-            </label>
-
-            <label class="row">
-              <span class="name">{{ directionLabel }}</span>
-              <select
-                class="control"
-                [value]="choice().songOrder.dir"
-                data-testid="pdf-song-dir"
-                (change)="patchOrder({ dir: dir($event) })"
-              >
-                <option value="asc">{{ ascLabel }}</option>
-                <option value="desc">{{ descLabel }}</option>
-              </select>
-            </label>
-
-            <label class="row is-toggle">
-              <input
-                type="checkbox"
-                [checked]="choice().songOrder.favoritesFirst"
-                data-testid="pdf-favorites-first"
-                (change)="patchOrder({ favoritesFirst: checked($event) })"
-              />
-              <span class="name">{{ favoritesFirstLabel }}</span>
-            </label>
-          </div>
-        }
+        <!-- Neither the book's structure (title page, contents, page numbers) nor
+             — for All songs — its order is here: both belong to the book and are
+             set in its settings dialog. This dialog asks only about format and
+             paper, and the download draws the book as it already stands. -->
       </div>
 
       <p class="note">{{ note() }}</p>
@@ -226,15 +176,6 @@ import {
     /* The song-order controls, set apart from the paper options above with a
        hairline — they answer a different question ("in what order", not "on what
        paper") and only appear for All songs. */
-    .group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin-block-start: var(--space-1);
-      padding-block-start: var(--space-2);
-      border-block-start: 1px solid var(--border);
-    }
-
     .note {
       margin: var(--space-3) 0 0;
       color: var(--text-muted);
@@ -272,9 +213,6 @@ export class SongbookDownloadDialog {
   /** The options the dialog opens on — the device's last-used paper composed with
    * this book's own print structure (the presenter merges the two homes). */
   readonly initial = input<SongbookPdfChoice>(DEFAULT_SONGBOOK_CHOICE);
-  /** Show the song-order controls — **only for All songs**, whose order is not
-   * fixed. A real songbook prints in its arranged order, so it hides them. */
-  readonly showSongOrder = input(false);
 
   /** The book is rendering — the confirm button becomes the progress. */
   readonly busy = input(false);
@@ -312,13 +250,6 @@ export class SongbookDownloadDialog {
     this.choice.update((current) => ({ ...current, ...change }));
   }
 
-  protected patchOrder(change: Partial<SongOrder>): void {
-    this.choice.update((current) => ({
-      ...current,
-      songOrder: { ...current.songOrder, ...change },
-    }));
-  }
-
   /** The shapes a form event arrives in — narrowed at the one place they enter
    * typed code, which is exactly where a `<select>`'s string stops being one. */
   protected value(event: Event): string {
@@ -333,14 +264,6 @@ export class SongbookDownloadDialog {
     return this.value(event) as PageSizeChoice;
   }
 
-  protected axis(event: Event): SongOrderAxis {
-    return this.value(event) as SongOrderAxis;
-  }
-
-  protected dir(event: Event): SongOrderDir {
-    return this.value(event) as SongOrderDir;
-  }
-
   protected number(event: Event): number {
     const raw = Number((event.target as HTMLInputElement).value);
     // A margin is a length, and a negative one is not a smaller page — it is a
@@ -348,10 +271,6 @@ export class SongbookDownloadDialog {
     return Number.isFinite(raw)
       ? Math.max(raw, 0)
       : DEFAULT_SONGBOOK_CHOICE.marginMm;
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
   }
 
   protected readonly formatLabel = $localize`:@@songbookDownload.format:Format`;
@@ -363,15 +282,6 @@ export class SongbookDownloadDialog {
   protected readonly portraitLabel = $localize`:@@songbookDownload.portrait:Portrait`;
   protected readonly landscapeLabel = $localize`:@@songbookDownload.landscape:Landscape`;
   protected readonly marginLabel = $localize`:@@songbookDownload.margin:Margin (mm)`;
-  protected readonly orderLabel = $localize`:@@songbookDownload.order:Song order`;
-  protected readonly byTitleLabel = $localize`:@@songbookDownload.order.title:Title`;
-  protected readonly byNameLabel = $localize`:@@songbookDownload.order.name:Library name`;
-  protected readonly byCreatedLabel = $localize`:@@songbookDownload.order.created:Date created`;
-  protected readonly byChangedLabel = $localize`:@@songbookDownload.order.changed:Date changed`;
-  protected readonly directionLabel = $localize`:@@songbookDownload.direction:Direction`;
-  protected readonly ascLabel = $localize`:@@songbookDownload.asc:Ascending`;
-  protected readonly descLabel = $localize`:@@songbookDownload.desc:Descending`;
-  protected readonly favoritesFirstLabel = $localize`:@@songbookDownload.favoritesFirst:Favorites first`;
   protected readonly fitNote = $localize`:@@songbookDownload.fitNote:Each song keeps its own shape and is scaled to fit the page.`;
   /** The ZIP names its files in book order, so a viewer or a printer keeps the
    * songs in the sequence you arranged them. */

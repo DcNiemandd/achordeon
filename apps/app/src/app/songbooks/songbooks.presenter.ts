@@ -30,6 +30,7 @@ import {
   type ImportFailure,
   type ImportPreview,
   type SongbookPdfChoice,
+  type SongOrder,
 } from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
@@ -391,6 +392,20 @@ export class SongbooksPresenter {
   }
 
   /**
+   * The order **All songs** is arranged in, for its settings dialog. Only All
+   * songs has this — a real book's order is its content (its slots), so its
+   * settings dialog shows no such control. Device-local, like its print
+   * structure: there is no record to keep it on.
+   */
+  readonly allSongsOrder = computed(() => this.print.options().songOrder);
+
+  /** Write the All songs order from its settings dialog. Kept inside the device
+   * paper it already rode in, so the download and preview read it unchanged. */
+  setAllSongsOrder(order: SongOrder): void {
+    this.print.save({ ...this.print.options(), songOrder: order });
+  }
+
+  /**
    * What the songbook scope inherits: the Global defaults, the only thing below
    * it in the cascade (ADR-0006). The panel needs them for the "inherited" badge
    * and as the value it draws while nothing is overridden.
@@ -476,12 +491,6 @@ export class SongbooksPresenter {
     if (id === ALL_SONGS_ID) return ALL_SONGS_NAME;
     return (id === null ? undefined : this.find(id)?.name) ?? '';
   });
-
-  /** The download open on the virtual book — the one that gets the song-order
-   * controls, because it is the only book with no order of its own. */
-  readonly isDownloadAllSongs = computed(
-    () => this._downloadId() === ALL_SONGS_ID,
-  );
 
   /**
    * Downloadable / exportable: a real songbook, **and** the virtual All songs.
