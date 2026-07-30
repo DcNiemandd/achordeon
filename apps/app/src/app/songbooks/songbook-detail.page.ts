@@ -380,27 +380,43 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                wrap; Esc clears. The counter and the greyed prev/next answer
                "where am I / is there anything". -->
           <div class="entry-search" role="search">
-            <app-icon name="search" class="entry-search-icon" />
-            <input
-              appField
-              type="text"
-              class="entry-search-input"
-              data-testid="entry-search"
-              [value]="presenter.searchTerm()"
-              [attr.placeholder]="entrySearchLabel"
-              [attr.aria-label]="entrySearchLabel"
-              (input)="onSearchInput($event)"
-              (keydown)="onSearchKeydown($event)"
-            />
-            <span class="entry-search-count" data-testid="entry-search-count">
+            <div class="entry-search-box">
+              <app-icon name="search" class="entry-search-icon" />
+              <input
+                #searchInput
+                appField
+                type="search"
+                class="entry-search-input"
+                [class.has-value]="!!presenter.searchTerm()"
+                data-testid="entry-search"
+                [value]="presenter.searchTerm()"
+                [attr.placeholder]="entrySearchLabel"
+                [attr.aria-label]="entrySearchLabel"
+                (input)="onSearchInput($event)"
+                (keydown)="onSearchKeydown($event)"
+              />
               @if (presenter.searchTerm()) {
-                @if (presenter.matchPosition().total === 0) {
-                  {{ entrySearchNoMatch }}
-                } @else {
-                  {{ presenter.matchPosition().current }} /
-                  {{ presenter.matchPosition().total }}
-                }
+                <button
+                  appButton
+                  type="button"
+                  class="entry-search-clear"
+                  [isIconOnly]="true"
+                  [attr.aria-label]="clearSearchLabel"
+                  [appTooltip]="clearSearchLabel"
+                  data-testid="entry-search-clear"
+                  (click)="clearSearch(searchInput)"
+                >
+                  <app-icon name="close" />
+                </button>
               }
+            </div>
+            <!-- Always a number pair, never words: "-/-" idle, "-/0" for a query
+                 with no hit, "1/5" on a match. A dash where there is nothing to
+                 count keeps the two slots present so the width never jumps. -->
+            <span class="entry-search-count" data-testid="entry-search-count">
+              {{ presenter.matchPosition().current || '-' }}/{{
+                presenter.searchTerm() ? presenter.matchPosition().total : '-'
+              }}
             </span>
             <button
               appButton
@@ -582,7 +598,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       flex: none;
       display: flex;
       align-items: center;
-      min-block-size: 32px;
+      /* 32px for the Clear button + its own 1px border-block-end, so the empty
+         head is exactly as tall as the one holding the button — no 1px jump when
+         a selection appears or clears (border-box eats the border otherwise). */
+      min-block-size: 33px;
       padding-inline: var(--space-3);
       border-block-end: 1px solid var(--border);
     }
@@ -609,15 +628,46 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       border-block-end: 1px solid var(--border);
     }
 
+    /* Icon and clear button live inside the field, sitting over it — the same
+       look as the explorer's search (they read as one control). */
+    .entry-search-box {
+      position: relative;
+      flex: 1;
+      min-inline-size: 0;
+      display: flex;
+      align-items: center;
+    }
+
     .entry-search-icon {
-      --icon-size: 15px;
-      flex: none;
+      --icon-size: 14px;
+      position: absolute;
+      inset-inline-start: var(--space-2);
       color: var(--text-faint);
+      pointer-events: none;
     }
 
     .entry-search-input {
-      flex: 1;
+      inline-size: 100%;
       min-inline-size: 0;
+      padding-inline-start: var(--space-5);
+    }
+
+    /* Room for the clear button, so a long query does not run under it. */
+    .entry-search-input.has-value {
+      padding-inline-end: var(--space-5);
+    }
+
+    .entry-search-clear {
+      --icon-size: 14px;
+      position: absolute;
+      inset-inline-end: 2px;
+      block-size: 28px;
+      color: var(--text-faint);
+    }
+
+    /* The type="search" widget's native WebKit clear button — ours replaces it. */
+    .entry-search-input::-webkit-search-cancel-button {
+      display: none;
     }
 
     /* The "n / m" / no-match state. Tabular figures so the count does not jiggle
@@ -998,10 +1048,18 @@ export class SongbookDetailPage {
   protected readonly entrySearchLabel = $localize`:@@entries.search:Find in this songbook`;
   protected readonly entrySearchPrevLabel = $localize`:@@entries.searchPrev:Previous match`;
   protected readonly entrySearchNextLabel = $localize`:@@entries.searchNext:Next match`;
-  protected readonly entrySearchNoMatch = $localize`:@@entries.searchNoMatch:No matches`;
+  protected readonly clearSearchLabel = $localize`:@@explorer.clearSearch:Clear search`;
 
   protected onSearchInput(event: Event): void {
     this.presenter.setSearch((event.target as HTMLInputElement).value);
+  }
+
+  /** Clear via the in-field X: empty the term, blank the input, keep focus so a
+   * new query can start straight away — the same gesture as the explorer's. */
+  protected clearSearch(field: HTMLInputElement): void {
+    this.presenter.clearSearch();
+    field.value = '';
+    field.focus();
   }
 
   /**

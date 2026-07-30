@@ -98,7 +98,6 @@
     "entries.reorder": "Reorder",
     "entries.search": "Find in this songbook",
     "entries.searchNext": "Next match",
-    "entries.searchNoMatch": "No matches",
     "entries.searchPrev": "Previous match",
     "explorer.about": "About {$name}",
     "explorer.clear": "Clear the selection",
