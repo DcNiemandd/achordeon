@@ -14,6 +14,8 @@ import {
   inject,
   input,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { Router, RouterLink } from '@angular/router';
@@ -25,7 +27,14 @@ import {
   Tooltip,
   type IconName,
 } from '../primitives';
-import { ActionBar, DocumentTitle, SplitPane, UiStore } from '../shared/layout';
+import {
+  ActionBar,
+  BlankPage,
+  DocumentTitle,
+  SplitPane,
+  UiStore,
+} from '../shared/layout';
+import { SongRender } from '../shared/song-render';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SongbookPrintFields } from '../shared/songbook-print-fields';
 import {
@@ -65,8 +74,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     CdkDropListGroup,
     RouterLink,
     ActionBar,
+    BlankPage,
     SplitPane,
     SongExplorer,
+    SongRender,
     SelectionStatus,
     SettingsPanel,
     SongbookPrintFields,
@@ -267,6 +278,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
              -->
           <div class="body">
             <app-song-explorer
+              #libraryList
               class="explorer"
               [rows]="presenter.rows()"
               [capabilities]="capabilities"
@@ -284,6 +296,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               (activated)="presenter.activate($event)"
               (selectToggled)="presenter.toggleSelect($event)"
               (favorited)="presenter.toggleFavorite($event)"
+              (previewed)="presenter.openPreviewBySong($event)"
               (droppedOut)="presenter.removeSlots([$event])"
             />
 
@@ -308,10 +321,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
                   [attr.aria-label]="addLabel(option)"
                   [appTooltip]="option.label"
                   [attr.data-testid]="'add-' + option.where"
-                  (pointerenter)="preview.set(option.where)"
-                  (pointerleave)="preview.set(null)"
-                  (focus)="preview.set(option.where)"
-                  (blur)="preview.set(null)"
+                  (pointerenter)="addLandingAt.set(option.where)"
+                  (pointerleave)="addLandingAt.set(null)"
+                  (focus)="addLandingAt.set(option.where)"
+                  (blur)="addLandingAt.set(null)"
                   (click)="presenter.addSelected(option.where)"
                 >
                   <app-icon [name]="option.icon" />
@@ -383,6 +396,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           </div>
 
           <app-song-explorer
+            #entryList
             class="entries"
             data-testid="songbook-detail"
             rowTestid="entry-row"
@@ -396,10 +410,63 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             (activated)="presenter.activateSlot($event)"
             (removed)="presenter.removeSlots($event)"
             (moved)="presenter.moveSlot($event.id, $event.where)"
+            (previewed)="presenter.openPreviewBySlot($event)"
             (dropped)="onDropped($event)"
           />
         </div>
       </app-split-pane>
+
+      <!-- Look at a song without leaving the builder. A modal (scrim, centred on
+           the window): unlike the editor's settings there is no live render
+           behind it to keep watching — the render IS what this is showing. Its
+           open song rides in the URL (?preview=), so an Edit press and a Close in
+           the editor bring it straight back. The two acts the dialog offers:
+           **Edit** steps through to the song's own editor, **Close** takes the
+           dialog down; the header X is the same Close by another route. -->
+      @if (presenter.previewSong()) {
+        <app-dialog
+          size="large"
+          [title]="presenter.previewName()"
+          data-testid="song-preview-dialog"
+          (closed)="presenter.closePreview()"
+        >
+          <div class="song-preview">
+            <app-blank-page [ratio]="presenter.previewAspect()">
+              <app-song-render [svg]="presenter.previewSvg()" />
+            </app-blank-page>
+          </div>
+
+          <!-- Each button carries the dialog-actions attribute itself, so they are
+               direct flex children of the dialog's footer and line up on one row.
+               Wrapped in a div they were inline items in a non-flex box, aligned by
+               baseline — and the icon on Edit dragged it out of line with Close. -->
+          <button
+            dialog-actions
+            appButton
+            type="button"
+            variant="secondary"
+            data-testid="song-preview-close"
+            (click)="presenter.closePreview()"
+          >
+            {{ previewCloseLabel }}
+          </button>
+          <!-- The way in: it carries the book's whole view along (ticks, scroll,
+               the dialog itself) so closing the editor lands back here unchanged
+               — see the presenter's editPreview. The page hands it the two lists'
+               scroll offsets, the one thing only it can measure. -->
+          <button
+            dialog-actions
+            appButton
+            type="button"
+            variant="primary"
+            data-testid="song-preview-edit"
+            (click)="editFromPreview()"
+          >
+            <app-icon name="edit" />
+            {{ previewEditLabel }}
+          </button>
+        </app-dialog>
+      }
     </div>
   `,
   styles: `
@@ -518,6 +585,14 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       font-size: var(--text-sm);
     }
 
+    /* The framed render inside the preview dialog. It fills the panel's body —
+       the dialog itself is now shaped like an A4 sheet (see the size-large panel),
+       so this just takes all the room between the title bar and the buttons and
+       lets BlankPage fit the page into it. */
+    .song-preview {
+      block-size: 100%;
+    }
+
     .entry-tools {
       display: flex;
       align-items: center;
@@ -565,6 +640,14 @@ export class SongbookDetailPage {
    * itself on Escape would otherwise look like a bare press.
    */
   protected onEscape(event: Event): void {
+    // The preview dialog traps focus and stops its own Escape, so this rarely
+    // fires with it open — but if it does, the dialog is the smaller thing to
+    // close first, exactly as the settings dialog is.
+    if (this.presenter.previewSong()) {
+      event.preventDefault();
+      this.presenter.closePreview();
+      return;
+    }
     if (this.presenter.isSettingsOpen()) {
       this.presenter.closeSettings();
       return;
@@ -595,6 +678,24 @@ export class SongbookDetailPage {
   readonly sort = input<string | undefined>();
   readonly dir = input<string | undefined>();
   readonly fav = input<string | undefined>();
+  /**
+   * `?preview=<songId>` — which song's render the dialog is showing, or nothing.
+   * It is in the URL and not a private signal on purpose: the dialog must reopen
+   * after a round trip to the editor, and the address bar is what carries state
+   * across that (§7). An unknown id simply renders nothing and the fetch clears
+   * the dialog, so it is not narrowed here the way the sort axis is.
+   *
+   * The name is the param's, unaliased (aliasing an input is banned): the
+   * Add-button landing hint that was once also called `preview` is now
+   * `addLandingAt`, so this can carry the route param's own name.
+   */
+  readonly preview = input<string | undefined>();
+
+  /** The two lists, so their scroll offset can be captured before an Edit and
+   * laid back on after the return. Both are always in the DOM (the split pane
+   * hides a pane, it does not unmount it), so the refs are always resolvable. */
+  private readonly libraryList = viewChild<SongExplorer>('libraryList');
+  private readonly entryList = viewChild<SongExplorer>('entryList');
 
   protected readonly query = computed(() => this.q() ?? '');
   protected readonly sortKey = computed<ExplorerSort>(
@@ -611,6 +712,8 @@ export class SongbookDetailPage {
   protected readonly performLabel = $localize`:@@songbooks.perform:Perform this songbook`;
   protected readonly cannotPerformLabel = $localize`:@@songbooks.cannotPerform:Add songs before performing`;
   protected readonly backLabel = $localize`:@@songbooks.back:Back to songbooks`;
+  protected readonly previewCloseLabel = $localize`:@@songbooks.previewClose:Close`;
+  protected readonly previewEditLabel = $localize`:@@songbooks.previewEdit:Edit song`;
   protected readonly nameLabel = $localize`:@@songbooks.name:Songbook name`;
   protected readonly settingsLabel = $localize`:@@songbooks.settings:Songbook settings`;
   /** No longer "as a PDF": the dialog behind it offers a PDF, a ZIP of images
@@ -659,11 +762,15 @@ export class SongbookDetailPage {
   /**
    * Which Add button the pointer or focus is on, so the entry list can show
    * where its songs would land. Null when nothing is hovered.
+   *
+   * Named `addLandingAt`, not `preview`: that name now belongs to the route
+   * param that opens the song-render dialog (a different preview entirely — which
+   * song to *look at*, not where one would *land*).
    */
-  protected readonly preview = signal<InsertPosition | null>(null);
+  protected readonly addLandingAt = signal<InsertPosition | null>(null);
 
   protected readonly previewIndex = computed(() => {
-    const where = this.preview();
+    const where = this.addLandingAt();
     return where === null ? null : this.presenter.insertAt(where);
   });
 
@@ -780,6 +887,19 @@ export class SongbookDetailPage {
   /** A book you made is empty because you have not filled it yet. */
   protected readonly entriesEmptyText = $localize`:@@entries.empty:No songs in this songbook yet.`;
 
+  /**
+   * Step from the preview into the editor. The page's job in this is the one
+   * thing the presenter cannot do: **measure the two lists' scroll**, so they
+   * can be put back exactly on the return. Everything else — capturing the ticks,
+   * remembering the URL — is the presenter's (see `editPreview`).
+   */
+  protected editFromPreview(): void {
+    this.presenter.editPreview({
+      libraryOffset: this.libraryList()?.getScrollOffset() ?? 0,
+      entryOffset: this.entryList()?.getScrollOffset() ?? 0,
+    });
+  }
+
   constructor() {
     effect(() => {
       void this.presenter.load(this.id());
@@ -791,6 +911,31 @@ export class SongbookDetailPage {
         sort: this.sortKey(),
         dir: this.sortDir(),
         isFavoritesFirst: this.isFavoritesFirst(),
+      });
+    });
+
+    // The URL owns which song is previewed; feed the param to the presenter,
+    // which fetches and renders it. `untracked` so the effect tracks only the
+    // param — the fetch reads the dialog's own signal on the way, and tracking
+    // that would loop the effect against its own result.
+    effect(() => {
+      const songId = this.preview() ?? null;
+      untracked(() => void this.presenter.syncPreview(songId));
+    });
+
+    // Lay the remembered scroll back on after a return from the editor. The
+    // offset means nothing until the lists have drawn their windows, so this
+    // defers past the current change-detection, places both, and clears the
+    // pending mark (which stops the effect re-firing).
+    effect(() => {
+      const scroll = this.presenter.pendingScroll();
+      if (!scroll) {
+        return;
+      }
+      setTimeout(() => {
+        this.libraryList()?.scrollToOffset(scroll.library);
+        this.entryList()?.scrollToOffset(scroll.entry);
+        this.presenter.clearPendingScroll();
       });
     });
 
