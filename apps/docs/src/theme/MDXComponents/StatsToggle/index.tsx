@@ -1,5 +1,6 @@
 import Translate from '@docusaurus/Translate';
 import useIsBrowser from '@docusaurus/useIsBrowser';
+import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import {
@@ -35,7 +36,9 @@ export default function StatsToggle(): ReactNode {
 
   return (
     <div className={styles.toggle}>
-      <label className={styles.row}>
+      {/* Dimmed on refusal only, never on the pre-hydration disable: that one
+          clears a tick later, and dimming it would flash the row grey. */}
+      <label className={clsx(styles.row, isRefused && styles.isRefused)}>
         <input
           type="checkbox"
           role="switch"
