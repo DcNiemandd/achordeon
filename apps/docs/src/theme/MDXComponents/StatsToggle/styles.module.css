@@ -13,6 +13,13 @@
   font-weight: var(--ifm-font-weight-semibold);
 }
 
+/* The switch is disabled too; this is only so it reads that way. The sentence
+   below says why, so the row itself needs no second explanation. */
+.isRefused {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Reserves its line while the browser check is pending, so the box does not
    grow once the state appears. */
 .state {

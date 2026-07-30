@@ -559,7 +559,10 @@ const MIN_PASSWORD = 8;
                   <app-icon name="help" />
                 </button>
               </div>
-              <label class="check-row">
+              <label
+                class="check-row"
+                [class.is-disabled]="presenter.isStatsRefusedByBrowser"
+              >
                 <input
                   type="checkbox"
                   class="check"
