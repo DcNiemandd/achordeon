@@ -14,6 +14,19 @@
  */
 const STATS_KEY = 'achordeon.stats';
 
+/**
+ * GoatCounter's own opt-out, which is a different switch from the one above.
+ *
+ * `skipgc` is the key their `count.js` writes and `#toggle-goatcounter` is the
+ * address that writes it, so this keeps their key and their value rather than
+ * inventing a third `achordeon.` one — a reader who knows the mechanism from any
+ * other GoatCounter site finds it here unchanged.
+ *
+ * It is also the stronger of the two: `achordeon.stats` governs one field of the
+ * request, this one stops the request from being sent.
+ */
+const SKIP_KEY = 'skipgc';
+
 /** Whether the reader opted in. Absent means no, which is the default. */
 export function readStats(): boolean {
   try {
@@ -30,6 +43,40 @@ export function writeStats(isOn: boolean): void {
     // Private mode, or storage full. The switch then lasts the session only,
     // which is the safe direction to fail in: it reverts to off.
   }
+}
+
+/**
+ * Whether counting was turned off altogether. Read at each visit rather than
+ * once, because the app shares the key and either half may have just flipped it.
+ */
+export function isCountingSkipped(): boolean {
+  try {
+    return localStorage.getItem(SKIP_KEY) === 't';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Flip the opt-out, and report where it landed.
+ *
+ * The "on" state is the key's absence and not an `'f'`, which is GoatCounter's
+ * way round and the right one: a browser that never used the toggle then reads
+ * the same as one that turned counting back on.
+ */
+export function toggleCountingSkip(): boolean {
+  const wasSkipped = isCountingSkipped();
+
+  try {
+    if (wasSkipped) localStorage.removeItem(SKIP_KEY);
+    else localStorage.setItem(SKIP_KEY, 't');
+  } catch {
+    // Nothing was written, so nothing changed — say so rather than claim a flip
+    // the next visit would not honour.
+    return wasSkipped;
+  }
+
+  return !wasSkipped;
 }
 
 /**
