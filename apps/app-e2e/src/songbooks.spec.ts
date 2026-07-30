@@ -81,27 +81,30 @@ async function openBookMenu(page: Page, id: string | null): Promise<void> {
 }
 
 /**
- * Tick songs in the left explorer and add them at `where`.
+ * Tick songs in the left explorer and add them to the book.
  *
  * The checkbox is the multi-select gesture; a click on the row body would
  * replace the whole selection with that one row.
+ *
+ * Add drops the songs below the selected slot, or at the end when none is, and
+ * then selects the freshly-added slots. This helper clears that post-add slot
+ * selection, so a fixture-add leaves a clean slot selection behind it.
  */
-async function addSongs(
-  page: Page,
-  names: string[],
-  where: 'start' | 'above' | 'below' | 'end',
-): Promise<void> {
+async function addSongs(page: Page, names: string[]): Promise<void> {
   for (const name of names) {
     const row = page.getByTestId('song-row').filter({ hasText: name }).first();
     const id = await row.getAttribute('data-song-id');
     await page.getByTestId(`select-${id}`).check();
   }
 
-  const add = page.getByTestId(`add-${where}`);
+  const add = page.getByTestId('add');
   await expect(add).toBeEnabled();
   await add.click();
   // Adding clears the library selection, so the next add starts clean.
   await expect(add).toBeDisabled();
+  // ...and it leaves the newly-added slots ticked; drop that so downstream
+  // adds and moves start from a clean slot selection.
+  await page.getByTestId('selection-clear').click();
 }
 
 test.describe('songbooks', () => {
@@ -199,11 +202,11 @@ test.describe('songbooks', () => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
 
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
     await expect(page.getByTestId('entry-row')).toHaveCount(1);
 
     // Twice is a set that plays it again, not a mistake to swallow.
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
     await page.reload();
@@ -221,7 +224,7 @@ test.describe('songbooks', () => {
     const id = await row.getAttribute('data-song-id');
     await page.getByTestId(`open-${id}`).click();
 
-    const add = page.getByTestId('add-end');
+    const add = page.getByTestId('add');
     await expect(add).toBeEnabled();
     await add.click();
     await expect(page.getByTestId('entry-row')).toHaveCount(1);
@@ -269,23 +272,50 @@ test.describe('songbooks', () => {
     await createSongbook(page, 'Campfire');
     await expect(page.getByTestId(`select-${id}`)).not.toBeChecked();
     await expect(page.getByTestId('selection-clear')).toHaveCount(0);
-    await expect(page.getByTestId('add-end')).toBeDisabled();
+    await expect(page.getByTestId('add')).toBeDisabled();
   });
 
-  test('adds to the start, and above a selected slot', async ({ page }) => {
+  test('adds below the selected slot, or at the end when none is', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await createSong(page, 'Mid');
+    await createSong(page, 'Zeta');
+    await createSongbook(page, 'Campfire');
+
+    // No slot selected: each add lands at the end, so they arrive in turn.
+    await addSongs(page, ['Alpha']);
+    await addSongs(page, ['Zeta']);
+    await expect(page.getByTestId('entry-row').first()).toContainText('Alpha');
+    await expect(page.getByTestId('entry-row').last()).toContainText('Zeta');
+
+    // A selected slot puts the add directly below it — here, between the two.
+    await page.getByTestId('select-0').check();
+    await addSongs(page, ['Mid']);
+    await expect(page.getByTestId('entry-row')).toHaveCount(3);
+    await expect(page.getByTestId('entry-row').nth(1)).toContainText('Mid');
+  });
+
+  // An add hands the slot selection to what it just added, so the next reorder
+  // acts on the fresh block without a second trip to tick it.
+  test('adding selects the freshly-added slots', async ({ page }) => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
 
-    await addSongs(page, ['Alpha'], 'end');
-    await addSongs(page, ['Zeta'], 'start');
-    await expect(page.getByTestId('entry-row').first()).toContainText('Zeta');
+    for (const name of ['Alpha', 'Zeta']) {
+      const row = page
+        .getByTestId('song-row')
+        .filter({ hasText: name })
+        .first();
+      const id = await row.getAttribute('data-song-id');
+      await page.getByTestId(`select-${id}`).check();
+    }
+    await page.getByTestId('add').click();
 
-    // Above the second slot puts it between the two.
-    await page.getByTestId('select-1').check();
-    await addSongs(page, ['Zeta'], 'above');
-    await expect(page.getByTestId('entry-row')).toHaveCount(3);
-    await expect(page.getByTestId('entry-row').nth(1)).toContainText('Zeta');
+    await expect(page.getByTestId('select-0')).toBeChecked();
+    await expect(page.getByTestId('select-1')).toBeChecked();
+    await expect(page.getByTestId('selection-clear')).toContainText('2');
   });
 
   test('reorders slots, and the selection travels with them', async ({
@@ -294,7 +324,7 @@ test.describe('songbooks', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await addSongs(page, ['Alpha', 'Zeta']);
 
     await page.getByTestId('select-1').check();
     await page.getByTestId('move-up').click();
@@ -316,7 +346,7 @@ test.describe('songbooks', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await addSongs(page, ['Alpha', 'Zeta']);
 
     // A selection on a different row must survive a row move untouched.
     await page.getByTestId('select-0').check();
@@ -339,7 +369,7 @@ test.describe('songbooks', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await addSongs(page, ['Alpha', 'Zeta']);
 
     await page.getByTestId('entry-row').first().hover();
     await expect(page.getByTestId('row-up-0')).toBeVisible();
@@ -348,7 +378,8 @@ test.describe('songbooks', () => {
     await page.getByTestId('select-1').check();
     await page.getByTestId('entry-row').first().hover();
     await expect(page.getByTestId('row-up-0')).toHaveCount(0);
-    // The row's remove stands down with them: the strip removes the block.
+    // There is no per-row remove at all any more: removal is the strip's − on
+    // the ticked block, so no row ever carries one.
     await expect(page.getByTestId('remove-0')).toHaveCount(0);
   });
 
@@ -358,9 +389,9 @@ test.describe('songbooks', () => {
   }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Wonderwall'], 'end');
-    await addSongs(page, ['Wonderwall'], 'end');
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
+    await addSongs(page, ['Wonderwall']);
+    await addSongs(page, ['Wonderwall']);
 
     await page.getByTestId('open-1').click();
     await expect(page.getByTestId('entry-row').nth(1)).toHaveClass(
@@ -414,10 +445,10 @@ test.describe('songbooks', () => {
   test('removing a slot keeps the song in the library', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
 
-    await page.getByTestId('entry-row').hover();
-    await page.getByTestId('remove-0').click();
+    await page.getByTestId('select-0').check();
+    await page.getByTestId('entry-remove-selected').click();
     await expect(
       page.getByTestId('songbook-detail').getByTestId('explorer-empty'),
     ).toBeVisible();
@@ -527,7 +558,7 @@ test.describe('songbooks', () => {
   test('duplicates a songbook into an independent copy', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
 
     await page.goto('songbooks');
     const row = page
@@ -565,7 +596,7 @@ test.describe('songbooks', () => {
   test('deletes a songbook without touching its songs', async ({ page }) => {
     await createSong(page, 'Wonderwall');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Wonderwall'], 'end');
+    await addSongs(page, ['Wonderwall']);
 
     await page.goto('songbooks');
     const row = page
@@ -625,7 +656,7 @@ test.describe('drag & drop', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await addSongs(page, ['Alpha', 'Zeta']);
 
     // Slot 1 (Zeta), dropped on the top edge of the list: above everything.
     await dragTo(page, 'drag-1', page.getByTestId('songbook-detail'), 2);
@@ -639,7 +670,7 @@ test.describe('drag & drop', () => {
   }) => {
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha'], 'end');
+    await addSongs(page, ['Alpha']);
 
     const row = page.getByTestId('entry-row').first();
     const handle = page.getByTestId('drag-0');
@@ -664,7 +695,7 @@ test.describe('drag & drop', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Zeta'], 'end');
+    await addSongs(page, ['Zeta']);
 
     const alpha = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await alpha.getAttribute('data-song-id');
@@ -680,7 +711,7 @@ test.describe('drag & drop', () => {
     await createSong(page, 'Alpha');
     await createSong(page, 'Zeta');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha', 'Zeta'], 'end');
+    await addSongs(page, ['Alpha', 'Zeta']);
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
     // Drag slot 0 (Alpha) from the entry list onto the library pane — the
@@ -736,7 +767,7 @@ test.describe('drag & drop', () => {
     }
     await createSongbook(page, 'Campfire');
     for (let round = 0; round < 3; round++) {
-      await addSongs(page, ['Alpha', 'Mid', 'Zeta'], 'end');
+      await addSongs(page, ['Alpha', 'Mid', 'Zeta']);
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(9);
 
@@ -763,7 +794,7 @@ test.describe('drag & drop', () => {
     // onto the library removes it; that is the other test.)
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha'], 'end');
+    await addSongs(page, ['Alpha']);
 
     const library = page.getByTestId('explorer-list').first();
     const songId = await page
@@ -794,7 +825,7 @@ test.describe('drag & drop', () => {
   test('every drag has a button that does the same thing', async ({ page }) => {
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha'], 'end');
+    await addSongs(page, ['Alpha']);
 
     // The handle and the row's own move buttons live on the same row.
     await expect(page.getByTestId('drag-0')).toBeVisible();
@@ -803,7 +834,7 @@ test.describe('drag & drop', () => {
       await expect(page.getByTestId(`row-${where}-0`)).toBeVisible();
     }
     // And the Add buttons are the keyboard path across the gap.
-    await expect(page.getByTestId('add-end')).toBeVisible();
+    await expect(page.getByTestId('add')).toBeVisible();
   });
 
   // Epic 8's "Perform shortcut from Songbooks": you should not have to go to the
@@ -811,7 +842,7 @@ test.describe('drag & drop', () => {
   test('a songbook row goes straight to the stage', async ({ page }) => {
     await createSong(page, 'Alpha');
     await createSongbook(page, 'Campfire');
-    await addSongs(page, ['Alpha'], 'end');
+    await addSongs(page, ['Alpha']);
 
     await page.goto('songbooks');
     const row = page

@@ -87,148 +87,149 @@ import { SongEditorPresenter } from './song-editor.presenter';
           </a>
 
           <!-- One row when the width allows it, wrapping by GROUP when it does
-               not (PRD-UI-SHELL.md §4). The commands wrap inside their own box;
-               settings is a sibling of that box rather than a member of it,
-               which is what keeps it on the first line no matter how many rows
-               the commands take. -->
-          <div class="bar-row">
-            <div class="commands">
-              <div
-                class="group"
-                role="group"
-                [attr.aria-label]="insertGroupLabel"
-              >
-                @for (item of insertButtons; track item.testid) {
-                  <button
-                    appButton
-                    type="button"
-                    variant="secondary"
-                    class="insert"
-                    [disabled]="isInsertBlocked(item)"
-                    [attr.aria-label]="item.label"
-                    [appTooltip]="item.label"
-                    [attr.data-testid]="item.testid"
-                    (click)="press(item)"
-                  >
-                    <app-icon
-                      [name]="item.icon"
-                      [class.is-flipped]="item.isFlipped"
-                    />
-                    <!-- aria-hidden: the button is already named by its
+               not (PRD-UI-SHELL.md §4). The insert / transpose / history groups
+               AND the borderless actions (download, settings) share one wrapping
+               box: the actions ride at its far end and tuck onto the last command
+               row when it wraps. As a sibling column they instead forced a whole
+               extra row on a phone — two rows of commands plus one of actions. -->
+          <div class="commands">
+            <div
+              class="group"
+              role="group"
+              [attr.aria-label]="insertGroupLabel"
+            >
+              @for (item of insertButtons; track item.testid) {
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  class="insert"
+                  [disabled]="isInsertBlocked(item)"
+                  [attr.aria-label]="item.label"
+                  [appTooltip]="item.label"
+                  [attr.data-testid]="item.testid"
+                  (click)="press(item)"
+                >
+                  <app-icon
+                    [name]="item.icon"
+                    [class.is-flipped]="item.isFlipped"
+                  />
+                  <!-- aria-hidden: the button is already named by its
                          aria-label, and "Title, star" helps nobody. -->
-                    <span class="insert-syntax" aria-hidden="true">{{
-                      item.glyph
-                    }}</span>
-                  </button>
-                }
-              </div>
+                  <span class="insert-syntax" aria-hidden="true">{{
+                    item.glyph
+                  }}</span>
+                </button>
+              }
+            </div>
 
-              <div
-                class="group"
-                role="group"
-                [attr.aria-label]="transposeGroupLabel"
-              >
-                <!-- A note badged with a direction. Transposing is a musical
+            <div
+              class="group"
+              role="group"
+              [attr.aria-label]="transposeGroupLabel"
+            >
+              <!-- A note badged with a direction. Transposing is a musical
                      act on the chords, and a bare arrow said only "move
                      something" — which something was left to the tooltip. -->
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="transpose"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="transposeUpLabel"
-                  [appTooltip]="transposeUpLabel"
-                  data-testid="transpose-up"
-                  (click)="presenter.transpose(1)"
-                >
-                  <app-icon name="note" />
-                  <app-icon class="transpose-badge" name="transposeUp" />
-                </button>
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="transpose"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="transposeDownLabel"
-                  [appTooltip]="transposeDownLabel"
-                  data-testid="transpose-down"
-                  (click)="presenter.transpose(-1)"
-                >
-                  <app-icon name="note" />
-                  <app-icon class="transpose-badge" name="transposeDown" />
-                </button>
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="transpose"
+                [isIconOnly]="true"
+                [attr.aria-label]="transposeUpLabel"
+                [appTooltip]="transposeUpLabel"
+                data-testid="transpose-up"
+                (click)="presenter.transpose(1)"
+              >
+                <app-icon name="note" />
+                <app-icon class="transpose-badge" name="transposeUp" />
+              </button>
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="transpose"
+                [isIconOnly]="true"
+                [attr.aria-label]="transposeDownLabel"
+                [appTooltip]="transposeDownLabel"
+                data-testid="transpose-down"
+                (click)="presenter.transpose(-1)"
+              >
+                <app-icon name="note" />
+                <app-icon class="transpose-badge" name="transposeDown" />
+              </button>
 
-                <!-- Sharp/flat raise or lower the ONE chord under the cursor, and
+              <!-- Sharp/flat raise or lower the ONE chord under the cursor, and
                      so are enabled only while the caret is inside a chord — off a
                      chord there is nothing for them to change. -->
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="accidental"
-                  [isIconOnly]="true"
-                  [disabled]="!editor().caret().isInsideChord"
-                  [attr.aria-label]="sharpLabel"
-                  [appTooltip]="sharpLabel"
-                  data-testid="chord-sharp"
-                  (click)="editor().transposeChordAtCaret(1)"
-                >
-                  ♯
-                </button>
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="accidental"
-                  [isIconOnly]="true"
-                  [disabled]="!editor().caret().isInsideChord"
-                  [attr.aria-label]="flatLabel"
-                  [appTooltip]="flatLabel"
-                  data-testid="chord-flat"
-                  (click)="editor().transposeChordAtCaret(-1)"
-                >
-                  ♭
-                </button>
-              </div>
-
-              <div
-                class="group"
-                role="group"
-                [attr.aria-label]="historyGroupLabel"
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="accidental"
+                [isIconOnly]="true"
+                [disabled]="!editor().caret().isInsideChord"
+                [attr.aria-label]="sharpLabel"
+                [appTooltip]="sharpLabel"
+                data-testid="chord-sharp"
+                (click)="editor().transposeChordAtCaret(1)"
               >
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="undoLabel"
-                  [appTooltip]="undoLabel"
-                  data-testid="editor-undo"
-                  (click)="editor().undo()"
-                >
-                  <app-icon name="undo" />
-                </button>
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  [isIconOnly]="true"
-                  [attr.aria-label]="redoLabel"
-                  [appTooltip]="redoLabel"
-                  data-testid="editor-redo"
-                  (click)="editor().redo()"
-                >
-                  <app-icon name="redo" />
-                </button>
-              </div>
+                ♯
+              </button>
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                class="accidental"
+                [isIconOnly]="true"
+                [disabled]="!editor().caret().isInsideChord"
+                [attr.aria-label]="flatLabel"
+                [appTooltip]="flatLabel"
+                data-testid="chord-flat"
+                (click)="editor().transposeChordAtCaret(-1)"
+              >
+                ♭
+              </button>
+            </div>
+
+            <div
+              class="group"
+              role="group"
+              [attr.aria-label]="historyGroupLabel"
+            >
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [isIconOnly]="true"
+                [attr.aria-label]="undoLabel"
+                [appTooltip]="undoLabel"
+                data-testid="editor-undo"
+                (click)="editor().undo()"
+              >
+                <app-icon name="undo" />
+              </button>
+              <button
+                appButton
+                type="button"
+                variant="secondary"
+                [isIconOnly]="true"
+                [attr.aria-label]="redoLabel"
+                [appTooltip]="redoLabel"
+                data-testid="editor-redo"
+                (click)="editor().redo()"
+              >
+                <app-icon name="redo" />
+              </button>
             </div>
 
             <!-- These are plain actions, not code-editing commands, so they are
                  borderless (ghost) — the bordered buttons on the left are the ones
                  that write into the text. The same borderless set as the library
-                 list and the songbook detail. -->
+                 list and the songbook detail. Last in the command box, pushed to
+                 its far end, so they sit far-right on one row and fall onto the
+                 last command row (never a row of their own) when it wraps. -->
             <div class="bar-actions">
               <!-- Take the song away, in whichever of the three shapes: a page,
                    a picture, or the Achordeon file. One button and one dialog,
@@ -339,17 +340,6 @@ import { SongEditorPresenter } from './song-editor.presenter';
       overflow: hidden;
     }
 
-    /* The row does NOT wrap: it is the commands box and the settings button, and
-       those two never share a line boundary. Top-aligned so that when the
-       commands do wrap, settings stays level with the FIRST row rather than
-       drifting to the vertical middle of a two-row bar. */
-    .bar-row {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-2);
-      inline-size: 100%;
-    }
-
     /* This is what wraps, and it wraps between groups: a break falls where the
        meaning already changes (insert / transpose / history), never through the
        middle of one (PRD-UI-SHELL.md §4). */
@@ -415,8 +405,9 @@ import { SongEditorPresenter } from './song-editor.presenter';
       color: var(--text-muted);
     }
 
-    /* Download and settings ride together at the far end: never squeezed by the
-       commands, and staying level with the first row when the commands wrap. */
+    /* Download and settings ride together at the far end of the command box:
+       margin-auto keeps them hard right on a single row, and lets them fall onto
+       the last command row when it wraps rather than claiming a row of their own. */
     .bar-actions {
       flex: none;
       margin-inline-start: auto;

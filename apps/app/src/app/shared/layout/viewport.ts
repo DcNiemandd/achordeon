@@ -5,7 +5,8 @@ import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
 
 /** Fallbacks if the stylesheet hasn't applied when these are first read. */
 const FALLBACK_COMPACT_PX = 1200;
-const FALLBACK_STACK_PX = 500;
+const FALLBACK_STACK_PX = 680;
+const FALLBACK_ROW_REORDER_PX = 1000;
 
 /**
  * Is the viewport below the compact breakpoint (hamburger + tabs) or at/above it
@@ -24,6 +25,7 @@ export class Viewport {
   private readonly document = inject(DOCUMENT);
   private readonly _isCompact = signal(false);
   private readonly _isStacked = signal(false);
+  private readonly _isRowReorderHidden = signal(false);
 
   /** True below `--bp-compact`. Derived, never stored (PRD-UI-SHELL.md §7). */
   readonly isCompact = this._isCompact.asReadonly();
@@ -38,6 +40,17 @@ export class Viewport {
    */
   readonly isStacked = this._isStacked.asReadonly();
 
+  /**
+   * True below `--bp-row-reorder`: a reorderable row is too narrow to also carry
+   * its inline per-row move buttons.
+   *
+   * A **third** question, above `isStacked` — the songbook builder can still be
+   * two panes side by side here and yet want its entry rows to shed the move
+   * buttons, leaving the drag handle and the bulk-reorder strip to change the
+   * order. The list reads this and drops `canReorder` from its capability set.
+   */
+  readonly isRowReorderHidden = this._isRowReorderHidden.asReadonly();
+
   constructor() {
     const view = this.document.defaultView;
     // `matchMedia` is missing in jsdom and in non-browser hosts, and the method
@@ -49,6 +62,11 @@ export class Viewport {
 
     this.watch('--bp-compact', FALLBACK_COMPACT_PX, this._isCompact);
     this.watch('--bp-stack', FALLBACK_STACK_PX, this._isStacked);
+    this.watch(
+      '--bp-row-reorder',
+      FALLBACK_ROW_REORDER_PX,
+      this._isRowReorderHidden,
+    );
   }
 
   private watch(

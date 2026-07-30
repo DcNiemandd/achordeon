@@ -321,7 +321,7 @@ test.describe('import across modules', () => {
     await title.press('Enter');
     await page.waitForTimeout(300);
     await page.getByTestId('song-row').filter({ hasText: songName }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
     await expect(page.getByTestId('entry-row')).toHaveCount(1);
 
     await page.goto('songbooks');
@@ -595,7 +595,7 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
@@ -630,7 +630,7 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
@@ -665,7 +665,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     // Summary is off by default, so nothing to switch — just download.
     await page.getByTestId('songbook-detail-download').click();
@@ -689,7 +689,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('zip-png');
@@ -718,7 +718,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await setBookPrint(page, () =>
       page.getByTestId('pdf-title-page').uncheck(),
@@ -749,7 +749,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Řeka' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await setBookPrint(page, () => page.getByTestId('pdf-summary').check());
     await page.getByTestId('songbook-detail-download').click();
@@ -788,7 +788,7 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
@@ -821,7 +821,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     // The book's structure lives in its settings dialog now.
     await page.getByTestId('songbook-settings').click();
@@ -838,7 +838,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     // The structure is the book's own — set in settings, it rides on the record.
     await page.getByTestId('songbook-settings').click();
@@ -863,7 +863,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     // The book you are already in has no Export button beside Download either.
@@ -895,7 +895,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('json');

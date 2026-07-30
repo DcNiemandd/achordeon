@@ -269,10 +269,15 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
 /**
  * A songbook's entry list (Epic 6): **the same component again**, a third time.
  *
- * Numbered, removable, and with neither search nor sort — the order is the
+ * Numbered, arrangeable, and with neither search nor sort — the order is the
  * content. Selecting works exactly as it does in the library, which is the
  * point: two lists side by side that behaved differently to the same click was
  * the whole complaint.
+ *
+ * **No per-row remove** (`canRemove: false`): taking a song out of the book is
+ * the minus button in the transfer strip, which acts on the slot selection — the
+ * same gesture, in the same column, as putting one in. A second remove hanging
+ * off each row was a fifth way to do the one thing the strip already does.
  */
 export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSearch: false,
@@ -280,7 +285,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   hasOrdinals: true,
   canSelect: true,
   canFavorite: false,
-  canRemove: true,
+  canRemove: false,
   canReorder: true,
   canDrag: true,
   canDrop: true,

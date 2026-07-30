@@ -148,7 +148,7 @@ test.describe('mobile layout never overflows sideways', () => {
         .filter({ hasText: 'Beta' })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
       await expect(page.getByTestId('entry-row')).toHaveCount(1);
 
       await expectNoSideOverflow(page);

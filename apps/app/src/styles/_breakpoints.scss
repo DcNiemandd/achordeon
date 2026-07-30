@@ -11,8 +11,18 @@ $bp-compact: 1200px;
 /// Below this, a two-pane module stacks its panes vertically instead of putting
 /// them side by side. Not the same question as `$bp-compact`, which asks whether
 /// the SHELL is compact (hamburger, bottom bar); this asks whether two lists can
-/// sit beside each other and still be usable.
-$bp-stack: 500px;
+/// sit beside each other and still be usable. The songbook builder is its only
+/// consumer, and below ~680px its two lists want the full width one above the
+/// other rather than a cramped column each.
+$bp-stack: 680px;
+
+/// Below this, a reorderable list drops the per-row move buttons that sit inline
+/// on each row (the songbook entry list): the drag handle and the bulk-reorder
+/// strip still change the order, so nothing is lost — only the third, most
+/// space-hungry affordance stands down where the row is too narrow to spare it.
+/// Read back by the Viewport service; there is no mixin because the list turns
+/// the buttons off through its capability set, not a media query.
+$bp-row-reorder: 1000px;
 
 /// Below the breakpoint: hamburger + tabs, one pane at a time.
 @mixin compact {

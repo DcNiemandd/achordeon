@@ -414,11 +414,12 @@ export class SongbookDetailPresenter {
     const at = this.insertAt(where) ?? book.entries.length;
 
     await this.writeEntries(insertEntries(book.entries, songIds, at));
-    this.setSlotSelection(
-      shiftSelection(this.selectedIndexes(), at, songIds.length),
-    );
-    // The songs have landed. Leaving them ticked invites a second, accidental
-    // copy of the same set on the next press of a neighbouring button.
+    // Select what just landed: the newly added slots occupy [at, at + count),
+    // so the next Add aims below them and the reorder buttons act on them
+    // straight away — you added these, so these are what you are working with.
+    this.setSlotSelection(new Set(songIds.map((_, n) => at + n)));
+    // The library ticks have done their job. Leaving them set invites a second,
+    // accidental copy of the same set on the next press of Add.
     this.selection.clear();
   }
 
