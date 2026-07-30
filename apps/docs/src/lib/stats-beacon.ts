@@ -1,4 +1,8 @@
-import { isRefusedByBrowser, readStats } from './stats-consent';
+import {
+  isCountingSkipped,
+  isRefusedByBrowser,
+  readStats,
+} from './stats-consent';
 
 /**
  * Counting which pages get read — the docs half of the beacon.
@@ -15,6 +19,9 @@ import { isRefusedByBrowser, readStats } from './stats-consent';
  */
 export function countVisit(endpoint: string, path: string): void {
   if (endpoint === '') return;
+
+  // GoatCounter's own opt-out outranks the rest: not a narrower request, none.
+  if (isCountingSkipped()) return;
 
   const params = new URLSearchParams({
     p: normalizePath(path),

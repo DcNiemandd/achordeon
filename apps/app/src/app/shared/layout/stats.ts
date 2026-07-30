@@ -16,6 +16,11 @@ import { Injectable, signal } from '@angular/core';
  * GIF, so an `Image` is the whole transport. That keeps `script-src` untouched
  * and leaves nothing to keep patched — only `img-src` names the origin.
  *
+ * Both layers stop entirely when GoatCounter's own opt-out is set — `skipgc`,
+ * written by their `#toggle-goatcounter` address, which this file honours in
+ * their place since none of their script runs here. It is ours, not the
+ * reader's: no page says it exists and it reports itself to the console only.
+ *
  * The key is `achordeon.stats`, and the DOCS WRITE IT TOO. That works because
  * both are served from one origin (`/app/` and `/docs/` of the same host), so
  * localStorage is shared and a reader who decides in the docs never gets asked
@@ -43,6 +48,10 @@ export class Stats {
    */
   readonly isRefusedByBrowser = isRefusedByBrowser();
 
+  constructor() {
+    honourToggleHash();
+  }
+
   allow(isAllowed: boolean): void {
     this.isOn.set(isAllowed);
     try {
@@ -62,7 +71,7 @@ export class Stats {
    * path are the entire point, and a cached GIF would swallow them.
    */
   count(path: string): void {
-    if (this.endpoint === '') return;
+    if (this.endpoint === '' || isCountingSkipped()) return;
 
     const params = new URLSearchParams({
       p: normalizePath(path),
@@ -86,6 +95,53 @@ function readConsent(): boolean {
   } catch {
     return false;
   }
+}
+
+/** GoatCounter's key, with their value — theirs, so it reads the same anywhere. */
+const SKIP_KEY = 'skipgc';
+
+/**
+ * Whether counting was turned off altogether.
+ *
+ * Read at every count and not once at construction, unlike the consent signal:
+ * the docs half of the origin may flip this in another tab while this app is
+ * still open, and the next route should already be silent.
+ */
+function isCountingSkipped(): boolean {
+  try {
+    return localStorage.getItem(SKIP_KEY) === 't';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `#toggle-goatcounter` in the address flips the opt-out, and the same address
+ * again flips it back — GoatCounter's own switch, done by hand here.
+ *
+ * The hash reaches this app on its own: the site root redirects here and carries
+ * the fragment along (the docs' `appRedirectScript`), so `achordeon.eu/#toggle-
+ * goatcounter` is answered by this function and not by the docs' twin.
+ *
+ * At construction, which is boot: before the first `NavigationEnd`, so the visit
+ * that turns counting off is not the last one counted. Once, too — the router
+ * would otherwise re-read the same fragment on a later navigation and undo it.
+ */
+function honourToggleHash(): void {
+  if (location.hash !== '#toggle-goatcounter') return;
+
+  const wasSkipped = isCountingSkipped();
+
+  try {
+    if (wasSkipped) localStorage.removeItem(SKIP_KEY);
+    else localStorage.setItem(SKIP_KEY, 't');
+  } catch {
+    return;
+  }
+
+  console.info(
+    `[goatcounter] Visit counting is now ${wasSkipped ? 'on' : 'off'} in this browser.`,
+  );
 }
 
 /**

@@ -269,6 +269,7 @@ const config: Config = {
           title: 'More',
           items: [
             { label: 'Privacy', to: '/docs/privacy' },
+            { label: 'Account data', to: '/docs/account-data' },
             {
               label: 'GitHub',
               href: repoUrl,
