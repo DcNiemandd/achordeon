@@ -846,4 +846,27 @@ test.describe('drag & drop', () => {
     await openBookMenu(page, 'all-songs');
     await expect(page.getByTestId('perform-all-songs')).toBeVisible();
   });
+
+  // All songs has no record, so its print structure lives device-local — but it
+  // is still configurable, and the settings dialog is where.
+  test('All songs has a settings dialog that saves its print structure', async ({
+    page,
+  }) => {
+    await createSong(page, 'Alpha');
+    await page.goto('songbooks');
+
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
+    await expect(page.getByTestId('songbook-settings-dialog')).toBeVisible();
+    // No record, so no title-page fields — just the print section.
+    await expect(page.getByTestId('songbook-title')).toHaveCount(0);
+    await page.getByTestId('pdf-summary').check();
+    await page.getByTestId('dialog-close').click();
+
+    // Device-local, so it survives a reload.
+    await page.reload();
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
+    await expect(page.getByTestId('pdf-summary')).toBeChecked();
+  });
 });

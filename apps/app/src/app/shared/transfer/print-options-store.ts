@@ -17,11 +17,27 @@
 
 import { Injectable, signal } from '@angular/core';
 import {
+  DEFAULT_SONGBOOK_PRINT,
+  resolveSongbookPrint,
+  type SongbookPrint,
+} from '@achordeon/shared/domain';
+import {
   DEFAULT_DEVICE_PRINT_OPTIONS,
   type DevicePrintOptions,
 } from './transfer-model';
 
 const KEY = 'achordeon.print';
+
+/**
+ * Where the **virtual All songs** book keeps its print structure.
+ *
+ * Every real book carries its own `SongbookPrint` on its record and syncs it; All
+ * songs has no record, so its title page / summary / page-number choices have
+ * nowhere on a book to live. They land here instead — device-local, like the
+ * paper, which is the honest home for "the settings of a book that is not a
+ * record". A separate key from the paper so the two evolve apart.
+ */
+const ALL_SONGS_PRINT_KEY = 'achordeon.allSongsPrint';
 
 @Injectable({ providedIn: 'root' })
 export class PrintOptionsStore {
@@ -31,6 +47,14 @@ export class PrintOptionsStore {
 
   /** The last-used device paper, for the dialog to open on. */
   readonly options = this._options.asReadonly();
+
+  private readonly _allSongsPrint = signal<SongbookPrint>(
+    DEFAULT_SONGBOOK_PRINT,
+  );
+
+  /** The virtual All songs book's print structure — its settings dialog reads
+   * and writes this, and its preview and download draw from it. */
+  readonly allSongsPrint = this._allSongsPrint.asReadonly();
 
   constructor() {
     this.hydrate();
@@ -43,6 +67,16 @@ export class PrintOptionsStore {
       localStorage.setItem(KEY, JSON.stringify(options));
     } catch {
       // Private mode or quota — a remembered print choice is not worth a throw.
+    }
+  }
+
+  /** Write the All songs print structure from its settings dialog. */
+  saveAllSongsPrint(print: SongbookPrint): void {
+    this._allSongsPrint.set(print);
+    try {
+      localStorage.setItem(ALL_SONGS_PRINT_KEY, JSON.stringify(print));
+    } catch {
+      // Private mode or quota — see save().
     }
   }
 
@@ -67,6 +101,19 @@ export class PrintOptionsStore {
       });
     } catch {
       // Fall back to defaults — see save().
+    }
+
+    try {
+      const raw = localStorage.getItem(ALL_SONGS_PRINT_KEY);
+      if (raw) {
+        // Merge over the defaults so a field added in a later build opens at its
+        // default rather than `undefined` reaching the renderer.
+        this._allSongsPrint.set(
+          resolveSongbookPrint(JSON.parse(raw) as Partial<SongbookPrint>),
+        );
+      }
+    } catch {
+      // Fall back to defaults.
     }
   }
 }

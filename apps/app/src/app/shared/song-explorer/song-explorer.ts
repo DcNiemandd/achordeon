@@ -602,9 +602,10 @@ const NARROW_WIDTH = 480;
                     </button>
                   }
                   <!-- The book's own settings — its scope of the render cascade
-                       and its title-page fields. Never on the read-only All
-                       songs, which has no record to configure. -->
-                  @if (capabilities().canConfigure && !row.isReadOnly) {
+                       and its structure. NOT gated on isReadOnly: All songs has no
+                       record, but it does have a print structure to set (kept
+                       device-local), so it gets the gear like any book. -->
+                  @if (capabilities().canConfigure) {
                     <button
                       appMenuItem
                       [attr.data-testid]="'settings-' + row.id"
@@ -719,7 +720,7 @@ const NARROW_WIDTH = 480;
           <app-icon name="duplicate" />
         </button>
       }
-      @if (capabilities().canConfigure && !row.isReadOnly) {
+      @if (capabilities().canConfigure) {
         <button
           appButton
           type="button"
@@ -1678,17 +1679,17 @@ export class SongExplorer {
   protected secondaryActionCount(row: SongRow): number {
     const caps = this.capabilities();
     let count = 0;
-    // Perform and download apply to a read-only row too — All songs performs
-    // and downloads. The rest do not.
+    // Perform, download and settings apply to a read-only row too — All songs
+    // performs, downloads and (now) configures its print. The rest do not.
     if (caps.canPerform && !row.isEmpty) count++;
     if (caps.canDownload) count++;
+    if (caps.canConfigure) count++;
     if (row.isReadOnly) return count;
     // While the list is narrow the strip has no room for rename, so it folds in
     // with these.
     if (this.isRenameInMenu() && caps.canRename) count++;
     // Not when the row wears it directly — it must not be counted twice.
     if (caps.canDuplicate && !caps.hasInlineDuplicate) count++;
-    if (caps.canConfigure) count++;
     if (caps.canDelete) count++;
     return count;
   }

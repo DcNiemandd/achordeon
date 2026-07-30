@@ -190,40 +190,43 @@ import {
         data-testid="songbook-settings-dialog"
         (closed)="presenter.closeSettings()"
       >
-        <section class="fields">
-          <div class="fields-head">
-            <h3 class="fields-title">{{ titlePageHeading }}</h3>
-            <button
-              appButton
-              type="button"
-              class="fields-hint"
-              [isIconOnly]="true"
-              [appTooltip]="titlePageHelp"
-              appTooltipTrigger="help"
-              [attr.aria-label]="titlePageHelp"
-              data-testid="songbook-titlePage-hint"
-            >
-              <app-icon name="help" />
-            </button>
-          </div>
+        <!-- Title-page fields and the render cascade are a record's business; the
+             virtual All songs has none, so its dialog is the print section alone. -->
+        @if (!presenter.isSettingsAllSongs()) {
+          <section class="fields">
+            <div class="fields-head">
+              <h3 class="fields-title">{{ titlePageHeading }}</h3>
+              <button
+                appButton
+                type="button"
+                class="fields-hint"
+                [isIconOnly]="true"
+                [appTooltip]="titlePageHelp"
+                appTooltipTrigger="help"
+                [attr.aria-label]="titlePageHelp"
+                data-testid="songbook-titlePage-hint"
+              >
+                <app-icon name="help" />
+              </button>
+            </div>
 
-          @for (field of titleFieldDefs; track field.key) {
-            <label class="field">
-              <span class="field-label">{{ field.label }}</span>
-              <input
-                appField
-                type="text"
-                [value]="presenter.titleFields()[field.key]"
-                [attr.data-testid]="'songbook-' + field.key"
-                (change)="setField(field.key, $event)"
-              />
-            </label>
-          }
-        </section>
+            @for (field of titleFieldDefs; track field.key) {
+              <label class="field">
+                <span class="field-label">{{ field.label }}</span>
+                <input
+                  appField
+                  type="text"
+                  [value]="presenter.titleFields()[field.key]"
+                  [attr.data-testid]="'songbook-' + field.key"
+                  (change)="setField(field.key, $event)"
+                />
+              </label>
+            }
+          </section>
+        }
 
-        <!-- The book's print structure — the SAME control the download dialog
-             mounts, on the same SongbookPrint on the record. Set a summary here
-             and the download dialog opens with it, and the preview reflows. -->
+        <!-- The book's print structure — set here, drawn by the download and the
+             preview. For All songs this is the whole dialog. -->
         <section class="fields">
           <h3 class="fields-title">{{ printHeading }}</h3>
           <app-songbook-print-fields
@@ -232,12 +235,14 @@ import {
           />
         </section>
 
-        <app-settings-panel
-          scope="songbook"
-          [values]="presenter.songbookSettings()"
-          [inherited]="presenter.inheritedSettings()"
-          (changed)="presenter.patchSettings($event)"
-        />
+        @if (!presenter.isSettingsAllSongs()) {
+          <app-settings-panel
+            scope="songbook"
+            [values]="presenter.songbookSettings()"
+            [inherited]="presenter.inheritedSettings()"
+            (changed)="presenter.patchSettings($event)"
+          />
+        }
       </app-dialog>
     }
 

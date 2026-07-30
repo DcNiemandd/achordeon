@@ -32,7 +32,6 @@ import {
   PrintOptionsStore,
   composeSongbookChoice,
   toDevicePrintOptions,
-  toSongbookPrint,
   type DownloadProgress,
   type SongbookPdfChoice,
 } from '../shared/transfer';
@@ -715,11 +714,9 @@ export class SongbookDetailPresenter {
       this._isDownloadOpen.set(false);
       return;
     }
-    // Split the confirmed choice back to its two homes: the paper is remembered
-    // device-local (#3), and this book's own structure is written onto its record
-    // so it opens pre-filled next time and its preview matches.
+    // Only the paper is remembered here (#3); the book's structure is set in its
+    // settings dialog, not on the way out the door.
     this.print.save(toDevicePrintOptions(choice));
-    await this.patchBook({ print: toSongbookPrint(choice) });
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>

@@ -25,7 +25,6 @@ import {
   PrintOptionsStore,
   composeSongbookChoice,
   toDevicePrintOptions,
-  toSongbookPrint,
   type DownloadProgress,
   type ImportChoice,
   type ImportFailure,
@@ -70,15 +69,28 @@ export class SongbooksPresenter {
 
   /**
    * What the download dialog opens on: the device's last-used paper (#3) composed
-   * with the picked book's own print structure. A real book carries its title
-   * page / summary / page-number choices on its record and they show pre-filled;
-   * the record-less All songs falls back to the default structure.
+   * with the picked book's own print structure. The dialog no longer edits that
+   * structure — it belongs to the book (set in its settings) — but the download
+   * still draws the book with it, so it rides in here to reach the renderer.
    */
-  readonly downloadInitial = computed<SongbookPdfChoice>(() => {
-    const id = this._downloadId();
-    const book = id && id !== ALL_SONGS_ID ? this.find(id) : undefined;
-    return composeSongbookChoice(this.print.options(), book?.print);
-  });
+  readonly downloadInitial = computed<SongbookPdfChoice>(() =>
+    composeSongbookChoice(
+      this.print.options(),
+      this.printFor(this._downloadId()),
+    ),
+  );
+
+  /**
+   * The print structure for a book id: a real book's own (on its record), or —
+   * for the record-less All songs — the device-local slot its settings dialog
+   * writes. `undefined` id and unknown books resolve to the defaults.
+   */
+  private printFor(id: string | null) {
+    if (!id) return undefined;
+    return id === ALL_SONGS_ID
+      ? this.print.allSongsPrint()
+      : this.find(id)?.print;
+  }
 
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
@@ -167,16 +179,17 @@ export class SongbooksPresenter {
     effect(() => {
       const id = this._currentId();
       const device = this.print.options();
-      // Track the picked book's record so an edit to its print settings — or the
-      // library size behind All songs — reflows the preview.
-      const book = id && id !== ALL_SONGS_ID ? this.find(id) : undefined;
+      // `printFor` reads the book's record (a real book) or the All songs device
+      // slot, so an edit to either — and the library size behind All songs —
+      // reflows the preview.
+      const print = this.printFor(id);
       this._librarySize();
 
       if (!id) {
         this._preview.set(null);
         return;
       }
-      const { format, ...opts } = composeSongbookChoice(device, book?.print);
+      const { format, ...opts } = composeSongbookChoice(device, print);
       void format; // the preview renders every format the same; it is not paper
       const token = ++this.previewToken;
       void this.downloads.previewSongbook(id, opts).then((preview) => {
@@ -323,9 +336,19 @@ export class SongbooksPresenter {
   readonly isSettingsOpen = computed(() => this._settingsId() !== null);
 
   /**
+   * The settings dialog is open on the virtual **All songs**. It has no record —
+   * so no title-page fields and no render-cascade scope, only a print structure
+   * (kept device-local) — and the dialog shows just that.
+   */
+  readonly isSettingsAllSongs = computed(
+    () => this._settingsId() === ALL_SONGS_ID,
+  );
+
+  /**
    * The book the dialog is bound to, read **live from the window** so an edit
    * written below flows straight back into the open dialog rather than through a
-   * snapshot that would go stale the moment it is saved.
+   * snapshot that would go stale the moment it is saved. `undefined` for All
+   * songs, which has no record.
    */
   private readonly settingsBook = computed(() => {
     const id = this._settingsId();
@@ -347,17 +370,23 @@ export class SongbooksPresenter {
   );
 
   /**
-   * The book's print structure, defaults filled in, for the shared print control.
-   * The SAME `SongbookPrint` the download dialog reads and writes, so setting a
-   * summary here shows it there — and reflows the preview, since the effect above
-   * tracks this book's record.
+   * The print structure the settings dialog edits, defaults filled in. A real
+   * book's own (on its record); the device-local slot for All songs. Setting a
+   * summary here reflows the preview, since its effect reads the same source.
    */
   readonly songbookPrint = computed(() =>
-    resolveSongbookPrint(this.settingsBook()?.print),
+    this.isSettingsAllSongs()
+      ? this.print.allSongsPrint()
+      : resolveSongbookPrint(this.settingsBook()?.print),
   );
 
-  /** Write the book-bound print structure from the settings dialog. */
+  /** Write the print structure from the settings dialog — to the record for a
+   * real book, to the device-local slot for All songs. */
   async setPrint(print: SongbookPrint): Promise<void> {
+    if (this.isSettingsAllSongs()) {
+      this.print.saveAllSongsPrint(print);
+      return;
+    }
     await this.patchSettingsBook({ print });
   }
 
@@ -370,10 +399,10 @@ export class SongbooksPresenter {
     () => this.settings.global() as Record<string, unknown>,
   );
 
-  /** The read-only All songs never reaches here (its row has no settings
-   * action), but guard anyway — there is no record to open a dialog on. */
+  /** Open the settings dialog on a real book, or on **All songs** — which has no
+   * record but does have a print structure to configure (device-local). */
   openSettings(id: string): void {
-    if (this.find(id)) {
+    if (id === ALL_SONGS_ID || this.find(id)) {
       this._settingsId.set(id);
     }
   }
@@ -497,20 +526,10 @@ export class SongbooksPresenter {
       this._downloadId.set(null);
       return;
     }
-    // Split the confirmed choice back to its two homes: the paper is remembered
-    // device-local (#3), and a real book's own structure is written onto its
-    // record so it opens pre-filled next time and its preview matches. All songs
-    // has no record, so only its paper is kept.
+    // Only the paper is remembered here (#3). The book's structure is not the
+    // download dialog's to set any more — it belongs to the book, set in its
+    // settings — so a download writes nothing to the record.
     this.print.save(toDevicePrintOptions(choice));
-    const book = id === ALL_SONGS_ID ? undefined : this.find(id);
-    if (book) {
-      await this.store.upsert({
-        ...book,
-        print: toSongbookPrint(choice),
-        updatedAt: Date.now(),
-      });
-      await this.store.refresh();
-    }
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>

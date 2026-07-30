@@ -22,11 +22,9 @@ import {
   output,
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
-import { SongbookPrintFields } from '../songbook-print-fields';
 import {
   DATA_FORMAT,
   DEFAULT_SONGBOOK_CHOICE,
-  toSongbookPrint,
   type DownloadProgress,
   type PageSizeChoice,
   type SongbookChoiceFormat,
@@ -39,7 +37,7 @@ import {
 @Component({
   selector: 'app-songbook-download-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Dialog, SongbookPrintFields],
+  imports: [Button, Dialog],
   template: `
     <app-dialog
       [title]="title()"
@@ -109,21 +107,10 @@ import {
           </label>
         }
 
-        <!-- The book's own print structure — title page, contents, page numbers.
-             The SAME control the songbook settings dialog mounts, so the two can
-             never drift: both read and write the one SongbookPrint on the record.
-             A ZIP has no page numbers and no single title sheet, so those are
-             hidden for it; the summary shows for either render (the PDF's contents
-             page, the ZIP's 00-summary.png) but not for the data file. -->
-        @if (!isData()) {
-          <app-songbook-print-fields
-            [print]="bookPrint()"
-            [showTitlePage]="choice().format === 'pdf'"
-            [showPageNumbers]="choice().format === 'pdf'"
-            [showSummaryNumber]="choice().format === 'pdf'"
-            (changed)="patch($event)"
-          />
-        }
+        <!-- The book's own structure — title page, contents, page numbers — is
+             NOT here: it belongs to the book, set in its settings dialog (and for
+             All songs, its own), and this dialog only asks about format and paper.
+             The download draws the book with whatever structure it was given. -->
 
         <!-- Song order — **All songs only**, and only where something is being
              laid out. A real songbook's order IS its content; you arranged it,
@@ -316,10 +303,6 @@ export class SongbookDownloadDialog {
   protected readonly isData = computed(
     () => this.choice().format === DATA_FORMAT,
   );
-
-  /** The book-bound half the shared print control reads; edits come back through
-   * `patch`, which merges them into the one `choice`. */
-  protected readonly bookPrint = computed(() => toSongbookPrint(this.choice()));
 
   protected readonly title = computed(
     () => $localize`:@@songbookDownload.title:Download “${this.name()}:name:”`,
