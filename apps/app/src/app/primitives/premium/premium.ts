@@ -79,11 +79,22 @@ export class Premium {
    * which would duplicate the control's markup in both branches.
    */
   readonly isMarked = input(true);
+  /**
+   * Whether this feature is one the app is *lending* to Free users for the
+   * testing phase, which is a tier decision the caller reads off `tierGuard`
+   * (`isTesting`). It picks the marker's copy — "available for testing" when the
+   * gate is open, a plain "Premium" when the feature is genuinely held back — and
+   * nothing else; the glow is the same either way. Defaults to `true` so a bare
+   * `<app-premium>` keeps its original "available for testing" meaning.
+   */
+  readonly isTesting = input(true);
   readonly id = `app-premium-${nextId++}`;
 
   /** Appended, not replaced — the control still says what it does. */
   protected readonly note = computed(() => {
-    const suffix = $localize`:@@premium.note:Premium feature available for testing`;
+    const suffix = this.isTesting()
+      ? $localize`:@@premium.note:Premium feature available for testing`
+      : $localize`:@@premium.note.paid:Premium feature`;
     return this.label() ? `${this.label()} — ${suffix}` : suffix;
   });
 }

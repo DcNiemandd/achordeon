@@ -41,7 +41,7 @@ import { Icon } from '../icon/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkTrapFocus, Button, Icon],
   host: {
-    '[class]': '"mode-" + mode()',
+    '[class]': '"mode-" + mode() + " size-" + size()',
     // Esc closes from anywhere inside, including the scrim.
     '(keydown.escape)': 'onEscape($event)',
   },
@@ -138,6 +138,27 @@ import { Icon } from '../icon/icon';
       overflow: auto;
     }
 
+    /* A panel shaped like the page it frames — for content that IS the point
+       rather than a form beside it (the song-render preview). Its height comes
+       from the viewport and its width is the A4-portrait fraction of that height,
+       so the whole dialog reads as a sheet standing up, not a wide box with a page
+       floating in the middle of it. Both axes are clamped to the viewport, so a
+       phone gets a near-full dialog and only a desktop sees the full sheet. The
+       body flexes to fill what the header and footer leave. */
+    :host(.size-large) .panel {
+      block-size: min(88vh, 960px);
+      inline-size: min(
+        calc(88vh * 210 / 297),
+        calc(960px * 210 / 297),
+        calc(100% - var(--space-4))
+      );
+    }
+
+    :host(.size-large) .body {
+      flex: 1;
+      min-block-size: 0;
+    }
+
     .head {
       display: flex;
       align-items: center;
@@ -170,6 +191,9 @@ import { Icon } from '../icon/icon';
 export class Dialog {
   readonly title = input.required<string>();
   readonly mode = input<'viewport' | 'container'>('viewport');
+  /** `default` is a form's width (520px); `large` is for content that is the
+   * point rather than a sidebar to it — the song preview's render. */
+  readonly size = input<'default' | 'large'>('default');
 
   /** Esc, the close button, or the scrim. The caller decides what that means —
    * a dialog does not get to unmount itself. */

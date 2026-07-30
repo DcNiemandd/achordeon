@@ -4,6 +4,7 @@ import {
   SUMMARY_TUNING,
   layoutSummary,
   summaryMetrics,
+  summaryToSvg,
   type MeasureText,
   type SummaryItem,
 } from './summary-layout';
@@ -401,5 +402,60 @@ describe('layoutSummary — the number before the title', () => {
     const layout = layoutSummary([], A4, MARGIN, measure, 'before');
     expect(layout.pages).toBe(0);
     expect(layout.placements).toEqual([]);
+  });
+});
+
+describe('summaryToSvg (the preview draws the PDF summary as SVG)', () => {
+  const style = { fontFamily: 'Roboto Mono', color: '#1a1a1a' };
+
+  it('emits one text per title and number, off the same placements', () => {
+    const layout = layoutSummary(items(3), A4, MARGIN, measure, 'after');
+    const svg = summaryToSvg(layout, A4, 0, style);
+    // Three titles + three numbers, plus a leader each (a ragged-but-fitting set
+    // draws leaders). At minimum the six title/number texts are there.
+    expect((svg.match(/<text/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(svg).toContain('>Song 1<');
+    expect(svg).toContain('font-size="' + layout.metrics.fontSize + '"');
+    expect(svg).toContain('viewBox="0 0 ' + A4.width + ' ' + A4.height + '"');
+  });
+
+  it('anchors the number to the right going after the title', () => {
+    const layout = layoutSummary(items(3), A4, MARGIN, measure, 'after');
+    expect(summaryToSvg(layout, A4, 0, style)).toContain('text-anchor="end"');
+  });
+
+  it('anchors the number to the left coming before the title', () => {
+    const layout = layoutSummary(items(3), A4, MARGIN, measure, 'before');
+    const svg = summaryToSvg(layout, A4, 0, style);
+    expect(svg).toContain('text-anchor="start"');
+    expect(svg).not.toContain('text-anchor="end"');
+  });
+
+  it('draws only the sheet it is asked for', () => {
+    const metrics = summaryMetrics(A4, MARGIN, 1000);
+    const layout = layoutSummary(
+      items(metrics.perPage + 5),
+      A4,
+      MARGIN,
+      measure,
+    );
+    const first = (summaryToSvg(layout, A4, 0, style).match(/<text/g) ?? [])
+      .length;
+    const second = (summaryToSvg(layout, A4, 1, style).match(/<text/g) ?? [])
+      .length;
+    // Page one is full, page two holds only the five that spilled over — fewer.
+    expect(second).toBeLessThan(first);
+  });
+
+  it('escapes markup in a title so a stray < cannot break the SVG', () => {
+    const layout = layoutSummary(
+      [{ title: 'Rock & <Roll>', number: '1' }],
+      A4,
+      MARGIN,
+      measure,
+    );
+    const svg = summaryToSvg(layout, A4, 0, style);
+    expect(svg).toContain('Rock &amp; &lt;Roll&gt;');
+    expect(svg).not.toContain('<Roll>');
   });
 });

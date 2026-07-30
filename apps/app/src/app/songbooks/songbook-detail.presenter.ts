@@ -7,13 +7,25 @@ import {
   DEFAULT_SORT_DIR,
   DownloadService,
   ExportService,
+  ParserService,
+  RenderService,
   SessionStore,
   SettingsStore,
   SongStore,
   SongbookStore,
   SyncService,
 } from '@achordeon/shared/data-access';
-import type { Song, Songbook, Uuid } from '@achordeon/shared/domain';
+import {
+  foldForSearch,
+  resolveSettings,
+  resolveSongbookPrint,
+  type Song,
+  type Songbook,
+  type SongbookPrint,
+  type Uuid,
+} from '@achordeon/shared/domain';
+import { ReturnUrl } from '../shared/layout';
+import { SongbookViewMemory } from './songbook-view-memory';
 import {
   RowSelection,
   type ExplorerSort,
@@ -24,6 +36,8 @@ import {
 import {
   DATA_FORMAT,
   PrintOptionsStore,
+  composeSongbookChoice,
+  toDevicePrintOptions,
   type DownloadProgress,
   type SongbookPdfChoice,
 } from '../shared/transfer';
@@ -57,13 +71,19 @@ export class SongbookDetailPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly parser = inject(ParserService);
+  private readonly renderer = inject(RenderService);
+  private readonly returnUrl = inject(ReturnUrl);
+  private readonly viewMemory = inject(SongbookViewMemory);
   private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
 
-  /** The last-used print options, for the download dialog to open on (#3). The
-   * saved All songs order is not folded in — the dialog asks about order itself,
-   * and that setting is about performing (see the songbooks presenter). */
-  readonly printOptions = this.print.options;
+  /** What the download dialog opens on: the device's last-used paper (#3)
+   * composed with this book's own print structure, so its title page / summary /
+   * page-number choices show pre-filled and match its preview. */
+  readonly downloadInitial = computed<SongbookPdfChoice>(() =>
+    composeSongbookChoice(this.print.options(), this._book()?.print),
+  );
 
   private readonly route = inject(ActivatedRoute);
 
@@ -131,10 +151,38 @@ export class SongbookDetailPresenter {
     this._id.set(id);
     this.slotSelection.clear();
     this._currentSlotKey.set(null);
+    this._searchTerm.set('');
+    this._matchCursor.set(0);
     const book = await this.books.byId(id);
     this._book.set(book ?? null);
     this._isFound.set(book !== undefined && book.deletedAt === null);
     await this.hydrate();
+    this.restoreView(id);
+  }
+
+  /**
+   * Put back the ticks and the scroll from just before an Edit press, if this
+   * load is the return trip for the very book they were captured on.
+   *
+   * The preview dialog itself reopens from the URL (`?preview=`), and search /
+   * sort come back with it — those the address bar carries. This is the
+   * remainder: a multi-row selection and where each list was scrolled to, which
+   * the presenter held and lost when the page was torn down for the editor. The
+   * scroll cannot be applied here — the lists have not drawn their windows yet —
+   * so it is parked for the page to lay on once they have.
+   */
+  private restoreView(id: string): void {
+    const view = this.viewMemory.take(id);
+    if (!view) {
+      return;
+    }
+    this.selection.set(view.selectedIds);
+    this.slotSelection.set(view.selectedSlots);
+    this._currentSlotKey.set(view.currentSlot);
+    this._pendingScroll.set({
+      library: view.libraryOffset,
+      entry: view.entryOffset,
+    });
   }
 
   /**
@@ -350,6 +398,109 @@ export class SongbookDetailPresenter {
     this.slotSelection.clear();
   }
 
+  // --- Pane B: find-and-jump over the entries (UX ▸ songbook) --------------
+  //
+  // A search that **navigates, never filters**: the visible row set never
+  // changes, so a slot you can see stays where it is. Typing moves a read-only
+  // cursor to the first match, and it drives ONLY the single-row `is-current`
+  // highlight (via `_currentSlotKey`) — the checkbox slot-selection is left
+  // untouched, so a search never arms reorder or remove.
+
+  private readonly _searchTerm = signal('');
+  readonly searchTerm = this._searchTerm.asReadonly();
+
+  /** Where the cursor sits within `searchMatches` — a position in the match
+   * list, wrapped at both ends, not a slot index. */
+  private readonly _matchCursor = signal(0);
+
+  /**
+   * The slot indexes (book order) whose folded name / title / subtitle /
+   * content contain the folded, trimmed term. Empty term ⇒ no matches. Content
+   * comes from the hydrated `_songsById`, the same songs the entry rows are
+   * named from, so a match is always a slot the user can actually see.
+   */
+  readonly searchMatches = computed<number[]>(() => {
+    const needle = foldForSearch(this._searchTerm().trim());
+    if (!needle) {
+      return [];
+    }
+    const byId = this._songsById();
+    return this.entryIds().reduce<number[]>((matches, songId, index) => {
+      const song = byId.get(songId);
+      const haystack = foldForSearch(
+        [
+          song?.name ?? '',
+          song?.cache.title ?? '',
+          song?.cache.subtitle ?? '',
+          song?.content ?? '',
+        ].join('\n'),
+      );
+      if (haystack.includes(needle)) {
+        matches.push(index);
+      }
+      return matches;
+    }, []);
+  });
+
+  /** The matched slot the cursor names, or null — what the page scrolls to. */
+  readonly focusedIndex = computed<number | null>(
+    () => this.searchMatches()[this._matchCursor()] ?? null,
+  );
+
+  /** The "n / m" counter's numbers; `current` is 0 with no matches. */
+  readonly matchPosition = computed(() => {
+    const total = this.searchMatches().length;
+    return { current: total ? this._matchCursor() + 1 : 0, total };
+  });
+
+  /** Set the term, jump the cursor to the first match, and light it. */
+  setSearch(term: string): void {
+    this._searchTerm.set(term);
+    this._matchCursor.set(0);
+    this.focusMatch();
+  }
+
+  nextMatch(): void {
+    const total = this.searchMatches().length;
+    if (total === 0) {
+      return;
+    }
+    this._matchCursor.update((cursor) => (cursor + 1) % total);
+    this.focusMatch();
+  }
+
+  prevMatch(): void {
+    const total = this.searchMatches().length;
+    if (total === 0) {
+      return;
+    }
+    this._matchCursor.update((cursor) => (cursor - 1 + total) % total);
+    this.focusMatch();
+  }
+
+  clearSearch(): void {
+    this._searchTerm.set('');
+    this._matchCursor.set(0);
+  }
+
+  /**
+   * Point the current-slot highlight at the cursor's match. It writes
+   * `_currentSlotKey` (so `currentSlot` resolves to that exact slot, not a twin)
+   * and makes the slot's song current — and **never touches `slotSelection`**,
+   * which is what keeps reorder / remove disarmed while searching.
+   */
+  private focusMatch(): void {
+    const idx = this.searchMatches()[this._matchCursor()];
+    if (idx === undefined) {
+      return;
+    }
+    this._currentSlotKey.set(String(idx));
+    const songId = this.entryIds()[idx];
+    if (songId !== undefined) {
+      this.session.setCurrentSong(songId);
+    }
+  }
+
   /**
    * Add the songs selected on the left into this book (songbooks/index.mdx).
    *
@@ -369,11 +520,12 @@ export class SongbookDetailPresenter {
     const at = this.insertAt(where) ?? book.entries.length;
 
     await this.writeEntries(insertEntries(book.entries, songIds, at));
-    this.setSlotSelection(
-      shiftSelection(this.selectedIndexes(), at, songIds.length),
-    );
-    // The songs have landed. Leaving them ticked invites a second, accidental
-    // copy of the same set on the next press of a neighbouring button.
+    // Select what just landed: the newly added slots occupy [at, at + count),
+    // so the next Add aims below them and the reorder buttons act on them
+    // straight away — you added these, so these are what you are working with.
+    this.setSlotSelection(new Set(songIds.map((_, n) => at + n)));
+    // The library ticks have done their job. Leaving them set invites a second,
+    // accidental copy of the same set on the next press of Add.
     this.selection.clear();
   }
 
@@ -546,6 +698,17 @@ export class SongbookDetailPresenter {
     () => (this._book()?.settings ?? {}) as Record<string, unknown>,
   );
 
+  /** The book's print structure, defaults filled in — the same SongbookPrint the
+   * download dialog reads and writes, mounted through the shared control. */
+  readonly songbookPrint = computed(() =>
+    resolveSongbookPrint(this._book()?.print),
+  );
+
+  /** Write the book-bound print structure from the settings dialog. */
+  async setPrint(print: SongbookPrint): Promise<void> {
+    await this.patchBook({ print });
+  }
+
   /**
    * What this scope inherits: the Global defaults, which are the only thing
    * below it in the cascade (ADR-0006). The panel needs them for the
@@ -693,7 +856,9 @@ export class SongbookDetailPresenter {
       this._isDownloadOpen.set(false);
       return;
     }
-    this.print.save(choice); // remember it for next time (#3)
+    // Only the paper is remembered here (#3); the book's structure is set in its
+    // settings dialog, not on the way out the door.
+    this.print.save(toDevicePrintOptions(choice));
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>
@@ -714,6 +879,147 @@ export class SongbookDetailPresenter {
     } finally {
       this._isBusy.set(false);
     }
+  }
+
+  // --- Preview (look before edit) — UX ▸ songbook -------------------------
+  //
+  // A magnifier on every song row opens its render in a dialog: you read a song
+  // without leaving the builder, and step through to the editor only if you
+  // decide to change it. The dialog's open song is a **query param** on this
+  // screen (`?preview=`), not a private signal, precisely because it has to
+  // survive the round trip to the editor and back — a transient sheet that must
+  // be reopenable IS a place (contrast the settings dialog, which is not). The
+  // page reads the param and hands it here; this fetches the song and renders it.
+
+  /** The song whose render the dialog is showing, fetched fresh so a return from
+   * the editor reflects the edit. Null when nothing is previewed. */
+  private readonly _previewSong = signal<Song | null>(null);
+  readonly previewSong = this._previewSong.asReadonly();
+
+  /** Bumped per request so a slow fetch of a song you have already closed past
+   * cannot land in the dialog after it. */
+  private previewToken = 0;
+
+  readonly previewName = computed(() => this._previewSong()?.name ?? '');
+
+  /**
+   * The previewed song's geometry — parsed and laid out here, the same one plan
+   * the editor builds, but resolved through **this book's** scope of the cascade
+   * (Global ← Songbook ← Song), because a song reads differently inside the book
+   * it will be performed in (ADR-0006). Everything is synchronous once the song
+   * is in hand: parse, respell, layout.
+   */
+  private readonly previewPlan = computed(() => {
+    const song = this._previewSong();
+    if (!song) {
+      return undefined;
+    }
+    const settings = resolveSettings(
+      this.settings.global(),
+      this._book()?.settings,
+      song.settings,
+    );
+    return this.renderer.layout(this.parser.parse(song.content), settings);
+  });
+
+  /** Screen SVG — no inlined font bytes, exactly as the editor's live preview
+   * (the face is CSS-loaded; a download asks for the other variant). */
+  readonly previewSvg = computed(() => {
+    const plan = this.previewPlan();
+    return plan ? this.renderer.emit(plan) : '';
+  });
+
+  /** The page shape the dialog frames the render in — the song's own paper. */
+  readonly previewAspect = computed(() => {
+    const box = this.previewPlan()?.box;
+    return box && box.height > 0 ? box.width / box.height : 210 / 297;
+  });
+
+  /** Open the preview of a **library** row — its id is already the song's. */
+  openPreviewBySong(songId: string): void {
+    this.setPreview(songId);
+  }
+
+  /** Open the preview of an **entry** slot — its key is a position, so the song
+   * it holds is looked up before the param is set. */
+  openPreviewBySlot(key: string): void {
+    const songId = this.entryIds()[Number(key)];
+    if (songId !== undefined) {
+      this.setPreview(songId);
+    }
+  }
+
+  closePreview(): void {
+    this.setPreview(null);
+  }
+
+  /** Write the open song into the URL; `null` takes the dialog down. */
+  private setPreview(songId: string | null): void {
+    this.navigate({ preview: songId });
+  }
+
+  /**
+   * Follow the URL's `?preview=` — fetch the song and show it, or clear it. The
+   * page drives this from the param, so the dialog opens on a direct click and
+   * reopens on a return from the editor by the very same path.
+   */
+  async syncPreview(songId: string | null): Promise<void> {
+    const token = ++this.previewToken;
+    if (!songId) {
+      this._previewSong.set(null);
+      return;
+    }
+    if (this._previewSong()?.id === songId) {
+      return;
+    }
+    const song = await this.songs.byId(songId);
+    // The URL may have moved on while the fetch was in flight; only the latest
+    // request may write the dialog.
+    if (token === this.previewToken) {
+      this._previewSong.set(song ?? null);
+    }
+  }
+
+  /**
+   * Step from the preview into the editor, and **leave a trail home**.
+   *
+   * The book's whole view is captured first — the ticks and both scroll offsets,
+   * which the URL does not carry — and the current URL, preview param and all, is
+   * handed to `ReturnUrl`. The editor's Back and Escape both aim at that, so
+   * closing the editor lands back on this screen with the dialog reopened and the
+   * list exactly as it was left. The scroll comes from the page (only it can
+   * measure the two virtualised lists), which is why it is a parameter.
+   */
+  editPreview(scroll: { libraryOffset: number; entryOffset: number }): void {
+    const song = this._previewSong();
+    if (!song) {
+      return;
+    }
+    this.viewMemory.capture({
+      bookId: this._id(),
+      selectedIds: [...this.selection.ids()],
+      selectedSlots: [...this.slotSelection.ids()],
+      currentSlot: this._currentSlotKey(),
+      libraryOffset: scroll.libraryOffset,
+      entryOffset: scroll.entryOffset,
+    });
+    this.returnUrl.set(this.router.url);
+    void this.router.navigate(['/songs', song.id, 'edit']);
+  }
+
+  /**
+   * The scroll offsets to reapply after a return from the editor, or null. Held
+   * rather than applied here because the lists have to draw their windows first
+   * (see `restoreView`); the page reads this, scrolls both lists, and clears it.
+   */
+  private readonly _pendingScroll = signal<{
+    library: number;
+    entry: number;
+  } | null>(null);
+  readonly pendingScroll = this._pendingScroll.asReadonly();
+
+  clearPendingScroll(): void {
+    this._pendingScroll.set(null);
   }
 
   private navigate(queryParams: Record<string, string | null>): void {

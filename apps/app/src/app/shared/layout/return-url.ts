@@ -7,6 +7,13 @@ import { Injectable, signal } from '@angular/core';
  * The list URL the editor returns to — captured, query and all, the moment a
  * song is opened.
  *
+ * **Set by whoever opens the editor, not by the editor.** The Songs module
+ * records the library URL it left; the Songbooks builder records its own URL —
+ * preview dialog and all — before an Edit press walks into the same editor. So it
+ * lives in `shared`, above both: it is the one fact the two entrances share, and
+ * a service one feature owned would be a sibling the other had to reach across
+ * for (features are folders here, and a folder does not import its neighbour).
+ *
  * **Not the browser's history.** Between the list and the editor the user may
  * have flipped a pane or two, so `history.back()` lands on one of those in-editor
  * states, not the filtered list they came from. This holds the one URL that is

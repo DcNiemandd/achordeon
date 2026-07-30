@@ -8,6 +8,21 @@
 // mismatch should surface, since the presenter is the only thing spanning both.
 // The same trick `ExplorerSort` plays with the store's `SortKey`.
 
+import {
+  DEFAULT_SONGBOOK_PRINT,
+  resolveSongbookPrint,
+  type SongbookPrint,
+} from '@achordeon/shared/domain';
+
+// The book-bound print enums are the record's own vocabulary now — re-exported so
+// this folder's consumers still find them here, but authored once, in the domain.
+export type {
+  PageNumberPlace,
+  SongbookPrint,
+  SummaryNumberPlace,
+  TitlePageVariant,
+} from '@achordeon/shared/domain';
+
 /** One song, as a file. */
 export type SongDownloadFormat = 'png' | 'pdf';
 
@@ -34,36 +49,6 @@ export type DataFormat = typeof DATA_FORMAT;
 export type DownloadChoice = DownloadFormat | DataFormat;
 
 export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
-
-/**
- * Where a song's page number goes. Five spots on the paper — and `before-title`,
- * which is not a spot at all: it puts the number into the song's heading
- * ("7. Wonderwall"), which is how a book is used out loud and what survives a
- * page being photocopied or re-bound.
- */
-export type PageNumberPlace =
-  | 'bottom-center'
-  | 'bottom-right'
-  | 'bottom-left'
-  | 'top-center'
-  | 'top-right'
-  | 'top-left'
-  | 'before-title';
-
-/**
- * Which side of the title the **summary's** page number sits on: `after` is the
- * reference table (`title · · · 7`, the number at the column's right edge under
- * leader dots), `before` is the hymnal (`7.  title`, the numbers in a column of
- * their own with every title indented past the widest of them).
- *
- * One or the other, never both — a songbook numbers each song by its page, so a
- * contents line carrying the number at each end says it twice.
- */
-export type SummaryNumberPlace = 'before' | 'after';
-
-/** A title-page layout. Only `classic` renders today; the rest are declared so
- * the dialog can offer them, and land later (Epic 7 follow-up stub). */
-export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
 
 /**
  * What shape a songbook comes out as: one printable `pdf`, or a `zip-png` — a
@@ -97,8 +82,19 @@ export interface SongOrder {
   readonly favoritesFirst: boolean;
 }
 
-/** Everything the songbook download dialog decides. */
-export interface SongbookPdfChoice {
+/**
+ * The **device-bound** half of the dialog's answer: the paper in *this* printer.
+ *
+ * These are about the machine, not the book — "A4 at home, Letter at the office"
+ * — so they are remembered device-local (`PrintOptionsStore`) and shared across
+ * every book, never synced. The book-bound half is {@link SongbookPrint}, which
+ * lives on the record.
+ *
+ * `songOrder` rides here too: it is asked only for the virtual All songs (a real
+ * book's order is its content) and has no record to live on, so it stays a
+ * device-remembered dialog answer.
+ */
+export interface DevicePrintOptions {
   /** Printable PDF, a ZIP of per-song images, or the Achordeon file. Chooses
    * which of the fields below matter — the paper options are the PDF's alone,
    * and the data file wants none of them. */
@@ -106,19 +102,70 @@ export interface SongbookPdfChoice {
   readonly pageSize: PageSizeChoice;
   readonly isLandscape: boolean;
   readonly marginMm: number;
-  readonly hasTitlePage: boolean;
-  /** Which title-page layout. A stub beyond `classic` for now. */
-  readonly titlePageVariant: TitlePageVariant;
-  readonly hasSummary: boolean;
-  /** Which side of the title the summary's page number sits on. Only the PDF's
-   * summary is laid out here — the image ZIP's contents page is a render, and
-   * numbers its songs its own way. */
-  readonly summaryNumberPlace: SummaryNumberPlace;
-  readonly hasPageNumbers: boolean;
-  readonly pageNumberPosition: PageNumberPlace;
   /** The order All songs prints in. Ignored for a real songbook, whose order is
    * its content — the dialog only shows this control for All songs. */
   readonly songOrder: SongOrder;
+}
+
+/**
+ * Everything the songbook download dialog decides — the device-bound paper and
+ * the book-bound structure, as one flat shape the controlled dialog reads and
+ * writes. The presenter composes it from the two homes and splits it back on
+ * confirm (see {@link composeSongbookChoice}, {@link toDevicePrintOptions},
+ * {@link toSongbookPrint}).
+ */
+export interface SongbookPdfChoice extends DevicePrintOptions, SongbookPrint {}
+
+/** The paper a device opens the dialog on until it is told otherwise. */
+export const DEFAULT_DEVICE_PRINT_OPTIONS: DevicePrintOptions = {
+  format: 'pdf',
+  pageSize: 'A4',
+  isLandscape: false,
+  marginMm: 10,
+  // All songs prints by title (the heading a reader flips to find) by default.
+  songOrder: { axis: 'title', dir: 'asc', favoritesFirst: false },
+};
+
+/** The whole dialog's fallback: device paper + the standard book structure. Used
+ * as the controlled dialog's input default and for the margin clamp. */
+export const DEFAULT_SONGBOOK_CHOICE: SongbookPdfChoice = {
+  ...DEFAULT_DEVICE_PRINT_OPTIONS,
+  ...DEFAULT_SONGBOOK_PRINT,
+};
+
+/** Compose the dialog's opening value: the device's paper, and the book's own
+ * print structure (or the defaults for a book that has said nothing, and for the
+ * record-less All songs). */
+export function composeSongbookChoice(
+  device: DevicePrintOptions,
+  print?: Partial<SongbookPrint>,
+): SongbookPdfChoice {
+  return { ...device, ...resolveSongbookPrint(print) };
+}
+
+/** The device-bound half of a confirmed choice, to remember device-local. */
+export function toDevicePrintOptions(
+  choice: SongbookPdfChoice,
+): DevicePrintOptions {
+  return {
+    format: choice.format,
+    pageSize: choice.pageSize,
+    isLandscape: choice.isLandscape,
+    marginMm: choice.marginMm,
+    songOrder: choice.songOrder,
+  };
+}
+
+/** The book-bound half of a confirmed choice, to write onto the record. */
+export function toSongbookPrint(choice: SongbookPdfChoice): SongbookPrint {
+  return {
+    hasTitlePage: choice.hasTitlePage,
+    titlePageVariant: choice.titlePageVariant,
+    hasSummary: choice.hasSummary,
+    summaryNumberPlace: choice.summaryNumberPlace,
+    hasPageNumbers: choice.hasPageNumbers,
+    pageNumberPosition: choice.pageNumberPosition,
+  };
 }
 
 /** How far a download's generation has got, for the dialog to show as a spinner

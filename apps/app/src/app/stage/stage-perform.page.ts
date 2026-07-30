@@ -323,6 +323,7 @@ const SWIPE_THRESHOLD_PX = 60;
             <app-premium
               [label]="createLobbyLabel"
               [isMarked]="tier.isMarked('audience-host')"
+              [isTesting]="tier.isTesting('audience-host')"
               dialog-actions
             >
               <button

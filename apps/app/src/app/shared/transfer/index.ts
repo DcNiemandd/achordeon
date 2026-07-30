@@ -2,13 +2,18 @@ export { DownloadDialog } from './download-dialog';
 export { SongbookDownloadDialog } from './songbook-download-dialog';
 export { ImportDialog } from './import-dialog';
 export { ImportPanel } from './import-panel';
+export { PrintOptionsStore } from './print-options-store';
 export {
-  PrintOptionsStore,
-  DEFAULT_PRINT_OPTIONS,
-} from './print-options-store';
-export { DATA_FORMAT } from './transfer-model';
+  DATA_FORMAT,
+  DEFAULT_DEVICE_PRINT_OPTIONS,
+  DEFAULT_SONGBOOK_CHOICE,
+  composeSongbookChoice,
+  toDevicePrintOptions,
+  toSongbookPrint,
+} from './transfer-model';
 export type {
   DataFormat,
+  DevicePrintOptions,
   DownloadChoice,
   DownloadFormat,
   DownloadProgress,
@@ -24,6 +29,7 @@ export type {
   SongbookChoiceFormat,
   SongbookFormat,
   SongbookPdfChoice,
+  SongbookPrint,
   SongOrder,
   SongOrderAxis,
   SongOrderDir,

@@ -107,6 +107,9 @@ export class SettingsPresenter {
   readonly marksAutoSyncPremium = computed(() =>
     this.tier.isMarked('auto-sync'),
   );
+  /** Whether that marker says "available for testing" — false for auto-sync,
+   * which is held behind the tier, so it reads a plain "Premium". */
+  readonly autoSyncTesting = computed(() => this.tier.isTesting('auto-sync'));
 
   private readonly _drive = signal<DriveOutcome | null>(null);
   private readonly _driveBusy = signal(false);

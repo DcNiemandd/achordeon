@@ -17,16 +17,23 @@ describe('TierGuard', () => {
     expect(guard.hasPremium()).toBe(false);
   });
 
-  it('never blocks a Premium feature during testing', () => {
-    // The whole decision: a Free user gets hosting and automatic sync, and is
-    // told what they are. A disabled control would teach nobody anything.
+  it('lends a testing feature to a free account but holds the rest back', () => {
+    // The decision: hosting is lent for testing, so a Free user gets it and is
+    // told what it is; automatic sync is held behind the tier, so its gate is
+    // real even now.
     expect(guard.isAllowed('audience-host')).toBe(true);
-    expect(guard.isAllowed('auto-sync')).toBe(true);
+    expect(guard.isAllowed('auto-sync')).toBe(false);
   });
 
   it('marks Premium features for a free account', () => {
     expect(guard.isMarked('audience-host')).toBe(true);
     expect(guard.isMarked('auto-sync')).toBe(true);
+  });
+
+  it('flags which marked features are lent for testing', () => {
+    // Drives the marker copy: "available for testing" vs a plain "Premium".
+    expect(guard.isTesting('audience-host')).toBe(true);
+    expect(guard.isTesting('auto-sync')).toBe(false);
   });
 
   it('marks nothing for someone who already pays', () => {

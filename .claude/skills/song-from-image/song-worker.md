@@ -43,6 +43,18 @@ the song content in your message.
   - `1.: First verse` → label `1.`, content `First verse`
   - `R:: Chorus` → label `R:`, content `Chorus`
   - `1:::` → label `1::`, content empty (label-only block)
+- **The delimiter colon is eaten — it is never printed.** A label renders as its
+  label text alone, so to put a colon on the page you write **one more colon than
+  the sheet shows**. Mirror the sheet exactly:
+  - sheet shows `R:` → write `R:: …` → prints `R:`
+  - sheet shows `1.:` → write `1.:: …` → prints `1.:`
+  - sheet shows `Sólo` (no colon) → write `Sólo: …` → prints `Sólo`
+  - sheet shows `Intro:` with the chords on the next row → write `Intro::`
+
+  Writing `R: …` for a sheet's `R:` silently loses the colon. This is the single
+  most common transcription slip — check it in step 3, where the syntax check
+  prints every label as it will render.
+
 - A colon **not** followed by space/EOL is an ordinary character — `http://x`,
   `12:30` need no escaping.
 - **Footgun:** `Narrator: hi` silently becomes a label `Narrator`. If it should be
@@ -55,10 +67,13 @@ the song content in your message.
   chords gets an annotation:
 
   ```
-  Intro:
-  Kl. + Bas: [Am F G Am (2×)]
-  Housle: [Am F G Am (4×)]
+  Intro::
+  Kl. + Bas:: [Am F G Am (2×)]
+  Housle:: [Am F G Am (4×)]
   ```
+
+  (Doubled because that sheet prints `Intro:`, `Kl. + Bas:`, `Housle:` — same
+  eaten-delimiter rule; sub-labels are no exception.)
 
   Only the line that **opens** the block can name the block, so every later label
   in it is a sub-label.
@@ -129,8 +144,9 @@ inventing.
 Extract:
 
 - **Title / author** → `* Title` / `** Author`.
-- **Section labels** (Verse 1, Chorus, Bridge, "R:", numbers, "Sólo") → block
-  labels (`Label:`).
+- **Section labels** (Verse 1, Chorus, Bridge, `R:`, numbers, "Sólo") → block
+  labels, reproduced **exactly as printed**. Remember the delimiter colon is eaten:
+  a sheet's `R:` is written `R:: …`, a bare `Sólo` is written `Sólo: …`.
 - **Lyrics**, line by line, blocks separated by a blank line.
 - **Chords**, and critically **which character each sits over**. Sheets print
   chords on a line _above_ the lyric; place each `[chord]` immediately **before the

@@ -1,48 +1,67 @@
-// Print options store — Epic 7 follow-up (#3)
+// Device print options store — Epic 7 follow-up (#3)
 // Spec: PRD-UI-SHELL.md §7 (device-local UI preference, never synced)
 //
-// The songbook PDF dialog's last answer, kept so the next download starts where
-// the last one left off — a person who prints A4 landscape with a summary wants
-// that again, not the defaults every time.
+// The **device-bound** half of the songbook download dialog — format, page size,
+// orientation, margin, and the All songs order — kept so the next download starts
+// on the paper the last one used: a person who prints A4 landscape wants that
+// again, not the defaults every time.
 //
-// `localStorage` like `UiStore`, and for the same reasons: it is a chrome
-// preference, not library data, so it must not sync, and it is small. It is not
-// on the boot path, so the sync-read argument does not apply — but sharing the
-// mechanism keeps one pattern for "a bit of UI state that outlives the tab".
+// Device-local on purpose. "A4 at home, Letter at the office" is a fact about the
+// printer in front of you, not about the book, so it must not sync — the OTHER
+// half of the dialog, the book's own structure (title page, summary, page
+// numbers), lives on the record and travels with the book (`SongbookPrint`).
+//
+// `localStorage` like `UiStore`, and for the same reasons: a chrome preference,
+// small, not on the boot path. Sharing the mechanism keeps one pattern for "a bit
+// of UI state that outlives the tab".
 
 import { Injectable, signal } from '@angular/core';
-import type { SongbookPdfChoice } from './transfer-model';
+import {
+  DEFAULT_SONGBOOK_PRINT,
+  resolveSongbookPrint,
+  type SongbookPrint,
+} from '@achordeon/shared/domain';
+import {
+  DEFAULT_DEVICE_PRINT_OPTIONS,
+  type DevicePrintOptions,
+} from './transfer-model';
 
 const KEY = 'achordeon.print';
 
-export const DEFAULT_PRINT_OPTIONS: SongbookPdfChoice = {
-  format: 'pdf',
-  pageSize: 'A4',
-  isLandscape: false,
-  marginMm: 10,
-  hasTitlePage: true,
-  titlePageVariant: 'classic',
-  hasSummary: false,
-  summaryNumberPlace: 'after',
-  hasPageNumbers: true,
-  pageNumberPosition: 'bottom-center',
-  // All songs prints by title (the heading a reader flips to find) by default.
-  songOrder: { axis: 'title', dir: 'asc', favoritesFirst: false },
-};
+/**
+ * Where the **virtual All songs** book keeps its print structure.
+ *
+ * Every real book carries its own `SongbookPrint` on its record and syncs it; All
+ * songs has no record, so its title page / summary / page-number choices have
+ * nowhere on a book to live. They land here instead — device-local, like the
+ * paper, which is the honest home for "the settings of a book that is not a
+ * record". A separate key from the paper so the two evolve apart.
+ */
+const ALL_SONGS_PRINT_KEY = 'achordeon.allSongsPrint';
 
 @Injectable({ providedIn: 'root' })
 export class PrintOptionsStore {
-  private readonly _options = signal<SongbookPdfChoice>(DEFAULT_PRINT_OPTIONS);
+  private readonly _options = signal<DevicePrintOptions>(
+    DEFAULT_DEVICE_PRINT_OPTIONS,
+  );
 
-  /** The last-used print options, for the dialog to open on. */
+  /** The last-used device paper, for the dialog to open on. */
   readonly options = this._options.asReadonly();
+
+  private readonly _allSongsPrint = signal<SongbookPrint>(
+    DEFAULT_SONGBOOK_PRINT,
+  );
+
+  /** The virtual All songs book's print structure — its settings dialog reads
+   * and writes this, and its preview and download draw from it. */
+  readonly allSongsPrint = this._allSongsPrint.asReadonly();
 
   constructor() {
     this.hydrate();
   }
 
-  /** Remember this answer for next time. Called when a download is confirmed. */
-  save(options: SongbookPdfChoice): void {
+  /** Remember this paper for next time. Called when a download is confirmed. */
+  save(options: DevicePrintOptions): void {
     this._options.set(options);
     try {
       localStorage.setItem(KEY, JSON.stringify(options));
@@ -51,17 +70,50 @@ export class PrintOptionsStore {
     }
   }
 
+  /** Write the All songs print structure from its settings dialog. */
+  saveAllSongsPrint(print: SongbookPrint): void {
+    this._allSongsPrint.set(print);
+    try {
+      localStorage.setItem(ALL_SONGS_PRINT_KEY, JSON.stringify(print));
+    } catch {
+      // Private mode or quota — see save().
+    }
+  }
+
   private hydrate(): void {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return;
-      const stored = JSON.parse(raw) as Partial<SongbookPdfChoice>;
-      // Merge over the defaults so a value stored before a field existed (a new
-      // option in a later build) still opens with that field at its default,
-      // rather than `undefined` reaching the renderer.
-      this._options.set({ ...DEFAULT_PRINT_OPTIONS, ...stored });
+      const stored = JSON.parse(raw) as Partial<DevicePrintOptions>;
+      // Pick only the device keys off whatever is stored: a value written before
+      // the book-bound half moved to the record still carries those extra fields,
+      // and they must not ride back into a `DevicePrintOptions`. Merge over the
+      // defaults so a field added later still opens at its default rather than
+      // `undefined`.
+      this._options.set({
+        ...DEFAULT_DEVICE_PRINT_OPTIONS,
+        format: stored.format ?? DEFAULT_DEVICE_PRINT_OPTIONS.format,
+        pageSize: stored.pageSize ?? DEFAULT_DEVICE_PRINT_OPTIONS.pageSize,
+        isLandscape:
+          stored.isLandscape ?? DEFAULT_DEVICE_PRINT_OPTIONS.isLandscape,
+        marginMm: stored.marginMm ?? DEFAULT_DEVICE_PRINT_OPTIONS.marginMm,
+        songOrder: stored.songOrder ?? DEFAULT_DEVICE_PRINT_OPTIONS.songOrder,
+      });
     } catch {
       // Fall back to defaults — see save().
+    }
+
+    try {
+      const raw = localStorage.getItem(ALL_SONGS_PRINT_KEY);
+      if (raw) {
+        // Merge over the defaults so a field added in a later build opens at its
+        // default rather than `undefined` reaching the renderer.
+        this._allSongsPrint.set(
+          resolveSongbookPrint(JSON.parse(raw) as Partial<SongbookPrint>),
+        );
+      }
+    } catch {
+      // Fall back to defaults.
     }
   }
 }

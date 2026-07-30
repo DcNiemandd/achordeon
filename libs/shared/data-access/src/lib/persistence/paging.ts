@@ -1,7 +1,7 @@
 // Paged/cursor query engine — Epic 4 ▸ subtask 2
 // Spec: PRD-INFRASTRUCTURE.md §4 (paged/cursor API), CONTEXT.md §Search (two-tier)
 
-import type { BaseRecord } from '@achordeon/shared/domain';
+import { foldForSearch, type BaseRecord } from '@achordeon/shared/domain';
 
 /**
  * Sort axes the Song explorer offers (CONTEXT.md §Song explorer).
@@ -77,8 +77,8 @@ const decodeCursor = (cursor: Cursor | null | undefined): number => {
 
 // -1 = no match; 0 = primary (metadata) hit; 1 = secondary (content) hit.
 function matchTier(tiers: readonly [string, string], needle: string): number {
-  if (tiers[0].toLowerCase().includes(needle)) return 0;
-  if (tiers[1].toLowerCase().includes(needle)) return 1;
+  if (foldForSearch(tiers[0]).includes(needle)) return 0;
+  if (foldForSearch(tiers[1]).includes(needle)) return 1;
   return -1;
 }
 
@@ -107,7 +107,7 @@ export function pageRecords<T extends BaseRecord>(
   config: PagingConfig<T>,
 ): Page<T> {
   const limit = Math.max(0, query.limit);
-  const needle = (query.query ?? '').trim().toLowerCase();
+  const needle = foldForSearch((query.query ?? '').trim());
   const sign = (query.dir ?? DEFAULT_SORT_DIR[query.sort]) === 'asc' ? 1 : -1;
 
   // Lists show live rows only; tombstones stay in the store for sync (subtask 5).

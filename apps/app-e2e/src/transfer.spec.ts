@@ -22,6 +22,21 @@ const ROOMY = { width: 1440, height: 900 };
 /** A word from the starter content — what a rendered song must actually say. */
 const TUTORIAL_WORD = 'brackets';
 
+/**
+ * Set a songbook's print structure — title page, summary, page numbers — in the
+ * builder's settings dialog, which is where those book-bound options live now:
+ * the download dialog asks only about format and paper. The fields commit on
+ * change, so this opens the dialog, applies, and closes it.
+ */
+async function setBookPrint(
+  page: Page,
+  apply: () => Promise<void>,
+): Promise<void> {
+  await page.getByTestId('songbook-settings').click();
+  await apply();
+  await page.getByTestId('dialog-close').click();
+}
+
 async function freshLibrary(page: Page): Promise<void> {
   await page.goto('songs');
   await page.evaluate(
@@ -306,7 +321,7 @@ test.describe('import across modules', () => {
     await title.press('Enter');
     await page.waitForTimeout(300);
     await page.getByTestId('song-row').filter({ hasText: songName }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
     await expect(page.getByTestId('entry-row')).toHaveCount(1);
 
     await page.goto('songbooks');
@@ -580,7 +595,7 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
@@ -615,14 +630,14 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
+    // The contents page is the ZIP's front matter — ask for it, in settings.
+    await setBookPrint(page, () => page.getByTestId('pdf-summary').check());
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('zip-png');
-    // The contents page is the ZIP's front matter — ask for it.
-    await page.getByTestId('pdf-summary').check();
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -650,11 +665,11 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
+    // Summary is off by default, so nothing to switch — just download.
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('zip-png');
-    await page.getByTestId('pdf-summary').uncheck();
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -674,11 +689,10 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('zip-png');
-    await page.getByTestId('pdf-summary').uncheck();
     const zip = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -704,10 +718,12 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
+    await setBookPrint(page, () =>
+      page.getByTestId('pdf-title-page').uncheck(),
+    );
     await page.getByTestId('songbook-detail-download').click();
-    await page.getByTestId('pdf-title-page').uncheck();
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -733,10 +749,10 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Řeka' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
+    await setBookPrint(page, () => page.getByTestId('pdf-summary').check());
     await page.getByTestId('songbook-detail-download').click();
-    await page.getByTestId('pdf-summary').check();
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -772,15 +788,19 @@ test.describe('download a songbook', () => {
         .filter({ hasText: name })
         .first()
         .click();
-      await page.getByTestId('add-end').click();
+      await page.getByTestId('add').click();
     }
     await expect(page.getByTestId('entry-row')).toHaveCount(2);
 
+    await setBookPrint(page, async () => {
+      await page.getByTestId('pdf-summary').check();
+      await page
+        .getByTestId('pdf-number-position')
+        .selectOption('before-title');
+      // The number goes on one side of the title, so the summary is asked which.
+      await page.getByTestId('pdf-summary-number').selectOption('before');
+    });
     await page.getByTestId('songbook-detail-download').click();
-    await page.getByTestId('pdf-summary').check();
-    await page.getByTestId('pdf-number-position').selectOption('before-title');
-    // The number goes on one side of the title, so the summary is asked which.
-    await page.getByTestId('pdf-summary-number').selectOption('before');
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
     );
@@ -801,43 +821,35 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
-    await page.getByTestId('songbook-detail-download').click();
+    // The book's structure lives in its settings dialog now.
+    await page.getByTestId('songbook-settings').click();
     // No summary, no question about where its number sits.
     await page.getByTestId('pdf-summary').uncheck();
     await expect(page.getByTestId('pdf-summary-number')).toHaveCount(0);
     await page.getByTestId('pdf-summary').check();
     // The reference table is the default, so no book changes shape on an upgrade.
     await expect(page.getByTestId('pdf-summary-number')).toHaveValue('after');
-
-    // The ZIP's contents page is a render with a numbering of its own, so there
-    // is nothing here to choose.
-    await page.getByTestId('songbook-format').selectOption('zip-png');
-    await expect(page.getByTestId('pdf-summary-number')).toHaveCount(0);
   });
 
-  test('the print dialog remembers where the numbers went', async ({
-    page,
-  }) => {
+  test('a songbook remembers its print structure', async ({ page }) => {
     await createSong(page, 'Alpha');
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
-    // Remembered on *confirm*, like every other print choice — cancelling is
-    // not an answer.
-    await page.getByTestId('songbook-detail-download').click();
+    // The structure is the book's own — set in settings, it rides on the record.
+    await page.getByTestId('songbook-settings').click();
     await page.getByTestId('pdf-summary').check();
     await page.getByTestId('pdf-number-position').selectOption('before-title');
     await page.getByTestId('pdf-summary-number').selectOption('before');
-    await download(page, () =>
-      page.getByTestId('songbook-download-confirm').click(),
-    );
+    await page.getByTestId('dialog-close').click();
 
+    // Survives a reload — it is persisted with the songbook, not the device.
     await page.reload();
-    await page.getByTestId('songbook-detail-download').click();
+    await page.getByTestId('songbook-settings').click();
     await expect(page.getByTestId('pdf-number-position')).toHaveValue(
       'before-title',
     );
@@ -851,7 +863,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     // The book you are already in has no Export button beside Download either.
@@ -859,10 +871,10 @@ test.describe('download a songbook', () => {
     await expect(page.getByTestId('pdf-page-size')).toBeVisible();
 
     await page.getByTestId('songbook-format').selectOption('json');
-    // None of these is a question about a database, so none of them is asked.
+    // The paper is not a question about a database, so it is not asked. (The
+    // book's structure is not in this dialog at all any more — it lives in
+    // settings — so there is nothing else here to retire.)
     await expect(page.getByTestId('pdf-page-size')).toHaveCount(0);
-    await expect(page.getByTestId('pdf-title-page')).toHaveCount(0);
-    await expect(page.getByTestId('pdf-summary')).toHaveCount(0);
 
     const file = await download(page, () =>
       page.getByTestId('songbook-download-confirm').click(),
@@ -883,7 +895,7 @@ test.describe('download a songbook', () => {
     await page.goto('songbooks');
     await page.getByTestId('songbooks-add').click();
     await page.getByTestId('song-row').filter({ hasText: 'Alpha' }).click();
-    await page.getByTestId('add-end').click();
+    await page.getByTestId('add').click();
 
     await page.getByTestId('songbook-detail-download').click();
     await page.getByTestId('songbook-format').selectOption('json');
@@ -960,7 +972,7 @@ test.describe('download a songbook', () => {
     expect(countPages(raw)).toBe(3);
   });
 
-  test('the download dialog offers a song order for All songs only', async ({
+  test("All songs' settings offer a song order; a real book's do not", async ({
     page,
   }) => {
     await createSong(page, 'Alpha');
@@ -970,16 +982,12 @@ test.describe('download a songbook', () => {
     await expect(page).toHaveURL(/\/songbooks\/.+$/);
     await page.goto('songbooks');
 
-    // All songs: the song-order controls are there.
-    const all = page
-      .getByTestId('songbook-row')
-      .filter({ hasText: 'All songs' });
-    const allId = await all.getAttribute('data-song-id');
-    await openBookMenu(page, allId);
-    await page.getByTestId(`download-${allId}`).click();
+    // All songs: the song-order controls are in its settings dialog now.
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await expect(page.getByTestId('pdf-song-order')).toBeVisible();
     await expect(page.getByTestId('pdf-favorites-first')).toBeVisible();
-    await page.getByTestId('songbook-download-cancel').click();
+    await page.getByTestId('dialog-close').click();
 
     // A real songbook: its order is its content, so no song-order controls.
     const real = page
@@ -987,31 +995,25 @@ test.describe('download a songbook', () => {
       .filter({ hasText: 'New songbook' });
     const realId = await real.getAttribute('data-song-id');
     await openBookMenu(page, realId);
-    await page.getByTestId(`download-${realId}`).click();
+    await page.getByTestId(`settings-${realId}`).click();
     await expect(page.getByTestId('pdf-song-order')).toHaveCount(0);
-    await expect(page.getByTestId('pdf-favorites-first')).toHaveCount(0);
   });
 
-  test('the chosen song order is remembered next time', async ({ page }) => {
+  test('the chosen All songs order is remembered', async ({ page }) => {
     await createSong(page, 'Alpha');
     await page.goto('songbooks');
-    const all = page
-      .getByTestId('songbook-row')
-      .filter({ hasText: 'All songs' });
-    const id = await all.getAttribute('data-song-id');
 
-    await openBookMenu(page, id);
-    await page.getByTestId(`download-${id}`).click();
+    // Set in its settings dialog; the order commits on change.
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await page.getByTestId('pdf-song-order').selectOption('created');
     await page.getByTestId('pdf-favorites-first').check();
-    // Confirming the download is what remembers the choice (persisted options).
-    await download(page, () =>
-      page.getByTestId('songbook-download-confirm').click(),
-    );
+    await page.getByTestId('dialog-close').click();
 
-    // Reopen — the last choice is still set.
-    await openBookMenu(page, id);
-    await page.getByTestId(`download-${id}`).click();
+    // Device-local, so it survives a reload.
+    await page.reload();
+    await openBookMenu(page, 'all-songs');
+    await page.getByTestId('settings-all-songs').click();
     await expect(page.getByTestId('pdf-song-order')).toHaveValue('created');
     await expect(page.getByTestId('pdf-favorites-first')).toBeChecked();
   });

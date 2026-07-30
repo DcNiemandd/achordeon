@@ -43,6 +43,16 @@ const ICONS = {
   add: 'plus',
   plus: 'plus',
   minus: 'minus',
+  // Look at a song without opening it for edit: a sheet with a magnifier over it.
+  // The songbook builder hangs it on every row so you can read a song's render in
+  // a dialog before deciding to go in and change it. A magnifier ALONE is search
+  // (see `search`); the sheet is what says "look at this page", not "find a page".
+  preview: 'file-search',
+  // The preview's zoom, as a magnifier with a sign. The whole-book viewer scales
+  // by column count, so zoom-in shows fewer, larger pages and zoom-out more,
+  // smaller ones — the magnifier is what makes that read as scale, not paging.
+  zoomIn: 'zoom-in',
+  zoomOut: 'zoom-out',
   // The two directions a file travels (Epic 7). One tray with the arrow going
   // down, one with it going up — the same glyph mirrored, because they are the
   // same act mirrored: something leaves the library, something arrives.

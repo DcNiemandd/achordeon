@@ -157,6 +157,15 @@ export interface ExplorerCapabilities {
   readonly canPerform: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
+  /**
+   * A magnifier that opens this row's render in a dialog — **look, without going
+   * in to edit** (the songbook builder's panes). It is the read half of the pair
+   * `canEdit` is the write half of: the builder turns editing off because you are
+   * arranging songs here, not administering them, but you still want to see what
+   * a song looks like before you drop it in a book. The dialog it opens carries
+   * its own way through to the editor, so this is not a back door to `canEdit`.
+   */
+  readonly canPreview: boolean;
   readonly canRename: boolean;
   readonly canDuplicate: boolean;
   readonly canDelete: boolean;
@@ -169,6 +178,15 @@ export interface ExplorerCapabilities {
    * subject asked twice, so they are one row action opening one dialog.
    */
   readonly canDownload: boolean;
+  /**
+   * Configure this row — the songbook's own scope of the render cascade plus
+   * its title-page fields (CONTEXT.md §Render settings). Only the songbook list
+   * has it: a song carries no such scope, and the builder configures the book it
+   * has open from the action bar instead. A secondary action, so it rides in the
+   * `⋯` menu with the rest; off for the read-only All songs, which has no record
+   * to configure.
+   */
+  readonly canConfigure: boolean;
   /**
    * Fold the secondary row actions (perform, duplicate, download, delete)
    * behind a `⋯` menu, keeping the everyday ones in reach. True where a row
@@ -205,10 +223,14 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDrop: false,
   canPerform: false,
   canEdit: true,
+  // The Songs module opens the editor from the row directly, so there is nothing
+  // a look-first preview would buy that a click does not already give.
+  canPreview: false,
   canRename: true,
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
+  canConfigure: false,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,
@@ -231,10 +253,14 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDrop: false,
   canPerform: false,
   canEdit: false,
+  // Editing is off — you are picking, not administering — but looking is not:
+  // the magnifier reads a song's render in a dialog before you add it to a book.
+  canPreview: true,
   canRename: false,
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
+  canConfigure: false,
   canDropRemove: true,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -243,10 +269,15 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
 /**
  * A songbook's entry list (Epic 6): **the same component again**, a third time.
  *
- * Numbered, removable, and with neither search nor sort — the order is the
+ * Numbered, arrangeable, and with neither search nor sort — the order is the
  * content. Selecting works exactly as it does in the library, which is the
  * point: two lists side by side that behaved differently to the same click was
  * the whole complaint.
+ *
+ * **No per-row remove** (`canRemove: false`): taking a song out of the book is
+ * the minus button in the transfer strip, which acts on the slot selection — the
+ * same gesture, in the same column, as putting one in. A second remove hanging
+ * off each row was a fifth way to do the one thing the strip already does.
  */
 export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canSearch: false,
@@ -254,16 +285,20 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   hasOrdinals: true,
   canSelect: true,
   canFavorite: false,
-  canRemove: true,
+  canRemove: false,
   canReorder: true,
   canDrag: true,
   canDrop: true,
   canPerform: false,
   canEdit: false,
+  // A slot is a song in the book; looking at its render before you reorder or
+  // remove it is the same want the library pane has, so the magnifier is here too.
+  canPreview: true,
   canRename: false,
   canDuplicate: false,
   canDelete: false,
   canDownload: false,
+  canConfigure: false,
   canDropRemove: false,
   usesRowMenu: false,
   hasInlineDuplicate: false,
@@ -294,10 +329,16 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   // stage is the most everyday thing anyone does with one.
   canPerform: true,
   canEdit: true,
+  // A row here is a whole book, not a song; pane B already previews the book you
+  // pick, so a per-row magnifier would name the wrong thing.
+  canPreview: false,
   canRename: true,
   canDuplicate: true,
   canDelete: true,
   canDownload: true,
+  // The one mount that configures: a settings item in the ⋯ opens the book's
+  // own scope of the cascade and its title-page fields.
+  canConfigure: true,
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,

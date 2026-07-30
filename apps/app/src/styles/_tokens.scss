@@ -129,6 +129,7 @@
   // --- the breakpoint, for the Viewport service to read back (§6) -------------
   --bp-compact: #{breakpoints.$bp-compact};
   --bp-stack: #{breakpoints.$bp-stack};
+  --bp-row-reorder: #{breakpoints.$bp-row-reorder};
 }
 
 // Theme 'system' resolves through the media query...

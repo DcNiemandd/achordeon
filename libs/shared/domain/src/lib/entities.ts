@@ -6,6 +6,7 @@ import type {
   SongSettings,
   SongbookSettings,
 } from './settings';
+import type { SongbookPrint } from './songbook-print';
 
 /** Stable, client-generated id (survives rename). */
 export type Uuid = string;
@@ -140,4 +141,15 @@ export interface Songbook extends BaseRecord {
   author: string;
   settings: SongbookSettings; // sparse render overrides (see Settings model)
   entries: Uuid[]; // ordered Song references; a songId MAY repeat (a "slot")
+  /**
+   * The book-bound half of its print settings — title page, summary, page numbers
+   * (see {@link SongbookPrint}). The device-bound half (paper size, margins) is
+   * NOT here; it lives device-local.
+   *
+   * **Optional, and that is the schema story** (like {@link User.allSongsOrder}):
+   * additive, so ADR-0007's preserve-unknown makes it lossless — an older client
+   * round-trips it, and a row written before it existed reads back as `undefined`
+   * and resolves through {@link resolveSongbookPrint} to the default book.
+   */
+  print?: SongbookPrint;
 }

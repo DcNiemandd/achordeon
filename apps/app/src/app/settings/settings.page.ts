@@ -259,6 +259,7 @@ const MIN_PASSWORD = 8;
                   <app-premium
                     [label]="autoSyncLabel"
                     [isMarked]="presenter.marksAutoSyncPremium()"
+                    [isTesting]="presenter.autoSyncTesting()"
                   >
                     <label
                       class="check-row"

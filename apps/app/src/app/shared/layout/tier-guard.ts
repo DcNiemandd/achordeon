@@ -1,6 +1,6 @@
 // Tier gate — Epic 11 ▸ tierGuard
-// Spec: PRD-INFRASTRUCTURE.md §10 (highlight, not a hard block, during testing),
-// CONTEXT.md §Tiers / §Premium highlight
+// Spec: PRD-INFRASTRUCTURE.md §10 (highlight, not a hard block, for a testing
+// feature), CONTEXT.md §Tiers / §Premium highlight
 
 import { Injectable, computed } from '@angular/core';
 
@@ -22,17 +22,22 @@ import { Injectable, computed } from '@angular/core';
 export type PremiumFeature = 'audience-host' | 'auto-sync';
 
 /**
- * Gates the Premium features — by **highlighting** them, not by blocking them.
+ * Gates the Premium features — some by **highlighting** them, some for real.
  *
- * During the testing phase every gate is open (CONTEXT.md §Tiers: hosting is
- * "extended to Free users during the testing phase"), so the guard's answer to
- * "may I?" is always yes and its real job is the second question: "should this
- * control say it is Premium?" A control that works and is marked teaches what
- * paying unlocks; a disabled control just annoys.
+ * A Premium feature is in one of two states, and the difference is a single set,
+ * `IS_TESTING` below:
  *
- * `IS_TESTING` below is the switch that ends that phase. Flipping it turns
- * `isAllowed` into a real gate, and the two call sites stop offering what they
- * cannot deliver — without any of them needing to know the tier rules.
+ * - **Lent for testing** (`audience-host`). The gate is open: a Free user gets
+ *   the feature and is told what it is. A control that works and is marked
+ *   teaches what paying unlocks; a disabled control just annoys. Its marker reads
+ *   "available for testing".
+ * - **Held behind the tier** (`auto-sync`). The gate is real: `isAllowed` is
+ *   `false` for a Free user, so the control stands down, and its marker reads a
+ *   plain "Premium" — nothing is being lent, so nothing promises it is.
+ *
+ * Moving a feature between the two is editing one set. Taking `audience-host` out
+ * of `IS_TESTING` is what ends its testing phase; nothing at the call sites has
+ * to know the tier rules to follow along.
  *
  * Like `ThemeApplier`, it takes the tier as a **plain accessor** rather than
  * injecting `AuthService`, so it stays inside `app/shared` under the import
@@ -40,13 +45,6 @@ export type PremiumFeature = 'audience-host' | 'auto-sync';
  */
 @Injectable({ providedIn: 'root' })
 export class TierGuard {
-  /**
-   * The testing phase, in one boolean. While it is true, Free users get the
-   * Premium features and are told what they are — which is the whole point of
-   * shipping it this way round.
-   */
-  private static readonly IS_TESTING = true;
-
   private tier: () => boolean = () => false;
 
   /** Whether the current account is Premium. False until the shell connects it,
@@ -58,10 +56,11 @@ export class TierGuard {
     this.tier = hasPremium;
   }
 
-  /** May this feature be used? Always yes while testing — that is the decision. */
+  /** May this feature be used? Yes for a feature that is not Premium, one lent
+   * for testing, or one this account has paid for. */
   isAllowed(feature: PremiumFeature): boolean {
     return (
-      TierGuard.IS_TESTING || !IS_PREMIUM.has(feature) || this.hasPremium()
+      IS_TESTING.has(feature) || !IS_PREMIUM.has(feature) || this.hasPremium()
     );
   }
 
@@ -75,7 +74,21 @@ export class TierGuard {
   isMarked(feature: PremiumFeature): boolean {
     return !this.hasPremium() && IS_PREMIUM.has(feature);
   }
+
+  /**
+   * Is this feature lent to Free users for the testing phase? Decides which copy
+   * the marker wears — "available for testing" when it is, a plain "Premium" when
+   * it is genuinely held back. Only meaningful where `isMarked` is already true.
+   */
+  isTesting(feature: PremiumFeature): boolean {
+    return IS_TESTING.has(feature);
+  }
 }
 
 /** The registry as a set — see `PremiumFeature` for what earns a place in it. */
 const IS_PREMIUM = new Set<PremiumFeature>(['audience-host', 'auto-sync']);
+
+/** The subset of Premium features currently **lent to Free users** for the
+ * testing phase. `isAllowed` is open for these and their marker says so; take a
+ * feature out to make its gate real. */
+const IS_TESTING = new Set<PremiumFeature>(['audience-host']);

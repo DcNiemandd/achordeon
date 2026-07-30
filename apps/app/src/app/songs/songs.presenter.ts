@@ -37,8 +37,8 @@ import {
   type ImportFailure,
   type ImportPreview,
 } from '../shared/transfer';
+import { ReturnUrl } from '../shared/layout';
 import { NEW_SONG_CONTENT } from './new-song';
-import { ReturnUrl } from './return-url';
 
 /** The name a song is born with, before the user has said what it is. */
 const NEW_SONG_NAME = $localize`:@@songs.newName:New song`;

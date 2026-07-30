@@ -181,7 +181,6 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
         <app-song-explorer
           class="explorer"
           [rows]="presenter.rows()"
-          [isCompact]="viewport.isStacked()"
           [query]="query()"
           [sort]="sortKey()"
           [dir]="presenter.effectiveDir(sortKey(), sortDir())"

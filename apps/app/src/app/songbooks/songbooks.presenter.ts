@@ -1,33 +1,36 @@
 // Songbooks presenter — Epic 6 ▸ subtask 1
 // Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §3 (the seam), §4 (single pane)
 
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
   ImportService,
-  RenderService,
   SettingsStore,
   SongStore,
   SongbookStore,
+  type SongbookPreview,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
-  resolveSettings,
-  titlePageAst,
+  resolveSongbookPrint,
   type ImportPlan,
   type Songbook,
+  type SongbookPrint,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
 import {
   DATA_FORMAT,
   PrintOptionsStore,
+  composeSongbookChoice,
+  toDevicePrintOptions,
   type DownloadProgress,
   type ImportChoice,
   type ImportFailure,
   type ImportPreview,
   type SongbookPdfChoice,
+  type SongOrder,
 } from '../shared/transfer';
 
 /** The name a songbook is born with, before the user has said what it is. */
@@ -62,20 +65,33 @@ export class SongbooksPresenter {
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly downloads = inject(DownloadService);
-  private readonly renderer = inject(RenderService);
   private readonly settings = inject(SettingsStore);
   private readonly print = inject(PrintOptionsStore);
 
   /**
-   * The last-used print options, for the download dialog to open on (#3).
-   *
-   * The All songs order does **not** reach here, and that is deliberate: the
-   * download dialog already asks the question itself, with an axis the account
-   * setting cannot express (`title` — a printed contents page is flipped through by
-   * heading, not by library name). Two controls for one question is one too many, so
-   * the one that prints keeps its own, and the saved order stays about performing.
+   * What the download dialog opens on: the device's last-used paper (#3) composed
+   * with the picked book's own print structure. The dialog no longer edits that
+   * structure — it belongs to the book (set in its settings) — but the download
+   * still draws the book with it, so it rides in here to reach the renderer.
    */
-  readonly printOptions = this.print.options;
+  readonly downloadInitial = computed<SongbookPdfChoice>(() =>
+    composeSongbookChoice(
+      this.print.options(),
+      this.printFor(this._downloadId()),
+    ),
+  );
+
+  /**
+   * The print structure for a book id: a real book's own (on its record), or —
+   * for the record-less All songs — the device-local slot its settings dialog
+   * writes. `undefined` id and unknown books resolve to the defaults.
+   */
+  private printFor(id: string | null) {
+    if (!id) return undefined;
+    return id === ALL_SONGS_ID
+      ? this.print.allSongsPrint()
+      : this.find(id)?.print;
+  }
 
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
@@ -141,56 +157,47 @@ export class SongbooksPresenter {
   readonly currentId = this._currentId.asReadonly();
 
   /**
-   * The picked book's title page, **rendered** — the same page the PDF prints
-   * (Epic 7 ▸ subtask 6), not a second stack of styled text that would have to
-   * be kept in step with it. `titlePageAst` is the one definition of what a
-   * title page is made of; this and `DownloadService` both draw from it.
+   * The picked book, **rendered as its whole print preview** — every page the PDF
+   * would hold, WYSIWYG (`DownloadService.previewSongbook`, which reuses the same
+   * assembly, so the pane and the file cannot disagree). It used to be only the
+   * title page; now you can read the book before you print it.
    *
-   * **All songs gets one too**, generated. It has no record to carry authored
-   * fields, but it is not nothing either — it is the library, and a blank sheet
-   * where every other book shows its title page reads as a bug. So it prints its
-   * name and what it holds. No author, because nobody wrote it.
+   * All songs previews too, generated the same way it downloads — the library, in
+   * its print order.
    */
-  private readonly titlePlan = computed(() => {
-    const id = this._currentId();
-    if (id === null) return undefined;
-    const book = this.find(id) ?? (id === ALL_SONGS_ID ? this.virtual() : null);
-    if (!book) return undefined;
-    return this.renderer.layout(
-      titlePageAst(book),
-      resolveSettings(this.settings.global(), book.settings),
-      // Centred, like the printed page — this preview IS that page (§4.5 hugs
-      // the corner for songs, which a title page is not).
-      { align: 'center' },
-    );
-  });
+  private readonly _preview = signal<SongbookPreview | null>(null);
+  readonly preview = this._preview.asReadonly();
 
-  /** The virtual book as a record, for the one thing that needs it to be one. */
-  private virtual(): Songbook {
-    return {
-      id: ALL_SONGS_ID,
-      createdAt: 0,
-      updatedAt: 0,
-      deletedAt: null,
-      name: ALL_SONGS_NAME,
-      title: ALL_SONGS_NAME,
-      subtitle: this.countLabel(this._librarySize()),
-      author: '',
-      settings: {},
-      entries: [],
-    };
+  /** Bumped per request so a slow render of a book you have already clicked past
+   * cannot land in the pane after the book you are now looking at. */
+  private previewToken = 0;
+
+  constructor() {
+    // Re-render the pane when the picked book changes, when its own print
+    // structure is edited (it is read below, so this effect tracks it), or when
+    // the device paper changes. Off the render pipeline, so it is async; the
+    // token guards against a stale render winning a race.
+    effect(() => {
+      const id = this._currentId();
+      const device = this.print.options();
+      // `printFor` reads the book's record (a real book) or the All songs device
+      // slot, so an edit to either — and the library size behind All songs —
+      // reflows the preview.
+      const print = this.printFor(id);
+      this._librarySize();
+
+      if (!id) {
+        this._preview.set(null);
+        return;
+      }
+      const { format, ...opts } = composeSongbookChoice(device, print);
+      void format; // the preview renders every format the same; it is not paper
+      const token = ++this.previewToken;
+      void this.downloads.previewSongbook(id, opts).then((preview) => {
+        if (token === this.previewToken) this._preview.set(preview);
+      });
+    });
   }
-
-  readonly titlePageSvg = computed(() => {
-    const plan = this.titlePlan();
-    return plan ? this.renderer.emit(plan) : '';
-  });
-
-  /** The paper's shape, so the preview frame is the page it prints on. */
-  readonly titlePageRatio = computed(() => {
-    const box = this.titlePlan()?.box;
-    return box && box.height > 0 ? box.width / box.height : 210 / 297;
-  });
 
   select(id: string): void {
     this._currentId.set(id);
@@ -318,6 +325,148 @@ export class SongbooksPresenter {
     }
   }
 
+  // --- Settings (Epic 6) -----------------------------------------------
+  //
+  // The book's own scope of the render cascade (chord colour, size) and its
+  // title-page fields, in a dialog opened from the row's ⋯ — the very panel the
+  // builder mounts, on a book you have not opened. The virtual All songs has no
+  // record, and so nothing to configure; its row carries no settings action.
+
+  /** The book whose settings dialog is open, or null. */
+  private readonly _settingsId = signal<string | null>(null);
+  readonly isSettingsOpen = computed(() => this._settingsId() !== null);
+
+  /**
+   * The settings dialog is open on the virtual **All songs**. It has no record —
+   * so no title-page fields and no render-cascade scope, only a print structure
+   * (kept device-local) — and the dialog shows just that.
+   */
+  readonly isSettingsAllSongs = computed(
+    () => this._settingsId() === ALL_SONGS_ID,
+  );
+
+  /**
+   * The book the dialog is bound to, read **live from the window** so an edit
+   * written below flows straight back into the open dialog rather than through a
+   * snapshot that would go stale the moment it is saved. `undefined` for All
+   * songs, which has no record.
+   */
+  private readonly settingsBook = computed(() => {
+    const id = this._settingsId();
+    return id === null ? undefined : this.find(id);
+  });
+
+  readonly settingsName = computed(() => this.settingsBook()?.name ?? '');
+
+  /** Title-page fields — authored via GUI, never parsed (ADR-0001). */
+  readonly titleFields = computed(() => ({
+    title: this.settingsBook()?.title ?? '',
+    subtitle: this.settingsBook()?.subtitle ?? '',
+    author: this.settingsBook()?.author ?? '',
+  }));
+
+  /** This scope's sparse overrides (ADR-0006), for the settings panel. */
+  readonly songbookSettings = computed(
+    () => (this.settingsBook()?.settings ?? {}) as Record<string, unknown>,
+  );
+
+  /**
+   * The print structure the settings dialog edits, defaults filled in. A real
+   * book's own (on its record); the device-local slot for All songs. Setting a
+   * summary here reflows the preview, since its effect reads the same source.
+   */
+  readonly songbookPrint = computed(() =>
+    this.isSettingsAllSongs()
+      ? this.print.allSongsPrint()
+      : resolveSongbookPrint(this.settingsBook()?.print),
+  );
+
+  /** Write the print structure from the settings dialog — to the record for a
+   * real book, to the device-local slot for All songs. */
+  async setPrint(print: SongbookPrint): Promise<void> {
+    if (this.isSettingsAllSongs()) {
+      this.print.saveAllSongsPrint(print);
+      return;
+    }
+    await this.patchSettingsBook({ print });
+  }
+
+  /**
+   * The order **All songs** is arranged in, for its settings dialog. Only All
+   * songs has this — a real book's order is its content (its slots), so its
+   * settings dialog shows no such control. Device-local, like its print
+   * structure: there is no record to keep it on.
+   */
+  readonly allSongsOrder = computed(() => this.print.options().songOrder);
+
+  /** Write the All songs order from its settings dialog. Kept inside the device
+   * paper it already rode in, so the download and preview read it unchanged. */
+  setAllSongsOrder(order: SongOrder): void {
+    this.print.save({ ...this.print.options(), songOrder: order });
+  }
+
+  /**
+   * What the songbook scope inherits: the Global defaults, the only thing below
+   * it in the cascade (ADR-0006). The panel needs them for the "inherited" badge
+   * and as the value it draws while nothing is overridden.
+   */
+  readonly inheritedSettings = computed(
+    () => this.settings.global() as Record<string, unknown>,
+  );
+
+  /** Open the settings dialog on a real book, or on **All songs** — which has no
+   * record but does have a print structure to configure (device-local). */
+  openSettings(id: string): void {
+    if (id === ALL_SONGS_ID || this.find(id)) {
+      this._settingsId.set(id);
+    }
+  }
+
+  closeSettings(): void {
+    this._settingsId.set(null);
+  }
+
+  async setTitleField(
+    field: 'title' | 'subtitle' | 'author',
+    value: string,
+  ): Promise<void> {
+    await this.patchSettingsBook({ [field]: value });
+  }
+
+  /**
+   * A sparse patch from the settings panel — the songbook theme that re-styles
+   * every song performed in this book (CONTEXT.md §Render settings). `undefined`
+   * for a key resets it to inherited, which at this scope is a **deletion**, not
+   * a write of the global value: overrides are stored sparse so the cascade can
+   * keep resolving through them (ADR-0006).
+   */
+  async patchSettings(patch: Record<string, unknown>): Promise<void> {
+    const book = this.settingsBook();
+    if (!book) {
+      return;
+    }
+    const settings: Record<string, unknown> = { ...book.settings };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        delete settings[key];
+      } else {
+        settings[key] = value;
+      }
+    }
+    await this.patchSettingsBook({
+      settings: settings as Songbook['settings'],
+    });
+  }
+
+  private async patchSettingsBook(changes: Partial<Songbook>): Promise<void> {
+    const book = this.settingsBook();
+    if (!book) {
+      return;
+    }
+    await this.store.upsert({ ...book, ...changes, updatedAt: Date.now() });
+    await this.store.refresh();
+  }
+
   // --- Transfer (Epic 7) -----------------------------------------------
   //
   // Download lives on the **row's own menu** (Epic 7 follow-up), with the other
@@ -342,12 +491,6 @@ export class SongbooksPresenter {
     if (id === ALL_SONGS_ID) return ALL_SONGS_NAME;
     return (id === null ? undefined : this.find(id)?.name) ?? '';
   });
-
-  /** The download open on the virtual book — the one that gets the song-order
-   * controls, because it is the only book with no order of its own. */
-  readonly isDownloadAllSongs = computed(
-    () => this._downloadId() === ALL_SONGS_ID,
-  );
 
   /**
    * Downloadable / exportable: a real songbook, **and** the virtual All songs.
@@ -392,7 +535,10 @@ export class SongbooksPresenter {
       this._downloadId.set(null);
       return;
     }
-    this.print.save(choice); // remember it for next time (#3)
+    // Only the paper is remembered here (#3). The book's structure is not the
+    // download dialog's to set any more — it belongs to the book, set in its
+    // settings — so a download writes nothing to the record.
+    this.print.save(toDevicePrintOptions(choice));
     // The dialog stays open through the render for the spinner and count, then
     // closes when the file is saved.
     await this.busy(() =>
