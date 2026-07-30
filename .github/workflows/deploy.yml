@@ -41,7 +41,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -67,6 +67,12 @@ jobs:
           # localhost.
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          # Also a repo variable, and deliberately without a literal fallback: a
+          # fork that builds this workflow would otherwise count its own traffic
+          # into someone else's GoatCounter site. Unset → no beacon, no CSP entry
+          # for it. Passed here too so the verification build produces the same
+          # index and Content-Security-Policy the deploy does.
+          GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
 
   deploy:
     name: Deploy to GitHub Pages
@@ -89,7 +95,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -101,6 +107,7 @@ jobs:
           DOCS_URL: ${{ env.DOCS_URL }}
           DOCS_BASE_URL: ${{ env.DOCS_BASE_URL }}
           APP_LINK: ${{ env.APP_LINK }}
+          GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
 
       - name: Build Angular app
         run: pnpm exec nx build app --base-href=$APP_BASE_HREF
@@ -108,6 +115,7 @@ jobs:
           # Public anon key (ADR-0003) — repo variables, not secrets.
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
 
       - name: Assemble site
         run: |

@@ -1,9 +1,12 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ChangeDetectionStrategy,
   Component,
   effect,
   inject,
 } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs';
 import {
   AuthService,
   BootGate,
@@ -14,6 +17,7 @@ import {
   AppUpdate,
   Localization,
   Shell,
+  Stats,
   ThemeApplier,
   TierGuard,
   UpdateNotice,
@@ -65,6 +69,21 @@ export class App {
     // Which controls wear the Premium marker (PRD-INFRASTRUCTURE.md §10).
     const auth = inject(AuthService);
     inject(TierGuard).connect(() => auth.isPro());
+
+    // Which routes get used (docs/privacy.mdx). `NavigationEnd` and not the
+    // router's own start event, so a guard that redirects counts where the reader
+    // landed rather than where they aimed; `urlAfterRedirects` for the same
+    // reason. One bundle serves every language, so the URL carries no locale and
+    // a path is the same row whichever language rendered it.
+    const stats = inject(Stats);
+    inject(Router)
+      .events.pipe(
+        filter(
+          (event): event is NavigationEnd => event instanceof NavigationEnd,
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => stats.count(event.urlAfterRedirects));
 
     // ADR-0007's refuse path, delivered: local data written by a newer breaking
     // build cannot be read here, so the update stops being optional. The gateway

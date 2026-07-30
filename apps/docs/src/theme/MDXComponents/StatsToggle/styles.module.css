@@ -1,0 +1,29 @@
+.toggle {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  padding: var(--ifm-spacing-vertical) var(--ifm-spacing-horizontal);
+  margin-bottom: var(--ifm-leading);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  cursor: pointer;
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+/* The switch is disabled too; this is only so it reads that way. The sentence
+   below says why, so the row itself needs no second explanation. */
+.isRefused {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Reserves its line while the browser check is pending, so the box does not
+   grow once the state appears. */
+.state {
+  margin: 0.4em 0 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9em;
+}

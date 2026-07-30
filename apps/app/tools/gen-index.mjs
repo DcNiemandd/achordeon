@@ -27,7 +27,9 @@ const template = readFileSync(
 
 writeFileSync(
   resolve(projectRoot, 'src/index.html'),
-  template.replace('__ACHORDEON_CSP__', cspMeta(template)),
+  template
+    .replace('__ACHORDEON_CSP__', cspMeta(template))
+    .replace('__ACHORDEON_GOATCOUNTER__', goatcounterMeta()),
 );
 
 // --- CSP ---------------------------------------------------------------------
@@ -60,8 +62,10 @@ function cspMeta(source) {
     // risk §7 is actually about.
     "style-src 'self' 'unsafe-inline'",
     // `data:`/`blob:` here are ours: the SVG render rasterises through a blob URL
-    // and embeds its faces as base64 (ADR-0002).
-    "img-src 'self' data: blob:",
+    // and embeds its faces as base64 (ADR-0002). The statistics origin is here
+    // rather than in `connect-src` because the beacon IS an image — a GET that
+    // answers with a 1x1 GIF — which is what keeps it script-free.
+    `img-src ${["'self'", 'data:', 'blob:', ...goatcounterOrigins()].join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connect.join(' ')}`,
     "object-src 'none'",
@@ -74,6 +78,45 @@ function cspMeta(source) {
   ].join('; ');
 
   return `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;
+}
+
+/**
+ * Where the usage beacon points, as a meta tag the bundle reads at runtime.
+ *
+ * It rides in the generated index rather than its own `analytics.config.ts`
+ * because the CSP below needs the very same origin: derive both from one env
+ * read and the policy cannot end up allowing an origin the app does not use, or
+ * vice versa. `GOATCOUNTER_URL` unset → no tag, and `Stats` then counts nothing,
+ * which is what an offline-only or forked build wants.
+ */
+function goatcounterMeta() {
+  const endpoint = countEndpoint();
+
+  return endpoint
+    ? `<meta name="achordeon-goatcounter" content="${endpoint}" />`
+    : '';
+}
+
+/** `GOATCOUNTER_URL` + `count`, or '' when it is unset or unparseable. */
+function countEndpoint() {
+  const url = process.env.GOATCOUNTER_URL;
+  if (!url) return '';
+  try {
+    // A trailing slash matters to `new URL`: without it the last segment is
+    // replaced rather than appended, so `…/goatcounter.com` would lose its host
+    // path. Adding one is harmless when it is already there.
+    return new URL('count', url.endsWith('/') ? url : `${url}/`).href;
+  } catch {
+    return '';
+  }
+}
+
+/** The beacon's origin for `img-src`, as a list so "unset" is an empty one. */
+function goatcounterOrigins() {
+  const endpoint = countEndpoint();
+  if (endpoint === '') return [];
+
+  return [new URL(endpoint).origin];
 }
 
 /**

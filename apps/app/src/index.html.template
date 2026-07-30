@@ -14,6 +14,10 @@
          writes the finished policy here, so editing a script below can never
          silently break it. -->
     __ACHORDEON_CSP__
+    <!-- Where the usage beacon points, generated from `GOATCOUNTER_URL` beside
+         the policy above so the origin in `img-src` and the origin the app calls
+         cannot drift apart. Absent means count nothing — see `Stats`. -->
+    __ACHORDEON_GOATCOUNTER__
     <!-- interactive-widget=resizes-content: when the on-screen keyboard opens,
          shrink the layout above it instead of letting it overlay content. That
          is what keeps the editor and the Source/Render switcher usable with the
