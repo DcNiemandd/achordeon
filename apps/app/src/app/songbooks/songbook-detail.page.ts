@@ -373,6 +373,63 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
             </app-dialog>
           }
 
+          <!-- Find-and-jump over the book's own order: a slim row that never
+               filters the list (that would hide slots the user can see) — it
+               moves a read-only cursor to the matching slot and scrolls it into
+               view. Typing jumps to the first match; ↓/Enter and ↑ step with a
+               wrap; Esc clears. The counter and the greyed prev/next answer
+               "where am I / is there anything". -->
+          <div class="entry-search" role="search">
+            <app-icon name="search" class="entry-search-icon" />
+            <input
+              appField
+              type="text"
+              class="entry-search-input"
+              data-testid="entry-search"
+              [value]="presenter.searchTerm()"
+              [attr.placeholder]="entrySearchLabel"
+              [attr.aria-label]="entrySearchLabel"
+              (input)="onSearchInput($event)"
+              (keydown)="onSearchKeydown($event)"
+            />
+            <span class="entry-search-count" data-testid="entry-search-count">
+              @if (presenter.searchTerm()) {
+                @if (presenter.matchPosition().total === 0) {
+                  {{ entrySearchNoMatch }}
+                } @else {
+                  {{ presenter.matchPosition().current }} /
+                  {{ presenter.matchPosition().total }}
+                }
+              }
+            </span>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [disabled]="presenter.matchPosition().total === 0"
+              [attr.aria-label]="entrySearchPrevLabel"
+              [appTooltip]="entrySearchPrevLabel"
+              data-testid="entry-search-prev"
+              (click)="presenter.prevMatch()"
+            >
+              <app-icon name="moveUp" />
+            </button>
+            <button
+              appButton
+              type="button"
+              variant="secondary"
+              [isIconOnly]="true"
+              [disabled]="presenter.matchPosition().total === 0"
+              [attr.aria-label]="entrySearchNextLabel"
+              [appTooltip]="entrySearchNextLabel"
+              data-testid="entry-search-next"
+              (click)="presenter.nextMatch()"
+            >
+              <app-icon name="moveDown" />
+            </button>
+          </div>
+
           <app-song-explorer
             #entryList
             class="entries"
@@ -539,6 +596,38 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
     .entries {
       flex: 1;
       min-block-size: 0;
+    }
+
+    /* The always-visible find-and-jump row, hard above the entry list. Slim so it
+       reads as an accessory to the list, not a second header. */
+    .entry-search {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-2);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .entry-search-icon {
+      --icon-size: 15px;
+      flex: none;
+      color: var(--text-faint);
+    }
+
+    .entry-search-input {
+      flex: 1;
+      min-inline-size: 0;
+    }
+
+    /* The "n / m" / no-match state. Tabular figures so the count does not jiggle
+       as the cursor steps, and it holds a stable width beside the buttons. */
+    .entry-search-count {
+      flex: none;
+      font-size: var(--text-sm);
+      color: var(--text-faint);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     /* Between the two lists, hard against the divider — the buttons belong to
@@ -904,6 +993,42 @@ export class SongbookDetailPage {
   /** A book you made is empty because you have not filled it yet. */
   protected readonly entriesEmptyText = $localize`:@@entries.empty:No songs in this songbook yet.`;
 
+  // The find-and-jump row's labels. The placeholder doubles as the input's
+  // accessible name — the field is its own label here.
+  protected readonly entrySearchLabel = $localize`:@@entries.search:Find in this songbook`;
+  protected readonly entrySearchPrevLabel = $localize`:@@entries.searchPrev:Previous match`;
+  protected readonly entrySearchNextLabel = $localize`:@@entries.searchNext:Next match`;
+  protected readonly entrySearchNoMatch = $localize`:@@entries.searchNoMatch:No matches`;
+
+  protected onSearchInput(event: Event): void {
+    this.presenter.setSearch((event.target as HTMLInputElement).value);
+  }
+
+  /**
+   * The field's keys: ↓/Enter step to the next match, ↑ to the previous, both
+   * with `preventDefault` so the caret does not also move; Esc clears the term
+   * and the input (the global `onEscape` ignores input targets, so it will not
+   * navigate away). Everything else is left to the input.
+   */
+  protected onSearchKeydown(event: KeyboardEvent): void {
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'Enter':
+        event.preventDefault();
+        this.presenter.nextMatch();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.presenter.prevMatch();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        this.presenter.clearSearch();
+        (event.target as HTMLInputElement).value = '';
+        break;
+    }
+  }
+
   /**
    * Step from the preview into the editor. The page's job in this is the one
    * thing the presenter cannot do: **measure the two lists' scroll**, so they
@@ -954,6 +1079,16 @@ export class SongbookDetailPage {
         this.entryList()?.scrollToOffset(scroll.entry);
         this.presenter.clearPendingScroll();
       });
+    });
+
+    // The entry search's cursor: scroll the matched slot into view each time it
+    // moves. The presenter owns which slot (focusedIndex); the page owns the
+    // list, so the scroll is the page's to make.
+    effect(() => {
+      const i = this.presenter.focusedIndex();
+      if (i !== null) {
+        this.entryList()?.scrollRowIntoView(i);
+      }
     });
 
     // The tab names the songbook, not the module — it is a document like a song.

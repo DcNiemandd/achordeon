@@ -16,6 +16,7 @@ import {
   SyncService,
 } from '@achordeon/shared/data-access';
 import {
+  foldForSearch,
   resolveSettings,
   resolveSongbookPrint,
   type Song,
@@ -150,6 +151,8 @@ export class SongbookDetailPresenter {
     this._id.set(id);
     this.slotSelection.clear();
     this._currentSlotKey.set(null);
+    this._searchTerm.set('');
+    this._matchCursor.set(0);
     const book = await this.books.byId(id);
     this._book.set(book ?? null);
     this._isFound.set(book !== undefined && book.deletedAt === null);
@@ -393,6 +396,109 @@ export class SongbookDetailPresenter {
 
   clearSlotSelection(): void {
     this.slotSelection.clear();
+  }
+
+  // --- Pane B: find-and-jump over the entries (UX ▸ songbook) --------------
+  //
+  // A search that **navigates, never filters**: the visible row set never
+  // changes, so a slot you can see stays where it is. Typing moves a read-only
+  // cursor to the first match, and it drives ONLY the single-row `is-current`
+  // highlight (via `_currentSlotKey`) — the checkbox slot-selection is left
+  // untouched, so a search never arms reorder or remove.
+
+  private readonly _searchTerm = signal('');
+  readonly searchTerm = this._searchTerm.asReadonly();
+
+  /** Where the cursor sits within `searchMatches` — a position in the match
+   * list, wrapped at both ends, not a slot index. */
+  private readonly _matchCursor = signal(0);
+
+  /**
+   * The slot indexes (book order) whose folded name / title / subtitle /
+   * content contain the folded, trimmed term. Empty term ⇒ no matches. Content
+   * comes from the hydrated `_songsById`, the same songs the entry rows are
+   * named from, so a match is always a slot the user can actually see.
+   */
+  readonly searchMatches = computed<number[]>(() => {
+    const needle = foldForSearch(this._searchTerm().trim());
+    if (!needle) {
+      return [];
+    }
+    const byId = this._songsById();
+    return this.entryIds().reduce<number[]>((matches, songId, index) => {
+      const song = byId.get(songId);
+      const haystack = foldForSearch(
+        [
+          song?.name ?? '',
+          song?.cache.title ?? '',
+          song?.cache.subtitle ?? '',
+          song?.content ?? '',
+        ].join('\n'),
+      );
+      if (haystack.includes(needle)) {
+        matches.push(index);
+      }
+      return matches;
+    }, []);
+  });
+
+  /** The matched slot the cursor names, or null — what the page scrolls to. */
+  readonly focusedIndex = computed<number | null>(
+    () => this.searchMatches()[this._matchCursor()] ?? null,
+  );
+
+  /** The "n / m" counter's numbers; `current` is 0 with no matches. */
+  readonly matchPosition = computed(() => {
+    const total = this.searchMatches().length;
+    return { current: total ? this._matchCursor() + 1 : 0, total };
+  });
+
+  /** Set the term, jump the cursor to the first match, and light it. */
+  setSearch(term: string): void {
+    this._searchTerm.set(term);
+    this._matchCursor.set(0);
+    this.focusMatch();
+  }
+
+  nextMatch(): void {
+    const total = this.searchMatches().length;
+    if (total === 0) {
+      return;
+    }
+    this._matchCursor.update((cursor) => (cursor + 1) % total);
+    this.focusMatch();
+  }
+
+  prevMatch(): void {
+    const total = this.searchMatches().length;
+    if (total === 0) {
+      return;
+    }
+    this._matchCursor.update((cursor) => (cursor - 1 + total) % total);
+    this.focusMatch();
+  }
+
+  clearSearch(): void {
+    this._searchTerm.set('');
+    this._matchCursor.set(0);
+  }
+
+  /**
+   * Point the current-slot highlight at the cursor's match. It writes
+   * `_currentSlotKey` (so `currentSlot` resolves to that exact slot, not a twin)
+   * and makes the slot's song current — and **never touches `slotSelection`**,
+   * which is what keeps reorder / remove disarmed while searching.
+   */
+  private focusMatch(): void {
+    const idx = this.searchMatches()[this._matchCursor()];
+    if (idx === undefined) {
+      return;
+    }
+    this._currentSlotKey.set(String(idx));
+    const songId = this.entryIds()[idx];
+    if (songId !== undefined) {
+      this.session.setCurrentSong(songId);
+    }
   }
 
   /**

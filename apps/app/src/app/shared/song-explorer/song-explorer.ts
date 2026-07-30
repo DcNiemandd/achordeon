@@ -1279,6 +1279,30 @@ export class SongExplorer {
     this.viewport()?.scrollToOffset(offset);
   }
 
+  /**
+   * Bring `index` into view — the find-and-jump cursor's scroll (the songbook
+   * builder's entry search). It scrolls **only when the row is outside the
+   * current window**, so a cursor that steps between two already-visible matches
+   * does not lurch the list; the row's top and bottom are computed from the fixed
+   * `ROW_HEIGHT` against the measured offset and viewport height. A no-op until
+   * the viewport has mounted.
+   */
+  scrollRowIntoView(index: number): void {
+    const viewport = this.viewport();
+    if (!viewport) {
+      return;
+    }
+    const offset = this.getScrollOffset();
+    const size = viewport.getViewportSize();
+    const top = index * ROW_HEIGHT;
+    const bottom = top + ROW_HEIGHT;
+    if (top < offset) {
+      viewport.scrollToOffset(top, 'smooth');
+    } else if (bottom > offset + size) {
+      viewport.scrollToOffset(bottom - size, 'smooth');
+    }
+  }
+
   /** A drag is over this list right now — see `onPointerMove`. */
   protected readonly isDragOver = signal(false);
 
