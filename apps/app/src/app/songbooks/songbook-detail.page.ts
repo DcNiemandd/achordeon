@@ -674,6 +674,11 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
        as the cursor steps, and it holds a stable width beside the buttons. */
     .entry-search-count {
       flex: none;
+      /* Reserve the width of the widest pair ("100/100") so the prev/next buttons
+         never shift as the count grows; tabular figures keep it from jiggling
+         digit-to-digit, and it sits centred in that fixed slot. */
+      min-inline-size: 7ch;
+      text-align: center;
       font-size: var(--text-sm);
       color: var(--text-faint);
       font-variant-numeric: tabular-nums;
