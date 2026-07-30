@@ -157,6 +157,15 @@ export interface ExplorerCapabilities {
   readonly canPerform: boolean;
   /** Open the editor. Identity/destructive — off in the Songbooks panel. */
   readonly canEdit: boolean;
+  /**
+   * A magnifier that opens this row's render in a dialog — **look, without going
+   * in to edit** (the songbook builder's panes). It is the read half of the pair
+   * `canEdit` is the write half of: the builder turns editing off because you are
+   * arranging songs here, not administering them, but you still want to see what
+   * a song looks like before you drop it in a book. The dialog it opens carries
+   * its own way through to the editor, so this is not a back door to `canEdit`.
+   */
+  readonly canPreview: boolean;
   readonly canRename: boolean;
   readonly canDuplicate: boolean;
   readonly canDelete: boolean;
@@ -214,6 +223,9 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDrop: false,
   canPerform: false,
   canEdit: true,
+  // The Songs module opens the editor from the row directly, so there is nothing
+  // a look-first preview would buy that a click does not already give.
+  canPreview: false,
   canRename: true,
   canDuplicate: true,
   canDelete: true,
@@ -241,6 +253,9 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDrop: false,
   canPerform: false,
   canEdit: false,
+  // Editing is off — you are picking, not administering — but looking is not:
+  // the magnifier reads a song's render in a dialog before you add it to a book.
+  canPreview: true,
   canRename: false,
   canDuplicate: false,
   canDelete: false,
@@ -271,6 +286,9 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canDrop: true,
   canPerform: false,
   canEdit: false,
+  // A slot is a song in the book; looking at its render before you reorder or
+  // remove it is the same want the library pane has, so the magnifier is here too.
+  canPreview: true,
   canRename: false,
   canDuplicate: false,
   canDelete: false,
@@ -306,6 +324,9 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   // stage is the most everyday thing anyone does with one.
   canPerform: true,
   canEdit: true,
+  // A row here is a whole book, not a song; pane B already previews the book you
+  // pick, so a per-row magnifier would name the wrong thing.
+  canPreview: false,
   canRename: true,
   canDuplicate: true,
   canDelete: true,

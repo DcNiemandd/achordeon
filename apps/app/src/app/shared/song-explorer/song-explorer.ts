@@ -405,6 +405,25 @@ const NARROW_WIDTH = 480;
                  book is performed, downloaded and exported, and the order it
                  performs in is asked for in the Stage picker, beside the press it
                  changes. -->
+            <!-- Look-first, ahead of everything: the magnifier opens this row's
+                 render in a dialog. It is the one action the builder's panes keep
+                 where editing is off, because arranging songs and reading them are
+                 different jobs — and it sits first because looking comes before
+                 doing. A read-only row has a record behind it to render, so unlike
+                 edit it is not gated on isReadOnly. -->
+            @if (capabilities().canPreview) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [attr.aria-label]="previewRowLabel(row)"
+                [appTooltip]="PREVIEW"
+                [attr.data-testid]="'preview-' + row.id"
+                (click)="previewed.emit(row.id)"
+              >
+                <app-icon name="preview" />
+              </button>
+            }
             @if (capabilities().canEdit && !row.isReadOnly) {
               <button
                 appButton
@@ -1199,6 +1218,10 @@ export class SongExplorer {
   readonly activated = output<string>();
   /** Open this song in the editor. */
   readonly opened = output<string>();
+  /** Look at this row's render in a dialog — the read half of `opened`. Carries
+   * the row's own id (a song id in the library, a slot key in a book); the
+   * presenter, which is the only thing that knows both id-spaces, resolves it. */
+  readonly previewed = output<string>();
   readonly selectToggled = output<string>();
   readonly favorited = output<string>();
   /**
@@ -1239,6 +1262,22 @@ export class SongExplorer {
   /** Whatever is carrying `cdkDropList` — the viewport, or the empty state that
    * stands in for it. The geometry a drop is measured against. */
   private readonly dropArea = viewChild('dropArea', { read: ElementRef });
+
+  /**
+   * How far the list is scrolled, in px — for a screen that wants to **restore**
+   * this position after leaving and coming back (the songbook builder, across an
+   * edit). 0 while the viewport has not mounted (an empty list has no scroll).
+   */
+  getScrollOffset(): number {
+    return this.viewport()?.measureScrollOffset() ?? 0;
+  }
+
+  /** Put the list back where `getScrollOffset` found it. A no-op until the
+   * viewport exists and has rows to scroll through, so the caller may need to
+   * wait for the window to fill before the offset takes. */
+  scrollToOffset(offset: number): void {
+    this.viewport()?.scrollToOffset(offset);
+  }
 
   /** A drag is over this list right now — see `onPointerMove`. */
   protected readonly isDragOver = signal(false);
@@ -1357,6 +1396,7 @@ export class SongExplorer {
   protected readonly UNFAVORITE = $localize`:@@explorer.unfavorite:Remove from favorites`;
   protected readonly PERFORM = $localize`:@@explorer.perform:Perform`;
   protected readonly EDIT = $localize`:@@explorer.edit:Edit`;
+  protected readonly PREVIEW = $localize`:@@explorer.preview:Preview`;
   protected readonly RENAME = $localize`:@@explorer.rename:Rename`;
   protected readonly DUPLICATE = $localize`:@@explorer.duplicate:Duplicate`;
   protected readonly REMOVE = $localize`:@@explorer.remove:Remove from songbook`;
@@ -1625,6 +1665,10 @@ export class SongExplorer {
 
   protected editRowLabel(row: SongRow): string {
     return $localize`:@@explorer.editRow:Edit ${row.name}:name:`;
+  }
+
+  protected previewRowLabel(row: SongRow): string {
+    return $localize`:@@explorer.previewRow:Preview ${row.name}:name:`;
   }
 
   protected renameRowLabel(row: SongRow): string {

@@ -78,4 +78,14 @@ export class RowSelection {
   clear(): void {
     this._ids.set(new Set());
   }
+
+  /**
+   * Replace the whole selection with a given set — for **restoring** one that was
+   * captured before the screen was left, not for any user gesture (those go
+   * through `toggle`/`selectOnly`). Copied in, so the caller's set cannot mutate
+   * the signal's value behind its back.
+   */
+  set(ids: Iterable<string>): void {
+    this._ids.set(new Set(ids));
+  }
 }
