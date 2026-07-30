@@ -18,6 +18,7 @@ import {
   ActionBar,
   BlankPage,
   DocumentTitle,
+  ReturnUrl,
   SplitPane,
   UiStore,
 } from '../shared/layout';
@@ -28,7 +29,6 @@ import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
 import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
-import { ReturnUrl } from './return-url';
 
 /**
  * The authoring screen: content on the left, the render on the right (§4).
@@ -69,16 +69,18 @@ import { ReturnUrl } from './return-url';
           (titleChange)="presenter.rename($event)"
         >
           <!-- A link, because it navigates: it must middle-click, open in a
-               new tab, and announce as a link (see the Button directive). The
-               query params are the list's own — search, sort, favourites — so
-               "back" lands on the list as it was left, not a bare /songs. -->
+               new tab, and announce as a link (see the Button directive). Both
+               the path and the query come from the remembered where-from
+               (ReturnUrl) — the library the editor was opened from, OR the
+               songbook whose preview walked in here — so "back" lands on that
+               screen as it was left, dialog and all, not a bare /songs. -->
           <a
             appButton
             bar-end
-            routerLink="/songs"
+            [routerLink]="backPath()"
             [queryParams]="backParams()"
-            [attr.aria-label]="backLabel"
-            [appTooltip]="backLabel"
+            [attr.aria-label]="backLabel()"
+            [appTooltip]="backLabel()"
             data-testid="editor-back"
           >
             <app-icon name="close" />
@@ -459,10 +461,21 @@ export class SongEditorPage {
   private readonly returnUrl = inject(ReturnUrl);
 
   /** The list's query params, pulled off the remembered list URL — what makes
-   * the back link and Escape restore search/sort/favourites. Empty (a bare
-   * /songs) when the editor was reached cold, e.g. a reload. */
+   * the back link and Escape restore search/sort/favourites (and, from a
+   * songbook, the open preview). Empty (a bare /songs) when the editor was
+   * reached cold, e.g. a reload. */
   protected readonly backParams = computed(
     () => this.router.parseUrl(this.returnUrl.url() ?? '/songs').queryParams,
+  );
+
+  /**
+   * The **path** of the remembered where-from, query stripped off (that is
+   * `backParams`' job). `/songs` when the editor was reached cold. This is what
+   * lets the visible Back link return to a *songbook* — the editor now has two
+   * entrances, and a hard-coded `/songs` could only serve one of them.
+   */
+  protected readonly backPath = computed(
+    () => (this.returnUrl.url() ?? '/songs').split('?')[0] || '/songs',
   );
 
   /** `/songs/:id/edit`, delivered by `withComponentInputBinding()`. */
@@ -494,7 +507,14 @@ export class SongEditorPage {
     return box && box.height > 0 ? box.width / box.height : 210 / 297;
   });
 
-  protected readonly backLabel = $localize`:@@editor.back:Back to songs`;
+  /** Names where Back goes — a songbook when that is where the editor was
+   * opened from, the library otherwise. The glyph is the same X either way; this
+   * is the accessible name and the tooltip behind it. */
+  protected readonly backLabel = computed(() =>
+    this.backPath().startsWith('/songbooks')
+      ? $localize`:@@editor.backToSongbook:Back to the songbook`
+      : $localize`:@@editor.back:Back to songs`,
+  );
   protected readonly nameLabel = $localize`:@@editor.name:Song name`;
   protected readonly insertGroupLabel = $localize`:@@editor.insertGroup:Insert`;
   protected readonly transposeGroupLabel = $localize`:@@editor.transposeGroup:Transpose`;
