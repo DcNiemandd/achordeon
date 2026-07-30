@@ -7,7 +7,7 @@ import {
   ParserService,
   RenderService,
 } from '@achordeon/shared/data-access';
-import type { LobbySummaryRow } from '@achordeon/shared/domain';
+import { foldForSearch, type LobbySummaryRow } from '@achordeon/shared/domain';
 import { AudienceSession, UiStore } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
@@ -77,13 +77,13 @@ export class AudiencePresenter {
   });
 
   readonly summaryRows = computed<readonly LobbySummaryRow[]>(() => {
-    const q = this._summaryQuery().toLowerCase();
+    const q = foldForSearch(this._summaryQuery());
     const rows = this.payload()?.summary ?? [];
     return rows.filter(
       (row) =>
         !q ||
-        row.name.toLowerCase().includes(q) ||
-        row.title.toLowerCase().includes(q),
+        foldForSearch(row.name).includes(q) ||
+        foldForSearch(row.title).includes(q),
     );
   });
 
