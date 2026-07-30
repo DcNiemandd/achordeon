@@ -23,6 +23,18 @@
   "homepage.feature.oss.description": {
     "message": "Licencováno MIT, plně otevřené. Forkujte, hostujte si sami, nebo přispějte na GitHubu."
   },
+  "privacy.stats.label": {
+    "message": "Sdílet anonymní statistiky používání"
+  },
+  "privacy.stats.state.refused": {
+    "message": "Váš prohlížeč žádá weby, aby vás nesledovaly, takže zůstává vypnuto."
+  },
+  "privacy.stats.state.on": {
+    "message": "Zapnuto, pro tento prohlížeč."
+  },
+  "privacy.stats.state.off": {
+    "message": "Vypnuto, pro tento prohlížeč."
+  },
   "theme.ErrorPageContent.title": {
     "message": "Tato stránka spadla.",
     "description": "The title of the fallback page when the page crashed"

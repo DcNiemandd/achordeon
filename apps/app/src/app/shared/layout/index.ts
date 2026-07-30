@@ -34,6 +34,7 @@ export type { AudienceState } from './stage-session';
 export { AudienceBar } from './audience-bar';
 export { AudienceSession } from './audience-session';
 export { SplitPane } from './split-pane';
+export { Stats } from './stats';
 export { ThemeApplier } from './theme-applier';
 export { WarnUnsynced } from './warn-unsynced';
 export { UiStore } from './ui-store';
