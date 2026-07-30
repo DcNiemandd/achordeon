@@ -769,6 +769,8 @@ export class SongEditor {
         color: 'var(--text-faint)',
         fontStyle: 'italic',
       },
+      // The escaping backslash stays dim — it is syntax, not text. The char it
+      // protects is coloured as ordinary text by the grammar, not here.
       { tag: achordeonTags.escape, color: 'var(--text-faint)' },
       // Emphasis: the text shows the style it will render in, and the `*` markers
       // are dimmed so they read as syntax around it.
