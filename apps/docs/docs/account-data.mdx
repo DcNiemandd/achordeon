@@ -1,0 +1,79 @@
+---
+sidebar_position: 21
+---
+
+# Your account & Google data
+
+[Privacy](/privacy.mdx) covers the visit counting, which never knows who you
+are. This page is the other half: what happens the moment you do tell us who you
+are — by signing in. Achordeon works fully offline and asks for none of this
+until you choose to log in, and it only ever asks for what a sign-in and a
+backup actually need.
+
+## Signing in with Google
+
+When you sign in with Google, Google hands us two things about you:
+
+- Your **email address**, which is the name of your account
+- Your **basic profile** — the display name and picture Google already shows
+  next to you
+
+That is all, and it is used for one thing: to know whose library is whose, so
+your songs come back to you and not to somebody else. The sign-in itself is run
+by [Supabase](https://supabase.com), which keeps the account on our behalf.
+
+:::note[Google is a login, not the only one]
+You can also make an account with an email and a password, or add one to a
+Google account later. Signing in with Google never merges you into someone
+else's account — it attaches to yours, or starts a new one.
+:::
+
+## Google Drive
+
+Backing up to Drive is optional, and the permission for it is asked separately,
+the first time you press a Drive button — never at sign-in. When you do grant
+it, the scope is the narrow one, `drive.file`:
+
+- Achordeon can see and touch **only the backup file it itself creates** in your
+  Drive
+- Everything else in your Drive — every other file, folder and photo — stays
+  invisible to it. It cannot list them, read them or know they exist
+
+The backup file holds your library, and it is used for exactly what you pressed
+the button for: writing your library up to Drive, or reading it back down.
+
+## What it is never used for
+
+Your account and Drive data is not sold, not shared with anyone for advertising,
+and never used to train any model, ours or anyone else's. It moves between your
+device, your account and — if you ask — your own Drive, and nowhere else.
+
+:::info[Google API Services User Data Policy]
+Achordeon's use of information received from Google APIs adheres to the
+[Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),
+including the Limited Use requirements.
+:::
+
+## Where it is kept
+
+Achordeon itself — this site and the app — is served as static files from GitHub
+Pages. None of your data lives there; GitHub Pages only hands out the pages.
+
+- **The account** — your email and basic profile — lives with
+  [Supabase](https://supabase.com), our backend.
+- **The library**, on the paid tier with real-time sync switched on, is kept
+  with Supabase too, so your devices stay in step. Without that switch, your
+  library never leaves your device except into a backup you asked for.
+- **The backup**, if you make one, lives in your own Google Drive. It is yours;
+  Achordeon only reaches the single file it wrote.
+
+## Deleting your account
+
+You can delete your account from within the app, in
+[Settings](/settings.mdx#profile). Deleting it clears the library off the device
+and closes the cloud account straight away. The cloud copy is then held, closed,
+for 90 days: sign back in within that window and your account and library come
+back exactly as they were. After 90 days it is erased for good and cannot be
+recovered. Removing the Drive backup is your own to do, from your Drive — once
+you have signed out, Achordeon can no longer see the file to remove it, which is
+the whole point of the narrow permission.
