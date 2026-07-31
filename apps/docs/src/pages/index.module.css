@@ -3,11 +3,33 @@
  * and scoped locally.
  */
 
+/*
+ * The hero, in a tint of the brand rather than the brand itself.
+ *
+ * `hero--primary` fills the band with `--ifm-color-primary` at full strength —
+ * a saturated red across the widest element on the site, with the text reversed
+ * out of it. The colour is right; the amount of it was not. Same hue and
+ * saturation, taken to the pale end of the lightness axis, so the band still
+ * reads as ours and the brand goes back to being an accent: the one red thing
+ * above the fold is the Launch button.
+ *
+ * Class untouched, values overridden — `.hero` reads both of these as variables,
+ * so this is a colour change and nothing else.
+ */
 .heroBanner {
+  --ifm-hero-background-color: hsl(11 70% 96%);
+  --ifm-hero-text-color: var(--ifm-font-color-base);
+
   padding: 4rem 0;
   text-align: center;
   position: relative;
   overflow: hidden;
+}
+
+/* Dark: the same warmth, from the other end. A near-black with the brand hue
+   still in it, a shade above the page so the band is visible without glowing. */
+[data-theme='dark'] .heroBanner {
+  --ifm-hero-background-color: hsl(11 18% 13%);
 }
 
 @media screen and (max-width: 996px) {

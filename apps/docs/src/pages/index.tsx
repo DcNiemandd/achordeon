@@ -23,7 +23,16 @@ function HomepageHeader() {
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
+        {/* Not `siteConfig.tagline`: that one is the meta description, and it is
+            a single untranslated string — the Czech reader would get English on
+            the biggest line of the page. */}
+        <p className="hero__subtitle">
+          <Translate id="homepage.hero.subtitle">
+            Write your songs with the chords where you actually play them, and
+            read them back as a clean sheet that fits one screen. It runs in the
+            browser, installs like an app, and keeps working offline.
+          </Translate>
+        </p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"

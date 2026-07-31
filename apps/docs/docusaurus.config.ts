@@ -118,7 +118,7 @@ function achordeonLibs(): Plugin {
 
 const config: Config = {
   title: 'Achordeon',
-  tagline: 'Real-time channels, in harmony.',
+  tagline: 'Write, arrange and perform your songs — chords and all.',
   favicon: 'img/favicon.ico',
 
   future: {

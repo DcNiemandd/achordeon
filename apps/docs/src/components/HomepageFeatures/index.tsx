@@ -12,33 +12,41 @@ type FeatureItem = {
 const FeatureList: FeatureItem[] = [
   {
     title: (
-      <Translate id="homepage.feature.realtime.title">
-        Real-time channels
+      <Translate id="homepage.feature.write.title">
+        Written the way you scribble it
       </Translate>
     ),
     description: (
-      <Translate id="homepage.feature.realtime.description">
-        One sender, many receivers — broadcast updates over a shared channel
-        with sub-second latency.
+      <Translate id="homepage.feature.write.description">
+        Type the lyrics and put a chord in brackets where it is played — it
+        prints above that exact syllable. Labels for verses and choruses, a
+        little markdown for the rest. There is nothing else to learn.
       </Translate>
     ),
   },
   {
     title: (
-      <Translate id="homepage.feature.browser.title">Browser-first</Translate>
+      <Translate id="homepage.feature.page.title">One song, one page</Translate>
     ),
     description: (
-      <Translate id="homepage.feature.browser.description">
-        {`Runs entirely in the browser. No client install, no native binaries — open the URL, you're in.`}
+      <Translate id="homepage.feature.page.description">
+        Every song is laid out to fit a single screen or sheet, with no
+        scrolling while you play — scale, columns and page shape are yours to
+        set. Transpose in a click, then print it or download a PDF or PNG.
       </Translate>
     ),
   },
   {
-    title: <Translate id="homepage.feature.oss.title">Open source</Translate>,
+    title: (
+      <Translate id="homepage.feature.perform.title">
+        Everyone on the same page
+      </Translate>
+    ),
     description: (
-      <Translate id="homepage.feature.oss.description">
-        MIT licensed, fully open. Fork it, self-host it, or contribute back on
-        GitHub.
+      <Translate id="homepage.feature.perform.description">
+        Collect songs into songbooks and perform them one at a time. Open a
+        lobby, share a PIN or a QR code, and the others follow along on their
+        own screens as you move through the set.
       </Translate>
     ),
   },
