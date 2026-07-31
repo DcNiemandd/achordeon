@@ -35,13 +35,13 @@ tři věci, o které si říkám na konci.
 
 - `* Název` je název písničky, `** Autor` je podtitul. Značka stojí na úplném
   začátku řádku a je za ní mezera. Když se jich objeví víc, platí ta poslední.
-- Prázdný řádek začíná nový blok (strofa, refrén, mezihra...) — a nic jiného ho
+- Prázdný řádek začíná nový blok (strofa, refrén, mezihra...), a nic jiného ho
   nezačíná.
 - Blok může začínat návěštím: text končící dvojtečkou, za kterou je mezera nebo
-  konec řádku — `1.: `, `R:: `, `Sólo:`. Poslední dvojtečka se spolkne, takže
+  konec řádku: `1.: `, `R:: `, `Sólo:`. Poslední dvojtečka se spolkne, takže
   `R::` se vytiskne jako `R:`.
 - Návěští napsané na dalším řádku téhož bloku je podnávěští a pojmenovává jen ten
-  jeden řádek — popisek u řádku akordů. `Předehra:`, pak `Kl. + Bas: [Am F G]`,
+  jeden řádek, popisek u řádku akordů. `Předehra:`, pak `Kl. + Bas: [Am F G]`,
   pak `Housle: [Am F G]` je jeden blok se dvěma pojmenovanými řádky.
 - Dvojtečka, po které mezera není, je obyčejný text (`12:30` je v pořádku). Když
   by se z řádku textu omylem stalo návěští, dej před dvojtečku zpětné lomítko:
@@ -49,13 +49,13 @@ tři věci, o které si říkám na konci.
 - Akordy patří dovnitř řádku s textem, do hranatých závorek, přímo před znak, nad
   kterým stojí: `pro[C]dal` vytiskne C nad `d`.
 - Několik akordů v jedné závorce stojí na stejném místě: `[Em G A]`. Řádek, kde
-  jsou akordy a žádná slova, je vytiskne přímo v řádku, ve velikosti textu —
+  jsou akordy a žádná slova, je vytiskne přímo v řádku, ve velikosti textu,
   obvyklá podoba předehry, sóla a mezihry.
 - Zdvojené závorky dají akord do řádku místo nad něj: `[[C]]`. Je to potřeba jen
-  na řádku, kde jsou i slova; na řádku se samotnými akordy se `[Em G A]` tiskne
+  na řádku, kde jsou i slova. Na řádku se samotnými akordy se `[Em G A]` tiskne
   v řádku už tak.
-- Text v závorce, který není akord — `[Sólo]`, `[2x]`, `[N.C.]`, `[||: :||]` — se
-  vytiskne nad řádek přesně tak, jak je napsaný. Nech ho být, neopravuj ho.
+- Text v závorce, který není akord, třeba `[Sólo]`, `[2x]`, `[N.C.]` nebo
+  `[||: :||]`, se vytiskne nad řádek přesně tak, jak je napsaný. Nech ho být, neopravuj ho.
 - Používej anglické názvy not. Jiné systémy převeď: německé `H` je `B`, německé
   `B` je `Bb`.
 - Zpětné lomítko udělá z dalšího znaku obyčejný text: `\:`, `\*`, `\[`.
@@ -68,16 +68,16 @@ tři věci, o které si říkám na konci.
 - Přepiš všechno: text, akordy, názvy částí, počty repetic a poznámky na okraji
   ("pomalu", "sólo = strofa", kapodastr, tónina, ladění). Vynech jen to, co se
   týká samotného papíru, třeba číslo stránky.
-- Nejvíc záleží na umístění akordů. Na listu jsou akordy na řádku nad textem —
+- Nejvíc záleží na umístění akordů. Na listu jsou akordy na řádku nad textem,
   každý `[akord]` dej přímo před znak, nad kterým stojí.
 - Oprav zřejmé překlepy, chybějící diakritiku a rozdělená slova, ale ponech slova
-  a nářečí autora. Nikdy si nevymýšlej to, co nepřečteš — napiš to.
+  a nářečí autora. Nikdy si nevymýšlej to, co nepřečteš, napiš to.
 - Veď si krátký seznam všech oprav a všech akordů, kterými jsi si nebyl jistý.
 
 # Nastavení
 
 Nastavení není součástí textu, jde vedle něj. Nastav jen to, co je z listu jasně
-vidět — obvykle jen `aspectRatio` a `columns` — a ostatní vynech, ať platí výchozí
+vidět, obvykle jen `aspectRatio` a `columns`, a ostatní vynech, ať platí výchozí
 hodnoty aplikace.
 
 | Nastavení       | Hodnoty                                      | Výchozí     | Nastav, když                                                       |
@@ -92,16 +92,16 @@ hodnoty aplikace.
 | `contentY`      | `"top"`, `"middle"`, `"bottom"`              | `"middle"`  | vynech to                                                          |
 | `scale`         | `"auto"` nebo číslo                          | `"auto"`    | vynech to                                                          |
 | `chordSize`     | číslo, `1` je normál                         | `1`         | akordy jsou zřetelně větší nebo menší než text                     |
-| `chordColor`    | `"#rrggbb"`                                  | výchozí     | jen když si o barvu řeknu — barva inkoustu na scanu nic neznamená   |
+| `chordColor`    | `"#rrggbb"`                                  | výchozí     | jen když si o barvu řeknu, barva inkoustu na scanu nic neznamená    |
 | `notation`      | `"english"`, `"german"`                      | `"english"` | jen když si řeknu o německé značení (H/B)                          |
 
 # Co mi dej
 
-1. **Nastavení** — tabulku nastavení, která jsi zvolil, u každého jednu řádku
+1. **Nastavení**: tabulku nastavení, která jsi zvolil, u každého jednu řádku
    odůvodnění, a pak seznam oprav a nejistých akordů.
-2. **Obsah** — značkování v jednom bloku kódu, připravené ke zkopírování.
-3. **Importní soubor** — JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
-   ho jako soubor `.json` ke stažení; jinak ho vypiš v jednom bloku kódu a uložím
+2. **Obsah**: značkování v jednom bloku kódu, připravené ke zkopírování.
+3. **Importní soubor**: JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
+   ho jako soubor `.json` ke stažení, jinak ho vypiš v jednom bloku kódu a uložím
    si ho sám.
 
 ```json
@@ -133,7 +133,7 @@ hodnoty aplikace.
   zlomy řádků, `\"` pro uvozovky.
 - `id` je libovolné náhodné UUID. Tři časová pole jsou aktuální čas v
   milisekundách od roku 1970 (třináctimístné číslo).
-- `name` je můj štítek písničky v knihovně — použij název.
+- `name` je můj štítek písničky v knihovně, použij název.
 - `cache` obsahuje přesně text platného řádku `*` a `**`, nebo `""`, když je
   písnička nemá.
 - `settings` obsahuje jen klíče z tabulky výše, `{}` když žádné. Nikdy si

@@ -6,7 +6,7 @@ sidebar_position: 20
 
 Achordeon počítá návštěvy stránek, abychom viděli, které části se používají a které
 opravit dřív. Nic zde vás neidentifikuje a není tu žádná cookie lišta, protože není
-na co se ptát — dokud si sami nezapnete tu druhou část.
+na co se ptát, dokud si sami nezapnete tu druhou část.
 
 ## Co se počítá
 
@@ -16,8 +16,8 @@ Každá návštěva, v dokumentaci i v aplikaci, je jeden požadavek, který vyp
 GET /count?p=/docs/privacy&r=google.com
 ```
 
-- **p** — která stránka. ID písní a zpěvníků se nejdřív odstraní, takže `/songs/<id>` se počítá jako `/songs/:id` a každá knihovna se složí do jednoho řádku. Předpona říká, zda šlo o dokumentaci nebo aplikaci, a v jakém jazyce
-- **r** — doména, která vás sem odkázala, nikdy ne celá adresa. Naše vlastní doména se počítá jako nic, takže pohyb uvnitř Achordeonu žádný zdroj nehlásí
+- **p**: která stránka. ID písní a zpěvníků se nejdřív odstraní, takže `/songs/<id>` se počítá jako `/songs/:id` a každá knihovna se složí do jednoho řádku. Předpona říká, zda šlo o dokumentaci nebo aplikaci, a v jakém jazyce
+- **r**: doména, která vás sem odkázala, nikdy ne celá adresa. Naše vlastní doména se počítá jako nic, takže pohyb uvnitř Achordeonu žádný zdroj nehlásí
 
 To je celý požadavek a nespouští se kvůli němu žádný skript: odpovědí je obrázek 1×1.
 Počty se sčítají, takže z toho vyjde „dnes 40 návštěv stránky o syntaxi“. Není tu
@@ -28,7 +28,7 @@ Počítání zajišťuje [GoatCounter](https://www.goatcounter.com), na serverec
 
 :::note[Proč není k čemu dávat souhlas]
 Uložit cokoli na vaše zařízení, nebo z něj cokoli číst, nejdřív potřebuje vaše
-svolení. Toto nedělá ani jedno — žádná cookie, žádné místní úložiště, žádný otisk —
+svolení. Toto nedělá ani jedno, žádná cookie, žádné místní úložiště, žádný otisk,
 takže není potřeba žádné svolení a neobjeví se žádná lišta.
 :::
 
@@ -41,8 +41,8 @@ takže není potřeba žádné svolení a neobjeví se žádná lišta.
 
 ## Rozšířené statistiky
 
-Vypnuté, dokud si to nezapnete. Přidá do výše uvedeného požadavku jedno pole, `s` —
-velikost vaší obrazovky — což je to, co nám řekne, zda se nastavení vykreslování
+Vypnuté, dokud si to nezapnete. Přidá do výše uvedeného požadavku jedno pole, `s`,
+velikost vaší obrazovky, což je to, co nám řekne, zda se nastavení vykreslování
 používá na telefonech, nebo na počítačích. Stále žádná IP adresa, stále žádné ID
 návštěvníka.
 
@@ -54,7 +54,7 @@ a čtení vašeho zařízení je ta část, která potřebuje vaše slovo.
 
 Přepínač se pamatuje v tomto zařízení a pokrývá aplikaci i tuto dokumentaci. Vypnutí
 zpět má okamžitý účinek. Tentýž přepínač je v [Nastavení](/settings.mdx#aplikace)
-aplikace a je to týž přepínač — nastavte jej na kterémkoli místě.
+aplikace a je to týž přepínač, nastavte jej na kterémkoli místě.
 
 ## Jak dlouho se to uchovává
 
@@ -63,6 +63,6 @@ běží.
 
 :::info[Není co mazat]
 Protože žádný řádek nelze vystopovat k osobě, nedokázali bychom vaše data najít, ani
-kdybyste nás o to požádali — není žádné ID, podle kterého bychom vás dohledali. To je
+kdybyste nás o to požádali, protože není žádné ID, podle kterého bychom vás dohledali. To je
 vlastně smysl celé věci.
 :::
