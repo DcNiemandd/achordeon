@@ -3,7 +3,9 @@
 // future engine unchanged, so a swap is provably behaviour-preserving. Excluded
 // from the lib build (see tsconfig.lib.json exclude); imported only by *.spec.ts.
 
-import { beforeEach, describe, expect, it } from '@jest/globals';
+// The globals come from `@types/jest`, as everywhere else in the workspace: this
+// library runs on ts-jest, which typechecks what it transforms, and `@jest/globals`
+// is not a dependency anything here declares.
 import type { ChordTheory } from '@achordeon/shared/domain';
 
 /**

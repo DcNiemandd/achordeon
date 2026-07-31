@@ -17,12 +17,13 @@ export interface ParsedChord {
  * The only music-theory surface the app depends on (ADR-0008). Minimal and
  * descriptive: it reports facts (is this a chord? what pitch-class is this
  * note?), never policy. The `@tonaljs/*` engine is quarantined behind one
- * adapter (`TonalChordTheory`, in `shared/data-access`); the domain — parser and
+ * adapter (`TonalChordTheory`, in `shared/chord-theory`); the domain — parser and
  * `transposeContent` — depends on this port so the engine stays swappable.
  *
  * An abstract class = a DI token + a type. Kept framework-free (no `@angular/*`)
- * so `shared/domain` stays pure; wired via `{ provide: ChordTheory, useClass:
- * TonalChordTheory }` in the composition layer.
+ * so `shared/domain` stays pure; bound to the adapter in the composition layer
+ * (`provideAchordeonData`). The adapter is framework-free too — the docs site's
+ * live syntax examples construct it directly, with no injector in sight.
  */
 export abstract class ChordTheory {
   /** Parse a chord symbol; `null` = not a valid chord (render verbatim, never transpose). */

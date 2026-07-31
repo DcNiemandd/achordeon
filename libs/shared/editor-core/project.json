@@ -1,0 +1,17 @@
+{
+  "name": "shared-editor-core",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/editor-core/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:util"],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/shared/editor-core/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

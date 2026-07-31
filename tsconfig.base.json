@@ -15,6 +15,12 @@
     "skipDefaultLibCheck": true,
     "paths": {
       "@achordeon/shared/domain": ["./libs/shared/domain/src/index.ts"],
+      "@achordeon/shared/chord-theory": [
+        "./libs/shared/chord-theory/src/index.ts"
+      ],
+      "@achordeon/shared/editor-core": [
+        "./libs/shared/editor-core/src/index.ts"
+      ],
       "@achordeon/shared/render-core": [
         "./libs/shared/render-core/src/index.ts"
       ],

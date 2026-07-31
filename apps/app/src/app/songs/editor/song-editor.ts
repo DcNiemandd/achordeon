@@ -28,7 +28,7 @@ import {
   redo,
   undo,
 } from '@codemirror/commands';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import {
   ChordTheory,
@@ -37,7 +37,10 @@ import {
   transposeChordAt,
   type ChordNotation,
 } from '@achordeon/shared/domain';
-import { achordeonHighlight, achordeonTags } from './highlight';
+import {
+  achordeonHighlight,
+  achordeonHighlightStyle,
+} from '@achordeon/shared/editor-core';
 import type {
   CaretContext,
   CaretLineKind,
@@ -624,7 +627,7 @@ export class SongEditor {
       EditorView.lineWrapping,
       placeholder(this.placeholderText()),
       achordeonHighlight(this.theory),
-      syntaxHighlighting(this.highlightStyle()),
+      syntaxHighlighting(achordeonHighlightStyle()),
       this.editorTheme(),
       lintGutter(),
       EditorView.updateListener.of((update) => {
@@ -745,44 +748,6 @@ export class SongEditor {
       '.cm-lint-marker': { color: 'var(--brand)' },
       '.cm-lint-marker-warning': { color: 'var(--brand)' },
     });
-  }
-
-  /** Our tags → our tokens. The colours are the theme's, never literals. */
-  private highlightStyle(): HighlightStyle {
-    return HighlightStyle.define([
-      { tag: achordeonTags.title, color: 'var(--text)', fontWeight: '700' },
-      {
-        tag: achordeonTags.subtitle,
-        color: 'var(--text-muted)',
-        fontWeight: '500',
-      },
-      {
-        tag: achordeonTags.label,
-        color: 'var(--text-muted)',
-        fontWeight: '700',
-      },
-      // Chords are the brand colour, as they are in the render: the editor should
-      // rhyme with the page it is producing.
-      { tag: achordeonTags.chord, color: 'var(--brand)', fontWeight: '700' },
-      {
-        tag: achordeonTags.annotation,
-        color: 'var(--text-faint)',
-        fontStyle: 'italic',
-      },
-      // The escaping backslash stays dim — it is syntax, not text. The char it
-      // protects is coloured as ordinary text by the grammar, not here.
-      { tag: achordeonTags.escape, color: 'var(--text-faint)' },
-      // Emphasis: the text shows the style it will render in, and the `*` markers
-      // are dimmed so they read as syntax around it.
-      { tag: achordeonTags.emphasis, color: 'var(--text-faint)' },
-      { tag: achordeonTags.italic, fontStyle: 'italic' },
-      { tag: achordeonTags.bold, fontWeight: '700' },
-      {
-        tag: achordeonTags.bolditalic,
-        fontStyle: 'italic',
-        fontWeight: '700',
-      },
-    ]);
   }
 
   /**

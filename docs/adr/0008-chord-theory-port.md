@@ -32,8 +32,12 @@ Put a **port/adapter seam** around music theory.
   - `parseChord(text): ParsedChord | null` (`null` = not a valid chord)
   - `noteChroma(note): number | null` (pitch-class 0..11)
   - `ParsedChord = { root, bass: string | null, quality }`
-- **Adapter `TonalChordTheory` in `shared/data-access`** — the _only_ file importing
-  `@tonaljs/*`; provided via `{ provide: ChordTheory, useClass: TonalChordTheory }`.
+- **Adapter `TonalChordTheory` in `shared/chord-theory`** — the _only_ file importing
+  `@tonaljs/*`; bound in the composition layer (`provideAchordeonData`). It is a plain
+  framework-free class: it lived in `shared/data-access` behind `@Injectable` until the
+  docs site began mounting the editor grammar, which asks the port the same question
+  with no injector to ask it through. An implementation only Angular could construct
+  would have made the port a seam in name only.
 - **Spelling and transpose are domain policy, not on the port.** A pure function
   `transposeContent(content, semitones, theory)` in `shared/domain` owns the algorithm:
   parse each valid chord via the port, shift `root` and `/bass` by `±n` chroma, and
@@ -55,7 +59,8 @@ The spelling algorithm and settled transpose rules are documented in
 ## Consequences
 
 - `shared/domain` stays pure and dependency-free — trivially testable and navigable; the
-  third-party engine is quarantined in one adapter file.
+  third-party engine is quarantined in one adapter file, in a library of its own so any
+  host — Angular, the docs site, a future plugin — can bind the port without a framework.
 - Replacing tonal is a new adapter + one provider change, validated by the existing
   contract suite; parser, transpose, and the pure tests are untouched.
 - The port is deliberately small because all _decisions_ (spelling, transpose, validity

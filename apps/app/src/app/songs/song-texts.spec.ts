@@ -14,7 +14,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from '@achordeon/shared/domain';
-import { TonalChordTheory } from '@achordeon/shared/data-access';
+import { TonalChordTheory } from '@achordeon/shared/chord-theory';
 import { GUIDE_SONG_CONTENT } from './guide-song-content';
 import { NEW_SONG_CONTENT } from './new-song';
 
