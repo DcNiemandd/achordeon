@@ -8,7 +8,7 @@ import {
   type Provider,
 } from '@angular/core';
 import { ChordTheory } from '@achordeon/shared/domain';
-import { TonalChordTheory } from './tonal-chord-theory/tonal-chord-theory';
+import { TonalChordTheory } from '@achordeon/shared/chord-theory';
 import { ACHORDEON_DB } from './stores/repositories';
 import { BootGate } from './persistence/boot-gate';
 import { bootstrap } from './persistence/gateway';
@@ -24,11 +24,17 @@ import { SyncService } from './sync/sync-service';
  * The domain owns the `ChordTheory` *port* and stays framework-free, so it cannot
  * name its own implementation; the app owns the composition but has no business
  * knowing that the implementation is tonal (ADR-0008: `@tonaljs/*` is quarantined
- * in this library). This function is where those two facts meet — one import in
- * `app.config.ts`, and swapping the engine stays a change inside this library.
+ * in `shared/chord-theory`). This function is where those two facts meet — one
+ * import in `app.config.ts`, and swapping the engine stays a change behind this
+ * one line.
+ *
+ * `useFactory`, not `useClass`: the adapter is a plain framework-free class now
+ * that the docs site constructs it too, and asking Angular to instantiate an
+ * undecorated class is a rule about constructor arguments rather than a promise.
+ * `new` says what is meant and cannot be surprised.
  */
 export function provideAchordeonData(): Provider[] {
-  return [{ provide: ChordTheory, useClass: TonalChordTheory }];
+  return [{ provide: ChordTheory, useFactory: () => new TonalChordTheory() }];
 }
 
 /**

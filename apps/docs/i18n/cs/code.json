@@ -5,23 +5,26 @@
   "homepage.cta.launchApp": {
     "message": "Spustit aplikaci →"
   },
-  "homepage.feature.realtime.title": {
-    "message": "Kanály v reálném čase"
+  "homepage.hero.subtitle": {
+    "message": "Napište si písničky s akordy tam, kde je opravdu hrajete, a přečtěte si je jako čistý zápis, který se vejde na jednu obrazovku. Běží v prohlížeči, nainstaluje se jako aplikace a funguje i offline."
   },
-  "homepage.feature.realtime.description": {
-    "message": "Jeden odesílatel, mnoho příjemců — vysílejte aktualizace sdíleným kanálem s latencí pod jednu sekundu."
+  "homepage.feature.write.title": {
+    "message": "Zápis, jak byste si ho načmárali"
   },
-  "homepage.feature.browser.title": {
-    "message": "Pouze v prohlížeči"
+  "homepage.feature.write.description": {
+    "message": "Napište text a akord dejte do hranatých závorek tam, kde se hraje — vykreslí se přesně nad tou slabikou. K tomu štítky pro sloky a refrény a kousek Markdownu na zbytek. Víc se učit nemusíte."
   },
-  "homepage.feature.browser.description": {
-    "message": "Běží kompletně v prohlížeči. Žádná instalace, žádné nativní binárky — stačí otevřít URL."
+  "homepage.feature.page.title": {
+    "message": "Jedna píseň, jedna strana"
   },
-  "homepage.feature.oss.title": {
-    "message": "Otevřený zdrojový kód"
+  "homepage.feature.page.description": {
+    "message": "Každá píseň se sází tak, aby se vešla na jednu obrazovku nebo stranu a při hraní se nemuselo rolovat — měřítko, sloupce i tvar strany si nastavíte. Transpozice na jedno kliknutí, pak tisk nebo stažení do PDF či PNG."
   },
-  "homepage.feature.oss.description": {
-    "message": "Licencováno MIT, plně otevřené. Forkujte, hostujte si sami, nebo přispějte na GitHubu."
+  "homepage.feature.perform.title": {
+    "message": "Všichni na stejné stránce"
+  },
+  "homepage.feature.perform.description": {
+    "message": "Písně si poskládejte do zpěvníků a hrajte je jednu po druhé. Otevřete lobby, sdílejte PIN nebo QR kód a ostatní vás sledují na svých obrazovkách, jak procházíte setem."
   },
   "privacy.stats.label": {
     "message": "Sdílet anonymní statistiky používání"
@@ -34,6 +37,14 @@
   },
   "privacy.stats.state.off": {
     "message": "Vypnuto, pro tento prohlížeč."
+  },
+  "songPreview.source": {
+    "message": "Zápis",
+    "description": "Caption above the editable song markup of a live example"
+  },
+  "songPreview.output": {
+    "message": "Vykreslení",
+    "description": "Caption above the rendered output of a live example"
   },
   "theme.ErrorPageContent.title": {
     "message": "Tato stránka spadla.",

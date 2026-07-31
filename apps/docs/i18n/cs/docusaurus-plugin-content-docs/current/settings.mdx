@@ -1,0 +1,95 @@
+---
+sidebar_position: 10
+---
+
+# Nastavení
+
+:::danger[TODO]
+
+- vlastní zkratky
+
+:::
+
+## Profil
+
+Aplikace je plně offline. Nemusíte se přihlašovat. Přihlášení vám ale dá více
+funkcí podle vašeho tieru:
+
+- **Bez přihlášení**
+  - ruční synchronizace stažením a nahráním souboru
+- **Free**
+  - ruční synchronizace profilu na Google Disk
+- **Premium**
+  - totéž co tier Free
+  - vaše soubory se mohou automaticky synchronizovat na naše servery
+  - můžete mít `Publikum`
+
+:::info[Testování]
+Publikum může být i pro tier Free
+:::
+
+Aplikace podporuje v prohlížeči jen jednoho uživatele. Vaše data vidí každý.
+Přihlášení slouží jen k synchronizaci.
+
+Přihlášení a synchronizaci spravujete v této sekci:
+
+- Přihlášení / odhlášení a přidání druhého způsobu přihlášení ke stejnému účtu
+- Tlačítka pro synchronizaci s Google Diskem
+- _Premium:_ přepínač pro synchronizaci v reálném čase
+- Ruční synchronizace: zálohujte celou knihovnu do souboru, nebo ji z něj obnovte
+
+Poslat pár písní někomu jinému je jiná práce. To je
+[export a import](/export-import.mdx) a žije to u písní, protože výběr toho, které
+písně, je celá ta věc. Nastavení tam odkazuje.
+
+:::note[Přístup k Disku se žádá zvlášť]
+Přihlášení přes Google Achordeonu nedá váš Disk. Toto oprávnění se vyžádá až
+poprvé, když zálohujete na Google Disk, a pokrývá jen samotný zálohovací soubor.
+Viz [váš účet a data Google](/account-data.mdx#google-disk).
+:::
+
+## Aplikace
+
+- motiv: systémový, světlý, tmavý, _BUDOUCÍ: barvy_
+- jazyk: EN, CS
+- statistiky používání: vypnuté, dokud je nezapnete, a tentýž přepínač jako ten na
+  [Soukromí](/privacy.mdx#rozšířené-statistiky)
+- velikost panelů: jedna velikost všude, nebo ať si každý modul pamatuje, jak jste
+  mu rozdělené zobrazení nastavili, sám
+
+## Vykreslování
+
+Renderer vám umožňuje přizpůsobit výstup. Existuje globální nastavení a nastavení
+v rozsahu.
+
+Rozsah [`Písní`](songs/editing.mdx#renderer). Ovládací prvky jsou seskupené do
+**Strany**, **Nadpisu** a **Akordů**:
+
+- _Strana_: měřítko (vlastní velikost textu, užitečné pro maximální využití strany), sloupce (pro opravdu dlouhé písně), poměr stran, odsazení (bílý okraj kolem písně) a kde sedí píseň, která stranu nevyplní, vodorovně i svisle
+- _Nadpis_: poloha (nahoře na straně, nebo bokem podél kraje), rozvržení (podnadpis pod nadpisem, nebo vedle něj) a font, který nadpis a podnadpis sdílejí
+- _Akordy_: tatáž barva, velikost a notace, jaké může nastavit zpěvník, zde pro jednu píseň
+
+Jedna píseň může přepsat cokoli. Zpěvník nese jen těch pár sdílených níže.
+
+:::note[Jedna píseň, jedna strana]
+Nastavení vykreslování existují proto, aby se obsah vešel na jednu stranu.
+:::
+
+Rozsah `Zpěvníků`:
+
+- barva akordů
+- velikost akordů
+- notace akordů: anglická (C, D, B) nebo německá (H pro B, B pro B♭). Mění to, jak se akordy **tisknou**, ale vaše píseň zůstane přesně tak, jak jste ji napsali, takže přepnutí zpět nic dalšího nezmění. `[H]` bylo vždy chápáno jako B, ať zvolíte cokoli.
+- font nadpisu: písmo, kterým se sází nadpis a podnadpis: vlastní font písně, patkové, zúžené nebo rukopisné. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
+
+## Záloha
+
+Uložte celou knihovnu do jediného souboru, nebo ji z něj obnovte. Toto je celá
+databáze, ne výběr, na rozdíl od [exportu](/export-import.mdx) pár písní ke sdílení.
+Obnovení **nahradí** vše, co momentálně máte, takže si nejdřív vyžádá potvrzení.
+
+## Již brzy
+
+Zobrazené v Nastavení, ale zatím nefunkční:
+
+- **Knihovna fontů**: přidejte si vlastní fonty pro nadpisy a texty

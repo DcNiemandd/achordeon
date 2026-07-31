@@ -1,0 +1,66 @@
+---
+sidebar_position: 4
+---
+
+# Pódium a publikum
+
+Jednou z hlavních funkcí této aplikace je použitelnost při vystupování. Můžete být
+na [`Pódiu`](#pódium), nebo být součástí [`Publika`](#publikum).
+
+:::note[Publikum]
+Mít publikum je funkce, která vyžaduje běžící server (peníze). Připojit se k publiku
+můžete zdarma. Vytvoření lobby bude prémiová funkce, během testování je zdarma pro
+všechny a později se může stát placenou.
+:::
+
+## Pódium
+
+Toto zobrazení je optimalizované pro vystupování. Vyberete zpěvník a vstoupíte do
+režimu hraní. Tam vidíte jen píseň, kterou hrajete, a navigační lištu. Máte tato
+tlačítka:
+
+:::tip
+Řádek zpěvníku v seznamu [`Zpěvníků`](../songbooks/index.mdx) má vlastní tlačítko
+**Hrát**, takže můžete začít odtud, aniž byste zpěvník vybírali dvakrát.
+:::
+
+- **Předchozí**: předchozí píseň
+- **Seznam písní**: seznam písní ve zpěvníku s vyhledáváním pro otevření konkrétní písně
+- **Nabídka**: zobrazí nabídku s volbami
+  - Na celou obrazovku: zobrazí píseň na celé obrazovce, navigační lišta se skryje a lze ji zobrazit kliknutím&nbsp;/&nbsp;klepnutím na píseň
+  - Tmavá stránka: vykreslí píseň světle na tmavém, šetrné k očím v tmavé místnosti
+  - Vytvořit publikum (poté „Spravovat publikum“): vytvoří lobby s PINem, odkazem a QR kódem
+  - Ukončit: opustí režim hraní a vrátí se na seznam zpěvníku
+- **Další**: další píseň
+
+Místo tlačítek předchozí a další můžete po písni přejíždět prstem tam a zpět. Na
+klávesnici se mezi písněmi pohybují i šipky.
+
+:::note
+Prázdný zpěvník nelze hrát.
+:::
+
+Vystoupení se neztratí, když z něj odejdete. Přechod do jiného modulu a návrat zpět
+naváže na téže písni, stejně tak i znovunačtení stránky nebo návrat do karty, kterou
+váš telefon zavřel, když byl zamčený, včetně lobby, pokud jste nějakou měli. Jen
+**Ukončit** vystoupení ukončí. Relace, které jste se dvanáct hodin nedotkli, se
+neobnoví.
+
+## Publikum
+
+Abyste byli součástí publika, potřebujete PIN. Můžete jej zadat ručně, nebo naskenovat
+QR kód.
+
+Zobrazení publika je podobné zobrazení pódia. Vidíte plné vykreslení písně, kterou
+vystupující vybral, a seznam písní. Máte tyto volby:
+
+- **Seznam písní**: seznam písní ve zpěvníku s vyhledáváním, jen ke čtení
+- **Lobby**: informace o lobby, PIN a QR kód
+- **Píseň**: píseň vybraná vystupujícím, mění se automaticky
+- **Znovu synchronizovat**: znovu načte aktuální píseň vystupujícího
+
+Lobby je jednorázová a končí, když ji vystupující ukončí.
+
+Telefon, který byl zamčený nebo v jiné aplikaci, se po vašem návratu dožene sám,
+takže **Znovu synchronizovat** je tu pro případ, kdy máte podezření, že jste pozadu,
+a nechcete čekat.

@@ -1,5 +1,7 @@
+import path from 'node:path';
+
 import type * as Preset from '@docusaurus/preset-classic';
-import type { Config } from '@docusaurus/types';
+import type { Config, Plugin } from '@docusaurus/types';
 import { themes as prismThemes } from 'prism-react-renderer';
 
 // Deploy-target values (`DOCS_URL`, `DOCS_BASE_URL`, `APP_LINK`) come from the
@@ -56,39 +58,6 @@ const i18n = {
   },
 } satisfies Config['i18n'];
 
-/**
- * The site root IS the app.
- *
- * `/` (and each locale's root, `/cs/`) sends the visitor to the app instead of
- * showing the landing page. Runs in `<head>`, before the body paints, so there is
- * no flash of a page nobody asked for — the same trick the locale redirect below
- * uses, and it goes FIRST so that the app wins before a Czech browser gets
- * bounced to /cs/ and has to bounce again.
- *
- * Only the roots: every docs URL is left alone, which is the whole point of
- * matching the path exactly rather than by prefix. `location.replace`, so the
- * back button returns to wherever the visitor came from rather than to a page
- * that would immediately redirect again. Without JavaScript nothing happens and
- * the landing page is served as before, Launch App button and all — that is the
- * fallback, and it is why there is no <noscript> meta-refresh here (headTags are
- * emitted on every page, and a refresh tag would drag the docs along with it).
- */
-const appRedirectScript = `(function () {
-  try {
-    var BASE = ${JSON.stringify(baseUrl)};
-    var LOCALES = ${JSON.stringify(i18n.locales)};
-    var DEFAULT = ${JSON.stringify(i18n.defaultLocale)};
-    var roots = [BASE];
-    for (var i = 0; i < LOCALES.length; i++) {
-      if (LOCALES[i] !== DEFAULT) roots.push(BASE + LOCALES[i] + '/');
-    }
-    var path = location.pathname;
-    if (path.charAt(path.length - 1) !== '/') path += '/';
-    if (roots.indexOf(path) < 0) return;
-    location.replace(${JSON.stringify(appLink)} + location.search + location.hash);
-  } catch (e) {}
-})();`;
-
 const localeRedirectScript = `(function () {
   try {
     var FLAG = 'achordeon-docs-locale-init';
@@ -110,9 +79,46 @@ const localeRedirectScript = `(function () {
   } catch (e) {}
 })();`;
 
+/**
+ * The workspace libraries, importable from the docs site.
+ *
+ * `<SongPreview>` renders a real song with the app's own parser and renderer —
+ * the docs draw the picture the reader will get instead of describing it. Those
+ * two libraries are framework-free by design (PRD-RENDERING §1), so the only
+ * thing standing between them and a Docusaurus bundle is module resolution: they
+ * are TypeScript sources under `libs/`, reached in the app through
+ * `tsconfig.base.json` paths, which webpack knows nothing about. Aliasing them
+ * here is that same map, spelled for the bundler. (`apps/docs/tsconfig.json`
+ * carries the third copy, for the IDE and `typecheck`.)
+ *
+ * Docusaurus transpiles any `.ts` outside `node_modules`, so no loader rule is
+ * needed — the libs compile with the site's own JS pipeline.
+ */
+function achordeonLibs(): Plugin {
+  return {
+    name: 'achordeon-libs',
+    configureWebpack() {
+      const lib = (name: string) =>
+        path.resolve(__dirname, '../../libs/shared', name, 'src/index.ts');
+      return {
+        resolve: {
+          alias: {
+            // `$` = exact match: the libs are barrels, and a deep import into
+            // one would be a boundary violation the app's lint already forbids.
+            '@achordeon/shared/domain$': lib('domain'),
+            '@achordeon/shared/render-core$': lib('render-core'),
+            '@achordeon/shared/chord-theory$': lib('chord-theory'),
+            '@achordeon/shared/editor-core$': lib('editor-core'),
+          },
+        },
+      };
+    },
+  };
+}
+
 const config: Config = {
   title: 'Achordeon',
-  tagline: 'Real-time channels, in harmony.',
+  tagline: 'Write, arrange and perform your songs — chords and all.',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -136,23 +142,13 @@ const config: Config = {
         href: `${baseUrl}img/favicon.svg`,
       },
     },
-    // Deploy-only, both of them (see `isDev`).
-    //
-    // The app redirect would send `localhost:3000/` to the DEPLOYED app, which is
-    // the one place a docs author does not want to end up — you started the docs
-    // to look at the docs. And the locale redirect would bounce a Czech browser to
-    // `/cs/…`, which the dev server does not serve at all: `docusaurus start`
+    // Deploy-only (see `isDev`): the locale redirect would bounce a Czech browser
+    // to `/cs/…`, which the dev server does not serve at all — `docusaurus start`
     // builds a single locale, so the other one is a 404 rather than a translation.
-    // Dropping both leaves local dev where it belongs — on the English site, at
-    // the page you asked for.
+    // Dropping it leaves local dev on the English site, at the page you asked for.
     ...(isDev
       ? []
       : [
-          {
-            tagName: 'script',
-            attributes: {},
-            innerHTML: appRedirectScript,
-          },
           {
             tagName: 'script',
             attributes: {},
@@ -190,6 +186,7 @@ const config: Config = {
         redirects: [{ from: '/docs', to: '/docs/intro' }],
       },
     ],
+    achordeonLibs,
   ],
 
   presets: [

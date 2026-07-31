@@ -28,6 +28,7 @@ export const achordeonTags = {
   chord: Tag.define(),
   /** A bracket that is not a chord — `[Solo]`, `[x2]` — rendered verbatim. */
   annotation: Tag.define(),
+  /** The backslash of an escape — the char it protects colours as ordinary text. */
   escape: Tag.define(),
   /** The `*` markers of a markdown emphasis run. */
   emphasis: Tag.define(),
@@ -52,6 +53,10 @@ interface HighlightState {
    * (an unclosed run emphasises to line end, exactly as Phase 2 resolves it). */
   italic: boolean;
   bold: boolean;
+  /** Set the moment an escaping backslash is emitted, so the very next `token()`
+   * call knows to consume the char it protects and colour it as ordinary text
+   * rather than reprocessing it as a bracket or a `*` marker. Same-line only. */
+  escapedChar: boolean;
 }
 
 /**
@@ -93,12 +98,14 @@ export function achordeonHighlight(
       bracketCloseLength: 1,
       italic: false,
       bold: false,
+      escapedChar: false,
     }),
     copyState: (state) => ({
       bracketEnd: state.bracketEnd,
       bracketCloseLength: state.bracketCloseLength,
       italic: state.italic,
       bold: state.bold,
+      escapedChar: state.escapedChar,
     }),
 
     token(stream, state) {
@@ -110,6 +117,16 @@ export function achordeonHighlight(
         state.bracketEnd = null;
         state.italic = false;
         state.bold = false;
+      }
+
+      // The char right after an escaping backslash. Emitted on its own so the
+      // backslash could stay grey (below); this half reads as the text it
+      // produces, taking whatever emphasis is in force. Consumed literally — the
+      // `[` of `\[` is a bracket to nobody now that it is escaped.
+      if (state.escapedChar) {
+        state.escapedChar = false;
+        stream.next();
+        return emphasisTag(state);
       }
 
       // --- inside a chord-bearing bracket: one token at a time (§Chord validity) ---
@@ -167,10 +184,12 @@ export function achordeonHighlight(
         stream.next();
         const next = stream.peek();
         if (next !== undefined && ESCAPABLE.has(next)) {
-          stream.next();
+          // An escaping backslash: it stays grey, and the char it protects is
+          // coloured as text on the next call (see `escapedChar`).
+          state.escapedChar = true;
           return 'escape';
         }
-        return null; // a lone backslash is literal text
+        return emphasisTag(state); // a lone backslash escapes nothing — literal text
       }
 
       if (char === '[') {

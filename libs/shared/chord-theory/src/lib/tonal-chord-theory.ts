@@ -1,7 +1,6 @@
 // Tonal adapter for the ChordTheory port — Epic 2 ▸ subtask 2
 // Spec: ADR-0008, PRD-DOMAIN-MODEL.md §Music-theory seam
 
-import { Injectable } from '@angular/core';
 import {
   ChordTheory,
   toEnglishNotation,
@@ -16,8 +15,16 @@ import { chroma } from '@tonaljs/note';
  * policy — spelling and transpose stay in `shared/domain`; this only reports
  * facts. Swapping tonal for a hand-rolled engine is a new adapter here plus one
  * provider change, proven equivalent by the shared contract suite.
+ *
+ * **No `@Injectable`, deliberately.** The class used to live in
+ * `shared/data-access` and carry the decorator, which made it Angular's alone.
+ * Two callers now ask the same question: the app, through
+ * `{ provide: ChordTheory, useFactory }` (see `providers.ts`), and the docs
+ * site's live syntax examples, through `new TonalChordTheory()` in a React
+ * component. A port whose only implementation needed a framework would have been
+ * no seam at all — so the framework stays in the composition layer, where it
+ * belongs, and this file has a plain constructor.
  */
-@Injectable()
 export class TonalChordTheory extends ChordTheory {
   parseChord(text: string): ParsedChord | null {
     // German → English first, so `[H]` reaches tonal as `B` (§notation).

@@ -1,0 +1,124 @@
+/*
+ * Two columns on a desk, one on a phone. `996px` is Infima's own breakpoint —
+ * the width at which Docusaurus itself folds the sidebar away — so the example
+ * stacks at the same moment the page around it does.
+ */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: var(--ifm-leading);
+}
+
+@media (min-width: 997px) {
+  .preview {
+    flex-direction: row;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  /* Both halves share the row evenly, and `min-width: 0` is what lets them: a
+     flex item defaults to `min-width: auto`, so a long lyric line would push its
+     column past 50% instead of scrolling inside it. */
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.caption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ifm-color-content-secondary);
+}
+
+/*
+ * The editor, and the palette it is coloured from.
+ *
+ * `shared/editor-core`'s highlight style names four custom properties rather than
+ * colours (see `highlight-style.ts`); this is where the docs site says what it
+ * means by them. The app answers the same four from its own tokens — one grammar,
+ * one mapping, two palettes.
+ */
+.editor,
+.fallback {
+  --brand: var(--ifm-color-primary);
+  --text: var(--ifm-font-color-base);
+  --text-muted: var(--ifm-color-content-secondary);
+  --text-faint: var(--ifm-color-emphasis-600);
+
+  flex: 1;
+  min-height: 8rem;
+  max-height: 32rem;
+  overflow: auto;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-code-border-radius);
+  background: var(--ifm-background-surface-color);
+}
+
+/* A column, so the editor inside can stretch to the whole box rather than to its
+   own few lines — see `flex: '1'` in the theme (editor.tsx). `cursor: text` says
+   as much before the click: the whole field is the field. */
+.editor {
+  display: flex;
+  flex-direction: column;
+  cursor: text;
+}
+
+.editor:focus-within {
+  border-color: var(--ifm-color-primary);
+}
+
+/* What stands in for the editor until it has mounted (the site is pre-rendered).
+   Same box, same face — so the swap is not a jump. */
+.fallback {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--text);
+  font-family: 'Roboto Mono', var(--ifm-font-family-monospace);
+  font-size: var(--ifm-code-font-size);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/*
+ * The render sits at its natural size and shrinks only when it has to.
+ *
+ * The SVG carries the song's own box (see `render` in index.tsx), so its height
+ * is the song's — a title is a title's worth of page, an eight-line verse is
+ * eight lines'. `min-height` keeps the shortest examples from collapsing to a
+ * sliver, and `max-height` keeps the longest from running off the screen; between
+ * those two the box is the picture's.
+ */
+.output {
+  flex: 1;
+  display: flex;
+  /* Top-left, to match the render's own anchor (`align: 'top-left'`): the picture
+     starts where the markup beside it starts. */
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 8rem;
+  max-height: 32rem;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-code-border-radius);
+  /* The page, not the panel: a light render is transparent — it leaves the paper
+     to the medium it lands on — so the medium here had better be white. A dark
+     render brings its own true-black ground and paints over this. */
+  background: var(--ifm-background-color);
+  overflow: auto;
+}
+
+/*
+ * `height: auto` beside `max-width` is what keeps the aspect: the SVG has both
+ * attributes, and constraining one without releasing the other would squash it.
+ */
+.output svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}

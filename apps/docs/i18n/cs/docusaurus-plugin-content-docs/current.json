@@ -4,7 +4,7 @@
     "description": "The label for version current"
   },
   "sidebar.tutorialSidebar.category.Songs": {
-    "message": "Songs",
+    "message": "Písně",
     "description": "The label for category 'Songs' in sidebar 'tutorialSidebar'"
   }
 }

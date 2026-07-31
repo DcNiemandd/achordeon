@@ -1,0 +1,68 @@
+---
+sidebar_position: 1
+---
+
+# Úprava
+
+V zobrazení úpravy písně vidíte vlevo zdroj písně a vpravo vykreslení. Poměr
+rozděleného zobrazení si můžete měnit.
+
+V mobilním zobrazení se mezi nimi přepíná tlačítkem na postranním panelu.
+
+## Renderer
+
+Píseň se vykresluje z informací, které jí zadáte. Informace se dělí na dvě části:
+
+- obsah: zdrojový kód, veškerý text, který se bude vykreslovat
+- nastavení: doplňující informace, které mění chování vykreslování
+
+## Obsah
+
+Veškerý text písně píšete do editoru. Informace se označují vlastní syntaxí. O každé
+z voleb si přečtete na [stránce o syntaxi](./syntax.mdx).
+
+## Akce editoru
+
+K ruce máte tlačítka akcí, která vám úpravu usnadní:
+
+- vložení syntaxe: tlačítka pro akord, nadpis, podnadpis, tučné, kurzívu, nový blok a escape
+- štítek: pojmenuje aktuální blok
+- transpozice nahoru / dolů: transponuje všechny platné akordy v písni
+- křížek / béčko: zvýší nebo sníží jen jeden akord pod kurzorem
+- zpět / vpřed: historie pouze z aktuální relace
+
+Transpozice a křížek/béčko jsou dva různé dosahy: transpozice posune naráz každý
+akord v písni, zatímco křížek/béčko pohnou jen tím akordem, ve kterém právě stojí
+kurzor, proto se rozsvítí jen tehdy, když je kurzor uvnitř akordu.
+
+:::note[Tlačítko akordu má tři stavy]
+Stisknuté mimo akord obalí výběr do závorek, nebo slovo, na kterém stojí kurzor.
+Stisknuté, když už je kurzor v akordu, udělá z tohoto akordu
+[vložený](./syntax.mdx#vložené-akordy) a další stisk závorky zase odebere, takže
+tři stisky vás vrátí tam, kde jste začali.
+:::
+
+:::note[Platný akord]
+Platný akord je základ + posuvka + druh, s volitelným `/bas`. Závorky, které nejsou
+platným akordem, se nikdy netransponují.
+:::
+
+:::note
+Některé akce mají klávesovou zkratku, např. `alt + c` pro vložení akordu
+
+:::danger
+Implementovat zkratky pro všechny akce s nastavením.
+:::
+
+## Nastavení
+
+Renderer vám umožňuje přizpůsobit výstup. Můžete jej změnit
+[globálně](settings.mdx#vykreslování), nebo jen pro jednu píseň.
+
+## Akce písně
+
+Ze seznamu můžete vyvolat další akce:
+
+- oblíbená
+- stáhnout
+- export

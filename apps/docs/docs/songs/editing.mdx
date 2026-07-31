@@ -19,16 +19,19 @@ The song renders from the information you've given it. The information is divide
 
 You put all text for the song into the editor. The information is labeled by custom markup syntax. You can read about every option on [syntax page](./syntax.mdx).
 
-## Settings
+## Editor actions
 
-The renderer allows you to customize the output. You can change it [globally](settings.mdx#rendering) or for one song only.
+There are action buttons to help you with editing:
 
-There are other action buttons to help you with editing:
-
-- insert syntax - buttons for chord, title, and subtitle syntax
+- insert syntax - buttons for chord, title, subtitle, bold, italic, a new block, and an escape
 - label - gives the current block a label
-- transpose up / down - transpose all valid chords
+- transpose up / down - transpose all valid chords in the song
+- sharp / flat - raise or lower just the one chord under the cursor
 - undo / redo - history only from current session
+
+The transpose and sharp/flat buttons are two different reaches: transpose moves every
+chord in the song at once, while sharp/flat nudge only the chord the cursor is sitting in,
+so they light up only when the caret is inside a chord.
 
 :::note[The chord button has three states]
 Pressing it off a chord brackets the selection, or the word the caret is on. Pressing it
@@ -38,7 +41,7 @@ where you started.
 :::
 
 :::note[Valid chord]
-A valid chord is a root + accidental + quality, with an optional `/bass`; brackets that are not a valid chord are never transposed.
+A valid chord is a root + accidental + quality, with an optional `/bass`. Brackets that are not a valid chord are never transposed.
 :::
 
 :::note
@@ -47,6 +50,10 @@ Some actions have keyboard shortcut, i.e. `alt + c` for inserting chord
 :::danger
 Implement shortcuts for all actions with settings.
 :::
+
+## Settings
+
+The renderer allows you to customize the output. You can change it [globally](settings.mdx#rendering) or for one song only.
 
 ## Song actions
 

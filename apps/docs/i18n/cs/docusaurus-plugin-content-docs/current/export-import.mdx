@@ -1,0 +1,53 @@
+---
+sidebar_position: 9
+---
+
+# Export a import
+
+Písně lze z aplikace vyvézt dvěma způsoby:
+
+- **Export**: formát pro počítače, pro přesun dat z jednoho počítače na druhý
+- **Stažení**: formát pro hráče, pro hraní, tisk, sdílení
+
+Obojí žije za týmž tlačítkem **Stáhnout**. Který z nich chcete, vyberete v dialogu,
+který se otevře, takže se nemusíte rozhodovat dřív, než uvidíte možnosti.
+
+## Export
+
+Export vytvoří soubor JSON, ve kterém bude vše, co jste vybrali. Je to malá databáze
+písní a zpěvníků. Soubor lze snadno upravovat v textovém editoru dle vaší volby.
+
+Najdete jej v `Písních` i `Zpěvnících` všude, kde je tlačítko Stáhnout, jako volbu
+**Soubor Achordeonu**. Stačí vybrat nějaké položky.
+
+## Stažení
+
+Stahování je o něco složitější. Základ je:
+
+- stažení písně/písní: vybrané písně v požadovaném formátu, písně budou mít poměr stran ze svého nastavení nebo z globálního nastavení
+- [stažení zpěvníku](/songbooks/index.mdx): vybraný zpěvník ve formátu PDF, velikost strany bude vlastní nebo ve výchozím stavu A4 a písně si zachovají svůj poměr stran, ale naškálují se, aby se vešly na stranu
+
+Jednu píseň lze stáhnout jako PDF nebo obrázek (PNG). Více písní může být ZIP
+obrázků, ZIP PDF nebo jediné vícestránkové PDF. Zpěvník je PDF nebo ZIP obrázků,
+jeden na píseň.
+
+PDF je vektorové: jeho text zůstává textem, takže jej lze označit, prohledávat
+a tisknout v jakékoli velikosti, aniž by se rozmazal. Fonty jsou v souboru vložené,
+takže vypadá stejně i na stroji, který je nemá.
+
+Pro přesun nebo zabezpečení **celé** knihovny naráz, místo výběru, použijte
+[Zálohu](/settings.mdx#záloha) v Nastavení.
+
+## Import
+
+Importovat lze všechny exportované i stažené soubory. Stažené soubory mají stejná
+metadata jako exportované soubory. O tato metadata lze přijít, pokud soubory
+upravíte.
+
+Metadata jedou v **PNG**, jeden soubor, který je zároveň obrázkem i písní. PDF
+žádná nenese, takže píseň z PDF importujte z exportovaného JSONu nebo z obrázku.
+
+Pravidla importu jsou následující:
+
+- Import zpěvníku vždy vytvoří nový zpěvník, i když se jména shodují.
+- Import písní dá uživateli možnosti nahradit, ignorovat nebo vytvořit nové. Všechny písně můžete také importovat jako nové s datem jako předponou.

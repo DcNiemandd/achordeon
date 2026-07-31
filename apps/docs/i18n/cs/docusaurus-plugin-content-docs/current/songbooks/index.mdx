@@ -1,0 +1,91 @@
+---
+sidebar_position: 3
+---
+
+# Zpěvníky
+
+Abyste si vyfiltrovali písně, které chcete hrát, můžete si vytvářet vlastní
+zpěvníky. Zpěvník je jen seřazený seznam písní. Vždy existuje jeden výchozí zpěvník
+s názvem **Všechny písně**. Jeho pořadí je jen ke čtení a písně z něj nelze
+odebírat.
+
+Tatáž píseň se ve zpěvníku může objevit vícekrát.
+
+<Image alt="Ukázka zobrazení zpěvníku" isDesign />
+
+V levém panelu vidíte seznam svých písní. Seznam je stejný jako v modulu `Písně`,
+jen má některé funkce vypnuté. Vpravo je váš seznam zpěvníku.
+
+Písně do zpěvníku vkládáte. Tlačítky můžete vybrané písně vložit na začátek, na
+konec, nad vybranou píseň ve zpěvníku nebo pod ni. Druhý způsob je táhni a pusť.
+Tažením vybraných písní za úchyt uvidíte, kam je ve zpěvníku pustíte.
+
+Písně můžete přeuspořádat. Tlačítky na vybraných písních posunete píseň o jednu dál,
+na začátek nebo na konec. Můžete použít i úchyt a píseň táhnout a pustit.
+
+Kterýkoli řádek, v obou seznamech, má náhled, který otevře vykreslení písně
+v dialogu s tlačítkem **Upravit**. Úprava odsud vás vezme do editoru písně a zpět do
+zpěvníku přesně tam, kde jste skončili, stejný výběr, stejné posunutí.
+
+Seznam zpěvníku má nad sebou vlastní vyhledávání. Nic neschovává. Místo filtrování
+skočí na další odpovídající položku (podle jména, nadpisu, podnadpisu nebo textu),
+takže místo, na které jste se dívali, zůstane na svém. Počítadlo ukazuje, kde jste,
+Enter a šipky procházejí shody a Esc mazání zruší. Jako každé vyhledávání v aplikaci
+i toto ignoruje diakritiku.
+
+:::note[Odebrání vs. smazání]
+Odebrání písně ze zpěvníku píseň nesmaže. Píseň lze smazat jen v modulu `Písně`.
+:::
+
+Zpěvník může přebarvit akordy všech svých písní, barva akordů, velikost akordů
+a font jsou nastavení v rozsahu zpěvníku.
+
+Každý zpěvník v seznamu nese na řádku vlastní akce: nastavení, přejmenovat,
+duplikovat, stáhnout a smazat. Stažení pokrývá i export a formát souboru je první,
+na co se jeho dialog ptá. Duplikováním vznikne samostatná kopie se stejnými písněmi,
+které se pouze odkazují, takže se nic nekopíruje dvakrát.
+
+Zpěvník **Všechny písně** lze stáhnout, jako PDF celé vaší knihovny nebo jako její
+export, ale nelze jej přejmenovat, duplikovat, smazat ani otevřít. Je to sama
+knihovna, ne zpěvník, který jste vytvořili. K procházení písní použijte modul
+`Písně`.
+
+## Nastavení
+
+**Nastavení** na řádku otevře vlastní dialog zpěvníku: pole titulní strany,
+nastavení akordů popsaná výše a to, jak je kniha poskládaná při tisku. Všechno to
+patří knize, takže stažení jen vykreslí knihu tak, jak už stojí.
+
+- **Titulní strana**: zda vůbec je, a její styl. Její nadpis, podnadpis a autor jsou vlastní pole zpěvníku, oddělená od nadpisu a podnadpisu jakékoli písně. Je to vykreslená strana zpěvníku, takže nese vlastní barvy akordů a fonty knihy, tatáž strana, jakou vidíte v náhledu v `Zpěvnících`, vystředěná na listu.
+- **Přehled**: obsah se seznamem každé písně proti jejímu číslu strany. Každý řádek je odkaz, klepnutím na něj skočíte na píseň. Titulní strana a přehled se nečíslují a první píseň je strana 1. Vyberete si, na které straně nadpisu číslo sedí: **za** ním, u pravého okraje sloupce pod řadou vodicích teček, nebo **před** ním, jako `7. Wonderwall`, kdy jsou čísla ve vlastním sloupci a každý nadpis je zarovnaný za tím nejširším z nich.
+- **Čísla stran**: zda se tisknou a kam sedí (kterýkoli roh nebo na střed, nahoře nebo dole, nebo **před nadpis písně**, což číslo dá do záhlaví písně místo na papír, takže se kniha čte jako zpěvník: „otočte na 7“). Čísla se nikdy nedoplňují nulami: 1, 2, … 10, 11.
+
+Protože Všechny písně nemají vlastní pořadí, jejich dialog nastavení nese o jednu
+sekci víc: pořadí, ve kterém jsou uspořádané, podle nadpisu písně, jména v knihovně
+nebo data (vytvoření či změny), v obou směrech, s možností dát oblíbené na první
+místo. Skutečný zpěvník si drží pořadí, které jste uspořádali, takže žádnou takovou
+volbu nemá. Všechny písně nemají ani vlastní pole, takže jejich dialog je sekce
+tisku a to pořadí, nic víc. Obojí se drží na zařízení.
+
+## Stažení
+
+Při stahování zpěvníku nejprve zvolíte formát: PDF, ZIP obrázků (jeden na píseň),
+nebo soubor Achordeonu. PDF se pak ptá jen na papír:
+
+- velikost papíru: A4, Letter nebo A5
+- orientace: na výšku nebo na šířku
+- okraj strany, v milimetrech
+
+Vaše poslední volby papíru se drží na zařízení, takže další stažení se otevře na
+stejném papíře. Odnesení souboru Achordeonu mezi ně nepatří, o papíře nic neříká,
+takže se nepamatuje.
+
+:::note[Tisk]
+Nastavení tisku nezmění poměr stran písně. Každá píseň si drží svůj vlastní tvar
+a škáluje se, aby se vešla na stranu, takže píseň s jiným tvarem, než má papír, sedí
+vystředěná s bílou po obou stranách.
+:::
+
+<Image alt="Dialog stažení" isDesign />
+
+Další možnosti najdete v [exportech](/export-import.mdx).

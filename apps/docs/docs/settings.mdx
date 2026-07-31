@@ -36,12 +36,14 @@ You can manage your login and synchronization in this section:
 - _Premium:_ switch for real-time synchronization
 - Manual sync: back up the whole library to a file, or restore it from one
 
-Sending a few songs to somebody else is a different job — that is
+Sending a few songs to somebody else is a different job. That is
 [export & import](/export-import.mdx), and it lives with the songs, because
 choosing which songs is the whole act. Settings links there.
 
-:::danger[TODO]
-First time user will be asked to login with google.
+:::note[Drive access is asked separately]
+Signing in with Google does not hand Achordeon your Drive. That permission is
+asked the first time you back up to Google Drive, and it covers only the backup
+file itself. See [your account & Google data](/account-data.mdx#google-drive).
 :::
 
 ## Application
@@ -50,18 +52,24 @@ First time user will be asked to login with google.
 - language - EN, CS
 - usage statistics - off unless you turn it on, and the same switch as the one on
   [Privacy](/privacy.mdx#extra-statistics)
+- panel size - one size everywhere, or let each module remember how you sized its
+  split view on its own
 
 ## Rendering
 
 The renderer allows you to customize the output. There is global setting and scoped one.
 
-[`Songs`](songs/editing.mdx#renderer) scope:
+[`Songs`](songs/editing.mdx#renderer) scope. The controls are grouped into **Page**,
+**Title** and **Chords**:
 
-- scale - custom size for the text, useful for maximizing the page space
-- columns - for really long songs
-- title position - you can have title on top of the page or on the side
-- title font - the face the title and subtitle share
-- aspect ratio
+- _Page_: scale (custom text size, useful for maximizing the page space), columns (for
+  really long songs), aspect ratio, padding (the white border around the song), and where
+  a song that doesn't fill the page sits, horizontal and vertical
+- _Title_: position (on top of the page or sideways up the side), layout (the subtitle
+  stacked under the title or inline beside it), and the font the title and subtitle share
+- _Chords_: the same colour, size and notation a songbook can set, here for a single song
+
+A single song can override anything. A songbook only carries the shared few below.
 
 :::note[One song, one page]
 The render settings exist to make the content fit one page.
@@ -71,15 +79,15 @@ The render settings exist to make the content fit one page.
 
 - chords color
 - chords size
-- chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**; your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick.
+- chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**, but your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick.
 - title font - the face the title and subtitle are set in: the song's own font, a serif, a condensed one or a handwritten one. Set it on a songbook and every song in it follows.
 
 ## Backup
 
-Save your whole library to a single file, or restore it from one. This is the entire database, not a selection — different from [exporting](/export-import.mdx) a few songs to share. Restoring **replaces** everything you currently have, so it asks you to confirm first.
+Save your whole library to a single file, or restore it from one. This is the entire database, not a selection, different from [exporting](/export-import.mdx) a few songs to share. Restoring **replaces** everything you currently have, so it asks you to confirm first.
 
 ## Coming soon
 
 Shown in Settings but not yet working:
 
-- **Font library** — add your own fonts for titles and lyrics
+- **Font library**: add your own fonts for titles and lyrics
