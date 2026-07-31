@@ -1,5 +1,7 @@
+import path from 'node:path';
+
 import type * as Preset from '@docusaurus/preset-classic';
-import type { Config } from '@docusaurus/types';
+import type { Config, Plugin } from '@docusaurus/types';
 import { themes as prismThemes } from 'prism-react-renderer';
 
 // Deploy-target values (`DOCS_URL`, `DOCS_BASE_URL`, `APP_LINK`) come from the
@@ -77,6 +79,43 @@ const localeRedirectScript = `(function () {
   } catch (e) {}
 })();`;
 
+/**
+ * The workspace libraries, importable from the docs site.
+ *
+ * `<SongPreview>` renders a real song with the app's own parser and renderer —
+ * the docs draw the picture the reader will get instead of describing it. Those
+ * two libraries are framework-free by design (PRD-RENDERING §1), so the only
+ * thing standing between them and a Docusaurus bundle is module resolution: they
+ * are TypeScript sources under `libs/`, reached in the app through
+ * `tsconfig.base.json` paths, which webpack knows nothing about. Aliasing them
+ * here is that same map, spelled for the bundler. (`apps/docs/tsconfig.json`
+ * carries the third copy, for the IDE and `typecheck`.)
+ *
+ * Docusaurus transpiles any `.ts` outside `node_modules`, so no loader rule is
+ * needed — the libs compile with the site's own JS pipeline.
+ */
+function achordeonLibs(): Plugin {
+  return {
+    name: 'achordeon-libs',
+    configureWebpack() {
+      const lib = (name: string) =>
+        path.resolve(__dirname, '../../libs/shared', name, 'src/index.ts');
+      return {
+        resolve: {
+          alias: {
+            // `$` = exact match: the libs are barrels, and a deep import into
+            // one would be a boundary violation the app's lint already forbids.
+            '@achordeon/shared/domain$': lib('domain'),
+            '@achordeon/shared/render-core$': lib('render-core'),
+            '@achordeon/shared/chord-theory$': lib('chord-theory'),
+            '@achordeon/shared/editor-core$': lib('editor-core'),
+          },
+        },
+      };
+    },
+  };
+}
+
 const config: Config = {
   title: 'Achordeon',
   tagline: 'Real-time channels, in harmony.',
@@ -147,6 +186,7 @@ const config: Config = {
         redirects: [{ from: '/docs', to: '/docs/intro' }],
       },
     ],
+    achordeonLibs,
   ],
 
   presets: [

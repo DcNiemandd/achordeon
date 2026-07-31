@@ -8,9 +8,11 @@ sidebar_position: 2
 
 Meant to be the name of the song. Single asterisk on the start of a line.
 
-```
+<SongPreview
+  content={`
 * Anesthetize
-```
+`}
+/>
 
 :::note
 Title is not the same as song name in the songs list.
@@ -20,9 +22,11 @@ Title is not the same as song name in the songs list.
 
 Meant to be the author of the song. Double asterisk on the start of a line.
 
-```
+<SongPreview
+  content={`
 ** Porcupine Tree
-```
+`}
+/>
 
 :::note
 The renderer will always use the last title and subtitle in the file.
@@ -34,7 +38,8 @@ The song is divided into blocks. One block can be verse, chorus, etc. You can gi
 
 New block is created after an empty line.
 
-```
+<SongPreview
+  content={`
 Block without a label.
 
 1.: First verse with a label.
@@ -43,7 +48,8 @@ R:: Block with a 'R:' as a label.
 
 This is a new block because of a new line.
 
-```
+`}
+/>
 
 ### Sub-label
 
@@ -51,11 +57,13 @@ Only the first line of a block can name the block. A label written on any later 
 names that one line instead - a sub-label. It is rendered italic where the block's own
 label is bold, and the line's content follows right after it.
 
-```
+<SongPreview
+  content={`
 Intro:
 Kl. + Bas: [Am F G Am (2×)]
 Housle: [Am F G Am (4×)]
-```
+`}
+/>
 
 :::note
 A sub-label does not indent the rest of the song the way a block label does - it sits
@@ -71,21 +79,23 @@ Chords are inserted in the lyrics, but will be rendered above the exact place yo
 A line with no lyrics has nothing to render the chords above, so they are rendered in the
 line itself, at the size of the lyrics - the row of chords a bridge or an intro is made of.
 
-```
+<SongPreview
+  content={`
 2.: And did they get you to [C]trade your heroes for[D] ghosts,
    Hot ashes for [Am]trees, hot air for[G] cool breeze,
    cold comfort for ch[D]ange,
    And did you ex[C]change walk on part in the [Am]war
    for lead role in [G]cage?
 
-   [Em G Em G Em A Em A G]
+[Em G Em G Em A Em A G]
 
 3.: [C]How I wish, how I wish [D]you were here.
-   We're just [Am]two lost souls swimming in fish bowl,
-   [G]year after year,
-   [D]Running over the same old ground. What [C]have we found?
-   The same old [Am]fears. Wish you were [G]here!
-```
+We're just [Am]two lost souls swimming in fish bowl,
+[G]year after year,
+[D]Running over the same old ground. What [C]have we found?
+The same old [Am]fears. Wish you were [G]here!
+`}
+/>
 
 ### Inline chords
 
@@ -93,11 +103,13 @@ Doubled brackets put a chord in the line instead of above it, so it can be read 
 the text. Everything else about it is the same: it is transposed, coloured and sized like
 any other chord.
 
-```
+<SongPreview
+  content={`
 Play the [[C]] and then back to [[G]].
 
 Kl. + Bas: [[Am F G Am (2×)]]
-```
+`}
+/>
 
 :::note
 On a line with no lyrics both spellings render the same, so `[Am F G]` and `[[Am F G]]` are
@@ -112,10 +124,12 @@ A backslash renders a markup character literally. The main use is the colon, so 
 
 There is some Markdown support available to enable marking lyrics. For example to split the main voice and choir / everybody.
 
-```
+<SongPreview
+  content={`
 This text is **bold**
 
-This text is *italic*
+This text is _italic_
 
-** Title and subtitle is not parsed, just text
-```
+\*\* Title and subtitle is not parsed, just text
+`}
+/>

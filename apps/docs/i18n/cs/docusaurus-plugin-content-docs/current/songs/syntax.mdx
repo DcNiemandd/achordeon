@@ -8,9 +8,11 @@ sidebar_position: 2
 
 Má být názvem písně. Jedna hvězdička na začátku řádku.
 
-```
+<SongPreview
+  content={`
 * Anesthetize
-```
+`}
+/>
 
 :::note
 Nadpis není totéž co jméno písně v seznamu písní.
@@ -20,9 +22,11 @@ Nadpis není totéž co jméno písně v seznamu písní.
 
 Má být autorem písně. Dvě hvězdičky na začátku řádku.
 
-```
+<SongPreview
+  content={`
 ** Porcupine Tree
-```
+`}
+/>
 
 :::note
 Renderer vždy použije poslední nadpis a podnadpis v souboru.
@@ -37,16 +41,18 @@ dvojtečku: `1.:` vykreslí `1.`, `1::` vykreslí `1:`, `1:::` vykreslí `1::`.
 
 Nový blok vzniká po prázdném řádku.
 
-```
-Block without a label.
+<SongPreview
+  content={`
+Blok bez štítku.
 
-1.: First verse with a label.
+1.: První sloka se štítkem.
 
-R:: Block with a 'R:' as a label.
+R:: Blok se štítkem 'R:'.
 
-This is a new block because of a new line.
+Tohle je nový blok, protože je před ním prázdný řádek.
 
-```
+`}
+/>
 
 ### Podštítek
 
@@ -54,11 +60,13 @@ Blok může pojmenovat jen jeho první řádek. Štítek napsaný na kterémkoli
 řádku pojmenuje místo toho ten jeden řádek, je to podštítek. Vykresluje se kurzívou
 tam, kde je vlastní štítek bloku tučný, a obsah řádku následuje hned za ním.
 
-```
+<SongPreview
+  content={`
 Intro:
 Kl. + Bas: [Am F G Am (2×)]
 Housle: [Am F G Am (4×)]
-```
+`}
+/>
 
 :::note
 Podštítek neodsazuje zbytek písně tak jako štítek bloku, sedí přímo v řádku, takže
@@ -75,21 +83,23 @@ Akordy se vkládají do textu, ale vykreslí se přesně nad místem, kam je vlo
 Řádek bez textu nemá nad co akordy vykreslit, takže se vykreslí přímo v řádku,
 ve velikosti textu, právě z takové řady akordů se skládá předehra nebo mezihra.
 
-```
+<SongPreview
+  content={`
 2.: And did they get you to [C]trade your heroes for[D] ghosts,
    Hot ashes for [Am]trees, hot air for[G] cool breeze,
    cold comfort for ch[D]ange,
    And did you ex[C]change walk on part in the [Am]war
    for lead role in [G]cage?
 
-   [Em G Em G Em A Em A G]
+[Em G Em G Em A Em A G]
 
 3.: [C]How I wish, how I wish [D]you were here.
-   We're just [Am]two lost souls swimming in fish bowl,
-   [G]year after year,
-   [D]Running over the same old ground. What [C]have we found?
-   The same old [Am]fears. Wish you were [G]here!
-```
+We're just [Am]two lost souls swimming in fish bowl,
+[G]year after year,
+[D]Running over the same old ground. What [C]have we found?
+The same old [Am]fears. Wish you were [G]here!
+`}
+/>
 
 ### Vložené akordy
 
@@ -97,11 +107,13 @@ Zdvojené závorky umístí akord do řádku místo nad něj, aby se dal číst 
 textu. Všechno ostatní je u něj stejné: transponuje se, obarvuje a mění velikost
 jako každý jiný akord.
 
-```
-Play the [[C]] and then back to [[G]].
+<SongPreview
+  content={`
+Zahraj [[C]] a pak zpátky na [[G]].
 
 Kl. + Bas: [[Am F G Am (2×)]]
-```
+`}
+/>
 
 :::note
 Na řádku bez textu se obojí zápis vykreslí stejně, takže `[Am F G]` a `[[Am F G]]`
@@ -119,10 +131,12 @@ pro `*` a pro `[`.
 K dispozici je i menší podpora Markdownu pro zvýraznění textu. Například pro
 oddělení hlavního hlasu a sboru / všech.
 
-```
-This text is **bold**
+<SongPreview
+  content={`
+Tento text je **tučný**
 
-This text is *italic*
+Tento text je _kurzívou_
 
-** Title and subtitle is not parsed, just text
-```
+\*\* Nadpis a podnadpis se tu neparsují, je to jen text
+`}
+/>

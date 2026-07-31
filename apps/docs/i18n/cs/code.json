@@ -35,6 +35,14 @@
   "privacy.stats.state.off": {
     "message": "Vypnuto, pro tento prohlížeč."
   },
+  "songPreview.source": {
+    "message": "Zápis",
+    "description": "Caption above the editable song markup of a live example"
+  },
+  "songPreview.output": {
+    "message": "Vykreslení",
+    "description": "Caption above the rendered output of a live example"
+  },
   "theme.ErrorPageContent.title": {
     "message": "Tato stránka spadla.",
     "description": "The title of the fallback page when the page crashed"

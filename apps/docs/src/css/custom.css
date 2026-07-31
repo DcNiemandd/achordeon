@@ -59,3 +59,51 @@
   --ifm-navbar-background-color: #16181a;
   --ifm-footer-background-color: #101214;
 }
+
+/*
+ * The face the renderer draws with.
+ *
+ * `<SongPreview>` runs the app's real renderer, and that renderer measures the
+ * text before it places a chord over it (PRD-RENDERING §4.7). So the family it
+ * names — `Roboto Mono`, `DEFAULT_TUNING.fontFamily` — has to be a face this site
+ * has really loaded, or every preview would be measured in one font and drawn in
+ * another and the chords would drift off their syllables. Same four static TTFs
+ * the app serves from `public/fonts`; italic and bold-italic are here because
+ * markdown emphasis in a lyric resolves to them.
+ *
+ * `font-display: block` on purpose, against the usual advice: a swap would paint
+ * the preview in the fallback and reflow it, and the render's geometry is
+ * measured, not reflowed — the swapped-in frame would be visibly wrong rather
+ * than merely unstyled. The component re-measures once `document.fonts` settles.
+ */
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/RobotoMono-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('../fonts/RobotoMono-Bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/RobotoMono-Italic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url('../fonts/RobotoMono-BoldItalic.ttf') format('truetype');
+}
