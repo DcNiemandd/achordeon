@@ -1,0 +1,128 @@
+---
+sidebar_position: 2
+---
+
+# Syntaxe jazyka
+
+## Nadpis
+
+Má být názvem písně. Jedna hvězdička na začátku řádku.
+
+```
+* Anesthetize
+```
+
+:::note
+Nadpis není totéž co jméno písně v seznamu písní.
+:::
+
+## Podnadpis
+
+Má být autorem písně. Dvě hvězdičky na začátku řádku.
+
+```
+** Porcupine Tree
+```
+
+:::note
+Renderer vždy použije poslední nadpis a podnadpis v souboru.
+:::
+
+## Blok textu
+
+Píseň se dělí na bloky. Jeden blok může být sloka, refrén apod. Blokům můžete dávat
+štítky. Koncová dvojtečka značí oddělovač — spotřebuje se a vše před ní se stane
+vykresleným štítkem. Přidáním další dvojtečky ponecháte ve štítku doslovnou
+dvojtečku: `1.:` vykreslí `1.`, `1::` vykreslí `1:`, `1:::` vykreslí `1::`.
+
+Nový blok vzniká po prázdném řádku.
+
+```
+Block without a label.
+
+1.: First verse with a label.
+
+R:: Block with a 'R:' as a label.
+
+This is a new block because of a new line.
+
+```
+
+### Podštítek
+
+Blok může pojmenovat jen jeho první řádek. Štítek napsaný na kterémkoli pozdějším
+řádku pojmenuje místo toho ten jeden řádek — je to podštítek. Vykresluje se kurzívou
+tam, kde je vlastní štítek bloku tučný, a obsah řádku následuje hned za ním.
+
+```
+Intro:
+Kl. + Bas: [Am F G Am (2×)]
+Housle: [Am F G Am (4×)]
+```
+
+:::note
+Podštítek neodsazuje zbytek písně tak jako štítek bloku — sedí přímo v řádku, takže
+ať je jakkoli dlouhý, žádný jiný řádek se neposune.
+:::
+
+## Akordy
+
+Akordy se definují hranatými závorkami. V jedněch závorkách jich může být víc,
+oddělených mezerou nebo čárkou.
+
+Akordy se vkládají do textu, ale vykreslí se přesně nad místem, kam je vložíte.
+
+Řádek bez textu nemá nad co akordy vykreslit, takže se vykreslí přímo v řádku,
+ve velikosti textu — právě z takové řady akordů se skládá předehra nebo mezihra.
+
+```
+2.: And did they get you to [C]trade your heroes for[D] ghosts,
+   Hot ashes for [Am]trees, hot air for[G] cool breeze,
+   cold comfort for ch[D]ange,
+   And did you ex[C]change walk on part in the [Am]war
+   for lead role in [G]cage?
+
+   [Em G Em G Em A Em A G]
+
+3.: [C]How I wish, how I wish [D]you were here.
+   We're just [Am]two lost souls swimming in fish bowl,
+   [G]year after year,
+   [D]Running over the same old ground. What [C]have we found?
+   The same old [Am]fears. Wish you were [G]here!
+```
+
+### Vložené akordy
+
+Zdvojené závorky umístí akord do řádku místo nad něj, aby se dal číst jako součást
+textu. Všechno ostatní je u něj stejné: transponuje se, obarvuje a mění velikost
+jako každý jiný akord.
+
+```
+Play the [[C]] and then back to [[G]].
+
+Kl. + Bas: [[Am F G Am (2×)]]
+```
+
+:::note
+Na řádku bez textu se obojí zápis vykreslí stejně, takže `[Am F G]` a `[[Am F G]]`
+jsou tam zaměnitelné. Zdvojené závorky potřebujete na řádku, který _má_ text.
+:::
+
+## Escape
+
+Zpětné lomítko vykreslí znak syntaxe doslovně. Hlavní využití je dvojtečka, takže
+řádek jako `Vypravěč\:` zůstane textem místo toho, aby se stal štítkem. Funguje také
+pro `*` a pro `[`.
+
+## Markdown
+
+K dispozici je i menší podpora Markdownu pro zvýraznění textu. Například pro
+oddělení hlavního hlasu a sboru / všech.
+
+```
+This text is **bold**
+
+This text is *italic*
+
+** Title and subtitle is not parsed, just text
+```

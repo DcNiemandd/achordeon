@@ -1,0 +1,68 @@
+---
+sidebar_position: 20
+---
+
+# Soukromí
+
+Achordeon počítá návštěvy stránek, abychom viděli, které části se používají a které
+opravit dřív. Nic zde vás neidentifikuje a není tu žádná cookie lišta, protože není
+na co se ptát — dokud si sami nezapnete tu druhou část.
+
+## Co se počítá
+
+Každá návštěva, v dokumentaci i v aplikaci, je jeden požadavek, který vypadá takto:
+
+```
+GET /count?p=/docs/privacy&r=google.com
+```
+
+- **p** — která stránka. ID písní a zpěvníků se nejdřív odstraní, takže `/songs/<id>` se počítá jako `/songs/:id` a každá knihovna se složí do jednoho řádku. Předpona říká, zda šlo o dokumentaci nebo aplikaci, a v jakém jazyce
+- **r** — doména, která vás sem odkázala, nikdy ne celá adresa. Naše vlastní doména se počítá jako nic, takže pohyb uvnitř Achordeonu žádný zdroj nehlásí
+
+To je celý požadavek a nespouští se kvůli němu žádný skript: odpovědí je obrázek 1×1.
+Počty se sčítají, takže z toho vyjde „dnes 40 návštěv stránky o syntaxi“. Není tu
+žádné ID návštěvníka, což znamená, že tři vaše návštěvy a po jedné návštěvě tří
+jiných lidí vypadají úplně stejně.
+
+Počítání zajišťuje [GoatCounter](https://www.goatcounter.com), na serverech v EU.
+
+:::note[Proč není k čemu dávat souhlas]
+Uložit cokoli na vaše zařízení, nebo z něj cokoli číst, nejdřív potřebuje vaše
+svolení. Toto nedělá ani jedno — žádná cookie, žádné místní úložiště, žádný otisk —
+takže není potřeba žádné svolení a neobjeví se žádná lišta.
+:::
+
+## Co se nikdy nesbírá
+
+- Vaše IP adresa
+- Váš prohlížeč nebo operační systém
+- Jakékoli ID návštěvníka, hašované či jiné
+- Cokoli, co jste napsali: nadpisy písní, texty, akordy, jména souborů
+
+## Rozšířené statistiky
+
+Vypnuté, dokud si to nezapnete. Přidá do výše uvedeného požadavku jedno pole, `s` —
+velikost vaší obrazovky — což je to, co nám řekne, zda se nastavení vykreslování
+používá na telefonech, nebo na počítačích. Stále žádná IP adresa, stále žádné ID
+návštěvníka.
+
+Je oddělené z jednoho důvodu: všechno výše je něco, co nám prohlížeč řekl v aktu
+žádosti o stránku, zatímco velikost obrazovky se musí přečíst z vašeho zařízení,
+a čtení vašeho zařízení je ta část, která potřebuje vaše slovo.
+
+<StatsToggle />
+
+Přepínač se pamatuje v tomto zařízení a pokrývá aplikaci i tuto dokumentaci. Vypnutí
+zpět má okamžitý účinek. Tentýž přepínač je v [Nastavení](/settings.mdx#aplikace)
+aplikace a je to týž přepínač — nastavte jej na kterémkoli místě.
+
+## Jak dlouho se to uchovává
+
+Surové počty 90 dní, poté jen denní součty. Nic se nikdy nečte zpátky, když aplikace
+běží.
+
+:::info[Není co mazat]
+Protože žádný řádek nelze vystopovat k osobě, nedokázali bychom vaše data najít, ani
+kdybyste nás o to požádali — není žádné ID, podle kterého bychom vás dohledali. To je
+vlastně smysl celé věci.
+:::

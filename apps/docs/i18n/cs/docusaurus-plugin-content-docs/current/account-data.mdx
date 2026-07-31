@@ -1,0 +1,78 @@
+---
+sidebar_position: 21
+---
+
+# Váš účet a data Google
+
+[Soukromí](/privacy.mdx) pokrývá počítání návštěv, které nikdy neví, kdo jste. Tato
+stránka je ta druhá polovina: co se stane ve chvíli, kdy nám prozradíte, kdo jste —
+tím, že se přihlásíte. Achordeon funguje plně offline a nic z tohoto nechce, dokud se
+nerozhodnete přihlásit, a vždy chce jen to, co přihlášení a záloha skutečně
+potřebují.
+
+## Přihlášení přes Google
+
+Když se přihlásíte přes Google, Google nám o vás předá dvě věci:
+
+- Vaši **e-mailovou adresu**, která je jménem vašeho účtu
+- Váš **základní profil** — zobrazované jméno a obrázek, který u vás Google už
+  ukazuje
+
+To je vše a používá se to k jediné věci: vědět, čí knihovna je čí, aby se vaše písně
+vrátily vám a ne někomu jinému. Samotné přihlášení zajišťuje
+[Supabase](https://supabase.com), který účet vede naším jménem.
+
+:::note[Google je přihlášení, ne jediné]
+Můžete si také vytvořit účet s e-mailem a heslem, nebo jej k účtu Google přidat
+později. Přihlášení přes Google vás nikdy nesloučí do cizího účtu — připojí se
+k vašemu, nebo založí nový.
+:::
+
+## Google Disk
+
+Zálohování na Disk je volitelné a oprávnění k němu se žádá zvlášť, poprvé když
+stisknete tlačítko Disku — nikdy při přihlášení. Když jej udělíte, rozsah je ten
+úzký, `drive.file`:
+
+- Achordeon vidí a dotkne se **jen zálohovacího souboru, který sám vytvoří** na
+  vašem Disku
+- Vše ostatní na vašem Disku — každý jiný soubor, složka a fotka — pro něj zůstává
+  neviditelné. Nemůže je vypsat, číst ani vědět, že existují
+
+Zálohovací soubor drží vaši knihovnu a používá se přesně na to, na co jste stiskli
+tlačítko: zapsání vaší knihovny na Disk, nebo její stažení zpět.
+
+## K čemu se nikdy nepoužije
+
+Data vašeho účtu a Disku se neprodávají, nesdílejí s nikým pro reklamu a nikdy se
+nepoužijí k trénování žádného modelu, našeho ani cizího. Pohybují se mezi vaším
+zařízením, vaším účtem a — pokud si řeknete — vaším vlastním Diskem, a nikde jinde.
+
+:::info[Zásady Google API Services User Data Policy]
+Používání informací získaných z Google API ze strany Achordeonu dodržuje
+[Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),
+včetně požadavků na omezené použití (Limited Use).
+:::
+
+## Kde se to uchovává
+
+Samotný Achordeon — tento web i aplikace — se servíruje jako statické soubory
+z GitHub Pages. Žádná vaše data tam nežijí; GitHub Pages jen vydává stránky.
+
+- **Účet** — váš e-mail a základní profil — žije u
+  [Supabase](https://supabase.com), našeho backendu.
+- **Knihovna** je na placeném tieru se zapnutou synchronizací v reálném čase vedena
+  také u Supabase, aby vaše zařízení zůstala v souladu. Bez tohoto přepínače vaše
+  knihovna nikdy neopustí vaše zařízení jinak než do zálohy, o kterou jste si řekli.
+- **Záloha**, pokud si nějakou uděláte, žije na vašem vlastním Google Disku. Je
+  vaše; Achordeon sáhne jen na ten jediný soubor, který zapsal.
+
+## Smazání účtu
+
+Účet můžete smazat přímo v aplikaci, v [Nastavení](/settings.mdx#profil). Smazání
+vymaže knihovnu ze zařízení a cloudový účet ihned uzavře. Cloudová kopie se pak drží,
+uzavřená, po dobu 90 dní: přihlaste se v tomto okně zpět a váš účet i knihovna se
+vrátí přesně tak, jak byly. Po 90 dnech se navždy vymaže a nelze ji obnovit.
+Odstranění zálohy na Disku je na vás, z vašeho Disku — jakmile se odhlásíte,
+Achordeon už na soubor nevidí, aby jej odstranil, což je celý smysl toho úzkého
+oprávnění.
