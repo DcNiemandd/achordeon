@@ -22,6 +22,9 @@ apps/app/src/app/shared/build-info.ts
 .env.local
 .env
 
+# Edge-function secrets (committed template is supabase/functions/.env.example)
+supabase/functions/.env
+
 # Personal working notes — anything named *.local.md stays on this machine
 *.local.md
 

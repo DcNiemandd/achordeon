@@ -80,6 +80,31 @@ That's it — every push to `main` builds with those values. Leave the variables
 unset to ship **offline-only** (Audience reports itself unavailable rather than
 pointing at localhost).
 
+### Edge functions and their secrets
+
+`supabase/functions/` is deployed from `main` alongside the migrations. The
+**secrets are not** — they are set once per project and live nowhere in the repo:
+
+```bash
+cp supabase/functions/.env.example supabase/functions/.env   # gitignored
+supabase secrets set --env-file supabase/functions/.env
+```
+
+(or Dashboard ▸ Edge Functions ▸ Secrets). Locally, serve them from the same file:
+
+```bash
+supabase functions serve --env-file supabase/functions/.env
+```
+
+`feedback` is the in-app **Report a problem** dialog (Settings ▸ About). It takes
+the report, files it as a GitHub issue with a fine-grained PAT, and falls back to
+the `feedback_reports` table if GitHub refuses — so an outage loses nobody's bug
+report. It is also the only place the report can be _checked_: the size caps, the
+honeypot and the per-IP rate limit are all inside it, which is the whole reason
+the browser does not insert into the table directly. Both its tables are RLS-on
+with **no policies at all**, so the public anon key cannot reach them; only the
+function's service_role can.
+
 To generate the file by hand (e.g. to point local dev at a hosted project):
 
 ```bash
