@@ -9,6 +9,7 @@ import {
   DriveConflictError,
   SettingsStore,
   SyncService,
+  type RestoreMode,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
 import {
@@ -22,6 +23,13 @@ import {
 
 /** How a restore ended, for the page to say so. */
 export type RestoreOutcome = 'done' | 'failed';
+
+/**
+ * Which act the restore dialog asked for. Re-exported so the page can name the
+ * answer it is sending without importing `data-access` itself — the presenter is
+ * the seam a component talks through (PRD-UI-SHELL.md §3).
+ */
+export type { RestoreMode };
 
 /** How a Drive push/pull ended — the account section's status line. */
 export type DriveOutcome =
@@ -411,18 +419,23 @@ export class SettingsPresenter {
   }
 
   /**
-   * Replace the whole library from a backup file, then reload.
+   * Put a backup file into the library the way the user asked, then reload.
    *
-   * A full restore throws away what is here now, so the page confirms first —
-   * this only runs once the user has said yes. The reload is deliberate: the
-   * stores hold a window of the *old* data, and booting fresh against the
-   * restored tables is cleaner than re-querying every one of them.
+   * `mode` comes from the dialog, which asks rather than assumes: a file is
+   * either the songs you want back beside the ones you have (`merge`) or the
+   * machine put back exactly as it was (`replace`), and only the person holding
+   * the file knows which. Both need saying yes to first — one overwrites, the
+   * other brings in rows that can win by being newer.
+   *
+   * The reload is deliberate either way: the stores hold a window of the *old*
+   * data, and booting fresh against the written tables is cleaner than
+   * re-querying every one of them.
    */
-  async restore(file: File): Promise<void> {
+  async restore(file: File, mode: RestoreMode): Promise<void> {
     this._isBusy.set(true);
     this._restore.set(null);
     try {
-      await this.backups.restore(file);
+      await this.backups.restore(file, mode);
       this._restore.set('done');
       this.unload.reload();
     } catch {

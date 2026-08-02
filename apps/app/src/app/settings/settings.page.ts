@@ -16,7 +16,7 @@ import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { ActionBar, BackNavigation, SOURCE_LANGUAGE } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { BUILD_DATE } from '../shared/build-info';
-import { SettingsPresenter } from './settings.presenter';
+import { SettingsPresenter, type RestoreMode } from './settings.presenter';
 
 /** Which credential dialog is open. Login and register are separate forms so
  * each has room for its own validation (a register with only one password field
@@ -1029,7 +1029,8 @@ const MIN_PASSWORD = 8;
         data-testid="restore-dialog"
         (closed)="cancelRestore()"
       >
-        <p class="warn">{{ restoreConfirmText }}</p>
+        <p>{{ restoreMergeText }}</p>
+        <p class="warn">{{ restoreReplaceText }}</p>
         <button
           dialog-actions
           appButton
@@ -1044,11 +1045,21 @@ const MIN_PASSWORD = 8;
           dialog-actions
           appButton
           type="button"
-          variant="primary"
-          data-testid="restore-confirm"
-          (click)="confirmRestore(file)"
+          variant="danger"
+          data-testid="restore-replace"
+          (click)="confirmRestore(file, 'replace')"
         >
-          {{ restoreConfirmButton }}
+          {{ restoreReplaceButton }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="restore-merge"
+          (click)="confirmRestore(file, 'merge')"
+        >
+          {{ restoreMergeButton }}
         </button>
       </app-dialog>
     }
@@ -1840,20 +1851,27 @@ export class SettingsPage {
 
   // --- Backup / restore (#11) -----------------------------------------------
   private readonly _pendingRestore = signal<File | null>(null);
-  /** A restore file picked and awaiting the confirm — a restore replaces
-   * everything, so it never fires straight off the file picker. */
+  /** A restore file picked and awaiting the choice — the file picker cannot say
+   * whether this is an Add or a Replace, so it never fires straight off it. */
   protected readonly pendingRestore = this._pendingRestore.asReadonly();
 
   protected readonly backupHeading = $localize`:@@settings.backup:Manual backup`;
   protected readonly aboutBackup = $localize`:@@settings.backup.about:About backup`;
-  protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.`;
+  protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or bring one back in — either added beside what you have, or replacing it. This is the entire database, different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
   protected readonly restoreButton = $localize`:@@settings.backup.restore:Restore from a file`;
   protected readonly transferNote = $localize`:@@settings.transfer.note:Sending a few songs to someone else is a different job — export and import live with the songs.`;
   protected readonly transferLink = $localize`:@@settings.transfer.link:Go to Songs`;
-  protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:Restore this backup?`;
-  protected readonly restoreConfirmText = $localize`:@@settings.restore.text:This replaces your entire current library with the backup. Anything not in the file is lost.`;
-  protected readonly restoreConfirmButton = $localize`:@@settings.restore.confirm:Restore`;
+  /**
+   * The dialog asks which of the two acts a backup file is here to do, because
+   * only the person holding the file knows. Both are described before either can
+   * be pressed — the destructive one is not a footnote under a default.
+   */
+  protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:What should this backup do?`;
+  protected readonly restoreMergeText = $localize`:@@settings.restore.mergeText:Add brings the file's songs and songbooks in beside yours, keeping the newer copy of anything you have both. Your settings stay as they are.`;
+  protected readonly restoreReplaceText = $localize`:@@settings.restore.replaceText:Replace puts the library back exactly as the file has it. Anything not in the file is lost, your settings included.`;
+  protected readonly restoreMergeButton = $localize`:@@settings.restore.merge:Add to my library`;
+  protected readonly restoreReplaceButton = $localize`:@@settings.restore.replace:Replace everything`;
   protected readonly cancelLabel = $localize`:@@settings.restore.cancel:Cancel`;
   protected readonly restoreFailedTitle = $localize`:@@settings.restore.failedTitle:That backup could not be restored`;
   protected readonly restoreFailedText = $localize`:@@settings.restore.failedText:It is not an Achordeon backup file, or it is damaged. Your library is unchanged.`;
@@ -1872,8 +1890,8 @@ export class SettingsPage {
     this._pendingRestore.set(null);
   }
 
-  protected confirmRestore(file: File): void {
+  protected confirmRestore(file: File, mode: RestoreMode): void {
     this._pendingRestore.set(null);
-    void this.presenter.restore(file);
+    void this.presenter.restore(file, mode);
   }
 }
