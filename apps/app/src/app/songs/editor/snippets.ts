@@ -26,16 +26,20 @@ const TITLE_MARKER = /^\*{1,2} /;
 
 export const SNIPPETS = {
   /**
-   * `[]` around the selection, caret between the brackets — and around the WORD
-   * at the caret when nothing is selected, because the chord names you want to
-   * bracket are usually already typed out (`Am F G` on a chord row). This is the
-   * first of the Chord button's three states; the other two are `cycleChordAt`.
+   * `[]` around the selection, caret between the brackets — and an EMPTY pair
+   * when nothing is selected [corrected: used to swallow the word at the caret].
+   * A chord goes *above* a lyric, so the caret is almost always sitting in a word
+   * the chord belongs over rather than in the chord's own name, and the button
+   * bracketed that word — you pressed Chord in the middle of "morning" and got
+   * `[morning]`. Bracketing a word you already typed is what a selection is for,
+   * and that still works; with no selection the button opens a place to type the
+   * chord. This is the first of the Chord button's three states; the other two
+   * are `cycleChordAt`.
    */
   chord: {
     before: '[',
     after: ']',
     caretOffset: 0,
-    wrapsWord: true,
   } satisfies InsertRequest,
 
   /**
