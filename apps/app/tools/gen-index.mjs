@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { env } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(here, '..');
@@ -99,7 +100,7 @@ function goatcounterMeta() {
 
 /** `GOATCOUNTER_URL` + `count`, or '' when it is unset or unparseable. */
 function countEndpoint() {
-  const url = process.env.GOATCOUNTER_URL;
+  const url = env('GOATCOUNTER_URL');
   if (!url) return '';
   try {
     // A trailing slash matters to `new URL`: without it the last segment is
@@ -125,7 +126,7 @@ function goatcounterOrigins() {
  * derived rather than assumed.
  */
 function supabaseOrigins() {
-  const url = process.env.SUPABASE_URL;
+  const url = env('SUPABASE_URL');
   if (!url) return [];
   try {
     const { origin, protocol } = new URL(url);

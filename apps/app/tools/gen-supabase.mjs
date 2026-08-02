@@ -12,13 +12,13 @@
 // builds with no backend (offline-only): the Audience UI reports itself
 // unavailable instead of erroring.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { env } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(here, '..'); // apps/app
-const repoRoot = resolve(projectRoot, '..', '..');
 
 // Local `supabase start` defaults (deterministic for the current CLI; the anon
 // key is derived from the fixed demo JWT secret). If `supabase status` shows a
@@ -27,41 +27,11 @@ const LOCAL_URL = 'http://127.0.0.1:54321';
 const LOCAL_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
 
-/** Minimal KEY=VALUE parser — no dependency. Missing file → {}. */
-function readEnvFile(path) {
-  let text;
-  try {
-    text = readFileSync(path, 'utf8');
-  } catch {
-    return {};
-  }
-  const out = {};
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    if (line === '' || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq < 0) continue;
-    const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    out[key] = value;
-  }
-  return out;
-}
-
-const fileEnv = readEnvFile(resolve(repoRoot, '.env.local'));
-
-// process.env wins over the file so CI overrides local (`??` keeps an explicit
-// '' — "no backend" — from either source).
-const pick = (key) => process.env[key] ?? fileEnv[key];
-
-const url = pick('SUPABASE_URL') ?? LOCAL_URL;
-const anonKey = pick('SUPABASE_ANON_KEY') ?? LOCAL_ANON_KEY;
+// The precedence above (env, then .env.local) lives in `env.mjs`, because
+// `gen-index.mjs` has to resolve the *same* values to write a CSP that allows
+// them — see the comment there.
+const url = env('SUPABASE_URL') ?? LOCAL_URL;
+const anonKey = env('SUPABASE_ANON_KEY') ?? LOCAL_ANON_KEY;
 
 const config = url === '' ? null : { url, anonKey };
 
