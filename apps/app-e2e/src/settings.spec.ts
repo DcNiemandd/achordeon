@@ -477,15 +477,97 @@ test.describe('about', () => {
     // A new tab, so a half-written song is not navigated away from.
     await expect(docs).toHaveAttribute('target', '_blank');
 
-    await expect(page.getByTestId('about-issues')).toHaveAttribute(
-      'href',
-      'https://github.com/DcNiemandd/achordeon/issues',
-    );
+    // Reporting is in-app when the build has a backend to post to, and falls back
+    // to the GitHub tracker when it does not. Which of the two this build shows
+    // depends on whether SUPABASE_URL was set when it was compiled, so the assert
+    // is on the offer existing — the dialog itself is exercised below.
+    const inApp = page.getByTestId('about-report');
+    if (await inApp.count()) {
+      await expect(inApp).toBeVisible();
+    } else {
+      await expect(page.getByTestId('about-issues')).toHaveAttribute(
+        'href',
+        'https://github.com/DcNiemandd/achordeon/issues',
+      );
+    }
 
     // The commit date of the build, which is what makes a bug report placeable.
     await expect(page.getByTestId('about-version')).toHaveText(
       /^\d{4}-\d{2}-\d{2}$/,
     );
+  });
+
+  test('the report dialog will not send a shrug, and shows what it attaches', async ({
+    page,
+  }) => {
+    const open = page.getByTestId('about-report');
+    // Offline-only build: there is no dialog to test, only the link above.
+    test.skip((await open.count()) === 0, 'built without a backend');
+
+    await open.click();
+    await expect(page.getByTestId('feedback-dialog')).toBeVisible();
+
+    // Empty, and then still too short: the send stays down until there is
+    // something a maintainer could act on.
+    const submit = page.getByTestId('feedback-submit');
+    await expect(submit).toBeDisabled();
+    await page.getByTestId('feedback-message').fill('broken');
+    await expect(submit).toBeDisabled();
+
+    await page
+      .getByTestId('feedback-message')
+      .fill('The chord line wraps in the middle of a bar when I transpose.');
+    await expect(submit).toBeEnabled();
+
+    // "Send app data" is ticked by default, and what it sends is inspectable —
+    // that preview is the consent, not the checkbox label.
+    await expect(page.getByTestId('feedback-send-app')).toBeChecked();
+    await page.getByTestId('feedback-preview').click();
+    await expect(page.getByText('"userAgent"')).toBeVisible();
+
+    // Untick it and the preview goes with it: nothing is attached that was not
+    // asked for.
+    await page.getByTestId('feedback-send-app').uncheck();
+    await expect(page.getByTestId('feedback-preview')).toBeHidden();
+  });
+
+  // The point of the whole attachment: a renderer bug is reproduced by loading
+  // the song back, so what travels is the export envelope — not a description of
+  // it. Settings is a different screen from the editor, which is exactly why
+  // FeedbackContext outlives the page that declared the song.
+  test('offers the song you were editing, as the file Export writes', async ({
+    page,
+  }) => {
+    await page.goto('songs');
+    await page.getByTestId('songs-add').click();
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+    await expect(page.getByTestId('editor')).toBeVisible();
+
+    // Through the rail, NOT `goto`: the registry is in the root injector, and a
+    // `goto` is a document load that throws that injector away. This is also the
+    // real path — the rail is on screen the whole time the editor is.
+    await page.getByTestId('rail-settings').click();
+    // Waited for, not just navigated to: `count()` does not retry, so counting
+    // the button before the page has rendered reads zero and skips the test.
+    await expect(page.getByTestId('settings-panel')).toBeVisible();
+
+    const open = page.getByTestId('about-report');
+    test.skip((await open.count()) === 0, 'built without a backend');
+    await open.click();
+
+    // Offered, and nothing is read until it is accepted.
+    const attach = page.getByTestId('feedback-send-subject');
+    await expect(attach).toBeVisible();
+    await expect(attach).not.toBeChecked();
+
+    await attach.check();
+    await page.getByTestId('feedback-preview').click();
+
+    // `schemaVersion` is the envelope's own field (ADR-0007) — its presence is
+    // what says this is an export and not a hand-rolled summary of one.
+    await expect(page.getByText('"schemaVersion"')).toBeVisible();
+    // And the other half of the cascade, which an export deliberately omits.
+    await expect(page.getByText('"globalSettings"')).toBeVisible();
   });
 
   test('the docs link follows the UI language', async ({ page }) => {

@@ -412,6 +412,38 @@ export class SongEditorPresenter {
   }
 
   /**
+   * This song as a bug report attaches it (`FeedbackContext`).
+   *
+   * **The export envelope, unchanged** — the same `ExportService.snapshot` the
+   * download dialog writes to a file. That is the point: a renderer bug is
+   * reproduced by loading the song back, and a bespoke "report format" would be a
+   * second serialization of a song that could drift from the one Import can read.
+   * Paste this straight into Import and you are looking at what they were.
+   *
+   * Flushed first for the same reason `download` flushes: the export reads the
+   * **saved record**, so an unsaved edit would attach a song one debounce behind
+   * the screen. (Leaving the editor already flushes, so by the time this is called
+   * from Settings it is a no-op — but this must also be right if it is ever called
+   * with the editor still up.)
+   *
+   * `globalSettings` rides alongside rather than inside, because the render is a
+   * **cascade**: the envelope carries the song's own overrides and Export
+   * deliberately omits the `user` row (§ExportService), so on its own it cannot
+   * say what the other half of the resolved settings was. Kept out of `data` so
+   * the envelope stays exactly an export — and it is the render defaults only,
+   * never the account row that holds them.
+   */
+  async feedbackSnapshot(): Promise<Record<string, unknown>> {
+    const song = this._song();
+    if (!song) return {};
+    await this.flushSave();
+    return {
+      export: await this.exporter.snapshot({ songIds: [song.id] }),
+      globalSettings: this.settings.global(),
+    };
+  }
+
+  /**
    * The song being edited, as a file — a PNG or PDF through `DownloadService`,
    * or the Achordeon `.json` through `ExportService`. One dialog asks, and this
    * splits the answer back into the two acts (CONTEXT.md §Export, §Download).

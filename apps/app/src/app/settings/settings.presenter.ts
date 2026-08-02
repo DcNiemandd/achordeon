@@ -7,8 +7,12 @@ import {
   BackupService,
   DriveAuthRequiredError,
   DriveConflictError,
+  FeedbackRejectedError,
+  FeedbackService,
+  FeedbackThrottledError,
   SettingsStore,
   SyncService,
+  type FeedbackReport,
   type RestoreMode,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
@@ -42,6 +46,15 @@ export type DriveOutcome =
 
 /** A registration that needs the confirmation link clicked before it is a session. */
 export type RegisterState = 'confirm' | 'failed' | null;
+
+/**
+ * Why a report did not go through — a code, not a sentence.
+ *
+ * `throttled` is deliberately its own value rather than a flavour of `failed`:
+ * the report was fine and the reporter is simply early, which is a different
+ * thing to say and the only one of the three that is not an apology.
+ */
+export type FeedbackFailure = 'throttled' | 'rejected' | 'failed';
 
 /** Outcome of a password-reset request. */
 export type ResetState = 'sent' | 'failed' | null;
@@ -84,6 +97,9 @@ export class SettingsPresenter {
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
+  /** Files the About block's bug report. The dialog gathers it; only this knows
+   * that "send" means an edge function and, beyond it, a GitHub issue. */
+  private readonly feedback = inject(FeedbackService);
   /**
    * Every way this page leaves the running app goes through here — the two
    * reloads below and the two Google redirects. All four are things the user
@@ -275,6 +291,63 @@ export class SettingsPresenter {
 
   clearAuthError(): void {
     this._authError.set(null);
+  }
+
+  // --- Feedback (the About block's report dialog) ---------------------------
+
+  /**
+   * Whether reports can be filed at all.
+   *
+   * False in an offline-only build, where there is no backend to post to and the
+   * About block falls back to the plain GitHub link it has always had. Read once:
+   * a build either shipped with Supabase coordinates or it did not.
+   */
+  readonly canReport = this.feedback.isConfigured;
+
+  private readonly _feedbackBusy = signal(false);
+  private readonly _feedbackFailure = signal<FeedbackFailure | null>(null);
+  private readonly _feedbackSent = signal(false);
+  /** A report is in flight — the send button stands down. */
+  readonly feedbackBusy = this._feedbackBusy.asReadonly();
+  /** Why the last attempt did not go through, or null. */
+  readonly feedbackFailure = this._feedbackFailure.asReadonly();
+  /** The last report arrived — the page swaps the form for a thank-you. */
+  readonly feedbackSent = this._feedbackSent.asReadonly();
+
+  /**
+   * File one report.
+   *
+   * @returns true when it arrived, which is the page's cue to close the form. A
+   * false leaves `feedbackFailure` set and the dialog open **with the text still
+   * in it** — a rate limit or a dropped connection must never cost someone the
+   * paragraph they just wrote.
+   */
+  async sendFeedback(report: FeedbackReport): Promise<boolean> {
+    this._feedbackBusy.set(true);
+    this._feedbackFailure.set(null);
+    try {
+      await this.feedback.send(report);
+      this._feedbackSent.set(true);
+      return true;
+    } catch (e) {
+      this._feedbackFailure.set(this.classifyFeedback(e));
+      return false;
+    } finally {
+      this._feedbackBusy.set(false);
+    }
+  }
+
+  private classifyFeedback(e: unknown): FeedbackFailure {
+    if (e instanceof FeedbackThrottledError) return 'throttled';
+    if (e instanceof FeedbackRejectedError) return 'rejected';
+    return 'failed';
+  }
+
+  /** Close the thank-you, and forget the last attempt so the next dialog opens
+   * clean rather than showing an error the reporter has already read. */
+  dismissFeedback(): void {
+    this._feedbackSent.set(false);
+    this._feedbackFailure.set(null);
   }
 
   dismissReset(): void {

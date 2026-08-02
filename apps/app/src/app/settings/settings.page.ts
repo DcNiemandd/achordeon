@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { ActionBar, BackNavigation, SOURCE_LANGUAGE } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { BUILD_DATE } from '../shared/build-info';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
 
@@ -48,6 +49,7 @@ const MIN_PASSWORD = 8;
     SettingsPanel,
     Button,
     Dialog,
+    FeedbackDialog,
     Icon,
     Premium,
     RouterLink,
@@ -678,17 +680,35 @@ const MIN_PASSWORD = 8;
               <div class="head">
                 <span class="label">{{ bugLabel }}</span>
               </div>
-              <p class="hint">{{ bugHelp }}</p>
+              <p class="hint">
+                {{ presenter.canReport ? bugHelp : bugHelpOffline }}
+              </p>
               <div class="actions">
-                <a
-                  appButton
-                  variant="secondary"
-                  [href]="issuesUrl"
-                  target="_blank"
-                  rel="noopener"
-                  data-testid="about-issues"
-                  >{{ bugButton }}</a
-                >
+                <!-- The report is filed from here. The GitHub link survives as
+                     the offline-only build's fallback: with no backend there is
+                     nothing to post to, and a dead button would be worse than
+                     the tab it replaced. -->
+                @if (presenter.canReport) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    data-testid="about-report"
+                    (click)="openFeedback()"
+                  >
+                    {{ bugButton }}
+                  </button>
+                } @else {
+                  <a
+                    appButton
+                    variant="secondary"
+                    [href]="issuesUrl"
+                    target="_blank"
+                    rel="noopener"
+                    data-testid="about-issues"
+                    >{{ bugButtonGithub }}</a
+                  >
+                }
               </div>
             </div>
 
@@ -1118,6 +1138,38 @@ const MIN_PASSWORD = 8;
           variant="primary"
           data-testid="restore-error-close"
           (click)="presenter.dismissRestore()"
+        >
+          {{ okLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    <!-- The report itself. The thank-you replaces it rather than stacking on it,
+         because the form has served its purpose the moment the report lands. -->
+    @if (isFeedbackOpen() && !presenter.feedbackSent()) {
+      <app-feedback-dialog
+        [isBusy]="presenter.feedbackBusy()"
+        [error]="feedbackError()"
+        [knownContact]="presenter.email()"
+        (submitted)="sendFeedback($event)"
+        (closed)="closeFeedback()"
+      />
+    }
+
+    @if (presenter.feedbackSent()) {
+      <app-dialog
+        [title]="feedbackSentTitle"
+        data-testid="feedback-sent-dialog"
+        (closed)="closeFeedback()"
+      >
+        <p>{{ feedbackSentText }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="feedback-sent-close"
+          (click)="closeFeedback()"
         >
           {{ okLabel }}
         </button>
@@ -1754,14 +1806,65 @@ export class SettingsPage {
   protected readonly docsHelp = $localize`:@@settings.about.docsHelp:Guides for songs, songbooks and performing.`;
   protected readonly docsButton = $localize`:@@settings.about.docsButton:Open docs`;
   protected readonly bugLabel = $localize`:@@settings.about.bug:Found a bug?`;
-  protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Open an issue on GitHub — say what you did and what happened instead.`;
-  protected readonly bugButton = $localize`:@@settings.about.bugButton:Report on GitHub`;
+  protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Say what you did and what happened instead. It comes straight to me.`;
+  protected readonly bugHelpOffline = $localize`:@@settings.about.bugHelpOffline:This build has no backend, so reports go to the tracker on GitHub.`;
+  protected readonly bugButton = $localize`:@@settings.about.bugButton:Report a problem`;
+  protected readonly bugButtonGithub = $localize`:@@settings.about.bugButtonGithub:Report on GitHub`;
   protected readonly versionLabel = $localize`:@@settings.about.version:Version`;
-  /** The issue tracker. The repo is the repo — not a deploy-time value. */
+  /** The issue tracker. Only reached by an offline-only build, which has no
+   * endpoint to post to. The repo is the repo — not a deploy-time value. */
   protected readonly issuesUrl =
     'https://github.com/DcNiemandd/achordeon/issues';
   /** Commit date of this build, generated (apps/app/tools/gen-build-info.mjs). */
   protected readonly buildDate = BUILD_DATE;
+
+  // --- The report dialog ----------------------------------------------------
+
+  /** The form is open. Separate from the presenter's `feedbackSent`, which is
+   * what replaces it: closing the thank-you has to clear both. */
+  protected readonly isFeedbackOpen = signal(false);
+
+  protected openFeedback(): void {
+    this.presenter.dismissFeedback();
+    this.isFeedbackOpen.set(true);
+  }
+
+  protected closeFeedback(): void {
+    this.isFeedbackOpen.set(false);
+    this.presenter.dismissFeedback();
+  }
+
+  /** Send, and close only on success — a refusal leaves the dialog standing with
+   * the reporter's text still in it (see `SettingsPresenter.sendFeedback`). */
+  protected async sendFeedback(draft: FeedbackDraft): Promise<void> {
+    await this.presenter.sendFeedback(draft);
+  }
+
+  /**
+   * The failure as a sentence, or null.
+   *
+   * The presenter hands back a code and this is where it becomes language —
+   * `throttled` gets its own, because "you have sent a few already" is not an
+   * apology and should not read like one.
+   */
+  protected readonly feedbackError = computed(() => {
+    switch (this.presenter.feedbackFailure()) {
+      case 'throttled':
+        return this.feedbackThrottledError;
+      case 'rejected':
+        return this.feedbackRejectedError;
+      case 'failed':
+        return this.feedbackFailedError;
+      default:
+        return null;
+    }
+  });
+
+  protected readonly feedbackSentTitle = $localize`:@@feedback.sentTitle:Thank you`;
+  protected readonly feedbackSentText = $localize`:@@feedback.sentText:Your report arrived. If you left an email address, you may hear back about it.`;
+  protected readonly feedbackThrottledError = $localize`:@@feedback.error.throttled:That is several reports in one hour. Give it a while, then send the rest.`;
+  protected readonly feedbackRejectedError = $localize`:@@feedback.error.rejected:That could not be accepted — the report or its attachment may be too long.`;
+  protected readonly feedbackFailedError = $localize`:@@feedback.error.failed:It could not be sent. Check your connection and try again.`;
 
   protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
