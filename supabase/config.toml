@@ -70,3 +70,12 @@ enable_confirmations = true
 enabled = true
 client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+
+# The in-app "report a problem" dialog (supabase/functions/feedback). JWT
+# verification stays ON: the browser sends the anon key as its bearer, which is
+# public but still has to be present and validly signed — so the endpoint is not
+# reachable by a bare `curl` that has never seen the app. The size caps, the
+# honeypot and the per-IP rate limit live inside the function; this flag only
+# keeps the least interesting traffic from reaching them.
+[functions.feedback]
+verify_jwt = true

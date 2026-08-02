@@ -23,6 +23,7 @@ import {
   UiStore,
 } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { FeedbackContext } from '../shared/feedback';
 import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
@@ -723,5 +724,19 @@ export class SongEditorPage {
     inject(DestroyRef).onDestroy(
       inject(DocumentTitle).claim(() => this.presenter.name()),
     );
+
+    // Declare this song to the report dialog, so "found a bug?" can offer to
+    // attach the thing the bug is about instead of asking for it in prose. Only
+    // the name is passed eagerly — it is what the checkbox says. The snapshot
+    // behind it is fetched if, and only if, that box is ticked.
+    const feedback = inject(FeedbackContext);
+    effect(() => {
+      feedback.set({
+        kind: 'song',
+        name: this.presenter.name(),
+        snapshot: () => this.presenter.feedbackSnapshot(),
+      });
+    });
+    inject(DestroyRef).onDestroy(() => feedback.release());
   }
 }

@@ -15,8 +15,17 @@ import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { ActionBar, BackNavigation, SOURCE_LANGUAGE } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
+import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { BUILD_DATE } from '../shared/build-info';
-import { SettingsPresenter } from './settings.presenter';
+import { SettingsPresenter, type RestoreMode } from './settings.presenter';
+
+/**
+ * A backup waiting on the Add-or-Replace choice, and where it came from — the
+ * file the user picked, or the copy in their Drive.
+ */
+type PendingRestore =
+  | { readonly source: 'file'; readonly file: File }
+  | { readonly source: 'drive' };
 
 /** Which credential dialog is open. Login and register are separate forms so
  * each has room for its own validation (a register with only one password field
@@ -40,6 +49,7 @@ const MIN_PASSWORD = 8;
     SettingsPanel,
     Button,
     Dialog,
+    FeedbackDialog,
     Icon,
     Premium,
     RouterLink,
@@ -381,7 +391,7 @@ const MIN_PASSWORD = 8;
                       variant="secondary"
                       [disabled]="!canDrive() || presenter.driveBusy()"
                       data-testid="drive-download"
-                      (click)="presenter.driveDownload()"
+                      (click)="askRestore({ source: 'drive' })"
                     >
                       <app-icon name="import" />
                       {{ driveDownloadLabel }}
@@ -670,17 +680,35 @@ const MIN_PASSWORD = 8;
               <div class="head">
                 <span class="label">{{ bugLabel }}</span>
               </div>
-              <p class="hint">{{ bugHelp }}</p>
+              <p class="hint">
+                {{ presenter.canReport ? bugHelp : bugHelpOffline }}
+              </p>
               <div class="actions">
-                <a
-                  appButton
-                  variant="secondary"
-                  [href]="issuesUrl"
-                  target="_blank"
-                  rel="noopener"
-                  data-testid="about-issues"
-                  >{{ bugButton }}</a
-                >
+                <!-- The report is filed from here. The GitHub link survives as
+                     the offline-only build's fallback: with no backend there is
+                     nothing to post to, and a dead button would be worse than
+                     the tab it replaced. -->
+                @if (presenter.canReport) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    data-testid="about-report"
+                    (click)="openFeedback()"
+                  >
+                    {{ bugButton }}
+                  </button>
+                } @else {
+                  <a
+                    appButton
+                    variant="secondary"
+                    [href]="issuesUrl"
+                    target="_blank"
+                    rel="noopener"
+                    data-testid="about-issues"
+                    >{{ bugButtonGithub }}</a
+                  >
+                }
               </div>
             </div>
 
@@ -1023,13 +1051,14 @@ const MIN_PASSWORD = 8;
       </app-dialog>
     }
 
-    @if (pendingRestore(); as file) {
+    @if (pendingRestore(); as pending) {
       <app-dialog
         [title]="restoreConfirmTitle"
         data-testid="restore-dialog"
         (closed)="cancelRestore()"
       >
-        <p class="warn">{{ restoreConfirmText }}</p>
+        <p>{{ restoreMergeText }}</p>
+        <p class="warn">{{ restoreReplaceText }}</p>
         <button
           dialog-actions
           appButton
@@ -1044,11 +1073,21 @@ const MIN_PASSWORD = 8;
           dialog-actions
           appButton
           type="button"
-          variant="primary"
-          data-testid="restore-confirm"
-          (click)="confirmRestore(file)"
+          variant="danger"
+          data-testid="restore-replace"
+          (click)="confirmRestore(pending, 'replace')"
         >
-          {{ restoreConfirmButton }}
+          {{ restoreReplaceButton }}
+        </button>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="restore-merge"
+          (click)="confirmRestore(pending, 'merge')"
+        >
+          {{ restoreMergeButton }}
         </button>
       </app-dialog>
     }
@@ -1099,6 +1138,38 @@ const MIN_PASSWORD = 8;
           variant="primary"
           data-testid="restore-error-close"
           (click)="presenter.dismissRestore()"
+        >
+          {{ okLabel }}
+        </button>
+      </app-dialog>
+    }
+
+    <!-- The report itself. The thank-you replaces it rather than stacking on it,
+         because the form has served its purpose the moment the report lands. -->
+    @if (isFeedbackOpen() && !presenter.feedbackSent()) {
+      <app-feedback-dialog
+        [isBusy]="presenter.feedbackBusy()"
+        [error]="feedbackError()"
+        [knownContact]="presenter.email()"
+        (submitted)="sendFeedback($event)"
+        (closed)="closeFeedback()"
+      />
+    }
+
+    @if (presenter.feedbackSent()) {
+      <app-dialog
+        [title]="feedbackSentTitle"
+        data-testid="feedback-sent-dialog"
+        (closed)="closeFeedback()"
+      >
+        <p>{{ feedbackSentText }}</p>
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="primary"
+          data-testid="feedback-sent-close"
+          (click)="closeFeedback()"
         >
           {{ okLabel }}
         </button>
@@ -1735,14 +1806,65 @@ export class SettingsPage {
   protected readonly docsHelp = $localize`:@@settings.about.docsHelp:Guides for songs, songbooks and performing.`;
   protected readonly docsButton = $localize`:@@settings.about.docsButton:Open docs`;
   protected readonly bugLabel = $localize`:@@settings.about.bug:Found a bug?`;
-  protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Open an issue on GitHub — say what you did and what happened instead.`;
-  protected readonly bugButton = $localize`:@@settings.about.bugButton:Report on GitHub`;
+  protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Say what you did and what happened instead. It comes straight to me.`;
+  protected readonly bugHelpOffline = $localize`:@@settings.about.bugHelpOffline:This build has no backend, so reports go to the tracker on GitHub.`;
+  protected readonly bugButton = $localize`:@@settings.about.bugButton:Report a problem`;
+  protected readonly bugButtonGithub = $localize`:@@settings.about.bugButtonGithub:Report on GitHub`;
   protected readonly versionLabel = $localize`:@@settings.about.version:Version`;
-  /** The issue tracker. The repo is the repo — not a deploy-time value. */
+  /** The issue tracker. Only reached by an offline-only build, which has no
+   * endpoint to post to. The repo is the repo — not a deploy-time value. */
   protected readonly issuesUrl =
     'https://github.com/DcNiemandd/achordeon/issues';
   /** Commit date of this build, generated (apps/app/tools/gen-build-info.mjs). */
   protected readonly buildDate = BUILD_DATE;
+
+  // --- The report dialog ----------------------------------------------------
+
+  /** The form is open. Separate from the presenter's `feedbackSent`, which is
+   * what replaces it: closing the thank-you has to clear both. */
+  protected readonly isFeedbackOpen = signal(false);
+
+  protected openFeedback(): void {
+    this.presenter.dismissFeedback();
+    this.isFeedbackOpen.set(true);
+  }
+
+  protected closeFeedback(): void {
+    this.isFeedbackOpen.set(false);
+    this.presenter.dismissFeedback();
+  }
+
+  /** Send, and close only on success — a refusal leaves the dialog standing with
+   * the reporter's text still in it (see `SettingsPresenter.sendFeedback`). */
+  protected async sendFeedback(draft: FeedbackDraft): Promise<void> {
+    await this.presenter.sendFeedback(draft);
+  }
+
+  /**
+   * The failure as a sentence, or null.
+   *
+   * The presenter hands back a code and this is where it becomes language —
+   * `throttled` gets its own, because "you have sent a few already" is not an
+   * apology and should not read like one.
+   */
+  protected readonly feedbackError = computed(() => {
+    switch (this.presenter.feedbackFailure()) {
+      case 'throttled':
+        return this.feedbackThrottledError;
+      case 'rejected':
+        return this.feedbackRejectedError;
+      case 'failed':
+        return this.feedbackFailedError;
+      default:
+        return null;
+    }
+  });
+
+  protected readonly feedbackSentTitle = $localize`:@@feedback.sentTitle:Thank you`;
+  protected readonly feedbackSentText = $localize`:@@feedback.sentText:Your report arrived. If you left an email address, you may hear back about it.`;
+  protected readonly feedbackThrottledError = $localize`:@@feedback.error.throttled:That is several reports in one hour. Give it a while, then send the rest.`;
+  protected readonly feedbackRejectedError = $localize`:@@feedback.error.rejected:That could not be accepted — the report or its attachment may be too long.`;
+  protected readonly feedbackFailedError = $localize`:@@feedback.error.failed:It could not be sent. Check your connection and try again.`;
 
   protected readonly aboutEmail = $localize`:@@settings.account.aboutEmail:About email sign-in`;
 
@@ -1782,7 +1904,7 @@ export class SettingsPage {
   protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
-  protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. The first backup asks Google for Drive permission. Upload and download both merge with the Drive copy, so neither loses work.`;
+  protected readonly driveHelp = $localize`:@@settings.drive.help:Your backup, kept in your own Google Drive instead of a file you hold. The first upload asks Google for Drive permission. Uploading merges with the Drive copy, so it never drops another device's work; downloading asks whether to add to your library or replace it.`;
   protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
   protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
   protected readonly driveForceLabel = $localize`:@@settings.drive.force:Overwrite anyway`;
@@ -1839,21 +1961,39 @@ export class SettingsPage {
   protected readonly fontLibraryButton = $localize`:@@settings.fontLibrary.button:Manage fonts`;
 
   // --- Backup / restore (#11) -----------------------------------------------
-  private readonly _pendingRestore = signal<File | null>(null);
-  /** A restore file picked and awaiting the confirm — a restore replaces
-   * everything, so it never fires straight off the file picker. */
+  private readonly _pendingRestore = signal<PendingRestore | null>(null);
+  /**
+   * A backup waiting on the Add-or-Replace choice, and where it is coming from.
+   *
+   * **One dialog for both sources.** A backup file and the Google Drive copy are
+   * the same backup kept in two places, so they raise the same question and get
+   * the same answer — two dialogs saying the same thing differently is how a user
+   * comes to believe they are two different features.
+   */
   protected readonly pendingRestore = this._pendingRestore.asReadonly();
+
+  /** Open the choice for a backup that is ready to go in. */
+  protected askRestore(pending: PendingRestore): void {
+    this._pendingRestore.set(pending);
+  }
 
   protected readonly backupHeading = $localize`:@@settings.backup:Manual backup`;
   protected readonly aboutBackup = $localize`:@@settings.backup.about:About backup`;
-  protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or restore it from one. This is the entire database — different from exporting a few songs.`;
+  protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or bring one back in — either added beside what you have, or replacing it. This is the entire database, different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
   protected readonly restoreButton = $localize`:@@settings.backup.restore:Restore from a file`;
   protected readonly transferNote = $localize`:@@settings.transfer.note:Sending a few songs to someone else is a different job — export and import live with the songs.`;
   protected readonly transferLink = $localize`:@@settings.transfer.link:Go to Songs`;
-  protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:Restore this backup?`;
-  protected readonly restoreConfirmText = $localize`:@@settings.restore.text:This replaces your entire current library with the backup. Anything not in the file is lost.`;
-  protected readonly restoreConfirmButton = $localize`:@@settings.restore.confirm:Restore`;
+  /**
+   * The dialog asks which of the two acts a backup file is here to do, because
+   * only the person holding the file knows. Both are described before either can
+   * be pressed — the destructive one is not a footnote under a default.
+   */
+  protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:What should this backup do?`;
+  protected readonly restoreMergeText = $localize`:@@settings.restore.mergeText:Add brings the backup's songs and songbooks in beside yours, keeping the newer copy of anything you have both. Your settings stay as they are.`;
+  protected readonly restoreReplaceText = $localize`:@@settings.restore.replaceText:Replace puts the library back exactly as the backup has it. Anything not in the backup is lost, your settings included.`;
+  protected readonly restoreMergeButton = $localize`:@@settings.restore.merge:Add to my library`;
+  protected readonly restoreReplaceButton = $localize`:@@settings.restore.replace:Replace everything`;
   protected readonly cancelLabel = $localize`:@@settings.restore.cancel:Cancel`;
   protected readonly restoreFailedTitle = $localize`:@@settings.restore.failedTitle:That backup could not be restored`;
   protected readonly restoreFailedText = $localize`:@@settings.restore.failedText:It is not an Achordeon backup file, or it is damaged. Your library is unchanged.`;
@@ -1865,15 +2005,19 @@ export class SettingsPage {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) this._pendingRestore.set(file);
+    if (file) this.askRestore({ source: 'file', file });
   }
 
   protected cancelRestore(): void {
     this._pendingRestore.set(null);
   }
 
-  protected confirmRestore(file: File): void {
+  protected confirmRestore(pending: PendingRestore, mode: RestoreMode): void {
     this._pendingRestore.set(null);
-    void this.presenter.restore(file);
+    if (pending.source === 'drive') {
+      void this.presenter.driveDownload(mode);
+      return;
+    }
+    void this.presenter.restore(pending.file, mode);
   }
 }

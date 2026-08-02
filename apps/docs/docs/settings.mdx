@@ -12,29 +12,16 @@ sidebar_position: 10
 
 ## Profile
 
-The application is fully offline. You don't need to login. But login will give you more functionality depending on you tier:
-
-- **No login**
-  - manual synchronization via file download & upload
-- **Free**
-  - manual synchronization of the profile to the google drive
-- **Premium**
-  - same as Free tier
-  - your files can be automatically synchronized to our servers
-  - you can have `Audience`
-
-:::info[Testing]
-Audience can be for free tier as well
-:::
-
-Application supports only one user in the browser. Everyone can see your data. The login is for synchronization only.
+This is where the account is, and it is the only place in the app that is. What
+an account is for, and what each tier gets, is its own chapter:
+[Account](/account.mdx).
 
 You can manage your login and synchronization in this section:
 
 - Login / logout, and adding a second sign-in method to the same account
 - Buttons for Google Drive synchronization
 - _Premium:_ switch for real-time synchronization
-- Manual sync: back up the whole library to a file, or restore it from one
+- Manual sync: back up the whole library to a file, or bring one back in
 
 Sending a few songs to somebody else is a different job. That is
 [export & import](/export-import.mdx), and it lives with the songs, because
@@ -84,7 +71,27 @@ The render settings exist to make the content fit one page.
 
 ## Backup
 
-Save your whole library to a single file, or restore it from one. This is the entire database, not a selection, different from [exporting](/export-import.mdx) a few songs to share. Restoring **replaces** everything you currently have, so it asks you to confirm first.
+Save your whole library, and bring it back later. This is the entire database, not a selection, different from [exporting](/export-import.mdx) a few songs to share.
+
+A backup can live in either of two places, and they are the same backup:
+
+- **a file** you keep wherever you keep files
+- **your Google Drive**, if you would rather not hold the file yourself
+
+Bringing one back asks what it should do, because a backup serves two jobs:
+
+- **Add to my library** - the backup's songs and songbooks land beside yours. Where you have both, the newer one wins. Your settings are left alone.
+- **Replace everything** - the library goes back exactly as the backup has it. Anything not in the backup is lost, your settings included.
+
+The question is the same whether the backup came from a file or from Drive, and so is the answer.
+
+:::note[Add is the one you usually want]
+Replace is for putting a machine back the way it was. If you are after songs from an old backup, Add gets them without touching anything you have written since.
+:::
+
+:::note[Backup is not sync]
+Sync keeps one library the same on every device you sign in on, continuously, with no file involved. A backup is a copy you make and choose when to bring back. Sync will faithfully copy a deletion to your other devices; a backup is what still has the song afterwards.
+:::
 
 ## Coming soon
 

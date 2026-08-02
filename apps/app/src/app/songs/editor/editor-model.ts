@@ -15,6 +15,18 @@ export interface EditorMarker {
   /** `[start, end)` within the line. Omitted = the whole line. */
   readonly range?: readonly [number, number];
   readonly message: string;
+  /**
+   * How loud the underline is. Defaults to `warning` — something the grammar
+   * will not do what you meant with.
+   *
+   * `info` is the quieter kind: **an explanation, not a complaint**. A bracket
+   * with no chord in it (`[Solo]`, or a mistyped `[Amm]`) is legal and prints
+   * exactly as written, so calling it a warning would be crying wolf at half the
+   * annotations in a real song — but it is also the only place a typo in a chord
+   * name can hide, so saying nothing is how `[Amm]` reaches the printed page.
+   * Marked, hoverable, and deliberately not alarming.
+   */
+  readonly severity?: 'info' | 'warning';
 }
 
 /**

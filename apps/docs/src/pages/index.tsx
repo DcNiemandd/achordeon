@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
-import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
+import Layout from '@theme/Layout';
+import clsx from 'clsx';
+import type { ReactNode } from 'react';
 
 import styles from './index.module.css';
 
@@ -45,7 +45,6 @@ function HomepageHeader() {
             href={appLink}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ marginLeft: '1rem' }}
           >
             <Translate id="homepage.cta.launchApp">Launch App →</Translate>
           </a>

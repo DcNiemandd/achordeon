@@ -50,11 +50,25 @@ const FeatureList: FeatureItem[] = [
       </Translate>
     ),
   },
+  {
+    title: (
+      <Translate id="homepage.feature.account.title">
+        Yours, and not only here
+      </Translate>
+    ),
+    description: (
+      <Translate id="homepage.feature.account.description">
+        Your library lives in your browser and needs no account. Sign in when
+        you want it kept somewhere else too — back the whole thing up to a file
+        or to your own Google Drive, and bring it back on the next machine.
+      </Translate>
+    ),
+  },
 ];
 
 function Feature({ title, description }: FeatureItem) {
   return (
-    <div className={clsx('col col--4')}>
+    <div className={clsx('col col--3')}>
       <div className="text--center padding-horiz--md">
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>

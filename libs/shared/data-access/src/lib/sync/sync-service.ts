@@ -17,7 +17,8 @@ import {
 } from '@achordeon/shared/domain';
 import { AuthService } from '../auth/auth-service';
 import { BootGate, SchemaTooNewError } from '../persistence/boot-gate';
-import { snapshotFromDb } from '../persistence/gateway';
+import { snapshotFromDb, writeSnapshotToDb } from '../persistence/gateway';
+import type { RestoreMode } from '../transfer/backup-service';
 import { ACHORDEON_DB } from '../stores/repositories';
 import { SongStore } from '../stores/song-store';
 import { SongbookStore } from '../stores/songbook-store';
@@ -180,16 +181,44 @@ export class SyncService {
   }
 
   /**
-   * "Download from Drive": pull the whole file and merge it in (per-row LWW, the
-   * same rule the auto path uses). Returns false if there is no file yet.
+   * "Download from Drive": pull the whole file and put it in, the way the caller
+   * says. Returns false if there is no file yet.
+   *
+   * The Drive copy is a **backup**, so it answers the same two questions a backup
+   * file does and the UI asks them the same way — one act, two places to keep it
+   * (a file you hold, or your Drive), not two features.
+   *
+   * - `merge` — per-row LWW against what is here, the rule every other boundary
+   *   reconciles by. The `user` row is put back afterwards: it is a singleton
+   *   carrying the username, the tier and the global render defaults, and a
+   *   download that quietly re-based every song on another machine's defaults is
+   *   the surprise the choice exists to prevent. Import and the file restore
+   *   leave it alone for the same reason.
+   * - `replace` — the library goes back exactly as Drive has it, settings
+   *   included. `writeSnapshotToDb` clears first, which is what makes this a
+   *   restore rather than a merge that happens to favour the remote.
+   *
+   * **Auto-sync is deliberately untouched by this.** It reconciles one account
+   * with itself continuously, where the settings genuinely are the account's and
+   * travelling is the point (ADR-0004). A person clicking Download is doing
+   * something else, and only they know which.
    */
-  async driveDownload(): Promise<boolean> {
+  async driveDownload(mode: RestoreMode = 'merge'): Promise<boolean> {
     const remote = this.ingest(await this.driveBackend.pull());
     if (remote === null) return false;
+
+    if (mode === 'replace') {
+      await writeSnapshotToDb(this.db, remote);
+      await this.reflectInStores(remote.data);
+      await this.recomputeUnsynced();
+      return true;
+    }
+
     const local = await snapshotFromDb(this.db);
     const merged = mergeSnapshots(local.data, remote.data);
-    await this.applyToDb(merged);
-    await this.reflectInStores(merged);
+    const data = { ...merged, user: local.data.user };
+    await this.applyToDb(data);
+    await this.reflectInStores(data);
     await this.recomputeUnsynced();
     return true;
   }

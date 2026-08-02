@@ -9,12 +9,8 @@
   "targets": {
     "gen-index": {
       "executor": "nx:run-commands",
-      "cache": true,
-      "inputs": [
-        "{projectRoot}/src/index.html.template",
-        "{projectRoot}/project.json",
-        "{projectRoot}/tools/gen-index.mjs"
-      ],
+      "_comment": "Uncached, like the other two env-driven generators. The CSP is derived from SUPABASE_URL/GOATCOUNTER_URL, and those reach it from .env.local — a gitignored file Nx cannot hash. A cache keyed on the template alone replayed a policy written for a different backend, which is how a local build ended up forbidding itself from calling the Supabase it had just been pointed at.",
+      "cache": false,
       "outputs": ["{projectRoot}/src/index.html"],
       "options": {
         "command": "node tools/gen-index.mjs",
@@ -23,12 +19,7 @@
     },
     "gen-index-dev": {
       "executor": "nx:run-commands",
-      "cache": true,
-      "inputs": [
-        "{projectRoot}/src/index.html.template",
-        "{projectRoot}/project.json",
-        "{projectRoot}/tools/gen-index.mjs"
-      ],
+      "cache": false,
       "outputs": ["{projectRoot}/src/index.html"],
       "options": {
         "command": "node tools/gen-index.mjs --dev",

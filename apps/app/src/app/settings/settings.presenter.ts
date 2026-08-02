@@ -7,8 +7,13 @@ import {
   BackupService,
   DriveAuthRequiredError,
   DriveConflictError,
+  FeedbackRejectedError,
+  FeedbackService,
+  FeedbackThrottledError,
   SettingsStore,
   SyncService,
+  type FeedbackReport,
+  type RestoreMode,
   type ThemeChoice,
 } from '@achordeon/shared/data-access';
 import {
@@ -23,6 +28,13 @@ import {
 /** How a restore ended, for the page to say so. */
 export type RestoreOutcome = 'done' | 'failed';
 
+/**
+ * Which act the restore dialog asked for. Re-exported so the page can name the
+ * answer it is sending without importing `data-access` itself — the presenter is
+ * the seam a component talks through (PRD-UI-SHELL.md §3).
+ */
+export type { RestoreMode };
+
 /** How a Drive push/pull ended — the account section's status line. */
 export type DriveOutcome =
   | { kind: 'uploaded' }
@@ -35,12 +47,31 @@ export type DriveOutcome =
 /** A registration that needs the confirmation link clicked before it is a session. */
 export type RegisterState = 'confirm' | 'failed' | null;
 
+/**
+ * Why a report did not go through — a code, not a sentence.
+ *
+ * `throttled` is deliberately its own value rather than a flavour of `failed`:
+ * the report was fine and the reporter is simply early, which is a different
+ * thing to say and the only one of the three that is not an apology.
+ */
+export type FeedbackFailure = 'throttled' | 'rejected' | 'failed';
+
 /** Outcome of a password-reset request. */
 export type ResetState = 'sent' | 'failed' | null;
 
 /** A Drive action interrupted by a Google re-auth redirect, stashed across the
  * reload so it can finish on return (Flow A) — the re-auth costs one click. */
-type PendingDrive = 'upload' | 'upload-force' | 'download';
+/**
+ * The Drive action to finish after a re-connect redirect. The two downloads are
+ * separate values because the choice the user made in the dialog has to survive
+ * a full page load — resuming as the wrong one would either lose their library
+ * or silently not do what they asked.
+ */
+type PendingDrive =
+  | 'upload'
+  | 'upload-force'
+  | 'download-merge'
+  | 'download-replace';
 const PENDING_DRIVE_KEY = 'achordeon:pendingDrive';
 
 /**
@@ -66,6 +97,9 @@ export class SettingsPresenter {
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
+  /** Files the About block's bug report. The dialog gathers it; only this knows
+   * that "send" means an edge function and, beyond it, a GitHub issue. */
+  private readonly feedback = inject(FeedbackService);
   /**
    * Every way this page leaves the running app goes through here — the two
    * reloads below and the two Google redirects. All four are things the user
@@ -145,7 +179,9 @@ export class SettingsPresenter {
       if (pending === null) return;
       this.resumed = true;
       this.clearPending();
-      if (pending === 'download') void this.driveDownload(true);
+      if (pending === 'download-merge') void this.driveDownload('merge', true);
+      else if (pending === 'download-replace')
+        void this.driveDownload('replace', true);
       else void this.driveUpload(pending === 'upload-force', true);
     });
   }
@@ -257,6 +293,63 @@ export class SettingsPresenter {
     this._authError.set(null);
   }
 
+  // --- Feedback (the About block's report dialog) ---------------------------
+
+  /**
+   * Whether reports can be filed at all.
+   *
+   * False in an offline-only build, where there is no backend to post to and the
+   * About block falls back to the plain GitHub link it has always had. Read once:
+   * a build either shipped with Supabase coordinates or it did not.
+   */
+  readonly canReport = this.feedback.isConfigured;
+
+  private readonly _feedbackBusy = signal(false);
+  private readonly _feedbackFailure = signal<FeedbackFailure | null>(null);
+  private readonly _feedbackSent = signal(false);
+  /** A report is in flight — the send button stands down. */
+  readonly feedbackBusy = this._feedbackBusy.asReadonly();
+  /** Why the last attempt did not go through, or null. */
+  readonly feedbackFailure = this._feedbackFailure.asReadonly();
+  /** The last report arrived — the page swaps the form for a thank-you. */
+  readonly feedbackSent = this._feedbackSent.asReadonly();
+
+  /**
+   * File one report.
+   *
+   * @returns true when it arrived, which is the page's cue to close the form. A
+   * false leaves `feedbackFailure` set and the dialog open **with the text still
+   * in it** — a rate limit or a dropped connection must never cost someone the
+   * paragraph they just wrote.
+   */
+  async sendFeedback(report: FeedbackReport): Promise<boolean> {
+    this._feedbackBusy.set(true);
+    this._feedbackFailure.set(null);
+    try {
+      await this.feedback.send(report);
+      this._feedbackSent.set(true);
+      return true;
+    } catch (e) {
+      this._feedbackFailure.set(this.classifyFeedback(e));
+      return false;
+    } finally {
+      this._feedbackBusy.set(false);
+    }
+  }
+
+  private classifyFeedback(e: unknown): FeedbackFailure {
+    if (e instanceof FeedbackThrottledError) return 'throttled';
+    if (e instanceof FeedbackRejectedError) return 'rejected';
+    return 'failed';
+  }
+
+  /** Close the thank-you, and forget the last attempt so the next dialog opens
+   * clean rather than showing an error the reporter has already read. */
+  dismissFeedback(): void {
+    this._feedbackSent.set(false);
+    this._feedbackFailure.set(null);
+  }
+
   dismissReset(): void {
     this._reset.set(null);
   }
@@ -287,15 +380,22 @@ export class SettingsPresenter {
     }
   }
 
-  async driveDownload(resuming = false): Promise<void> {
+  /**
+   * "Download from Drive", as the dialog answered it — the Drive copy is a
+   * backup, so it adds to the library or replaces it, exactly like a backup file.
+   *
+   * The mode rides into `onDriveAuth` so a lapsed token that sends the user
+   * through Google comes back and finishes the act they actually chose.
+   */
+  async driveDownload(mode: RestoreMode, resuming = false): Promise<void> {
     this._drive.set(null);
     this._driveBusy.set(true);
     try {
-      const found = await this.sync.driveDownload();
+      const found = await this.sync.driveDownload(mode);
       this._drive.set({ kind: found ? 'downloaded' : 'empty' });
     } catch (e) {
       this._drive.set(this.classifyDrive(e));
-      await this.onDriveAuth(e, resuming, 'download');
+      await this.onDriveAuth(e, resuming, `download-${mode}`);
     } finally {
       this._driveBusy.set(false);
     }
@@ -345,7 +445,10 @@ export class SettingsPresenter {
   private readPending(): PendingDrive | null {
     if (typeof sessionStorage === 'undefined') return null;
     const v = sessionStorage.getItem(PENDING_DRIVE_KEY);
-    return v === 'upload' || v === 'upload-force' || v === 'download'
+    return v === 'upload' ||
+      v === 'upload-force' ||
+      v === 'download-merge' ||
+      v === 'download-replace'
       ? v
       : null;
   }
@@ -411,18 +514,23 @@ export class SettingsPresenter {
   }
 
   /**
-   * Replace the whole library from a backup file, then reload.
+   * Put a backup file into the library the way the user asked, then reload.
    *
-   * A full restore throws away what is here now, so the page confirms first —
-   * this only runs once the user has said yes. The reload is deliberate: the
-   * stores hold a window of the *old* data, and booting fresh against the
-   * restored tables is cleaner than re-querying every one of them.
+   * `mode` comes from the dialog, which asks rather than assumes: a file is
+   * either the songs you want back beside the ones you have (`merge`) or the
+   * machine put back exactly as it was (`replace`), and only the person holding
+   * the file knows which. Both need saying yes to first — one overwrites, the
+   * other brings in rows that can win by being newer.
+   *
+   * The reload is deliberate either way: the stores hold a window of the *old*
+   * data, and booting fresh against the written tables is cleaner than
+   * re-querying every one of them.
    */
-  async restore(file: File): Promise<void> {
+  async restore(file: File, mode: RestoreMode): Promise<void> {
     this._isBusy.set(true);
     this._restore.set(null);
     try {
-      await this.backups.restore(file);
+      await this.backups.restore(file, mode);
       this._restore.set('done');
       this.unload.reload();
     } catch {
