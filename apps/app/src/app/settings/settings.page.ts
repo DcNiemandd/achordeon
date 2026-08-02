@@ -18,6 +18,14 @@ import { SettingsPanel } from '../shared/settings-panel';
 import { BUILD_DATE } from '../shared/build-info';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
 
+/**
+ * A backup waiting on the Add-or-Replace choice, and where it came from — the
+ * file the user picked, or the copy in their Drive.
+ */
+type PendingRestore =
+  | { readonly source: 'file'; readonly file: File }
+  | { readonly source: 'drive' };
+
 /** Which credential dialog is open. Login and register are separate forms so
  * each has room for its own validation (a register with only one password field
  * was the bug this replaces). */
@@ -381,7 +389,7 @@ const MIN_PASSWORD = 8;
                       variant="secondary"
                       [disabled]="!canDrive() || presenter.driveBusy()"
                       data-testid="drive-download"
-                      (click)="presenter.driveDownload()"
+                      (click)="askRestore({ source: 'drive' })"
                     >
                       <app-icon name="import" />
                       {{ driveDownloadLabel }}
@@ -1023,7 +1031,7 @@ const MIN_PASSWORD = 8;
       </app-dialog>
     }
 
-    @if (pendingRestore(); as file) {
+    @if (pendingRestore(); as pending) {
       <app-dialog
         [title]="restoreConfirmTitle"
         data-testid="restore-dialog"
@@ -1047,7 +1055,7 @@ const MIN_PASSWORD = 8;
           type="button"
           variant="danger"
           data-testid="restore-replace"
-          (click)="confirmRestore(file, 'replace')"
+          (click)="confirmRestore(pending, 'replace')"
         >
           {{ restoreReplaceButton }}
         </button>
@@ -1057,7 +1065,7 @@ const MIN_PASSWORD = 8;
           type="button"
           variant="primary"
           data-testid="restore-merge"
-          (click)="confirmRestore(file, 'merge')"
+          (click)="confirmRestore(pending, 'merge')"
         >
           {{ restoreMergeButton }}
         </button>
@@ -1793,7 +1801,7 @@ export class SettingsPage {
   protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
-  protected readonly driveHelp = $localize`:@@settings.drive.help:Manual Google Drive backup — one file you can see. The first backup asks Google for Drive permission. Upload and download both merge with the Drive copy, so neither loses work.`;
+  protected readonly driveHelp = $localize`:@@settings.drive.help:Your backup, kept in your own Google Drive instead of a file you hold. The first upload asks Google for Drive permission. Uploading merges with the Drive copy, so it never drops another device's work; downloading asks whether to add to your library or replace it.`;
   protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
   protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
   protected readonly driveForceLabel = $localize`:@@settings.drive.force:Overwrite anyway`;
@@ -1850,10 +1858,21 @@ export class SettingsPage {
   protected readonly fontLibraryButton = $localize`:@@settings.fontLibrary.button:Manage fonts`;
 
   // --- Backup / restore (#11) -----------------------------------------------
-  private readonly _pendingRestore = signal<File | null>(null);
-  /** A restore file picked and awaiting the choice — the file picker cannot say
-   * whether this is an Add or a Replace, so it never fires straight off it. */
+  private readonly _pendingRestore = signal<PendingRestore | null>(null);
+  /**
+   * A backup waiting on the Add-or-Replace choice, and where it is coming from.
+   *
+   * **One dialog for both sources.** A backup file and the Google Drive copy are
+   * the same backup kept in two places, so they raise the same question and get
+   * the same answer — two dialogs saying the same thing differently is how a user
+   * comes to believe they are two different features.
+   */
   protected readonly pendingRestore = this._pendingRestore.asReadonly();
+
+  /** Open the choice for a backup that is ready to go in. */
+  protected askRestore(pending: PendingRestore): void {
+    this._pendingRestore.set(pending);
+  }
 
   protected readonly backupHeading = $localize`:@@settings.backup:Manual backup`;
   protected readonly aboutBackup = $localize`:@@settings.backup.about:About backup`;
@@ -1868,8 +1887,8 @@ export class SettingsPage {
    * be pressed — the destructive one is not a footnote under a default.
    */
   protected readonly restoreConfirmTitle = $localize`:@@settings.restore.title:What should this backup do?`;
-  protected readonly restoreMergeText = $localize`:@@settings.restore.mergeText:Add brings the file's songs and songbooks in beside yours, keeping the newer copy of anything you have both. Your settings stay as they are.`;
-  protected readonly restoreReplaceText = $localize`:@@settings.restore.replaceText:Replace puts the library back exactly as the file has it. Anything not in the file is lost, your settings included.`;
+  protected readonly restoreMergeText = $localize`:@@settings.restore.mergeText:Add brings the backup's songs and songbooks in beside yours, keeping the newer copy of anything you have both. Your settings stay as they are.`;
+  protected readonly restoreReplaceText = $localize`:@@settings.restore.replaceText:Replace puts the library back exactly as the backup has it. Anything not in the backup is lost, your settings included.`;
   protected readonly restoreMergeButton = $localize`:@@settings.restore.merge:Add to my library`;
   protected readonly restoreReplaceButton = $localize`:@@settings.restore.replace:Replace everything`;
   protected readonly cancelLabel = $localize`:@@settings.restore.cancel:Cancel`;
@@ -1883,15 +1902,19 @@ export class SettingsPage {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) this._pendingRestore.set(file);
+    if (file) this.askRestore({ source: 'file', file });
   }
 
   protected cancelRestore(): void {
     this._pendingRestore.set(null);
   }
 
-  protected confirmRestore(file: File, mode: RestoreMode): void {
+  protected confirmRestore(pending: PendingRestore, mode: RestoreMode): void {
     this._pendingRestore.set(null);
-    void this.presenter.restore(file, mode);
+    if (pending.source === 'drive') {
+      void this.presenter.driveDownload(mode);
+      return;
+    }
+    void this.presenter.restore(pending.file, mode);
   }
 }
