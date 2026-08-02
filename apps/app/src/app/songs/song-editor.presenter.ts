@@ -2,6 +2,7 @@
 // Spec: PRD-UI-SHELL.md §3; ADR-0010; docs/PARSER-GRAMMAR.md §Reparse
 
 import {
+  DOCUMENT,
   DestroyRef,
   Injectable,
   computed,
@@ -59,6 +60,7 @@ export class SongEditorPresenter {
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
   private readonly sync = inject(SyncService);
+  private readonly document = inject(DOCUMENT);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -139,9 +141,51 @@ export class SongEditorPresenter {
    * diffing the song against itself on a timer. */
   private isDirty = false;
 
+  /**
+   * Flush on the way out of the *page*, not just out of the route.
+   *
+   * `onDestroy` covers navigating away inside the app; it never runs when the tab
+   * is closed, the browser is quit, or the phone swaps the app out — and those are
+   * the moments the last 400 ms of typing was being dropped in silence
+   * [corrected: was only flushed on route destroy]. There is no Save button
+   * (PRD-INFRASTRUCTURE.md §5), so the promise "local work is never lost" has to
+   * survive the one exit the framework cannot see.
+   *
+   * **Both events, because neither one fires everywhere.** `visibilitychange` to
+   * hidden is the last moment a mobile browser reliably gives you — a tab it kills
+   * in the background never gets an unload of any kind. `pagehide` covers the
+   * desktop close and reload, and the bfcache freeze, where visibility may not
+   * change at all. Flushing twice is free: `isDirty` makes the second a no-op.
+   *
+   * It is fire-and-forget on purpose. The write is an IndexedDB transaction, which
+   * a browser will normally let commit while the page goes away; there is no
+   * synchronous way to store a song and nothing useful to do with a rejection at
+   * that point. Switching tabs mid-song therefore saves too — which is the right
+   * behaviour anyway, not a side effect to apologise for.
+   */
+  private readonly flushOnHide = (): void => {
+    if (this.document.visibilityState === 'hidden') {
+      void this.flushSave();
+    }
+  };
+  private readonly flushOnPageHide = (): void => {
+    void this.flushSave();
+  };
+
   constructor() {
+    this.document.addEventListener('visibilitychange', this.flushOnHide);
+    this.document.defaultView?.addEventListener(
+      'pagehide',
+      this.flushOnPageHide,
+    );
+
     inject(DestroyRef).onDestroy(() => {
       this.reparser.cancel();
+      this.document.removeEventListener('visibilitychange', this.flushOnHide);
+      this.document.defaultView?.removeEventListener(
+        'pagehide',
+        this.flushOnPageHide,
+      );
       // Leaving the editor is a boundary: flush rather than drop. The pending
       // save is the last few hundred milliseconds of typing, and this is exactly
       // the moment a user believes their work is safe (ADR-0004).
