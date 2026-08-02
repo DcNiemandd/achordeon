@@ -26,6 +26,12 @@
   "homepage.feature.perform.description": {
     "message": "Písně si poskládejte do zpěvníků a hrajte je jednu po druhé. Otevřete lobby, sdílejte PIN nebo QR kód a ostatní vás sledují na svých obrazovkách, jak procházíte setem."
   },
+  "homepage.feature.account.title": {
+    "message": "Vaše, a nejen tady"
+  },
+  "homepage.feature.account.description": {
+    "message": "Vaše knihovna žije ve vašem prohlížeči a nepotřebuje účet. Přihlaste se, když ji chcete mít i jinde — zazálohujte celou do souboru nebo na svůj Google Disk a na dalším stroji ji vraťte zpět."
+  },
   "privacy.stats.label": {
     "message": "Sdílet anonymní statistiky používání"
   },
