@@ -84,6 +84,7 @@
   "editor.transposeGroup": "Transpose",
   "editor.transposeUp": "Transpose up a semitone",
   "editor.undo": "Undo",
+  "editor.verbatimHint": "Not a chord Achordeon recognises. It prints exactly as written and transpose leaves it alone.",
   "entries.empty": "No songs in this songbook yet.",
   "entries.missing": "Missing song",
   "entries.moveDown": "Move down one",

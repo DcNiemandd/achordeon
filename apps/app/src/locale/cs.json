@@ -86,6 +86,7 @@
     "editor.transposeGroup": "Transpozice",
     "editor.transposeUp": "Transponovat o půltón nahoru",
     "editor.undo": "Zpět",
+    "editor.verbatimHint": "Toto není akord, který by Achordeon znal. Vypíše se přesně tak, jak je napsaný, a transpozice se ho nedotkne.",
     "entries.empty": "V tomto zpěvníku zatím nejsou žádné písně.",
     "entries.missing": "Chybějící píseň",
     "entries.moveDown": "Přesunout o jednu dolů",

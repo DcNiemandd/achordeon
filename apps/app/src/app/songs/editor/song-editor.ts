@@ -40,6 +40,7 @@ import {
 import {
   achordeonHighlight,
   achordeonHighlightStyle,
+  findVerbatimSpans,
 } from '@achordeon/shared/editor-core';
 import type {
   CaretContext,
@@ -207,6 +208,15 @@ export class SongEditor {
   /** Announced with the field, because Tab no longer leaves it (see `extensions`). */
   readonly escapeHint = input(
     $localize`:@@editor.escapeHint:Tab inserts spaces. Press Escape to leave the editor.`,
+  );
+  /**
+   * What a bracket with no chord in it says when you hover it — see
+   * `verbatimMarkers`. Phrased as a fact about what will happen, not as a
+   * complaint: `[Solo]` is a perfectly good thing to write, and the same sentence
+   * has to serve the `[Amm]` that was meant to be a chord.
+   */
+  readonly verbatimHint = input(
+    $localize`:@@editor.verbatimHint:Not a chord Achordeon recognises. It prints exactly as written and transpose leaves it alone.`,
   );
 
   /** Fired on every settled edit. Debouncing is the caller's business — parse
@@ -714,6 +724,16 @@ export class SongEditor {
         textDecoration: 'underline wavy var(--brand)',
         textUnderlineOffset: '3px',
       },
+      // An explanation is quieter still: dotted, in the faint ink the verbatim
+      // bracket is already drawn in, because it marks something that is fine —
+      // it just does not do what a chord does. A wavy brand underline here would
+      // read as the same alarm the shadowed-title warning raises, and half the
+      // annotations in a real song would be wearing it.
+      '.cm-lintRange-info': {
+        backgroundImage: 'none',
+        textDecoration: 'underline dotted var(--text-faint)',
+        textUnderlineOffset: '3px',
+      },
 
       // The warning's own panel. CodeMirror ships a hard-coded light skin for
       // these (#f5f5f5 on #fff with a #ddd border), which our theme never
@@ -743,10 +763,16 @@ export class SongEditor {
         lineHeight: 'var(--leading-tight)',
       },
       '.cm-diagnostic-warning': { borderInlineStartColor: 'var(--brand)' },
+      '.cm-diagnostic-info': { borderInlineStartColor: 'var(--text-faint)' },
       // The gutter dot, same story: its default is a bright yellow lozenge that
       // belongs to no palette we own.
       '.cm-lint-marker': { color: 'var(--brand)' },
       '.cm-lint-marker-warning': { color: 'var(--brand)' },
+      // No gutter dot for an explanation. The gutter is the column that says
+      // "something here needs you", and a song that uses `[Solo]` four times
+      // would have four of CodeMirror's lavender boxes in it saying nothing of
+      // the kind. The dotted underline and its tooltip are the whole message.
+      '.cm-lint-marker-info': { display: 'none' },
     });
   }
 
@@ -795,6 +821,38 @@ export class SongEditor {
     }
   }
 
+  /**
+   * The bracketed text that is not a chord, as its own quiet markers — a single
+   * mistyped name inside a row of good ones (`[Em Am Gmimi]`), or a whole
+   * chordless bracket.
+   *
+   * Ours and not the parser's, on purpose. PARSER-GRAMMAR §Error/warning settled
+   * that these are **deliberately not warnings** — `[Solo]`, `[x2]` and `[N.C.]`
+   * are exactly what the verbatim-annotation rule is for, and a song full of them
+   * is a correct song. But it is also where a mistyped chord goes to hide, prints
+   * silently, and survives every transpose. So the editor says what will happen
+   * (`severity: 'info'`) instead of the parser saying something is wrong, which is
+   * the difference between an explanation and a complaint.
+   *
+   * Recomputed from the live doc each time the markers land, so it rides the
+   * reparse debounce rather than firing a dispatch per keystroke.
+   */
+  private verbatimMarkers(): EditorMarker[] {
+    const view = this.view;
+    if (!view) {
+      return [];
+    }
+    const message = this.verbatimHint();
+    return findVerbatimSpans(view.state.doc.toString(), this.theory).map(
+      (span) => ({
+        line: span.line,
+        range: span.range,
+        message,
+        severity: 'info' as const,
+      }),
+    );
+  }
+
   /** `EditorMarker` (line + range) → CodeMirror's absolute document offsets. */
   private diagnostics(): Diagnostic[] {
     const view = this.view;
@@ -803,7 +861,7 @@ export class SongEditor {
     }
     const doc = view.state.doc;
     const out: Diagnostic[] = [];
-    for (const marker of this.markers()) {
+    for (const marker of [...this.markers(), ...this.verbatimMarkers()]) {
       // A marker can outlive the text it describes by one reparse — the doc has
       // already changed, the AST has not caught up. Drop it rather than throw:
       // CodeMirror rejects an out-of-range diagnostic outright.
@@ -816,7 +874,7 @@ export class SongEditor {
       out.push({
         from: Math.max(line.from, Math.min(from, line.to)),
         to: Math.max(line.from, Math.min(to, line.to)),
-        severity: 'warning',
+        severity: marker.severity ?? 'warning',
         message: marker.message,
       });
     }
