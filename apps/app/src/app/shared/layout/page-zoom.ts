@@ -70,6 +70,7 @@ const MAX_WHEEL_PX = 300;
   exportAs: 'appPageZoom',
   host: {
     '[style.touch-action]': "isEnabled() ? 'none' : null",
+    '[style.cursor]': 'cursor()',
     '(pointerdown)': 'onPointerDown($event)',
     '(pointermove)': 'onPointerMove($event)',
     '(pointerup)': 'onPointerUp($event)',
@@ -107,6 +108,24 @@ export class PageZoom {
   readonly panY = computed(() => this.state().y);
   readonly isZoomed = computed(() => isZoomed(this.state()));
   readonly percent = computed(() => zoomPercent(this.state()));
+
+  /** A pointer is down on a magnified page — so this drag is a pan. */
+  private readonly _isPanning = signal(false);
+  readonly isPanning = this._isPanning.asReadonly();
+
+  /**
+   * The one thing on screen that says a drag will pan rather than turn the page.
+   *
+   * Fitted, the render keeps the ordinary arrow: a drag there is a page turn,
+   * and an open hand over it would promise something it does not do. Magnified,
+   * it is `grab`, and `grabbing` from the moment the button goes down rather
+   * than from the first pixel of movement — the press is the grab, and a cursor
+   * that only changed once the page started moving would always be a frame late.
+   */
+  protected readonly cursor = computed(() => {
+    if (!this.isEnabled() || !this.isZoomed()) return null;
+    return this._isPanning() ? 'grabbing' : 'grab';
+  });
 
   /** Live pointers, by id. Two or more of them is a pinch. */
   private readonly points = new Map<number, Point>();
@@ -173,6 +192,7 @@ export class PageZoom {
       this.origin = point;
       this.travel = 0;
       this.previous = point;
+      this._isPanning.set(this.isZoomed());
       return;
     }
     // A second finger. Whatever this gesture is, it is not a tap any more — and
@@ -345,6 +365,7 @@ export class PageZoom {
     this.spread = 0;
     this.midpoint = null;
     this.travel = 0;
+    this._isPanning.set(false);
   }
 
   private desk(box?: DOMRect): Desk {
