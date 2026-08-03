@@ -475,6 +475,40 @@ const MIN_PASSWORD = 8;
               </div>
             </div>
 
+            <!-- The dark page, linked to the theme. Beside Theme because that is
+                 the only reason to come looking for it, and a checkbox rather
+                 than a third theme button: it is a fact about the two, not a
+                 fourth thing the app could be. It reaches every render on this
+                 screen, never an export — device-local, because a stage and a
+                 kitchen table are different rooms. -->
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ songDarkLabel }}</span>
+                <button
+                  appButton
+                  type="button"
+                  class="help"
+                  [isIconOnly]="true"
+                  [appTooltip]="songDarkHelp"
+                  appTooltipTrigger="help"
+                  [attr.aria-label]="aboutSongDark"
+                  data-testid="help-song-dark"
+                >
+                  <app-icon name="help" />
+                </button>
+              </div>
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  class="check"
+                  [checked]="presenter.isSongDarkFollowingTheme()"
+                  data-testid="song-dark-follows-theme"
+                  (change)="onSongDarkFollowsTheme($event)"
+                />
+                <span class="check-label">{{ songDarkOnLabel }}</span>
+              </label>
+            </div>
+
             <!-- Language (Epic 11 ▸ i18n). At runtime a message is translated
                  once, on first encounter, so a language change cannot be
                  re-rendered into a running app: choosing one reloads, on the same
@@ -1539,11 +1573,22 @@ const MIN_PASSWORD = 8;
     }
 
     /* The real control behind Restore. Not display:none, which makes it
-       unfocusable and, in some engines, unclickable from script. */
+       unfocusable and, in some engines, unclickable from script.
+
+       Every part of the rule below is load-bearing against one bug: a scrollbar
+       on <html>. The overflow and the clip-path contain the ~230×21 of native
+       control a file input is whatever box you give it; the FIXED position is
+       what keeps the box itself out of the document's scrollable area, since an
+       absolute one with no positioned ancestor lands at its static position deep
+       inside this scrolling page. Same rule, same reasons, in import-panel.ts. */
     .file {
-      position: absolute;
+      position: fixed;
+      inset-block-start: 0;
+      inset-inline-start: 0;
       inline-size: 1px;
       block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
       opacity: 0;
       pointer-events: none;
     }
@@ -1589,6 +1634,19 @@ export class SettingsPage {
   protected readonly languageHeading = $localize`:@@settings.language:Language`;
   protected readonly languageHelp = $localize`:@@settings.language.help:Achordeon reloads to switch language, and stays on the page you are on.`;
   protected readonly aboutLanguage = $localize`:@@settings.language.about:About the language setting`;
+  // The same words the stage and audience menus use for the thing this seeds —
+  // one name for one feature, so nobody has to work out that they are the same.
+  protected readonly songDarkLabel = $localize`:@@stage.darkPage:Dark page`;
+  protected readonly songDarkOnLabel = $localize`:@@settings.songDark.on:Dark song in the dark theme`;
+  protected readonly songDarkHelp = $localize`:@@settings.songDark.help:While the app is dark, every song it draws goes light-on-dark: performing, watching, and the previews in Songs and Songbooks. The moon in the performing bar overrides it for that one performance, and the one under the songbook pages for that book. Printing, PDFs and downloads stay on white paper, and nothing here reaches your audience — every screen answers for the room it is in.`;
+  protected readonly aboutSongDark = $localize`:@@settings.songDark.about:About the dark page`;
+
+  protected onSongDarkFollowsTheme(event: Event): void {
+    this.presenter.setSongDarkFollowsTheme(
+      (event.target as HTMLInputElement).checked,
+    );
+  }
+
   protected readonly renderHeading = $localize`:@@settings.rendering:Rendering`;
   protected readonly splitSharedLabel = $localize`:@@settings.splitShared:One panel size everywhere`;
   protected readonly splitSharedOnLabel = $localize`:@@settings.splitShared.on:Use one panel size everywhere`;

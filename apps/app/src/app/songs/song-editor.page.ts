@@ -314,7 +314,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
 
       <!-- Pane B: the render, live. Nothing sits above it — the action bar is
            pane A's (PRD-UI-SHELL.md §4). -->
-      <app-blank-page pane-b [ratio]="aspectRatio()">
+      <app-blank-page pane-b [ratio]="aspectRatio()" [isDark]="ui.isSongDark()">
         <app-song-render [svg]="presenter.svg()" />
       </app-blank-page>
     </app-split-pane>

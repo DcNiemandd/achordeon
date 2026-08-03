@@ -20,7 +20,7 @@ import {
   type Songbook,
   type Uuid,
 } from '@achordeon/shared/domain';
-import type { RenderPlan } from '@achordeon/shared/render-core';
+import { DEFAULT_TUNING, type RenderPlan } from '@achordeon/shared/render-core';
 import { ParserService } from '../parser/parser-service';
 import { BODY_FAMILY, FontLoader } from '../render/font-loader';
 import { RenderService } from '../render/render-service';
@@ -244,6 +244,19 @@ export interface SongbookPreview {
 const SUMMARY_PREVIEW_STYLE: SummarySvgStyle = {
   fontFamily: BODY_FAMILY,
   color: '#1a1a1a',
+};
+
+/**
+ * The same, for a preview being read on a dark page.
+ *
+ * `DEFAULT_TUNING.dark.textColor`, so the one page the renderer does not draw
+ * still lands on the renderer's own dark ink rather than a second opinion about
+ * what "light grey" means. It is the on-screen preview only — `drawSummary`,
+ * which is the PDF, has no dark form and never will.
+ */
+const SUMMARY_PREVIEW_STYLE_DARK: SummarySvgStyle = {
+  fontFamily: BODY_FAMILY,
+  color: DEFAULT_TUNING.dark.textColor,
 };
 
 @Injectable({ providedIn: 'root' })
@@ -555,6 +568,7 @@ export class DownloadService {
     book?: Songbook,
     isNumberInTitle = false,
     inlineFonts = true,
+    isDark = false,
   ): Promise<RenderedSong[]> {
     const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
     const songs = rows.filter(
@@ -571,9 +585,12 @@ export class DownloadService {
       // The number is the song's place in *this* list — the filtered one, which
       // is also what the summary numbers off, so the two agree even when a
       // songbook points at a song that has since been deleted.
+      // `isDark` is only ever true for the on-screen preview: a file is paper
+      // (PRD-RENDERING §5), so every export path leaves it at its default.
       const plan = this.renderer.layout(
         isNumberInTitle ? numberedAst(ast, i + 1) : ast,
         settings[i],
+        { dark: isDark },
       );
       // `inlineFonts` — a downloaded FILE has no CSS to lean on and Safari will
       // not fetch a font from inside an SVG (ADR-0002), so exports inline the
@@ -625,6 +642,7 @@ export class DownloadService {
   private async renderTitlePage(
     book: Songbook,
     inlineFonts = true,
+    isDark = false,
   ): Promise<{ svg: string; box: Size; fonts: RenderPlan['fonts'] }> {
     const settings = resolveSettings(this.settings.global(), book.settings);
     await this.renderer.ensureFonts([settings]);
@@ -633,6 +651,7 @@ export class DownloadService {
     // mistake. (§4.5 hugs for songs; `align` is the option that says otherwise.)
     const plan = this.renderer.layout(titlePageAst(book), settings, {
       align: 'center',
+      dark: isDark,
     });
     return {
       svg: this.renderer.emit(plan, inlineFonts),
@@ -655,6 +674,7 @@ export class DownloadService {
   async previewSongbook(
     id: Uuid,
     options: SongbookPdfOptions = {},
+    isDark = false,
   ): Promise<SongbookPreview> {
     const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
     const page = orient(PAGE_SIZES[opts.pageSize], opts.isLandscape);
@@ -678,6 +698,7 @@ export class DownloadService {
       book,
       isNumberInTitle,
       false,
+      isDark,
     );
 
     const summary = opts.hasSummary
@@ -698,7 +719,7 @@ export class DownloadService {
     });
 
     const title = opts.hasTitlePage
-      ? await this.renderTitlePage(book, false)
+      ? await this.renderTitlePage(book, false, isDark)
       : undefined;
 
     const pages: SongbookPreviewPage[] = plan.pages.map((entry) => {
@@ -713,7 +734,7 @@ export class DownloadService {
                 summary,
                 page,
                 entry.sourceIndex ?? 0,
-                SUMMARY_PREVIEW_STYLE,
+                isDark ? SUMMARY_PREVIEW_STYLE_DARK : SUMMARY_PREVIEW_STYLE,
               )
             : '',
           number: null,

@@ -13,7 +13,6 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { Fullscreen } from './fullscreen';
 import { StageSession } from './stage-session';
-import { UiStore } from './ui-store';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
@@ -125,16 +124,17 @@ import { UiStore } from './ui-store';
 
         <!-- The dark page. A checkbox, not an act: it stays on until the
              performer turns it off, so the row lights up rather than swapping
-             its label the way Fullscreen above does. It changes only what THIS
-             device draws — the audience keeps its own answer. -->
+             its label the way Fullscreen above does. It overrides the app's
+             setting for THIS performance only — the library keeps drawing what
+             the theme says, and the audience keeps its own answer. -->
         <button
           type="button"
           class="item"
           role="menuitemcheckbox"
-          [attr.aria-checked]="ui.isSongDark()"
-          [class.is-active]="ui.isSongDark()"
+          [attr.aria-checked]="session.isSongDark()"
+          [class.is-active]="session.isSongDark()"
           data-testid="stage-dark-page"
-          (click)="ui.toggleSongDark()"
+          (click)="session.toggleSongDark()"
         >
           <app-icon name="moon" />
           {{ darkPageLabel }}
@@ -240,10 +240,6 @@ import { UiStore } from './ui-store';
 export class StageBar {
   protected readonly session = inject(StageSession);
   protected readonly fullscreen = inject(Fullscreen);
-  /** The dark page is a device preference, not performance state — so it comes
-   * from `UiStore` beside the split ratio, not from `StageSession`, and it does
-   * not end when the performance does. */
-  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);

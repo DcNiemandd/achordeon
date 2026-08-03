@@ -20,6 +20,7 @@ import {
   type SongbookPrint,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
+import { UiStore } from '../shared/layout';
 import {
   DATA_FORMAT,
   PrintOptionsStore,
@@ -67,6 +68,9 @@ export class SongbooksPresenter {
   private readonly downloads = inject(DownloadService);
   private readonly settings = inject(SettingsStore);
   private readonly print = inject(PrintOptionsStore);
+  /** The app's answer about dark paper, which the pane's own moon may override
+   * while you are reading a book — see `isSongDark`. */
+  private readonly ui = inject(UiStore);
 
   /**
    * What the download dialog opens on: the device's last-used paper (#3) composed
@@ -172,14 +176,47 @@ export class SongbooksPresenter {
    * cannot land in the pane after the book you are now looking at. */
   private previewToken = 0;
 
+  /**
+   * The pane's own answer about dark paper, or `null` for "as the app says".
+   *
+   * The same override shape as a performance's (`StageSession`), scoped to this
+   * pane because that is the room the moon under the pages is talking about.
+   * Route-scoped with the presenter, so leaving the module forgets it: unlike a
+   * performance, browsing a book is not an event with a beginning and an end.
+   */
+  private readonly _songDarkOverride = signal<boolean | null>(null);
+
+  /**
+   * Is the book being previewed on dark paper?
+   *
+   * The preview is the PDF's WYSIWYG twin, so this is the one dark page in the
+   * app that is **lying about its output** — which is why the pane says so out
+   * loud while it is on (`songbook-preview`'s warning). It is still worth
+   * having: reading a whole book on a lit sheet in a dark room is the same
+   * glare the dark page exists to remove, and proofing the layout is not the
+   * only reason someone opens this pane.
+   */
+  readonly isSongDark = computed(
+    () => this._songDarkOverride() ?? this.ui.isSongDark(),
+  );
+
+  /** Turn the previewed book's pages over. An explicit answer, so a theme that
+   * moves later cannot undo it (see `StageSession.toggleSongDark`). */
+  toggleSongDark(): void {
+    this._songDarkOverride.set(!this.isSongDark());
+  }
+
   constructor() {
     // Re-render the pane when the picked book changes, when its own print
-    // structure is edited (it is read below, so this effect tracks it), or when
-    // the device paper changes. Off the render pipeline, so it is async; the
-    // token guards against a stale render winning a race.
+    // structure is edited (it is read below, so this effect tracks it), when the
+    // device paper changes — or when the page is turned over, which is a
+    // re-render and not a restyle: the ink is inside the SVGs. Off the render
+    // pipeline, so it is async; the token guards against a stale render winning
+    // a race.
     effect(() => {
       const id = this._currentId();
       const device = this.print.options();
+      const isDark = this.isSongDark();
       // `printFor` reads the book's record (a real book) or the All songs device
       // slot, so an edit to either — and the library size behind All songs —
       // reflows the preview.
@@ -193,7 +230,7 @@ export class SongbooksPresenter {
       const { format, ...opts } = composeSongbookChoice(device, print);
       void format; // the preview renders every format the same; it is not paper
       const token = ++this.previewToken;
-      void this.downloads.previewSongbook(id, opts).then((preview) => {
+      void this.downloads.previewSongbook(id, opts, isDark).then((preview) => {
         if (token === this.previewToken) this._preview.set(preview);
       });
     });

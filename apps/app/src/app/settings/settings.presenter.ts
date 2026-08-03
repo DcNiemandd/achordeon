@@ -119,6 +119,9 @@ export class SettingsPresenter {
   readonly theme = this.store.theme;
   readonly language = this.store.language;
   readonly isSplitShared = this.ui.isSplitShared;
+  /** Whether the dark theme also puts songs on a dark page — the one stored
+   * answer about dark paper on this device. */
+  readonly isSongDarkFollowingTheme = this.ui.isSongDarkFollowingTheme;
   readonly isStatsAllowed = this.stats.isAllowed;
   /** The browser refused for the reader; the row says so and stands down. */
   readonly isStatsRefusedByBrowser = this.stats.isRefusedByBrowser;
@@ -496,6 +499,16 @@ export class SettingsPresenter {
     // No current scope: the settings page has no splitter of its own to adopt a
     // ratio from, so linking falls back to the shared value already stored.
     this.ui.setSplitShared(isShared);
+  }
+
+  /**
+   * Link the dark page to the dark theme, or unlink it.
+   *
+   * There is nothing else to set: `UiStore.isSongDark` is derived from this and
+   * the resolved theme, so the row IS the state and cannot drift from it.
+   */
+  setSongDarkFollowsTheme(follows: boolean): void {
+    this.ui.setSongDarkFollowsTheme(follows);
   }
 
   /** Allow (or stop) the extra statistics. Takes effect on the next navigation. */

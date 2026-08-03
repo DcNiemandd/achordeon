@@ -513,7 +513,10 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
           (closed)="presenter.closePreview()"
         >
           <div class="song-preview">
-            <app-blank-page [ratio]="presenter.previewAspect()">
+            <app-blank-page
+              [ratio]="presenter.previewAspect()"
+              [isDark]="ui.isSongDark()"
+            >
               <app-song-render [svg]="presenter.previewSvg()" />
             </app-blank-page>
           </div>

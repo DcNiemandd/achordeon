@@ -17,7 +17,6 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
-import { UiStore } from './ui-store';
 
 @Component({
   selector: 'app-audience-bar',
@@ -127,13 +126,14 @@ import { UiStore } from './ui-store';
         <!-- The dark page — the viewer's own, exactly like Hide chords above
              it. The performer never sends this: a stage is dark and a kitchen
              table is not, and each screen answers for the room it is in
-             (CONTEXT.md §Audience). -->
+             (CONTEXT.md §Audience). It overrides the app's setting for this
+             viewing only. -->
         <button
           type="button"
           class="item"
           role="menuitemcheckbox"
-          [attr.aria-checked]="ui.isSongDark()"
-          [class.is-active]="ui.isSongDark()"
+          [attr.aria-checked]="session.isSongDark()"
+          [class.is-active]="session.isSongDark()"
           data-testid="audience-dark-page"
           (click)="onDarkPage()"
         >
@@ -224,8 +224,6 @@ import { UiStore } from './ui-store';
 export class AudienceBar {
   protected readonly session = inject(AudienceSession);
   protected readonly fullscreen = inject(Fullscreen);
-  /** Device-local, never synced — see `UiStore.isSongDark`. */
-  protected readonly ui = inject(UiStore);
 
   protected readonly isMenuOpen = signal(false);
 
@@ -250,7 +248,7 @@ export class AudienceBar {
   /** The menu stays open, as Hide chords does: both are things you flip while
    * looking at the song to see whether you like it better that way. */
   protected onDarkPage(): void {
-    this.ui.toggleSongDark();
+    this.session.toggleSongDark();
   }
 
   protected onLeave(): void {

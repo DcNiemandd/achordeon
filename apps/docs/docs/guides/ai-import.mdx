@@ -77,12 +77,17 @@ markup and give me the three things asked for at the end.
 # The settings
 
 Settings are not part of the text, they travel beside it. Set only what the sheet
-plainly shows, usually that is just `aspectRatio` and `columns`, and leave the
-rest out, so the app's own defaults apply.
+plainly shows, usually that is just `columns`, and leave the rest out, so the app's
+own defaults apply.
+
+Do not set `aspectRatio`, it is not in the table on purpose. The shape you can read
+off my photo is the paper's, and I will be reading the song off a screen. It is the
+one setting a song can override outright, so a scan of a portrait page would pin the
+song to a portrait page for good and pad the rest of my screen with white. Leave it
+out and the song takes the shape I chose in my own settings.
 
 | Setting         | Values                                       | Default     | Set it when                                                          |
 | --------------- | -------------------------------------------- | ----------- | -------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a ratio like `"4/3"`, or a number    | `"A4"`      | portrait page: `"A4"`. A wide sheet: its width divided by its height |
 | `columns`       | `1`, `2`, `3`                                | `1`         | the lyrics are printed in more than one column                       |
 | `titlePosition` | `"top"`, `"left"`                            | `"top"`     | `"left"` only if the title runs sideways up the edge of the page     |
 | `titleLayout`   | `"stacked"`, `"inline"`                      | `"stacked"` | the author sits beside the title instead of under it                 |
@@ -121,7 +126,7 @@ rest out, so the app's own defaults apply.
         "name": "Wish You Were Here",
         "content": "* Wish You Were Here\n** Pink Floyd\n\n[Em G Em G Em A Em A G]\n",
         "favorite": false,
-        "settings": { "aspectRatio": "A4", "columns": 1 },
+        "settings": { "columns": 1 },
         "cache": { "title": "Wish You Were Here", "subtitle": "Pink Floyd" }
       }
     ]

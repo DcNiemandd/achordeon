@@ -1,6 +1,7 @@
 // UiStore — Epic 13
 // Spec: PRD-UI-SHELL.md §7
 
+import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { UiStore } from './ui-store';
 
@@ -103,34 +104,96 @@ describe('UiStore', () => {
     expect(store.isRailCollapsed()).toBe(false);
   });
 
-  // The dark page (Stage / Audience). Device-local like the split ratio, for a
-  // reason of its own: the performer's stage is dark and a viewer's kitchen is
-  // not, so this must never sync.
-  it('starts on white paper — the render is a document until told otherwise', () => {
-    expect(TestBed.inject(UiStore).isSongDark()).toBe(false);
-  });
+  // The dark page — one stored boolean (does the theme speak for the paper?)
+  // and a derived answer. Device-local like the split ratio, for a reason of its
+  // own: the performer's stage is dark and a viewer's kitchen is not, so this
+  // must never sync.
+  describe('the dark page', () => {
+    /** The store with a theme wired in, and the switch to flip it. */
+    function connect(): {
+      store: UiStore;
+      isDarkTheme: WritableSignal<boolean>;
+    } {
+      const store = TestBed.inject(UiStore);
+      const isDarkTheme = signal(false);
+      store.connectTheme(isDarkTheme);
+      return { store, isDarkTheme };
+    }
 
-  it('remembers the dark page across a reload — the room is still dark', () => {
-    TestBed.inject(UiStore).toggleSongDark();
-    TestBed.resetTestingModule();
+    it('starts unlinked, on white paper — the render is a document', () => {
+      const { store, isDarkTheme } = connect();
 
-    expect(TestBed.inject(UiStore).isSongDark()).toBe(true);
-  });
+      isDarkTheme.set(true);
 
-  it('turns the page back over', () => {
-    const store = TestBed.inject(UiStore);
+      expect(store.isSongDarkFollowingTheme()).toBe(false);
+      expect(store.isSongDark()).toBe(false);
+    });
 
-    store.setSongDark(true);
-    expect(store.isSongDark()).toBe(true);
+    it('turns the page over with the theme once asked', () => {
+      const { store, isDarkTheme } = connect();
+      store.setSongDarkFollowsTheme(true);
 
-    store.toggleSongDark();
-    expect(store.isSongDark()).toBe(false);
-  });
+      isDarkTheme.set(true);
+      expect(store.isSongDark()).toBe(true);
 
-  it('ignores a stored dark-page flag of the wrong type', () => {
-    localStorage.setItem('achordeon.ui', JSON.stringify({ isSongDark: 'yes' }));
+      isDarkTheme.set(false);
+      expect(store.isSongDark()).toBe(false);
+    });
 
-    expect(TestBed.inject(UiStore).isSongDark()).toBe(false);
+    // Ticking the box while the app is already dark must do something you can
+    // see, rather than promising it for the next theme change.
+    it('applies the moment it is switched on', () => {
+      const { store, isDarkTheme } = connect();
+      isDarkTheme.set(true);
+      expect(store.isSongDark()).toBe(false);
+
+      store.setSongDarkFollowsTheme(true);
+
+      expect(store.isSongDark()).toBe(true);
+    });
+
+    // Wiring happens at boot, after the store is built and possibly after
+    // something has already read `isSongDark`. A computed cached against the
+    // stub accessor would never recover.
+    it('picks up a theme wired in after the first read', () => {
+      const store = TestBed.inject(UiStore);
+      store.setSongDarkFollowsTheme(true);
+      expect(store.isSongDark()).toBe(false); // no theme yet
+
+      store.connectTheme(() => true);
+
+      expect(store.isSongDark()).toBe(true);
+    });
+
+    it('remembers the link across a reload', () => {
+      TestBed.inject(UiStore).setSongDarkFollowsTheme(true);
+      TestBed.resetTestingModule();
+
+      expect(TestBed.inject(UiStore).isSongDarkFollowingTheme()).toBe(true);
+    });
+
+    it('ignores a stored link flag of the wrong type', () => {
+      localStorage.setItem(
+        'achordeon.ui',
+        JSON.stringify({ isSongDarkFollowingTheme: 'yes' }),
+      );
+
+      expect(TestBed.inject(UiStore).isSongDarkFollowingTheme()).toBe(false);
+    });
+
+    // The flag this replaced. Honouring it would hand someone a black library
+    // because they once pressed the moon on stage.
+    it('does not read the old standalone dark-page flag', () => {
+      localStorage.setItem(
+        'achordeon.ui',
+        JSON.stringify({ isSongDark: true }),
+      );
+      const { store, isDarkTheme } = connect();
+
+      isDarkTheme.set(true);
+
+      expect(store.isSongDark()).toBe(false);
+    });
   });
 
   it('keeps fullscreen session-only — a reload must not claim to restore it', () => {

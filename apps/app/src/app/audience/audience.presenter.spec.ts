@@ -12,7 +12,7 @@ import type {
   LobbyPayload,
   Song,
 } from '@achordeon/shared/domain';
-import { UiStore } from '../shared/layout';
+import { AudienceSession } from '../shared/layout';
 import { AudiencePresenter } from './audience.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -82,8 +82,8 @@ describe('AudiencePresenter', () => {
 
   beforeEach(() => {
     viewer = new FakeViewer();
-    // The dark page is persisted per device, so a previous test's choice would
-    // otherwise be hydrated into the next one.
+    // The app's dark-page setting is persisted per device, so a previous test's
+    // choice would otherwise be hydrated into the next one.
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
@@ -172,7 +172,7 @@ describe('AudiencePresenter', () => {
     expect(presenter.isDark()).toBe(false);
     expect(presenter.svg()).toBe('SVG:chords');
 
-    TestBed.inject(UiStore).setSongDark(true);
+    TestBed.inject(AudienceSession).toggleSongDark();
 
     expect(presenter.isDark()).toBe(true);
     expect(presenter.svg()).toBe('SVG:chords:dark');

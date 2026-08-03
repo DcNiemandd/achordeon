@@ -75,10 +75,30 @@ import type {
     }
   `,
   styles: `
+    /* Hidden, but still focusable and still clickable from script — hence not
+       display:none.
+
+       Every part of this rule is load-bearing against one bug: a scrollbar on
+       <html> everywhere this panel is mounted.
+
+       - overflow + clip-path: a file input is ~230×21 of native control whatever
+         box you give it, and unclipped that spill counts towards the document's
+         scrollable area.
+       - position FIXED, not absolute: absolute with no positioned ancestor
+         resolves against the initial containing block, so the box lands at its
+         static position — which is inside a scrolling pane, often far below the
+         fold — and a 1px box at y=1400 grows the document by 1400px. A fixed box
+         contributes nothing to scrollable overflow, ever.
+
+       Same rule, same reasons, in settings.page.ts. */
     .file {
-      position: absolute;
+      position: fixed;
+      inset-block-start: 0;
+      inset-inline-start: 0;
       inline-size: 1px;
       block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
       opacity: 0;
       pointer-events: none;
     }

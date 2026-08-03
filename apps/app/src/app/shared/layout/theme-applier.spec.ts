@@ -40,6 +40,64 @@ describe('ThemeApplier', () => {
     expect(localStorage.getItem('achordeon.theme')).toBe('dark');
   });
 
+  // The resolved answer, for the dark page that follows it (UiStore.followTheme).
+  // A CHOICE of 'system' is not an answer until the OS is asked.
+  describe('the resolved theme', () => {
+    const original = window.matchMedia;
+
+    afterEach(() => {
+      window.matchMedia = original;
+    });
+
+    /** Stand in for the OS switch, and hand back a way to flip it under us. */
+    function mockPrefersDark(matches: boolean): (next: boolean) => void {
+      const listeners: ((event: { matches: boolean }) => void)[] = [];
+      window.matchMedia = (() => ({
+        matches,
+        addEventListener: (_: string, listener: (e: never) => void) =>
+          listeners.push(listener as (event: { matches: boolean }) => void),
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+      return (next) => listeners.forEach((l) => l({ matches: next }));
+    }
+
+    /** A fresh applier, built after the OS mock is in place. */
+    function build(): ThemeApplier {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      return TestBed.inject(ThemeApplier);
+    }
+
+    it('takes an explicit choice at its word', () => {
+      applier.apply('dark');
+      expect(applier.isDark()).toBe(true);
+
+      applier.apply('light');
+      expect(applier.isDark()).toBe(false);
+    });
+
+    it("asks the OS for 'system' — and keeps listening", () => {
+      const flip = mockPrefersDark(true);
+      const fresh = build();
+
+      fresh.apply('system');
+      expect(fresh.isDark()).toBe(true);
+
+      // Dusk, with the app already open. A one-off read would miss this.
+      flip(false);
+      expect(fresh.isDark()).toBe(false);
+    });
+
+    it('lets a choice outrank the OS', () => {
+      mockPrefersDark(true);
+      const fresh = build();
+
+      fresh.apply('light');
+
+      expect(fresh.isDark()).toBe(false);
+    });
+  });
+
   it('still themes when storage is unavailable', () => {
     const setItem = jest
       .spyOn(Storage.prototype, 'setItem')

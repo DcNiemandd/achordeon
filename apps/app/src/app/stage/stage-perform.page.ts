@@ -31,7 +31,6 @@ import {
   PageZoom,
   StageSession,
   TierGuard,
-  UiStore,
   Viewport,
   ZoomPill,
 } from '../shared/layout';
@@ -156,12 +155,12 @@ const SWIPE_THRESHOLD_PX = 60;
               appButton
               type="button"
               [isIconOnly]="true"
-              [class.is-active]="ui.isSongDark()"
-              [attr.aria-pressed]="ui.isSongDark()"
+              [class.is-active]="session.isSongDark()"
+              [attr.aria-pressed]="session.isSongDark()"
               [attr.aria-label]="darkPageLabel"
               [appTooltip]="darkPageLabel"
               data-testid="stage-dark-page"
-              (click)="ui.toggleSongDark()"
+              (click)="session.toggleSongDark()"
             >
               <app-icon name="moon" />
             </button>
@@ -256,7 +255,7 @@ const SWIPE_THRESHOLD_PX = 60;
           <app-blank-page
             [ratio]="presenter.pageRatio()"
             [isPerforming]="true"
-            [isDark]="ui.isSongDark()"
+            [isDark]="session.isSongDark()"
             [zoom]="zoom.scale()"
             [panX]="zoom.panX()"
             [panY]="zoom.panY()"
@@ -714,10 +713,6 @@ export class StagePerformPage {
   protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
-  /** The dark page: a device preference, so it comes from the shell's own store
-   * and never from the songbook, the song or the lobby. The presenter reads the
-   * same signal for the render itself — the paper and the ink must agree. */
-  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
