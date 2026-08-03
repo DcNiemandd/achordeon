@@ -11,6 +11,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
@@ -27,10 +28,12 @@ import {
   BlankPage,
   DocumentTitle,
   Fullscreen,
+  PageZoom,
   StageSession,
   TierGuard,
   UiStore,
   Viewport,
+  ZoomPill,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -57,9 +60,14 @@ const SWIPE_THRESHOLD_PX = 60;
  *
  * Swipe detection uses the Pointer Events API so it works for both mouse and
  * touch. A drag is horizontal when |dx| > SWIPE_THRESHOLD_PX and |dx| > |dy|,
- * which avoids competing with a vertical scroll gesture. Any pointer event on
- * the render reveals the chrome in fullscreen (`fullscreen.reveal()`), so a tap
- * doubles as tap-to-reveal with no dedicated zone (spec).
+ * which avoids competing with a vertical scroll gesture. A tap reveals the
+ * chrome in fullscreen with no dedicated zone (spec) — that one arrives from
+ * `PageZoom`, which owns the pointer stream over the render and can tell a tap
+ * from the pan and the double-tap it also serves.
+ *
+ * **Magnified, a drag pans and the page does not turn** (ADR-0012). Zoom is the
+ * page's, not the performance's: it resets on every song change and is never
+ * shared with an audience, who each zoom their own screen.
  *
  * The summary is a non-blocking panel that slides over the render area and
  * stays open until dismissed, so the performer can browse without losing place.
@@ -82,6 +90,8 @@ const SWIPE_THRESHOLD_PX = 60;
     Tooltip,
     Premium,
     Dialog,
+    PageZoom,
+    ZoomPill,
   ],
   template: `
     <div
@@ -223,11 +233,20 @@ const SWIPE_THRESHOLD_PX = 60;
         </nav>
       }
 
-      <!-- The render — fills whatever the bar left. Any pointer event on the
-           render area reveals the chrome in fullscreen mode; startSwipe() calls
-           fullscreen.reveal() so a tap (pointerdown without a swipe) also
-           works, and no separate click handler is needed on this div. -->
-      <div class="render" data-testid="stage-render">
+      <!-- The render — fills whatever the bar left, and owns every gesture over
+           the page. PageZoom takes touch-action from the browser (ours is the
+           only zoom that works here — ADR-0012) and hands back a tap, which is
+           what reveals the chrome in fullscreen. There is no dedicated tap zone,
+           per spec; the swipe below reads the same element. -->
+      <div
+        class="render"
+        data-testid="stage-render"
+        appPageZoom
+        #zoom="appPageZoom"
+        [ratio]="presenter.pageRatio()"
+        [isEnabled]="!presenter.isEmpty()"
+        (tapped)="fullscreen.reveal()"
+      >
         @if (presenter.isEmpty()) {
           <app-empty-state
             [text]="emptySongbookText"
@@ -238,6 +257,9 @@ const SWIPE_THRESHOLD_PX = 60;
             [ratio]="presenter.pageRatio()"
             [isPerforming]="true"
             [isDark]="ui.isSongDark()"
+            [zoom]="zoom.scale()"
+            [panX]="zoom.panX()"
+            [panY]="zoom.panY()"
           >
             @if (presenter.svg(); as svg) {
               <app-song-render [svg]="svg" />
@@ -245,6 +267,12 @@ const SWIPE_THRESHOLD_PX = 60;
           </app-blank-page>
         }
       </div>
+
+      <!-- Only while magnified: the way back, and the reason the swipe stopped
+           turning pages. Outside the chrome auto-hide on purpose. -->
+      @if (zoom.isZoomed()) {
+        <app-zoom-pill [percent]="zoom.percent()" (cleared)="zoom.reset()" />
+      }
 
       <!-- Summary panel: a non-blocking overlay with search + jump list.
            Positioned over the render so the song stays visible behind it.
@@ -415,19 +443,20 @@ const SWIPE_THRESHOLD_PX = 60;
       user-select: none;
     }
 
-    /* The swipe surface, and the reason swiping works on a phone at all.
-       With touch-action left at its default, Chrome on Android watches the
-       first ~8px of a drag, decides it is a pan, hands the gesture to the
-       compositor and fires **pointercancel** — no pointerup ever arrives, so
-       endSwipe never ran and the page never turned. Claiming the horizontal
-       axis here tells the browser up front that this drag is ours.
+    /* The swipe surface. touch-action is not set here any more — PageZoom sets
+       it to none on this element, which is the strictest form of the
+       claim this rule used to make: with the default, Chrome on Android watches
+       the first ~8px of a drag, decides it is a pan, hands the gesture to the
+       compositor and fires **pointercancel**, so endSwipe never ran and the page
+       never turned.
 
-       pan-y and pinch-zoom stay with the browser on purpose: a vertical drag is
-       not a page turn, and pinch is how you read a chord that rendered small. */
+       Pinch used to be left to the browser here, as the way to read a chord that
+       rendered small. It was not one: browser pinch is disabled in fullscreen,
+       which is where a performer spends the set, and no browser zoom at all
+       reaches a fit-to-container render on desktop (ADR-0012). */
     .render {
       flex: 1;
       min-block-size: 0;
-      touch-action: pan-y pinch-zoom;
     }
 
     /* Desktop top bar — grid: [left 1fr] [nav auto] [right 1fr] = nav centered */
@@ -695,6 +724,14 @@ export class StagePerformPage {
   readonly songbookId = input.required<string>();
 
   /**
+   * The page's own zoom. Read here for the two things the gesture layer cannot
+   * decide on its own: whether a drag was a page turn or a pan, and what the
+   * keyboard's `+`/`-`/`0` mean. Not `required` — the template reads it too, and
+   * a required query throws if anything asks before the first pass resolves it.
+   */
+  private readonly zoom = viewChild(PageZoom);
+
+  /**
    * The join URL as a scannable QR, generated client-side (no backend, no
    * network round-trip): the audience points a camera at it instead of typing
    * the PIN. A GIF data URL, built synchronously so it stays a plain computed;
@@ -744,6 +781,15 @@ export class StagePerformPage {
       const id = this.songbookId();
       untracked(() => void this.presenter.open(id));
     });
+
+    // A new song is a new page. Carrying a magnification over would land the
+    // viewport on whatever happens to be at those coordinates in the next song —
+    // a different length, a different column count, usually the middle of
+    // nothing. Every page turn starts whole (CONTEXT.md §Zoom).
+    effect(() => {
+      this.session.index();
+      this.zoom()?.reset();
+    });
   }
 
   protected exit(): void {
@@ -772,6 +818,29 @@ export class StagePerformPage {
       }
       return;
     }
+
+    const zoom = this.zoom();
+    // `0` is the one that always works. Escape is offered because it is the
+    // reflex, but the browser eats it in fullscreen to leave fullscreen — and
+    // that is its key, not ours to take.
+    if (event.key === '0' || (event.key === 'Escape' && zoom?.isZoomed())) {
+      event.preventDefault();
+      zoom?.reset();
+      return;
+    }
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      zoom?.zoomIn();
+      return;
+    }
+    if (event.key === '-') {
+      event.preventDefault();
+      zoom?.zoomOut();
+      return;
+    }
+
+    // The arrows keep turning pages while zoomed: a keyboard has no finger to
+    // take away, so there is nothing here for the pan to be competing with.
     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       event.preventDefault();
       this.session.prev();
@@ -787,9 +856,16 @@ export class StagePerformPage {
     // hidden, so the reveal decision waits for pointerup, where a tap is told
     // apart from a swipe.
     if ((event.target as HTMLElement).closest('.summary, button, a')) return;
-    // A second finger (a pinch) must not move the anchor out from under the
-    // first one, or the gesture that ends is measured from the wrong place.
-    if (!event.isPrimary) return;
+    // A second finger means a pinch, and a pinch is never a page turn. Dropping
+    // the anchor rather than merely ignoring the event is the difference: left
+    // in place, a pinch whose first finger travelled sideways would turn the
+    // page when it lifted — and pinching *out* from fit leaves the zoom at 1, so
+    // endSwipe's zoomed check would not have caught it either.
+    if (!event.isPrimary) {
+      this.swipeStartX = null;
+      this.swipeStartY = null;
+      return;
+    }
     this.swipeStartX = event.clientX;
     this.swipeStartY = event.clientY;
   }
@@ -814,14 +890,19 @@ export class StagePerformPage {
     this.swipeStartX = null;
     this.swipeStartY = null;
 
+    // While the page is magnified the drag was a pan, and a pan is not a page
+    // turn — the gallery rule, and the one users already have. The way on is the
+    // bar (a tap reveals it), the arrows, or dropping the zoom first; and since
+    // a page turn resets the zoom anyway, none of them strands anyone.
+    if (this.zoom()?.isZoomed()) return;
+
     const isHorizontalSwipe =
       Math.abs(dx) >= SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy);
-    if (!isHorizontalSwipe) {
-      // A tap, not a swipe: reveal the chrome (tap-to-reveal, no dedicated
-      // zone — spec). The swipe itself never reveals.
-      this.fullscreen.reveal();
-      return;
-    }
+    // Not a swipe: nothing to do. Revealing the chrome is `PageZoom`'s `tapped`,
+    // which fires for a finger that went down and came up in the same place —
+    // stricter than "anything that was not a horizontal swipe", and closer to
+    // the tap-to-reveal the spec actually asks for.
+    if (!isHorizontalSwipe) return;
 
     if (dx < 0) {
       this.session.next();

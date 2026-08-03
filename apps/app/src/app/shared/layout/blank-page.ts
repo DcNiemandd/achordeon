@@ -1,7 +1,12 @@
 // Blank page — Epic 13
 // Spec: PRD-UI-SHELL.md §4, §6
 
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 
 /** A4 portrait, width ÷ height — the registry default for `aspectRatio`. */
 const A4_RATIO = 210 / 297;
@@ -34,7 +39,11 @@ const A4_RATIO = 210 / 297;
   },
   template: `
     <div class="desk">
-      <div class="page" [style.--page-ratio]="ratio()">
+      <div
+        class="page"
+        [style.--page-ratio]="ratio()"
+        [style.transform]="transform()"
+      >
         <ng-content />
       </div>
     </div>
@@ -71,6 +80,13 @@ const A4_RATIO = 210 / 297;
          full width, whichever is SMALLER; the aspect ratio then sets the height.
          A portrait page fits by height, a landscape one by width, neither spills. */
       inline-size: min(100cqi, 100cqb * var(--page-ratio));
+      /* Zoom, when there is any, is a transform on this box and nothing else —
+         the desk above is already overflow:hidden, so it is the window the
+         magnified page moves behind. Deliberately no will-change:transform —
+         that invites a cached raster layer, and a blurry magnified chord is the
+         one thing this feature exists to prevent. Re-rasterising the SVG at the
+         new scale is the cost of it staying a vector. */
+      transform-origin: center;
     }
 
     /* Performing: the song is what you are here for, so give it every pixel.
@@ -142,4 +158,27 @@ export class BlankPage {
    * would be arguing (see `RenderOpts.dark`).
    */
   readonly isDark = input(false);
+
+  /**
+   * Magnification, and where the magnified page has been dragged to (CSS px of
+   * the page's centre away from the desk's centre).
+   *
+   * **Numbers in, transform out — this frame does not know what a gesture is.**
+   * The arithmetic that produces them is `zoom.ts` and the fingers that drive it
+   * are `PageZoom`; both of those sit on the *caller's* element, because zooming
+   * is something you do to a song you are performing, not to a preview of one you
+   * are editing. Everywhere else leaves these at their defaults and gets exactly
+   * the frame it had before.
+   */
+  readonly zoom = input(1);
+  readonly panX = input(0);
+  readonly panY = input(0);
+
+  /** No transform at all while fitted, rather than an identity one: an untouched
+   * page should not be given a containing block it never asked for. */
+  protected readonly transform = computed(() =>
+    this.zoom() === 1 && this.panX() === 0 && this.panY() === 0
+      ? null
+      : `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoom()})`,
+  );
 }

@@ -20,6 +20,7 @@ import {
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
@@ -30,7 +31,9 @@ import {
   BlankPage,
   DocumentTitle,
   Fullscreen,
+  PageZoom,
   Viewport,
+  ZoomPill,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { AudiencePresenter } from './audience.presenter';
@@ -68,10 +71,24 @@ function writeLastPin(pin: string): void {
     EmptyState,
     Field,
     Icon,
+    PageZoom,
+    ZoomPill,
   ],
   template: `
-    <div class="screen" (pointerup)="onPointerUp($event)">
-      <div class="render" data-testid="audience-render">
+    <div class="screen">
+      <!-- PageZoom owns the pointer stream over the page: pinch and wheel to
+           magnify, drag to pan, double-tap to toggle — and what is left of a
+           single finger comes back as a tap, which is tap-to-reveal. Off while
+           there is no page (the PIN prompt renders in here too). -->
+      <div
+        class="render"
+        data-testid="audience-render"
+        appPageZoom
+        #zoom="appPageZoom"
+        [ratio]="presenter.pageRatio()"
+        [isEnabled]="view() === 'render'"
+        (tapped)="fullscreen.reveal()"
+      >
         @switch (view()) {
           @case ('entry') {
             <!-- No PIN yet, or the joined lobby went away: ask for a PIN. -->
@@ -131,6 +148,9 @@ function writeLastPin(pin: string): void {
               [ratio]="presenter.pageRatio()"
               [isPerforming]="true"
               [isDark]="presenter.isDark()"
+              [zoom]="zoom.scale()"
+              [panX]="zoom.panX()"
+              [panY]="zoom.panY()"
             >
               @if (presenter.svg(); as svg) {
                 <app-song-render [svg]="svg" />
@@ -139,6 +159,12 @@ function writeLastPin(pin: string): void {
           }
         }
       </div>
+
+      <!-- Viewer-local, like Hide chords and the dark page: the performer never
+           sees it and never sends it. Everyone leans in at their own distance. -->
+      @if (zoom.isZoomed()) {
+        <app-zoom-pill [percent]="zoom.percent()" (cleared)="zoom.reset()" />
+      }
 
       <!-- Desktop: the controls sit at the foot of the page (there is no shell
            bottom bar above the breakpoint — the rail takes its place). On a phone
@@ -451,6 +477,10 @@ export class AudiencePage {
   /** `/audience/:pin`, absent on the bare `/audience` route. */
   readonly pin = input<string>('');
 
+  /** The page's own zoom — for the keys, and for dropping it when the performer
+   * moves on. Not `required`: the template reads it before the query resolves. */
+  private readonly zoom = viewChild(PageZoom);
+
   // Prefilled with the last PIN that actually connected, so re-joining is one
   // tap. Persisted in localStorage on a successful join (see the effect below).
   protected readonly pinDraft = signal(readLastPin());
@@ -517,6 +547,15 @@ export class AudiencePage {
     // The shell draws the audience bar only while a viewer is joined.
     effect(() => this.session.setMounted(this.presenter.status() === 'joined'));
 
+    // The performer moved on: a new song is a new page, and a magnification held
+    // over from the last one would frame the middle of nothing. Same rule as
+    // performing — and here it is the only way out that arrives on its own, since
+    // a viewer has no prev/next to press.
+    effect(() => {
+      this.presenter.currentIndex();
+      this.zoom()?.reset();
+    });
+
     // Remember a PIN once it actually connects — that is the one worth
     // prefilling next time (a mistyped PIN never reaches 'joined').
     effect(() => {
@@ -534,13 +573,6 @@ export class AudiencePage {
     // Prefill the prompt with the PIN just left, so rejoining is one tap.
     this.pinDraft.set(readLastPin());
     void this.router.navigate(['/audience']);
-  }
-
-  /** In fullscreen, a tap reveals the chrome (no dedicated zone — like Stage). */
-  protected onPointerUp(event: PointerEvent): void {
-    if ((event.target as HTMLElement).closest('.summary, button, a, input'))
-      return;
-    this.fullscreen.reveal();
   }
 
   protected onPinInput(event: Event): void {
@@ -562,6 +594,21 @@ export class AudiencePage {
     if (event.key === 'Escape' && this.session.isSummaryOpen()) {
       event.preventDefault();
       this.session.closeSummary();
+      return;
+    }
+
+    // The same keys as performing. `0` is the reliable reset — the browser takes
+    // Escape for itself in fullscreen.
+    const zoom = this.zoom();
+    if (event.key === '0' || (event.key === 'Escape' && zoom?.isZoomed())) {
+      event.preventDefault();
+      zoom?.reset();
+    } else if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      zoom?.zoomIn();
+    } else if (event.key === '-') {
+      event.preventDefault();
+      zoom?.zoomOut();
     }
   }
 

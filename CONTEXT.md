@@ -6,6 +6,8 @@ Ubiquitous language for the Achordeon app. Glossary only — no implementation d
 
 A Song is meant to render onto a single page/screen with no scrolling while playing — picture a performer at a campfire reading off a phone while holding a guitar. Render settings (scale, columns, aspect ratio) exist to make content fit one page. Scrolling for over-long songs is a possible future option, not the v1 model.
 
+Zoom does not bend this rule: it magnifies a page that already fits, and lays nothing out again.
+
 ## Song
 
 A single piece of writing: lyrics + chords + render settings. The core entity of the app.
@@ -110,6 +112,18 @@ Viewers who join a performer's session via a lobby PIN / QR code and follow alon
 - **Host / create** — opening a Lobby. Premium-only in the long run; extended to Free users during the testing phase, and will become Premium-only after testing or once the userbase grows.
 
 Mental model: one performer picks the Songs; everyone around (the Audience, each on their own device) sees the currently selected Song. Audience receives the full render exactly as the performer sees it, plus the read-only setlist (Summary). Only the selected Song syncs; Audience can view the Summary but cannot open a different Song. A Lobby is one-time and ends when the performer ends it.
+
+## Zoom
+
+Looking closer at the rendered page while performing or watching. Available in Stage and Audience only.
+
+A **view of the page, not a render setting**: it does not cascade (Global → Songbook → Song), never reaches a download, a print or a PDF, and is not part of what an Audience receives — each viewer zooms their own screen, like Hide chords and the dark page. Nothing is laid out again; the finished page is magnified and can be dragged around behind the screen.
+
+- **Fit** — the whole page, the normal state. There is no zooming out past it.
+- **Reset on song change** — every page turn starts fitted. A magnification framed one song's chorus and means nothing in the next.
+- Zoomed, a drag **pans** and no longer turns the page; the page turn stays on the controls and the arrow keys. Double-tap toggles between fit and a readable magnification at the point tapped.
+
+Not the same word as the Songbook preview's _zoom_, which changes how many pages are shown side by side.
 
 ## Tier
 

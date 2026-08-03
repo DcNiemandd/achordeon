@@ -23,6 +23,8 @@ export type { PremiumFeature } from './tier-guard';
 export { Fullscreen } from './fullscreen';
 export { BackNavigation } from './back-navigation';
 export { BlankPage } from './blank-page';
+export { PageZoom } from './page-zoom';
+export { ZoomPill } from './zoom-pill';
 export { DocumentTitle } from './document-title';
 export { ModuleSwitcher } from './module-switcher';
 export { ReturnUrl } from './return-url';
