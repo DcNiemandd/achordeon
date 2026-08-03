@@ -236,6 +236,7 @@ const SWIPE_THRESHOLD_PX = 60;
         } @else {
           <app-blank-page
             [ratio]="presenter.pageRatio()"
+            [isPerforming]="true"
             [isDark]="ui.isSongDark()"
           >
             @if (presenter.svg(); as svg) {

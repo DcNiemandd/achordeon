@@ -1,13 +1,7 @@
 // Blank page — Epic 13
 // Spec: PRD-UI-SHELL.md §4, §6
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  input,
-} from '@angular/core';
-import { Fullscreen } from './fullscreen';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /** A4 portrait, width ÷ height — the registry default for `aspectRatio`. */
 const A4_RATIO = 210 / 297;
@@ -35,7 +29,7 @@ const A4_RATIO = 210 / 297;
   selector: 'app-blank-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[class.is-performing]': 'fullscreen.isActive()',
+    '[class.is-performing]': 'isPerforming()',
     '[class.is-dark]': 'isDark()',
   },
   template: `
@@ -79,7 +73,7 @@ const A4_RATIO = 210 / 297;
       inline-size: min(100cqi, 100cqb * var(--page-ratio));
     }
 
-    /* Performing: the song is the only thing on screen, so give it every pixel.
+    /* Performing: the song is what you are here for, so give it every pixel.
        The desk framing exists to say "this is a document you are editing" — mid-
        song that framing is just a smaller song. The aspect ratio still rules, so
        the page grows until one axis runs out; the leftover is bare desk. */
@@ -113,7 +107,19 @@ const A4_RATIO = 210 / 297;
   `,
 })
 export class BlankPage {
-  protected readonly fullscreen = inject(Fullscreen);
+  /**
+   * Drop the desk — no padding, no shadow, the page hard against the edges.
+   *
+   * **Not a fullscreen question.** This used to read `Fullscreen.isActive()`
+   * itself, so the same performance looked like a document you were editing
+   * until you pressed the fullscreen key, and the song lost a `--space-4` band
+   * on every side for no reason a performer could name. What the framing
+   * actually answers is *what kind of view is this* — Stage and Audience are
+   * watching a song, everywhere else is preparing one — and that is the
+   * caller's fact, not the browser's. So the two views that already pass
+   * `isDark` pass this too, and they pass it always.
+   */
+  readonly isPerforming = input(false);
 
   /**
    * The page shape, as **width ÷ height** — the same number the render's box

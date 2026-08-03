@@ -129,6 +129,7 @@ function writeLastPin(pin: string): void {
           @case ('render') {
             <app-blank-page
               [ratio]="presenter.pageRatio()"
+              [isPerforming]="true"
               [isDark]="presenter.isDark()"
             >
               @if (presenter.svg(); as svg) {
