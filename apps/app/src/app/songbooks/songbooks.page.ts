@@ -130,9 +130,14 @@ import {
            Blank with nothing picked: the empty paper is the honest picture of
            "nothing to print here", and the row already says what it holds. -->
       @if (presenter.currentId()) {
-        <app-songbook-preview pane-b [preview]="presenter.preview()" />
+        <app-songbook-preview
+          pane-b
+          [preview]="presenter.preview()"
+          [isDark]="presenter.isSongDark()"
+          (darkToggled)="presenter.toggleSongDark()"
+        />
       } @else {
-        <app-blank-page pane-b />
+        <app-blank-page pane-b [isDark]="presenter.isSongDark()" />
       }
     </app-split-pane>
 

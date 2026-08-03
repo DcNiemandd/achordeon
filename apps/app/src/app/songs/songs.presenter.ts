@@ -37,7 +37,7 @@ import {
   type ImportFailure,
   type ImportPreview,
 } from '../shared/transfer';
-import { ReturnUrl } from '../shared/layout';
+import { ReturnUrl, UiStore } from '../shared/layout';
 import { NEW_SONG_CONTENT } from './new-song';
 
 /** The name a song is born with, before the user has said what it is. */
@@ -82,6 +82,10 @@ export class SongsPresenter {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnUrl = inject(ReturnUrl);
+  /** The dark page — device-local shell state, never a render setting, so it
+   * reaches the renderer as `RenderOpts.dark` and nothing else (see
+   * `UiStore.isSongDark`). Pane B's frame reads the same signal. */
+  private readonly ui = inject(UiStore);
 
   private readonly _pendingDelete = signal<PendingDelete | null>(null);
   private readonly _isDownloadOpen = signal(false);
@@ -164,6 +168,7 @@ export class SongsPresenter {
     return this.renderer.layout(
       this.parser.parse(song.content),
       resolveSettings(this.settings.global(), undefined, song.settings),
+      { dark: this.ui.isSongDark() },
     );
   });
 

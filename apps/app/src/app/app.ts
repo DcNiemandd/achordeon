@@ -20,6 +20,7 @@ import {
   Stats,
   ThemeApplier,
   TierGuard,
+  UiStore,
   UpdateNotice,
   WarnUnsynced,
 } from './shared/layout';
@@ -61,6 +62,12 @@ export class App {
       language: localization.current,
     });
     themes.connect(() => settings.theme());
+
+    // And, for whoever asked for it, the song page follows the theme it is being
+    // read in (Settings ▸ Application ▸ Dark page). The applier resolves
+    // `system` against the OS; the shell's store decides whether that answer is
+    // allowed to reach the paper.
+    inject(UiStore).connectTheme(() => themes.isDark());
 
     // The unsynced-leave guard (ADR-0004).
     const sync = inject(SyncService);

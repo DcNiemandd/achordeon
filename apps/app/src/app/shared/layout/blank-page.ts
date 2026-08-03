@@ -18,17 +18,17 @@ const A4_RATIO = 210 / 297;
  * page**. Not an illustration, not a call to action; the shape of what goes
  * there (§4).
  *
- * The page does not follow the app theme. The render is a *document* — it
- * prints, it downloads, it is what the Audience sees — so dark mode is the desk,
- * not the paper (§6), and turning the UI dark still leaves the paper white
- * everywhere this frame is used. Its aspect ratio is a Song-scope setting; A4 is
- * the registry default.
+ * The page does not follow the app theme by itself. The render is a *document* —
+ * it prints, it downloads, it is what the Audience sees — so dark mode is the
+ * desk, not the paper (§6). Its aspect ratio is a Song-scope setting; A4 is the
+ * registry default.
  *
- * `isDark` is the one exception, and it is a different thing wearing a similar
- * name: not the theme, but a performer or a viewer saying *this screen, in this
- * room, right now*. Stage and Audience pass it; nothing else does, and the
- * default is off, so a preview pane and an export stay paper. See
- * `UiStore.isSongDark`.
+ * `isDark` is the one thing that turns the paper over, and it is a different
+ * thing wearing a similar name: not the theme, but the person at this screen
+ * saying *this room, right now* — possibly by having asked for the theme to
+ * speak for them (`UiStore.isSongDarkFollowingTheme`). Every mount that draws a
+ * song on screen passes it, from Stage to the editor's preview; the default is
+ * off, so a caller who has no answer gets paper. See `UiStore.isSongDark`.
  */
 @Component({
   selector: 'app-blank-page',
@@ -117,8 +117,19 @@ const A4_RATIO = 210 / 297;
       background: #000;
     }
 
+    /* Black paper on a black desk is one black rectangle: the page's edge — and
+       therefore how much of the sheet the song is actually using — disappears.
+       So the drop shadow inverts along with the paper. A hairline rim to state
+       where the sheet ends, and a soft halo under it to keep it sitting ON the
+       desk rather than being cut out of it.
+
+       Kept faint on purpose (and faint in absolute terms, not merely relative):
+       this is read in the dark, where the eye is wide open, and a bright frame
+       around the song would be the glare the dark page exists to remove. */
     :host(.is-dark) .page {
-      box-shadow: none;
+      box-shadow:
+        0 0 0 1px rgb(255 255 255 / 12%),
+        0 1px 4px rgb(255 255 255 / 5%);
     }
   `,
 })
@@ -146,13 +157,12 @@ export class BlankPage {
   readonly ratio = input(A4_RATIO);
 
   /**
-   * Black paper, for a song being performed or watched in the dark.
+   * Black paper, for a song being read in the dark.
    *
-   * It has to be an input rather than a read of `UiStore`: this frame is also
-   * pane B of the library and the editor's preview, and a song you are *editing*
-   * is a document you are preparing for print — it stays white whatever the
-   * stage lights are doing. Only the two views that put a song in front of a
-   * dark room pass it.
+   * An input rather than a read of `UiStore`, still: this frame is a *frame*,
+   * and the day something mounts it for a page that must stay white — a print
+   * proof, a thumbnail in a dialog — the answer has to be the caller's to give.
+   * Every current mount happens to pass the same signal.
    *
    * The caller must hand the same flag to the render, or the paper and the ink
    * would be arguing (see `RenderOpts.dark`).

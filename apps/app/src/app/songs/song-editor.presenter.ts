@@ -21,6 +21,7 @@ import {
   type SongFormat,
 } from '@achordeon/shared/data-access';
 import { DATA_FORMAT, type DownloadChoice } from '../shared/transfer';
+import { UiStore } from '../shared/layout';
 import {
   ChordTheory,
   resolveSettings,
@@ -61,6 +62,10 @@ export class SongEditorPresenter {
   private readonly exporter = inject(ExportService);
   private readonly sync = inject(SyncService);
   private readonly document = inject(DOCUMENT);
+  /** The dark page. It reaches the preview as `RenderOpts.dark` and never joins
+   * `settingsForSong` — what this pane draws may be turned over, what it saves,
+   * exports and prints may not (see `UiStore.isSongDark`). */
+  private readonly ui = inject(UiStore);
 
   private readonly _song = signal<Song | undefined>(undefined);
   private readonly _content = signal('');
@@ -116,7 +121,11 @@ export class SongEditorPresenter {
    */
   readonly plan = computed(() => {
     const ast = this._ast();
-    return ast ? this.renderer.layout(ast, this.settingsForSong()) : undefined;
+    return ast
+      ? this.renderer.layout(ast, this.settingsForSong(), {
+          dark: this.ui.isSongDark(),
+        })
+      : undefined;
   });
 
   /**

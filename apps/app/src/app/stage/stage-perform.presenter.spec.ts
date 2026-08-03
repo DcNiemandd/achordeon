@@ -20,7 +20,7 @@ import {
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
-import { Fullscreen, StageSession, UiStore } from '../shared/layout';
+import { Fullscreen, StageSession } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
 function makeSong(id: string, name: string, title = ''): Song {
@@ -60,6 +60,9 @@ class FakeSession {
   readonly index = signal(0);
   readonly lobbyPin = signal('');
   readonly total = signal(0);
+  /** The performance's own answer about dark paper (the moon, or the app's
+   * setting showing through) — the presenter only ever reads it. */
+  readonly isSongDark = signal(false);
   readonly start = jest.fn(() => this.index.set(0));
   readonly setTotal = jest.fn((n: number) => this.total.set(n));
   readonly setAudienceCount = jest.fn();
@@ -100,7 +103,8 @@ describe('StagePerformPresenter', () => {
     session = new FakeSession();
     host = new FakeHost();
     router = { navigate: jest.fn() };
-    // The dark page persists per device; clear it so each test starts on paper.
+    // A stored performance (and its dark page) would otherwise be hydrated into
+    // the next test.
     localStorage.clear();
 
     TestBed.configureTestingModule({
@@ -207,7 +211,7 @@ describe('StagePerformPresenter', () => {
     expect(presenter.svg()).toBe('SVG:chords');
     const lightSettings = presenter.payload()?.settings;
 
-    TestBed.inject(UiStore).setSongDark(true);
+    session.isSongDark.set(true);
     session.lobbyPin.set('ABCDE');
     flush();
 

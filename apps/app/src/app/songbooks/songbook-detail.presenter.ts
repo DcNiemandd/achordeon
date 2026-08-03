@@ -24,7 +24,7 @@ import {
   type SongbookPrint,
   type Uuid,
 } from '@achordeon/shared/domain';
-import { ReturnUrl } from '../shared/layout';
+import { ReturnUrl, UiStore } from '../shared/layout';
 import { SongbookViewMemory } from './songbook-view-memory';
 import {
   RowSelection,
@@ -74,6 +74,9 @@ export class SongbookDetailPresenter {
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
   private readonly returnUrl = inject(ReturnUrl);
+  /** The dark page, for this page's single-song preview. The book's print
+   * preview has a moon of its own, in `/songbooks` pane B. */
+  private readonly ui = inject(UiStore);
   private readonly viewMemory = inject(SongbookViewMemory);
   private readonly print = inject(PrintOptionsStore);
   private readonly router = inject(Router);
@@ -919,7 +922,9 @@ export class SongbookDetailPresenter {
       this._book()?.settings,
       song.settings,
     );
-    return this.renderer.layout(this.parser.parse(song.content), settings);
+    return this.renderer.layout(this.parser.parse(song.content), settings, {
+      dark: this.ui.isSongDark(),
+    });
   });
 
   /** Screen SVG — no inlined font bytes, exactly as the editor's live preview

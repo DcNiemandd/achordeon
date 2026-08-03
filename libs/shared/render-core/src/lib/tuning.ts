@@ -38,10 +38,12 @@ export interface RoleTypography {
  * reachable only through `RenderOpts.dark`, which the export paths never set
  * (PRD-RENDERING §5: opts are per-render viewer state, not settings, and they
  * do not cascade or persist). PRD-UI-SHELL.md §6 — "the render is a document,
- * dark mode is the desk, not the paper" — still holds for the app theme, which
- * cannot reach this: turning the UI dark leaves every render light, exactly as
- * before. This is the one thing that turns the paper itself over, and only
- * because a performer asked for it on the device in their hands.
+ * dark mode is the desk, not the paper" — still holds by default: turning the UI
+ * dark leaves every render light unless the reader has ticked Settings ▸
+ * Application ▸ Dark page, and even then the theme only *seeds* the viewer
+ * option on that one device. Nothing reaches this palette except
+ * `RenderOpts.dark`. This is the one thing that turns the paper itself over, and
+ * only because a performer asked for it on the device in their hands.
  */
 export interface DarkTuning {
   /** The page. True black, for the OLED panel in a dark room the feature exists for. */

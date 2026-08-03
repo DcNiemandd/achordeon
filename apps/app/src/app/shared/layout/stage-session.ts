@@ -5,6 +5,7 @@ import { LocationStrategy } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { generateLobbyPin } from '@achordeon/shared/domain';
 import { Fullscreen } from './fullscreen';
+import { UiStore } from './ui-store';
 
 /** The audience panel phase. */
 export type AudienceState = 'closed' | 'create' | 'active';
@@ -27,6 +28,8 @@ interface PersistedStage {
   bookId: string | null;
   index: number;
   lobbyPin: string;
+  /** The moon's answer for THIS performance, or absent for "as the app says". */
+  songDark: boolean | null;
   savedAt: number;
 }
 
@@ -66,6 +69,9 @@ interface PersistedStage {
 export class StageSession {
   private readonly fullscreen = inject(Fullscreen);
   private readonly locationStrategy = inject(LocationStrategy);
+  /** The app-wide answer about dark paper, which this session may override for
+   * the performance in hand — see `isSongDark`. */
+  private readonly ui = inject(UiStore);
 
   private readonly _bookId = signal<string | null>(null);
   private readonly _index = signal(0);
@@ -75,6 +81,21 @@ export class StageSession {
   private readonly _lobbyPin = signal('');
   private readonly _audienceCount = signal(0);
   private readonly _isMounted = signal(false);
+  /**
+   * The moon's answer, or `null` for "whatever the app says".
+   *
+   * A *performance-scoped override*, which is the only shape that fits what the
+   * control means. The setting (`UiStore.isSongDarkFollowingTheme`) is a
+   * standing preference about this device; the moon is a performer saying "not
+   * on this stage" about the room they are standing in tonight. So it overrides
+   * the setting here and reaches nothing else — the library and the editor keep
+   * drawing whatever the app theme says while a dark performance is running.
+   *
+   * Persisted with the rest of the performance, and expiring with it: a phone
+   * that locks mid-set comes back to the same page, and next week's gig starts
+   * from the setting again rather than from a flag nobody remembers pressing.
+   */
+  private readonly _songDark = signal<boolean | null>(null);
 
   readonly bookId = this._bookId.asReadonly();
   readonly index = this._index.asReadonly();
@@ -86,6 +107,15 @@ export class StageSession {
 
   /** A performance is open (whether or not its view is on screen). */
   readonly isPerforming = computed(() => this._bookId() !== null);
+
+  /**
+   * Is this performance drawn on a black page — the moon's answer if it was
+   * given, and the app's otherwise. The bar lights off it, the presenter renders
+   * off it, and the page frames off it, so paper and ink cannot disagree.
+   */
+  readonly isSongDark = computed(
+    () => this._songDark() ?? this.ui.isSongDark(),
+  );
 
   readonly hasPrev = computed(() => this._index() > 0);
   readonly hasNext = computed(() => this._index() < this._total() - 1);
@@ -234,6 +264,19 @@ export class StageSession {
     this.persist();
   }
 
+  /**
+   * Turn this performance's page over, whichever way it is currently lying.
+   *
+   * Records an explicit answer rather than a "not the setting" flag: the setting
+   * can move under a running performance (the OS goes dark at dusk), and a
+   * performer who turned the page white on a lit stage means white, not "the
+   * opposite of whatever the app decides next".
+   */
+  toggleSongDark(): void {
+    this._songDark.set(!this.isSongDark());
+    this.persist();
+  }
+
   /** Live viewer count, pushed in by the presenter from the host channel. */
   setAudienceCount(count: number): void {
     this._audienceCount.set(count);
@@ -266,6 +309,8 @@ export class StageSession {
     this._index.set(0);
     this._total.set(0);
     this._isSummaryOpen.set(false);
+    // The room ends with the gig: the next performance starts from the setting.
+    this._songDark.set(null);
     // Ends the lobby and persists — so the stored record goes with the
     // performance rather than waiting out its twelve hours.
     this.endLobby();
@@ -298,6 +343,9 @@ export class StageSession {
     if (typeof stored.lobbyPin === 'string') {
       this._lobbyPin.set(stored.lobbyPin);
     }
+    if (typeof stored.songDark === 'boolean') {
+      this._songDark.set(stored.songDark);
+    }
   }
 
   private read(): Partial<PersistedStage> | null {
@@ -325,6 +373,7 @@ export class StageSession {
       bookId,
       index: this._index(),
       lobbyPin: this._lobbyPin(),
+      songDark: this._songDark(),
       savedAt: Date.now(),
     };
     try {

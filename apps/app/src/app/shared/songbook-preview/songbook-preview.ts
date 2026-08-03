@@ -18,6 +18,7 @@ import {
   computed,
   effect,
   input,
+  output,
   signal,
 } from '@angular/core';
 import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
@@ -39,6 +40,7 @@ const WHEEL_STEP_PX = 90;
   imports: [SongRender, Button, Icon, Tooltip],
   host: {
     tabindex: '0',
+    '[class.is-dark]': 'isDark()',
     '(wheel)': 'onWheel($event)',
     '(keydown)': 'onKey($event)',
   },
@@ -66,11 +68,36 @@ const WHEEL_STEP_PX = 90;
       </div>
     </div>
 
-    <!-- The controls sit UNDER the paper: the page number centred, the zoom on
-         the right. Zoom is by column count and reads as a magnifier — zoom IN
-         shows fewer, larger pages, zoom OUT more, smaller ones — so the buttons
-         move columns the OTHER way from their sign. -->
+    <!-- The controls sit UNDER the paper: the dark page on the left, the page
+         number centred, the zoom on the right. Zoom is by column count and reads
+         as a magnifier — zoom IN shows fewer, larger pages, zoom OUT more,
+         smaller ones — so the buttons move columns the OTHER way from their
+         sign. -->
     <div class="bar">
+      <!-- The one dark page in the app that is not telling the truth about its
+           output, so the warning stands beside the switch that caused it rather
+           than in a tooltip nobody opens. It is a caption, not an alert: this is
+           a thing you chose, and it is undone by the button next to it. -->
+      <div class="paper">
+        <button
+          appButton
+          type="button"
+          [isIconOnly]="true"
+          [class.is-active]="isDark()"
+          [attr.aria-pressed]="isDark()"
+          [attr.aria-label]="darkPageLabel"
+          [appTooltip]="darkPageLabel"
+          data-testid="preview-dark-page"
+          (click)="darkToggled.emit()"
+        >
+          <app-icon name="moon" />
+        </button>
+        @if (isDark()) {
+          <span class="not-print" data-testid="preview-not-print">{{
+            notPrintLabel
+          }}</span>
+        }
+      </div>
       <span class="range" data-testid="preview-range">{{ rangeLabel() }}</span>
       <div class="zoom" role="group" [attr.aria-label]="zoomLabel">
         <button
@@ -101,22 +128,34 @@ const WHEEL_STEP_PX = 90;
     </div>
   `,
   styles: `
+    /* A pane, and panes do not scroll: the desk turns pages instead of scrolling
+       and the bar ellipsises instead of growing, so anything that still spills is
+       a bug and must not become a scrollbar on the app. */
     :host {
       display: flex;
       flex-direction: column;
       block-size: 100%;
+      min-inline-size: 0;
+      overflow: hidden;
       outline: none;
     }
 
     /* Under the paper, kept low. Three columns so the page number sits dead-centre
-       of the whole bar whatever the zoom controls' width: empty | range | zoom. */
+       of the whole bar whatever the side controls' width: paper | range | zoom.
+
+       minmax(0, 1fr) and not a bare 1fr: a grid track's floor is its content, so
+       the nowrap caption in the left cell would make the bar wider than the pane
+       and put a horizontal scrollbar on the app rather than ellipsising. The
+       middle track stays auto — the page number is the one thing here that may
+       not shrink. */
     .bar {
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       align-items: center;
       gap: var(--space-2);
       padding: 2px var(--space-2);
       border-block-start: 1px solid var(--border);
+      min-inline-size: 0;
     }
 
     .range {
@@ -125,6 +164,34 @@ const WHEEL_STEP_PX = 90;
       font-size: var(--text-xs);
       color: var(--text-faint);
       font-variant-numeric: tabular-nums;
+    }
+
+    /* The paper controls, in the bar's left cell. */
+    .paper {
+      grid-column: 1;
+      justify-self: start;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-inline-size: 0;
+    }
+
+    /* Says what the dark pages are NOT. Truncates rather than pushing the page
+       number off centre — the bar's middle cell is the one thing in here that
+       must not move. */
+    .not-print {
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      /* A flex item's floor is its content too — without this the ellipsis can
+         never engage and the nowrap text simply widens the bar. */
+      min-inline-size: 0;
+    }
+
+    .paper button.is-active {
+      color: var(--brand);
     }
 
     .zoom {
@@ -136,7 +203,8 @@ const WHEEL_STEP_PX = 90;
     }
 
     /* Compact icon buttons, so the bar is a slim strip rather than a toolbar. */
-    .zoom button {
+    .zoom button,
+    .paper button {
       --icon-size: 15px;
       block-size: 26px;
       min-inline-size: 26px;
@@ -218,6 +286,29 @@ const WHEEL_STEP_PX = 90;
       inset-inline-end: 0;
       text-align: center;
     }
+
+    /* The dark page, exactly as BlankPage draws it: true black for the OLED
+       panel this is read on, the desk turned over with it so a lit frame does
+       not glare around the spread, and the drop shadow inverted to a faint rim
+       so the sheet's edge — and the margin the song is not filling — stays
+       visible against the desk. The pages' own ink is dark because they were
+       RENDERED dark (RenderOpts.dark); nothing here restyles an SVG. */
+    :host(.is-dark) .desk,
+    :host(.is-dark) .page {
+      background: #000;
+    }
+
+    :host(.is-dark) .page {
+      box-shadow:
+        0 0 0 1px rgb(255 255 255 / 12%),
+        0 1px 4px rgb(255 255 255 / 5%);
+    }
+
+    /* The folio is drawn by this component rather than by the renderer, so it
+       is the one mark on the page that has to be re-inked by hand. */
+    :host(.is-dark) .folio {
+      color: #ebebeb;
+    }
   `,
 })
 export class SongbookPreview {
@@ -226,6 +317,18 @@ export class SongbookPreview {
 
   /** The rendered book and its paper, or null while nothing is picked / loading. */
   readonly preview = input<SongbookPreviewModel | null>(null);
+
+  /**
+   * Are these pages drawn on black paper?
+   *
+   * An input, and the moon below is an output: this component is controlled, and
+   * the pages it is handed were **rendered** dark or light by whoever produced
+   * them. Flipping it here would leave black chrome around light songs.
+   */
+  readonly isDark = input(false);
+
+  /** The moon was pressed. The owner re-renders the book and hands it back. */
+  readonly darkToggled = output<void>();
 
   /** Zoom, as a column count. Not persisted — a viewing gesture, not a
    * preference (the whole state resets when a different book is picked). */
@@ -364,6 +467,12 @@ export class SongbookPreview {
     this.cursor.set(Math.min(Math.max(0, next), this.lastStart()));
   }
 
+  // The same words the performing menu uses for the same act — one name for one
+  // feature, the pattern `@@stage.menu` already follows across the bars.
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
+  /** What the dark pages are not. Short: it sits in a slim bar beside a
+   * button, and the long version is the setting's own help text. */
+  protected readonly notPrintLabel = $localize`:@@songbookPreview.notPrint:Not the print output`;
   protected readonly zoomLabel = $localize`:@@songbookPreview.zoom:Zoom`;
   protected readonly zoomInLabel = $localize`:@@songbookPreview.zoomIn:Zoom in`;
   protected readonly zoomOutLabel = $localize`:@@songbookPreview.zoomOut:Zoom out`;

@@ -1,13 +1,23 @@
 // Theme applier — Epic 13
 // Spec: PRD-UI-SHELL.md §6
 
-import { DOCUMENT, Injectable, effect, inject } from '@angular/core';
+import {
+  DOCUMENT,
+  Injectable,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 
 /** Matches SettingsStore's ThemeChoice without importing data-access (§3). */
 export type Theme = 'system' | 'light' | 'dark';
 
 /** Read by the pre-paint script in index.html.template — keep both in step. */
 const PRE_PAINT_KEY = 'achordeon.theme';
+
+/** The same query `_tokens.scss` keys its `system` dark values off. */
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /**
  * Mirrors the chosen theme onto `<html data-theme>`.
@@ -28,6 +38,43 @@ const PRE_PAINT_KEY = 'achordeon.theme';
 @Injectable({ providedIn: 'root' })
 export class ThemeApplier {
   private readonly document = inject(DOCUMENT);
+
+  /** The last theme applied — the CHOICE, which for `system` is not yet an answer. */
+  private readonly choice = signal<Theme>('system');
+  /**
+   * What the OS says, kept live.
+   *
+   * A signal and not a one-off read, because `system` has no fixed answer: a
+   * reader who flips their machine to dark at dusk expects the app to follow
+   * without a reload, and `isDark` below is only honest if this is.
+   */
+  private readonly prefersDark = signal(false);
+
+  /**
+   * Is the app dark **right now** — the choice resolved against the OS.
+   *
+   * The one thing that can answer "is this a dark room" without asking the DOM
+   * what colour it went. It exists for the dark page: `UiStore.followTheme` reads
+   * it so a song can be turned over with the desk it is lying on (Settings ▸
+   * Application ▸ Dark page). Everything else still gets its dark from CSS.
+   */
+  readonly isDark = computed(
+    () =>
+      this.choice() === 'dark' ||
+      (this.choice() === 'system' && this.prefersDark()),
+  );
+
+  constructor() {
+    // Absent in a document that is not a browser window (and in some test
+    // environments). No answer from the OS reads as light, which is what the
+    // token sheet falls back to as well.
+    const query = this.document.defaultView?.matchMedia?.(DARK_QUERY);
+    if (!query) return;
+    this.prefersDark.set(query.matches);
+    query.addEventListener('change', (event) =>
+      this.prefersDark.set(event.matches),
+    );
+  }
 
   /** Starts mirroring `theme()` onto the document element. */
   connect(theme: () => Theme): void {
@@ -55,6 +102,7 @@ export class ThemeApplier {
   }
 
   apply(theme: Theme): void {
+    this.choice.set(theme);
     const root = this.document.documentElement;
     if (theme === 'system') {
       // Remove rather than set: the token sheet's default :root already means

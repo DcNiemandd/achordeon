@@ -1,7 +1,7 @@
 // UiStore — Epic 13
 // Spec: PRD-UI-SHELL.md §7 (where UI state lives)
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 const KEY = 'achordeon.ui';
 const DEFAULT_RATIO = 0.5;
@@ -20,7 +20,7 @@ interface PersistedUi {
   splitRatios: Partial<Record<SplitScope, number>>;
   isSplitShared: boolean;
   isRailCollapsed: boolean;
-  isSongDark: boolean;
+  isSongDarkFollowingTheme: boolean;
 }
 
 /**
@@ -56,35 +56,71 @@ export class UiStore {
   private readonly _isSplitShared = signal(true);
   private readonly _isRailCollapsed = signal(false);
   /**
-   * Render the song on a black page, while performing or watching.
+   * Do songs follow the app theme onto a dark page? — Settings ▸ Application.
    *
-   * **A property of the room, not of the song** — which is why it is here and
-   * not a render setting. Settings cascade Global → Songbook → Song and are what
-   * the download, the PDF and the print resolve (CONTEXT.md §Render settings);
-   * a dark background stored among them would eventually come out of a printer
-   * as a black A4. This one reaches only a live view, through
-   * `RenderOpts.dark`.
+   * **The one stored answer about dark paper on this device**, and the only
+   * thing that turns `isSongDark` below on. There is deliberately no second
+   * "the page is dark right now" flag beside it: two booleans meant the page
+   * could be black for a reason the settings screen did not show, and the only
+   * switch that turned it back off lived in a bar you cannot reach unless you
+   * are performing.
    *
-   * And it belongs beside the split ratio for the split ratio's own reason: it
-   * must **never sync** (PRD-UI-SHELL.md §7). The performer's stage is dark;
-   * the audience member following along at a kitchen table is not, and each of
-   * them is looking at a different screen in a different light. Pushing one
-   * answer to every device would be pushing the wrong one to most of them —
-   * exactly the logic behind the viewer-local Hide chords (CONTEXT.md
-   * §Audience).
+   * **Off by default**: the render is a document (PRD-UI-SHELL.md §6) and a dark
+   * UI is the desk it lies on, not the paper. Someone who wants the two linked
+   * says so; nobody wakes up to a black song sheet because they like their
+   * chrome dark.
    *
-   * Persisted, unlike fullscreen, because it *can* be honestly restored: a
-   * phone that reloads mid-set is still in the same dark room.
+   * It belongs beside the split ratio for the split ratio's own reason: it must
+   * **never sync** (PRD-UI-SHELL.md §7). The performer's stage is dark; the
+   * audience member following along at a kitchen table is not, and each is
+   * looking at a different screen in a different light. Pushing one answer to
+   * every device would be pushing the wrong one to most of them — exactly the
+   * logic behind the viewer-local Hide chords (CONTEXT.md §Audience).
    */
-  private readonly _isSongDark = signal(false);
+  private readonly _isSongDarkFollowingTheme = signal(false);
+  /**
+   * How the app theme resolves, once the shell has wired it (`connectTheme`).
+   *
+   * A signal *holding* the accessor rather than a plain field, so that wiring it
+   * invalidates `isSongDark` below. A field assigned after the first read would
+   * leave a computed cached against the stub for good.
+   */
+  private readonly darkTheme = signal<() => boolean>(() => false);
   /** Session-only: the Fullscreen API needs a gesture, so a reload could never
    * restore this. A URL or a persisted flag that lies is worse than neither. */
   private readonly _isFullscreen = signal(false);
 
   readonly isSplitShared = this._isSplitShared.asReadonly();
   readonly isRailCollapsed = this._isRailCollapsed.asReadonly();
-  readonly isSongDark = this._isSongDark.asReadonly();
+  readonly isSongDarkFollowingTheme =
+    this._isSongDarkFollowingTheme.asReadonly();
   readonly isFullscreen = this._isFullscreen.asReadonly();
+
+  /**
+   * Is a song drawn on a black page — derived, never stored.
+   *
+   * **A property of the room, not of the song**, which is why it is here and not
+   * a render setting. Settings cascade Global → Songbook → Song and are what the
+   * download, the PDF and the print resolve (CONTEXT.md §Render settings); a
+   * dark background stored among them would eventually come out of a printer as
+   * a black A4. This reaches a screen and only a screen, as `RenderOpts.dark`.
+   *
+   * Every on-screen render reads it — pane B of the library, the editor's live
+   * preview, a song previewed inside its songbook, the songbook print preview —
+   * because a lit page among dark ones is the glare this exists to remove, and
+   * there is no version of "this room is dark" that is true of one pane and
+   * false of the next. Stage, Audience and the songbook pane read it *through*
+   * their own state, which may override it for the performance, the viewing or
+   * the book in hand (`StageSession.isSongDark`).
+   *
+   * What does NOT read it is everything that is not a screen: every export path
+   * in `DownloadService`. The print preview is the awkward case — it is the
+   * PDF's twin, so a dark one is showing paper that will not be printed, and it
+   * says so on the bar while it is dark rather than quietly misleading.
+   */
+  readonly isSongDark = computed(
+    () => this._isSongDarkFollowingTheme() && this.darkTheme()(),
+  );
 
   constructor() {
     this.hydrate();
@@ -132,15 +168,23 @@ export class UiStore {
     this.persist();
   }
 
-  /** Flip the page over. The bars call this; the render reads `isSongDark`. */
-  toggleSongDark(): void {
-    this._isSongDark.update((dark) => !dark);
+  setSongDarkFollowsTheme(follows: boolean): void {
+    this._isSongDarkFollowingTheme.set(follows);
     this.persist();
   }
 
-  setSongDark(dark: boolean): void {
-    this._isSongDark.set(dark);
-    this.persist();
+  /**
+   * Tell this store how the app theme resolves.
+   *
+   * A plain accessor for the reason every other `connect` in `app/shared` takes
+   * one (see `ThemeApplier`): this store must not know who computed it, and
+   * `shared/layout` must stay under the import ladder. The root shell wires it
+   * to `ThemeApplier.isDark`, which resolves a `system` choice against the OS
+   * and keeps doing so — so a machine that turns dark at dusk turns the page
+   * with it, with nothing to re-apply and no state to go stale.
+   */
+  connectTheme(isDarkTheme: () => boolean): void {
+    this.darkTheme.set(isDarkTheme);
   }
 
   setFullscreen(on: boolean): void {
@@ -167,8 +211,11 @@ export class UiStore {
     if (typeof stored.isRailCollapsed === 'boolean') {
       this._isRailCollapsed.set(stored.isRailCollapsed);
     }
-    if (typeof stored.isSongDark === 'boolean') {
-      this._isSongDark.set(stored.isSongDark);
+    // A device that stored the old standalone `isSongDark` is not read here on
+    // purpose: that flag has no meaning left, and honouring it would hand
+    // someone a black library because they once pressed the moon on stage.
+    if (typeof stored.isSongDarkFollowingTheme === 'boolean') {
+      this._isSongDarkFollowingTheme.set(stored.isSongDarkFollowingTheme);
     }
   }
 
@@ -195,7 +242,7 @@ export class UiStore {
       splitRatios: this._splitRatios(),
       isSplitShared: this._isSplitShared(),
       isRailCollapsed: this._isRailCollapsed(),
-      isSongDark: this._isSongDark(),
+      isSongDarkFollowingTheme: this._isSongDarkFollowingTheme(),
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(state));

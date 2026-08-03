@@ -9,14 +9,28 @@
 // state (payload, svg, summary) stays in the route-scoped AudiencePresenter,
 // which reads `hideChords` from here.
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { UiStore } from './ui-store';
 
 @Injectable({ providedIn: 'root' })
 export class AudienceSession {
+  /** The app-wide answer about dark paper, overridable here — see `isSongDark`. */
+  private readonly ui = inject(UiStore);
+
   private readonly _isMounted = signal(false);
   private readonly _isSummaryOpen = signal(false);
   private readonly _isLobbyOpen = signal(false);
   private readonly _hideChords = signal(false);
+  /**
+   * The moon's answer for this viewing, or `null` for "as the app says".
+   *
+   * The viewer's counterpart of `StageSession`'s override, and viewer-local for
+   * exactly Hide chords' reason: the performer shares one render, but the light
+   * each person is sitting in is their own (CONTEXT.md §Audience). Nothing about
+   * it rides in the payload, and it reaches only this view — a viewer who
+   * darkens the song they are following has not darkened their song library.
+   */
+  private readonly _songDark = signal<boolean | null>(null);
   private leaveHandler: (() => void) | null = null;
   private syncHandler: (() => void) | null = null;
 
@@ -26,6 +40,12 @@ export class AudienceSession {
   readonly isLobbyOpen = this._isLobbyOpen.asReadonly();
   /** Viewer-local, reflow-safe hide-chords (§4.6). Read by the presenter's render. */
   readonly hideChords = this._hideChords.asReadonly();
+
+  /** Is this viewing drawn on a black page — the moon's answer if it was given,
+   * and the app's otherwise. The bar, the render and the frame all read it. */
+  readonly isSongDark = computed(
+    () => this._songDark() ?? this.ui.isSongDark(),
+  );
 
   setMounted(value: boolean): void {
     this._isMounted.set(value);
@@ -49,6 +69,12 @@ export class AudienceSession {
 
   toggleHideChords(): void {
     this._hideChords.update((hidden) => !hidden);
+  }
+
+  /** Turn this viewing's page over — an explicit answer, so a theme that moves
+   * later cannot undo it (see `StageSession.toggleSongDark`). */
+  toggleSongDark(): void {
+    this._songDark.set(!this.isSongDark());
   }
 
   /**
