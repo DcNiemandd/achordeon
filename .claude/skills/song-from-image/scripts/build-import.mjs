@@ -20,7 +20,7 @@
 //         "name": "Vizovice",              // library label (defaults to Title, then "Song")
 //         "content": "* Vizovice\n** Fleret\n...",   // Achordeon markup
 //         "favorite": false,               // optional
-//         "settings": { "aspectRatio": "3/4", "columns": 1 }   // optional song-scope
+//         "settings": { "columns": 1 }     // optional song-scope
 //       }
 //     ]
 //   }

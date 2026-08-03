@@ -77,12 +77,16 @@ tři věci, o které si říkám na konci.
 # Nastavení
 
 Nastavení není součástí textu, jde vedle něj. Nastav jen to, co je z listu jasně
-vidět, obvykle jen `aspectRatio` a `columns`, a ostatní vynech, ať platí výchozí
-hodnoty aplikace.
+vidět, obvykle jen `columns`, a ostatní vynech, ať platí výchozí hodnoty aplikace.
+
+`aspectRatio` nenastavuj, v tabulce schválně není. Tvar, který se dá vyčíst z mojí
+fotky, patří papíru, a píseň budu číst z obrazovky. Je to jediné nastavení, které si
+píseň může přebít sama, takže sken stránky na výšku by píseň natrvalo přišpendlil na
+výšku a zbytek obrazovky nechal bílý. Vynech ho a píseň si vezme tvar, který mám
+nastavený u sebe.
 
 | Nastavení       | Hodnoty                                      | Výchozí     | Nastav, když                                                       |
 | --------------- | -------------------------------------------- | ----------- | ------------------------------------------------------------------ |
-| `aspectRatio`   | `"A4"`, poměr jako `"4/3"`, nebo číslo       | `"A4"`      | stránka na výšku: `"A4"`. Široký list: jeho šířka dělená výškou    |
 | `columns`       | `1`, `2`, `3`                                | `1`         | text je vytištěný ve víc než jednom sloupci                        |
 | `titlePosition` | `"top"`, `"left"`                            | `"top"`     | `"left"` jen když název běží po straně listu                       |
 | `titleLayout`   | `"stacked"`, `"inline"`                      | `"stacked"` | autor stojí vedle názvu, ne pod ním                                |
@@ -121,7 +125,7 @@ hodnoty aplikace.
         "name": "Wish You Were Here",
         "content": "* Wish You Were Here\n** Pink Floyd\n\n[Em G Em G Em A Em A G]\n",
         "favorite": false,
-        "settings": { "aspectRatio": "A4", "columns": 1 },
+        "settings": { "columns": 1 },
         "cache": { "title": "Wish You Were Here", "subtitle": "Pink Floyd" }
       }
     ]

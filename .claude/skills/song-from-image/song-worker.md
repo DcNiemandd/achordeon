@@ -186,19 +186,25 @@ Track whether you reached a clean parse — you report it as `clean` below.
 Set only what the image clearly shows; leave the rest to defaults. These go in your
 fragment's `settings` object, never in the content text.
 
-| Setting         | Value                               | Read from the image                                                                                                                                                                                                                       |
-| --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aspectRatio`   | `"A4"`, a number, `"3/4"`, `"16/9"` | the sheet's shape. Portrait page → `"A4"`; else width÷height of the content, e.g. a squat landscape scan → `"4/3"`.                                                                                                                       |
-| `columns`       | `1`, `2`, …                         | how many columns the lyrics are laid out in.                                                                                                                                                                                              |
-| `titlePosition` | `"top"` \| `"left"`                 | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                    |
-| `titleLayout`   | `"stacked"` \| `"inline"`           | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                             |
-| `chordColor`    | `"#rrggbb"`                         | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so). |
-| `chordSize`     | number (`1` = default)              | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                |
-| `scale`         | `"auto"` or a number                | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                       |
-| `padding`       | number (em)                         | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                        |
+| Setting         | Value                     | Read from the image                                                                                                                                                                                                                       |
+| --------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `columns`       | `1`, `2`, …               | how many columns the lyrics are laid out in.                                                                                                                                                                                              |
+| `titlePosition` | `"top"` \| `"left"`       | `"left"` only if the title runs up the side as a rotated spine; almost always `"top"`.                                                                                                                                                    |
+| `titleLayout`   | `"stacked"` \| `"inline"` | subtitle under the title (`stacked`) vs beside it (`inline`).                                                                                                                                                                             |
+| `chordColor`    | `"#rrggbb"`               | **Never infer this from the image.** Chord ink stays the app default — a scan being red, black, or highlighted is irrelevant. Only ever set it if the **user explicitly asks** for a chord colour (the orchestrator will tell you if so). |
+| `chordSize`     | number (`1` = default)    | chords notably larger/smaller than the app default relative to the lyrics.                                                                                                                                                                |
+| `scale`         | `"auto"` or a number      | leave `"auto"` unless the user wants a fixed scale.                                                                                                                                                                                       |
+| `padding`       | number (em)               | leave default unless the sheet has an unusually wide/tight margin.                                                                                                                                                                        |
 
-Only `aspectRatio` and `columns` are worth inferring on most sheets; the rest stay
-default unless the image is clearly styled.
+Only `columns` is worth inferring on most sheets; the rest stay default unless the
+image is clearly styled.
+
+**Never set `aspectRatio`.** It is absent from the table on purpose. The shape you
+can read off a scan is the paper's, and the song will be read off a screen. Song is
+the _only_ scope this setting can be overridden at (`scopes: ['song']`), so a value
+inferred from a photograph outranks the user's own global one permanently — a
+portrait scan pins the song to a portrait page and pads the rest of the screen with
+white. Leaving it out lets the user's global setting decide.
 
 ## 5. Write the fragment, return the metadata
 
@@ -209,7 +215,7 @@ so spaces in `NAME` don't bite you). Its contents are exactly one song entry:
 {
   "name": "1.5. Vizovice - Fleret",
   "content": "* Vizovice\n** Fleret\n\n[G]Když se s vínem [D]probouzí [G]den\n...",
-  "settings": { "aspectRatio": "A4", "columns": 1 }
+  "settings": { "columns": 1 }
 }
 ```
 
