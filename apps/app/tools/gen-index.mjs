@@ -7,8 +7,10 @@
 // script in the template and its hash follows; there is nothing to keep in step by
 // hand, which is the only way a hash-based policy stays true.
 //
-// Pass `--dev` for the two allowances the dev-server needs (its websocket, and
-// `unsafe-eval` for the reload client). The policy is otherwise identical, so a
+// Pass `--dev` for what the dev-server needs: its websocket, `unsafe-eval` for
+// the reload client, and **no `upgrade-insecure-requests`** — that one is a
+// production defence that blanks the page outright when the app is opened on
+// anything but localhost (see below). Every other directive is identical, so a
 // violation surfaces while developing instead of only in production.
 
 import { createHash } from 'node:crypto';
@@ -52,7 +54,13 @@ function cspMeta(source) {
     'https://www.googleapis.com',
     ...supabaseOrigins(),
   ];
-  if (isDev) connect.push('ws://localhost:*', 'ws://127.0.0.1:*');
+  // The dev-server's reload socket. `ws:` rather than the two loopback origins it
+  // used to name, because the host you reach the dev server on is not knowable
+  // here: testing on a phone means serving with `--host` and opening the
+  // machine's LAN address, and the socket then goes to `ws://192.168.x.x:4200`.
+  // Naming loopback only meant live-reload silently stopped working the moment
+  // the browser was not on this machine. Dev builds exclusively.
+  if (isDev) connect.push('ws:');
 
   const policy = [
     "default-src 'self'",
@@ -75,10 +83,23 @@ function cspMeta(source) {
     "frame-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    'upgrade-insecure-requests',
-  ].join('; ');
+  ];
 
-  return `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;
+  // **Production only, and it is the one directive that cannot be shared.**
+  // It rewrites every http:// request to https://, and exempts origins the
+  // browser already trusts — which localhost is and a LAN address is not. So on
+  // `http://localhost:4200` it does nothing and looks harmless, while on
+  // `http://192.168.x.x:4200` (a phone, over `--host`) it upgrades the app's own
+  // scripts to an https the dev server does not speak: every request fails and
+  // the page is blank before a line of Angular runs.
+  //
+  // Nothing is lost by leaving it out here. The directive defends a deployed
+  // site against a mixed-content subresource; a dev server has no https to be
+  // downgraded from. Every other directive stays identical to production, so the
+  // violations worth catching early still surface early.
+  if (!isDev) policy.push('upgrade-insecure-requests');
+
+  return `<meta http-equiv="Content-Security-Policy" content="${policy.join('; ')}" />`;
 }
 
 /**
