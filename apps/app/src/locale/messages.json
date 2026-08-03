@@ -529,6 +529,7 @@
     "update.update": "Update now",
     "update.updating": "Updating…",
     "warning.shadowedSubtitle": "Only the last subtitle is used. This one is ignored.",
-    "warning.shadowedTitle": "Only the last title is used. This one is ignored."
+    "warning.shadowedTitle": "Only the last title is used. This one is ignored.",
+    "zoom.reset": "Reset zoom"
   }
 }

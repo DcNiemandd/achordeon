@@ -529,6 +529,7 @@
     "update.update": "Aktualizovat",
     "update.updating": "Aktualizuji…",
     "warning.shadowedSubtitle": "Použije se jen poslední podnadpis. Tento se ignoruje.",
-    "warning.shadowedTitle": "Použije se jen poslední nadpis. Tento se ignoruje."
+    "warning.shadowedTitle": "Použije se jen poslední nadpis. Tento se ignoruje.",
+    "zoom.reset": "Zrušit přiblížení"
   }
 }
