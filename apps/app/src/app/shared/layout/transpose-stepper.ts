@@ -21,6 +21,16 @@ import { formatSemitones } from './transpose';
  * viewer's are different numbers in different sessions; this is only how either
  * one is worn.
  *
+ * **A note badged with a direction, not a bare arrow** — the editor's transpose
+ * buttons, to the glyph (`song-editor.page.ts`). It is the same act on the same
+ * chords, so it may not be a different picture: an arrow alone says "move
+ * something" and leaves which something to the tooltip.
+ *
+ * **Framed as one control.** The three sit inside a bordered, sunken pill and
+ * wear the ghost skin, so what the eye reads on the bar is one object rather
+ * than three more icons in a row of icons — next to Fullscreen and the moon,
+ * unframed buttons would simply have joined the queue.
+ *
  * **The number is the reset.** A stepper that can wrap needs a way home that is
  * not eleven more taps, and the value was already the thing being looked at.
  * Disabled at 0 rather than hidden — a control that vanished when it reached its
@@ -35,14 +45,16 @@ import { formatSemitones } from './transpose';
       <button
         appButton
         type="button"
-        variant="secondary"
+        variant="ghost"
+        class="step"
         [isIconOnly]="true"
         [attr.aria-label]="downLabel"
         [appTooltip]="downLabel"
         data-testid="transpose-down"
         (click)="stepped.emit(-1)"
       >
-        <app-icon name="transposeDown" />
+        <app-icon name="note" />
+        <app-icon class="badge" name="transposeDown" />
       </button>
 
       <!-- aria-live, because on the phone this is the only thing that answers
@@ -51,6 +63,7 @@ import { formatSemitones } from './transpose';
       <button
         appButton
         type="button"
+        variant="ghost"
         class="value"
         [disabled]="value() === 0"
         [attr.aria-label]="resetLabel"
@@ -64,14 +77,16 @@ import { formatSemitones } from './transpose';
       <button
         appButton
         type="button"
-        variant="secondary"
+        variant="ghost"
+        class="step"
         [isIconOnly]="true"
         [attr.aria-label]="upLabel"
         [appTooltip]="upLabel"
         data-testid="transpose-up"
         (click)="stepped.emit(1)"
       >
-        <app-icon name="transposeUp" />
+        <app-icon name="note" />
+        <app-icon class="badge" name="transposeUp" />
       </button>
     </div>
   `,
@@ -80,16 +95,40 @@ import { formatSemitones } from './transpose';
       display: contents;
     }
 
+    /* The frame is the feature: one bordered object on a bar of loose icons. */
     .stepper {
       display: flex;
       align-items: center;
-      gap: var(--space-1);
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-sunken);
     }
 
-    /* Wide enough for "-11" so the arrows do not shuffle sideways as the digits
+    .step {
+      position: relative;
+    }
+
+    .step app-icon {
+      --icon-size: 17px;
+    }
+
+    /* The editor's badge, to the pixel: the direction is what you are choosing
+       between the two buttons, so the arrow is nearly as large as the note. */
+    .step .badge {
+      --icon-size: 15px;
+      position: absolute;
+      inset-block-start: 1px;
+      inset-inline-end: 0;
+      color: var(--brand);
+    }
+
+    /* Wide enough for "-11" so the notes do not shuffle sideways as the digits
        change, and lining figures so the number itself does not either. */
     .value {
       min-inline-size: 4ch;
+      padding-inline: var(--space-1);
       font-variant-numeric: tabular-nums;
     }
 
@@ -99,6 +138,13 @@ import { formatSemitones } from './transpose';
     .value:disabled {
       opacity: 1;
       color: var(--text-muted);
+    }
+
+    /* Off zero it is both: the colour says the song has moved, and matches the
+       badge that moved it. */
+    .value:not(:disabled) {
+      color: var(--brand);
+      font-weight: 500;
     }
   `,
 })

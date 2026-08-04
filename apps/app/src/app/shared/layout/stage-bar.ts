@@ -159,7 +159,11 @@ import { TransposeStepper } from './transpose-stepper';
         <!-- The offset is in the row's own label, the way the audience row says
              which act it is: behind ⋯ there is nothing else on screen to show a
              number, and "Transpose" alone would not admit that the set has been
-             running a tone up for the last half hour. -->
+             running a tone up for the last half hour.
+
+             The note is badged with BOTH arrows, unlike the stepper it opens:
+             this row is the act, not a step of it, and a single arrow would
+             promise that tapping it moves the song up. -->
         <button
           type="button"
           class="item"
@@ -169,7 +173,10 @@ import { TransposeStepper } from './transpose-stepper';
           data-testid="stage-transpose"
           (click)="onTranspose()"
         >
-          <app-icon name="transposeUp" />
+          <span class="item-icon">
+            <app-icon name="note" />
+            <app-icon class="badge" name="transposeBoth" />
+          </span>
           {{ transposeLabel() }}
         </button>
 
@@ -289,6 +296,24 @@ import { TransposeStepper } from './transpose-stepper';
     }
 
     .item.is-active {
+      color: var(--brand);
+    }
+
+    /* A composed glyph in a row of plain ones: the span is the 20px an
+       <app-icon> would have taken, so the labels stay in one column. */
+    .item-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .item-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
       color: var(--brand);
     }
 

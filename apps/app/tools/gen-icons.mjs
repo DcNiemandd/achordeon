@@ -80,6 +80,11 @@ const ICONS = {
   note: 'music-2',
   transposeUp: 'arrow-up',
   transposeDown: 'arrow-down',
+  // Both directions at once, for the places that name the *act* rather than one
+  // step of it: the performing menus, where one row opens a stepper that goes
+  // either way. Badged onto the same note as the two above, so it reads as the
+  // same feature seen from further back.
+  transposeBoth: 'arrow-up-down',
   favorite: 'star',
   // The favourites-first flag in the explorer toolbar, which is NOT the same act
   // as favouriting a song: the row's `favorite` star sets the flag on one song,

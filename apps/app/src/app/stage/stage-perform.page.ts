@@ -167,20 +167,6 @@ const SWIPE_THRESHOLD_PX = 60;
               <app-icon name="moon" />
             </button>
 
-            <!-- Transpose, in the open. Desktop's bar has no ⋯ to hide it
-                 behind and the room for the number, so the phone's two taps
-                 (menu, sheet) collapse into the control itself — the same
-                 unwrapping the dark page above got. A separator before it: the
-                 two buttons to its left are about the screen, and this is about
-                 what is printed on it. -->
-            <div class="bar-transpose">
-              <app-transpose-stepper
-                [value]="session.transpose()"
-                (stepped)="session.transposeBy($event)"
-                (cleared)="session.resetTranspose()"
-              />
-            </div>
-
             <!-- Audience: icon-only, plain button; the premium tint lives in
                  the dialog, not on the bar. A live lobby lights the button the
                  same way an open summary lights its own — brand-subtle, the
@@ -199,6 +185,19 @@ const SWIPE_THRESHOLD_PX = 60;
             >
               <app-icon name="audience" />
             </button>
+
+            <!-- Transpose, in the open and **last**. Desktop's bar has no ⋯ to
+                 hide it behind and the room for the number, so the phone's two
+                 taps (menu, sheet) collapse into the control itself — the same
+                 unwrapping the dark page got. It sits at the end because it is
+                 the only thing here that is not a single button: it carries its
+                 own frame, and a framed object in the middle of the row would
+                 cut the loose icons in two. -->
+            <app-transpose-stepper
+              [value]="session.transpose()"
+              (stepped)="session.transposeBy($event)"
+              (cleared)="session.resetTranspose()"
+            />
           </div>
 
           <!-- Center: Prev + Next (centered by 1fr/auto/1fr grid). -->
@@ -505,17 +504,6 @@ const SWIPE_THRESHOLD_PX = 60;
       display: flex;
       align-items: center;
       gap: var(--space-1);
-    }
-
-    /* Ruled off from the screen controls beside it, and pulled in tight: the
-       three buttons are one control and must not read as three more icons in
-       the row. */
-    .bar-transpose {
-      display: flex;
-      align-items: center;
-      padding-inline-start: var(--space-2);
-      margin-inline-start: var(--space-1);
-      border-inline-start: 1px solid var(--border);
     }
 
     .bar-end-slot {

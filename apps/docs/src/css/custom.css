@@ -61,6 +61,25 @@
 }
 
 /*
+ * The copy button, on a screen that cannot hover.
+ *
+ * Docusaurus hides the code block's buttons at `opacity: 0` and only reveals them
+ * under `.theme-code-block:hover` — which never fires on a touch screen, so on a
+ * phone the copy button is not merely faint, it is invisible and the code has to
+ * be selected by hand. The syntax page is full of snippets meant to be copied,
+ * and the phone is where copying by hand is worst.
+ *
+ * Matched on a substring of the hashed CSS-module class, because that group has
+ * no stable global name to hook. Scoped to `(hover: none)` so the desktop keeps
+ * the fade it was designed with.
+ */
+@media (hover: none) {
+  .theme-code-block [class*='buttonGroup'] button {
+    opacity: 0.4;
+  }
+}
+
+/*
  * The face the renderer draws with.
  *
  * `<SongPreview>` runs the app's real renderer, and that renderer measures the

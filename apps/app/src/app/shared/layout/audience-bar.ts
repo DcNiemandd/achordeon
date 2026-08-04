@@ -153,7 +153,10 @@ import { TransposeStepper } from './transpose-stepper';
           data-testid="audience-transpose"
           (click)="onTranspose()"
         >
-          <app-icon name="transposeUp" />
+          <span class="item-icon">
+            <app-icon name="note" />
+            <app-icon class="badge" name="transposeBoth" />
+          </span>
           {{ transposeLabel() }}
         </button>
 
@@ -272,6 +275,24 @@ import { TransposeStepper } from './transpose-stepper';
     }
 
     .item.is-active {
+      color: var(--brand);
+    }
+
+    /* The performing menu's composed glyph, unchanged: a note badged with both
+       directions, held in the 20px a plain <app-icon> would have taken. */
+    .item-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .item-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
       color: var(--brand);
     }
 
