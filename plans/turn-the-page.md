@@ -128,28 +128,13 @@ screen when turned.
 
 ---
 
-## Deferred — slots
+## Deferred — two Songs on a sheet
 
-Settled in the grill, to be designed next; recorded so it is not re-derived.
+Moved to its own assignment: [sharing-a-slot.md](./sharing-a-slot.md), which
+carries the bullets that were settled here plus a second grill's worth on top.
+Two of them changed in that grill and the newer file is the word: an unpaired
+half-width Song now fills its sheet rather than leaving the remainder blank, and
+the `before-title` page number is resolved rather than open.
 
-- A Song declares a **width share** of a sheet: `1`, `0.5`, `0.75`, `0.25`, `1/3`,
-  `2/3`. Per Song, never per Songbook — "this song only needs half a page" is a
-  fact about the song, and imposition-for-the-whole-book is the printer's job.
-- **Max two Songs per sheet.** Two pair when their shares sum to at most 1. Unequal
-  shares are allowed and give unequal **columns** — `0.75 + 0.25` is the same
-  arrangement as `0.5 + 0.5` at a different width.
-- The cut is **vertical**: two columns, side by side.
-- **Order is never changed.** Greedy and adjacent-only, walking the Songbook's
-  entries front to back — `entities.ts:30`, "a stored book's order IS its content".
-  A half followed by a full leaves the rest of that sheet blank, and that is
-  accepted. Every lookahead strategy is a reordering strategy in disguise.
-- Not a render setting: a share changes nothing about the drawn page, only where
-  that page is placed. Same test `allSongsOrder` failed at `entities.ts:78-84`, so
-  it stays out of the `SETTINGS` registry — an optional field on `Song`, additive
-  and lossless under ADR-0007, no migration, no `SCHEMA_VERSION` bump.
-- **One page number per sheet.** A page number numbers the sheet, not the Song, and
-  it does not rotate with a Song inside it. The one unresolved case is
-  `pageNumberPosition: 'before-title'`, which puts the number into a Song's heading
-  — two Songs on a sheet would both claim it.
-- Each slot applies ADR-0013's predicate to its own box, inheriting the rotation
-  rule rather than restating it.
+The word "slot" also moved. It now means only the printable region of a sheet
+(`CONTEXT.md` §Slot), not an Entry in a Songbook.

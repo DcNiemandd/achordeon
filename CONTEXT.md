@@ -46,14 +46,14 @@ Insert-syntax buttons cover: chord, title, subtitle, label, block, markdown bold
 An ordered list of Songs to be filtered/performed together. References Songs by uuid.
 One Song may belong to many Songbooks.
 
-- **Entry (slot)** — a positioned reference to a Song inside a Songbook. The same Song may appear in multiple slots within one Songbook (e.g. a set that repeats a song). Removing a slot ("remove from songbook") does not delete the Song.
+- **Entry** — a positioned reference to a Song inside a Songbook. The same Song may appear in multiple entries within one Songbook (e.g. a set that repeats a song). Removing an entry ("remove from songbook") does not delete the Song. (Formerly also called a "slot"; that word now means only the printable region of a sheet — see Slot.)
 - **All songs** — the default Songbook; always present. A read-only-order virtual view of the whole library; cannot be reordered and Songs cannot be removed from it.
 - **Title-page fields** — a Songbook carries its own Title, Subtitle, and Author, used on the download/print title page. These are Songbook metadata, separate from any Song's Title/Subtitle.
 
 ## Delete vs Remove
 
 - **Delete Song** — removes a Song from the library entirely. Only possible from the Songs module. Cascades out of every Songbook. Before deleting, the user is warned the Song is in use, with a link that opens the Songbook and auto-selects the Song.
-- **Remove from songbook** — removes a single Entry/slot from a Songbook; the Song stays in the library. Done in the Songbooks module.
+- **Remove from songbook** — removes a single Entry from a Songbook; the Song stays in the library. Done in the Songbooks module.
 
 ## Song explorer
 
@@ -167,6 +167,23 @@ The user's access level. Determines available sync and Audience hosting.
 A single Achordeon identity per user, provider-agnostic. Sign-in is via Google first; email+password registration is planned, and a user may link multiple sign-in methods to the one account. Login is never required for core use — it only adds cross-device sync and Audience hosting.
 
 - **Connect Drive** — authorizing Google Drive as a storage target for sync. A storage authorization layered on the Account — not a separate **account**, but carried by the Google sign-in: connecting Drive on an account without Google links Google as a sign-in method.
+
+## Slot
+
+The printable region of a sheet — the paper minus its margins. What a Song is scaled into when a Songbook is printed.
+
+A slot holds **one Song by default and at most two**. Two Songs in one slot stand side by side as a vertical cut, each keeping its own aspect ratio inside its part of the width.
+
+## Share
+
+How much of a slot's width a Song asks for: `1`, `2/3`, `3/4`, `1/2`, `1/3`, `1/4`. A Song-scope fact — "this song only needs half a page" is true of the song wherever it is printed, so it is not a Songbook setting and imposing a whole book is the printer's job, not the author's.
+
+A share is a **ratio, not a width**. It does two things, and they are separate:
+
+- **Who may pair** — two Songs share a slot only when their shares sum to at most `1`. A `1` therefore never pairs, and that is how a Song says "give me the whole sheet".
+- **How the slot splits** — the slot is divided in proportion to the shares of whoever is actually in it. Two halves take half each; a half beside a quarter takes two thirds and a third. A Song that ends up alone in a slot fills it, whatever its share said — a share is permission to be paired, never an instruction to leave paper blank.
+
+Not a render setting: it does not cascade, and it changes nothing about the drawn page. The Song is the same shape it always was; the share only decides how much room it is given.
 
 ## Export
 
