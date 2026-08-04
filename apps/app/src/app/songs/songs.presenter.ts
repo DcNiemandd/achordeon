@@ -37,7 +37,7 @@ import {
   type ImportFailure,
   type ImportPreview,
 } from '../shared/transfer';
-import { ReturnUrl, UiStore } from '../shared/layout';
+import { ListScrollMemory, ReturnUrl, UiStore } from '../shared/layout';
 import { NEW_SONG_CONTENT } from './new-song';
 
 /** The name a song is born with, before the user has said what it is. */
@@ -82,6 +82,7 @@ export class SongsPresenter {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnUrl = inject(ReturnUrl);
+  private readonly listScroll = inject(ListScrollMemory);
   /** The dark page — device-local shell state, never a render setting, so it
    * reaches the renderer as `RenderOpts.dark` and nothing else (see
    * `UiStore.isSongDark`). Pane B's frame reads the same signal. */
@@ -266,6 +267,24 @@ export class SongsPresenter {
   }
 
   /**
+   * How far the list was scrolled when it last left for the editor — waiting to
+   * be laid back on. Read **once, here**, at the moment this screen is built: the
+   * memory is consumed on the way in, so a later visit to the same URL opens at
+   * the top (see `ListScrollMemory`). Null unless this mount is a return.
+   *
+   * The page does the scrolling — the presenter has never seen a list.
+   */
+  private readonly _pendingScroll = signal<number | null>(
+    this.listScroll.take('songs', this.router.url),
+  );
+  readonly pendingScroll = this._pendingScroll.asReadonly();
+
+  /** Said once the offset has been laid on, so the page's effect stops firing. */
+  clearPendingScroll(): void {
+    this._pendingScroll.set(null);
+  }
+
+  /**
    * A click on the row body: this song becomes the current one **and the whole
    * selection** (see `RowSelection`). Looking at a song and acting on it are the
    * same gesture everywhere else in the app; the checkbox is what builds a set.
@@ -275,11 +294,19 @@ export class SongsPresenter {
     this.session.setCurrentSong(id);
   }
 
-  /** Open the editor, remembering the exact list URL — search, sort and all —
-   * so the editor's "back" returns to the list as you left it, not the bare
-   * `/songs` (see `ReturnUrl`). */
-  open(id: string): void {
+  /**
+   * Open the editor, remembering the exact list URL — search, sort and all — so
+   * the editor's "back" returns to the list as you left it, not the bare
+   * `/songs` (see `ReturnUrl`), and remembering **how far down that list you
+   * were**: the URL says which list, `listOffset` says which part of it, and a
+   * return that lands on the right list at the top is only half a return.
+   *
+   * The offset is measured by the page, which owns the list; 0 (the top) is the
+   * honest answer for a caller that has no list to measure.
+   */
+  open(id: string, listOffset = 0): void {
     this.returnUrl.set(this.router.url);
+    this.listScroll.capture('songs', this.router.url, listOffset);
     void this.router.navigate(['/songs', id, 'edit']);
   }
 

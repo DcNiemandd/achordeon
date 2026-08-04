@@ -29,6 +29,8 @@ export { ZoomPill } from './zoom-pill';
 export { DocumentTitle } from './document-title';
 export { ModuleSwitcher } from './module-switcher';
 export { ReturnUrl } from './return-url';
+export { ListScrollMemory } from './list-scroll-memory';
+export type { ListScope } from './list-scroll-memory';
 export { Rail } from './rail';
 export { ScreenShape } from './screen-shape';
 export { Shell } from './shell';

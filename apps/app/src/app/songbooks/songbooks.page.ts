@@ -10,7 +10,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
+  viewChild,
 } from '@angular/core';
 import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import {
@@ -106,7 +108,7 @@ import {
           [emptyText]="emptyText"
           (loadMore)="presenter.loadMore()"
           (activated)="presenter.select($event)"
-          (opened)="presenter.open($event)"
+          (opened)="openSongbook($event)"
           (performed)="presenter.perform($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
@@ -363,6 +365,8 @@ export class SongbooksPage {
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbooksPresenter);
 
+  private readonly list = viewChild(SongExplorer);
+
   protected readonly capabilities = SONGBOOK_LIST_CAPABILITIES;
 
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
@@ -416,10 +420,34 @@ export class SongbooksPage {
     () => this.presenter.rows().length === 1,
   );
 
+  /**
+   * Step from the list into the builder. The page's job in this is the one thing
+   * the presenter cannot do: **measure the list's scroll**, so a return from the
+   * builder lands on the songbook that was opened (see `ListScrollMemory`).
+   */
+  protected openSongbook(id: string): void {
+    this.presenter.open(id, this.list()?.getScrollOffset() ?? 0);
+  }
+
   constructor() {
     // Once, on entry. Not an `effect`: nothing here depends on a signal
     // changing — it is the initial fetch, and re-running it on every store
     // write would re-read the whole library to recount one row.
     void this.presenter.load();
+
+    // Lay the remembered scroll back on after a return from the builder. The
+    // offset means nothing until the list has rows to scroll through, so this
+    // waits for the window to arrive, defers past the current change-detection
+    // and then clears the pending mark (which stops the effect re-firing).
+    effect(() => {
+      const offset = this.presenter.pendingScroll();
+      if (offset === null || this.presenter.rows().length === 0) {
+        return;
+      }
+      setTimeout(() => {
+        this.list()?.scrollToOffset(offset);
+        this.presenter.clearPendingScroll();
+      });
+    });
   }
 }

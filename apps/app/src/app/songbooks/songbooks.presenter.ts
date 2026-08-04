@@ -20,7 +20,7 @@ import {
   type SongbookPrint,
 } from '@achordeon/shared/domain';
 import type { SongRow } from '../shared/song-explorer';
-import { UiStore } from '../shared/layout';
+import { ListScrollMemory, UiStore } from '../shared/layout';
 import {
   DATA_FORMAT,
   PrintOptionsStore,
@@ -100,6 +100,25 @@ export class SongbooksPresenter {
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
   private readonly router = inject(Router);
+  private readonly listScroll = inject(ListScrollMemory);
+
+  /**
+   * How far the list was scrolled when it last left for a songbook — waiting to
+   * be laid back on. Read **once, here**, at the moment this screen is built: the
+   * memory is consumed on the way in, so a later visit opens at the top (see
+   * `ListScrollMemory`). Null unless this mount is a return.
+   *
+   * The page does the scrolling — the presenter has never seen a list.
+   */
+  private readonly _pendingScroll = signal<number | null>(
+    this.listScroll.take('songbooks', this.router.url),
+  );
+  readonly pendingScroll = this._pendingScroll.asReadonly();
+
+  /** Said once the offset has been laid on, so the page's effect stops firing. */
+  clearPendingScroll(): void {
+    this._pendingScroll.set(null);
+  }
 
   /**
    * How many songs the library holds — the virtual row's count.
@@ -262,7 +281,17 @@ export class SongbooksPresenter {
     void this.store.loadMore();
   }
 
-  open(id: string): void {
+  /**
+   * Open a songbook, remembering **how far down the list you were** — a return
+   * from the builder that lands at the top of a shelf you had scrolled a long way
+   * into is a return to the wrong place (see `ListScrollMemory`).
+   *
+   * The offset is measured by the page, which owns the list; 0 (the top) is the
+   * honest answer for a caller that has no list to measure — a brand new book,
+   * which opens straight away and is not a trip you came back from.
+   */
+  open(id: string, listOffset = 0): void {
+    this.listScroll.capture('songbooks', this.router.url, listOffset);
     void this.router.navigate(['/songbooks', id]);
   }
 
