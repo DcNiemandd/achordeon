@@ -148,6 +148,8 @@ It exists because the device's own rotation cannot be relied on. A screen with r
 
 Offered only on a screen that can be turned — a phone or a tablet, never a monitor — and that is a question about the **device**, not about how wide the layout is. A tablet held sideways is wide enough to be laid out like a desktop and is still the case this exists for.
 
+The control is a **standing permission, not an act**: it says the reader is willing to hold the device the other way round, and the app then turns the pages that gain by it and leaves the rest upright. So it reads as a mode the way the dark page does — one label, the row lit while it is on — rather than as a button that turns the page in front of you.
+
 Distinct from _aspect ratio_, which decides the page's shape and is the Song's own. A page is landscape because its aspect ratio says so; turning it is how this reader, on this device, then looks at it.
 
 **On paper it is automatic and there is no control.** A sheet can be turned; a monitor cannot. So a printed Song is rotated a quarter whenever rotating gains it area on the paper, without being asked — nobody needs a checkbox for "do not waste half the sheet". The same judgement, offered on screen and simply made on paper, because the reader's body can answer it in one place and not the other.

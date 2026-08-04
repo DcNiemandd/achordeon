@@ -20,7 +20,7 @@ import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
 import { transposeActionLabel } from './transpose';
-import { turnPageActionLabel } from './turn-label';
+import { turnPageLabel } from './turn-label';
 import { UiStore } from './ui-store';
 import { TransposeStepper } from './transpose-stepper';
 
@@ -196,13 +196,15 @@ import { TransposeStepper } from './transpose-stepper';
             (click)="onTurnPage()"
           >
             <span class="item-icon">
-              <app-icon name="smartphone" />
+              <!-- The device turns with the page: armed, the phone is drawn the
+                   quarter round the song will be. -->
               <app-icon
-                class="badge"
-                [name]="ui.isPageTurnArmed() ? 'rotateCw' : 'rotateCcw'"
+                name="smartphone"
+                [class.is-turned]="ui.isPageTurnArmed()"
               />
+              <app-icon class="badge" name="rotateCcw" />
             </span>
-            {{ turnPageLabel() }}
+            {{ turnPageLabel }}
           </button>
         }
 
@@ -316,6 +318,14 @@ import { TransposeStepper } from './transpose-stepper';
       block-size: 20px;
     }
 
+    /* Turn the page, armed: the phone lies down the same quarter turn the song
+       does. The arrow beside it does not move — it names the act, and the act is
+       the same one whichever way the page is currently lying. */
+    .item-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
+    }
+
     .item-icon .badge {
       --icon-size: 14px;
       position: absolute;
@@ -365,9 +375,7 @@ export class AudienceBar {
     transposeActionLabel(this.session.transpose()),
   );
 
-  protected readonly turnPageLabel = computed(() =>
-    turnPageActionLabel(this.ui.isPageTurnArmed()),
-  );
+  protected readonly turnPageLabel = turnPageLabel;
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);

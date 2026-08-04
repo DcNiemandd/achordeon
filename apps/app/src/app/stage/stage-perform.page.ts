@@ -36,7 +36,7 @@ import {
   Viewport,
   ZoomPill,
   toPageDelta,
-  turnPageActionLabel,
+  turnPageLabel,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -186,14 +186,20 @@ const SWIPE_THRESHOLD_PX = 60;
                 [isIconOnly]="true"
                 [class.is-active]="ui.isPageTurnArmed()"
                 [attr.aria-pressed]="ui.isPageTurnArmed()"
-                [attr.aria-label]="turnPageLabel()"
-                [appTooltip]="turnPageLabel()"
+                [attr.aria-label]="turnPageLabel"
+                [appTooltip]="turnPageLabel"
                 data-testid="stage-turn-page"
                 (click)="ui.togglePageTurn()"
               >
-                <app-icon
-                  [name]="ui.isPageTurnArmed() ? 'rotateCw' : 'rotateCcw'"
-                />
+                <span class="stacked-icon">
+                  <!-- The device turns with the page: armed, the phone is drawn
+                       the quarter round the song will be. -->
+                  <app-icon
+                    name="smartphone"
+                    [class.is-turned]="ui.isPageTurnArmed()"
+                  />
+                  <app-icon class="badge" name="rotateCcw" />
+                </span>
               </button>
             }
 
@@ -522,6 +528,32 @@ const SWIPE_THRESHOLD_PX = 60;
       gap: var(--space-2);
       flex-wrap: nowrap;
       min-inline-size: 0;
+    }
+
+    /* A glyph with a second one badged on it, the way the phone's menu draws
+       Transpose and Turn the page. This bar has no overflow menu, so the same
+       composition has to exist here rather than being borrowed from it. */
+    .stacked-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .stacked-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
+      color: var(--brand);
+    }
+
+    /* Armed, the phone lies down the quarter turn the song does. The arrow does
+       not move — it names the act, which is the same act either way round. */
+    .stacked-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
     }
 
     .bar-title {
@@ -1004,9 +1036,7 @@ export class StagePerformPage {
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
-  protected readonly turnPageLabel = computed(() =>
-    turnPageActionLabel(this.ui.isPageTurnArmed()),
-  );
+  protected readonly turnPageLabel = turnPageLabel;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   /** What the browser tab says while a performance is on: "Performing - Achordeon". */
   private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;
