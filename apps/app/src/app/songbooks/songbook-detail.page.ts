@@ -749,6 +749,13 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
       border-block-end: 1px solid var(--border);
     }
 
+    /* A section that follows another stands off the rule above it. Only that
+       one: the first section is spaced from the dialog's title by the panel's
+       own gap, and padding here would double it. */
+    .fields + .fields {
+      padding-block-start: var(--space-3);
+    }
+
     /* The heading and its (?) hint, on one line. */
     .fields-head {
       display: flex;
