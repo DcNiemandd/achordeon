@@ -25,6 +25,7 @@ import {
   zoomPercent,
 } from './zoom';
 import { type Delta, gainsRoomTurned, toPageDelta, turnedDesk } from './turn';
+import { Viewport } from './viewport';
 
 /** Travel under which a pointer that went down and came up again was a tap. */
 const TAP_SLOP_PX = 12;
@@ -86,6 +87,8 @@ const MAX_WHEEL_PX = 300;
 })
 export class PageZoom {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** Only for `isScreenTurnable` — whether this display can be turned at all. */
+  private readonly viewport = inject(Viewport);
 
   /**
    * The page's shape, width ÷ height — the same number `BlankPage` is given.
@@ -151,6 +154,9 @@ export class PageZoom {
    * the correct answer are the same thing.
    */
   readonly isTurnWorthwhile = computed(() => {
+    if (!this.viewport.isScreenTurnable()) {
+      return false;
+    }
     const desk = this.deskRatio();
     return desk > 0 && gainsRoomTurned(this.ratio(), desk);
   });

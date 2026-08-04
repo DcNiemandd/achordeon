@@ -79,6 +79,13 @@ Adopt **C**, under one rule:
   first goes true. It never turns the page by itself, because it cannot tell a
   phone from a narrow browser window and `_isFullscreen` already set the bar: a
   flag that lies is worse than no flag.
+- **Offered only where the screen itself can be turned** — `(pointer: coarse)`,
+  via `Viewport.isScreenTurnable`, and deliberately **not** a breakpoint. "Wide
+  layout" and "cannot be turned" are different facts: a tablet held sideways is
+  both wide and turnable, and is the case this feature exists for, while a
+  monitor is neither. Gating on the compact breakpoint had it exactly backwards,
+  and the primary pointer is asked rather than any pointer so a touchscreen
+  laptop is not offered something its hinge will not do.
 - **Counter-clockwise, two states.** `-90°`, matching the CCW title spine
   (`render-plan.ts:22`, `title-layout.ts:119`), so the two sideways things in
   Achordeon are read with the same turn of the head. No third state: the only
@@ -106,7 +113,13 @@ Adopt **C**, under one rule:
   rotation brings it back on screen. Applied separately, they are a visible bug.
 - Pan and the page-turn swipe must use the **same** delta helper. If only one is
   mapped, a turned reader pans one way and turns pages another.
-- The control is hidden where it cannot act, rather than shown and inert.
+- The control is hidden where it cannot act, rather than shown and inert — which
+  means it has to exist in **both** bars, the phone's overflow menu and the wide
+  layout's unwrapped row, since a turnable device may be laid out either way.
+- The pre-rotation layout box is wider than the desk, so the desk's grid tracks
+  must be pinned to it (`minmax(0, 1fr)`). An `auto` track sizes itself to that
+  box, which moves the centre the rotation turns about and throws the page off to
+  one side.
 - A reader who turns their phone the wrong way sees the page upside down and turns
   it back. Accepted as the price of two states; a reader whose device is fixed in a
   stand or a mount is not served.

@@ -58,6 +58,16 @@ const A4_RATIO = 210 / 297;
 
     .desk {
       display: grid;
+      /* ONE track, pinned to the desk — not the auto size an implicit track
+         would take. A turned page's pre-rotation box is deliberately wider than
+         the desk (see .page.is-turned), and an auto track sizes itself to the
+         item: the track grew to the box, place-items centred the page on the
+         TRACK's middle rather than the desk's, and the rotation then carried it
+         off to the right. Pinned, the item overflows a track that is exactly the
+         desk, so its centre and the desk's are one point — which is the point
+         transform-origin turns about. */
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
       place-items: center;
       block-size: 100%;
       padding: var(--space-4);

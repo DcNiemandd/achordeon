@@ -39,6 +39,19 @@ describe('PageZoom — the turn', () => {
 
   beforeEach(() => {
     observers = [];
+    // A device that can be turned. `Viewport.isScreenTurnable` asks
+    // `(pointer: coarse)`, and jsdom answers no to everything — which would make
+    // every test below assert the desktop case by accident.
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('pointer: coarse'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
     // jsdom has no ResizeObserver, and the desk measurement rides on it. A stub
     // that fires once on observe() is what a browser does anyway — the first
     // observation arrives with the element, before any gesture.
@@ -127,11 +140,33 @@ describe('PageZoom — the turn', () => {
   });
 
   it('offers nothing on a landscape desk holding a landscape song', () => {
-    // The desktop case the automatic version would have got wrong: rotated text
-    // on a monitor nobody can turn is worse than a small page.
     const { host } = mount(LANDSCAPE_DESK);
 
     expect(host.zoom().isTurnWorthwhile()).toBe(false);
+  });
+
+  // The gate that is about the DEVICE and not the layout: a monitor cannot be
+  // turned, so the offer never appears however well-shaped the gain would be.
+  // Deliberately not a breakpoint — a tablet held sideways is wide AND turnable,
+  // and that is the case the whole feature exists for.
+  it('offers nothing at all on a screen that cannot be turned', () => {
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+
+    const { host, fixture } = mount();
+    host.isTurnArmed.set(true);
+    fixture.detectChanges();
+
+    expect(host.zoom().isTurnWorthwhile()).toBe(false);
+    expect(host.zoom().isTurned()).toBe(false);
   });
 
   // Derived, not stored: the arming survives, and the turn stops applying the

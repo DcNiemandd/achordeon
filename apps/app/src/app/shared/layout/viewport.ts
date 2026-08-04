@@ -26,6 +26,7 @@ export class Viewport {
   private readonly _isCompact = signal(false);
   private readonly _isStacked = signal(false);
   private readonly _isRowReorderHidden = signal(false);
+  private readonly _isScreenTurnable = signal(false);
 
   /** True below `--bp-compact`. Derived, never stored (PRD-UI-SHELL.md §7). */
   readonly isCompact = this._isCompact.asReadonly();
@@ -51,6 +52,25 @@ export class Viewport {
    */
   readonly isRowReorderHidden = this._isRowReorderHidden.asReadonly();
 
+  /**
+   * Can the person reading this screen physically turn it?
+   *
+   * **A question about the device, not about the window** — which is why it is
+   * `(pointer: coarse)` and not a width. Turning the page (ADR-0013) only helps
+   * someone who can rotate the thing they are holding: a phone or a tablet can,
+   * a monitor cannot, and a *tablet in landscape* is wide enough to be laid out
+   * as a desktop while still being the case this feature exists for. Gating on
+   * the breakpoint got that one exactly backwards.
+   *
+   * The **primary** pointer, deliberately: a touchscreen laptop reports a fine
+   * primary pointer and a coarse secondary one, and it is a laptop — offering to
+   * turn its page would be offering something the hinge will not do.
+   *
+   * False where nothing will say, so the control stays hidden rather than
+   * appearing on a host that cannot answer for itself.
+   */
+  readonly isScreenTurnable = this._isScreenTurnable.asReadonly();
+
   constructor() {
     const view = this.document.defaultView;
     // `matchMedia` is missing in jsdom and in non-browser hosts, and the method
@@ -67,6 +87,19 @@ export class Viewport {
       FALLBACK_ROW_REORDER_PX,
       this._isRowReorderHidden,
     );
+    // Not a breakpoint, so not through `watch` — see `isScreenTurnable`.
+    this.follow(view, '(pointer: coarse)', this._isScreenTurnable);
+  }
+
+  /** Track a media query that is about the device rather than the layout. */
+  private follow(
+    view: Window,
+    query: string,
+    into: { set(value: boolean): void },
+  ): void {
+    const media = view.matchMedia(query);
+    into.set(media.matches);
+    media.addEventListener('change', (e) => into.set(e.matches));
   }
 
   private watch(

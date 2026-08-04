@@ -36,6 +36,7 @@ import {
   Viewport,
   ZoomPill,
   toPageDelta,
+  turnPageActionLabel,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -168,6 +169,33 @@ const SWIPE_THRESHOLD_PX = 60;
             >
               <app-icon name="moon" />
             </button>
+
+            <!-- Turn the page (ADR-0013), beside the dark page for the same
+                 reason it sits beside it on the phone: both are about the screen
+                 you are reading off, not about the song.
+
+                 It is HERE and not only in the phone's ⋯ menu because "wide
+                 layout" and "cannot be turned" are different facts, and a tablet
+                 held sideways is both wide and turnable — the case this feature
+                 exists for. The offer answers the device question through
+                 Viewport.isScreenTurnable, so a desktop never sees this. -->
+            @if (ui.isPageTurnOffered()) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [class.is-active]="ui.isPageTurnArmed()"
+                [attr.aria-pressed]="ui.isPageTurnArmed()"
+                [attr.aria-label]="turnPageLabel()"
+                [appTooltip]="turnPageLabel()"
+                data-testid="stage-turn-page"
+                (click)="ui.togglePageTurn()"
+              >
+                <app-icon
+                  [name]="ui.isPageTurnArmed() ? 'rotateCw' : 'rotateCcw'"
+                />
+              </button>
+            }
 
             <!-- Audience: icon-only, plain button; the premium tint lives in
                  the dialog, not on the bar. A live lobby lights the button the
@@ -976,6 +1004,9 @@ export class StagePerformPage {
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
+  protected readonly turnPageLabel = computed(() =>
+    turnPageActionLabel(this.ui.isPageTurnArmed()),
+  );
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   /** What the browser tab says while a performance is on: "Performing - Achordeon". */
   private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;

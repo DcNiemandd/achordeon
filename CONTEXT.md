@@ -146,6 +146,8 @@ A **view of the page, not a render setting**, on the same terms as Zoom: the pag
 
 It exists because the device's own rotation cannot be relied on. A screen with rotation lock on does not follow the phone, so a landscape Song stays a letterboxed strip however the reader holds it — and no browser will unlock the screen on request. The reader turns the page because only the reader knows whether their device will.
 
+Offered only on a screen that can be turned — a phone or a tablet, never a monitor — and that is a question about the **device**, not about how wide the layout is. A tablet held sideways is wide enough to be laid out like a desktop and is still the case this exists for.
+
 Distinct from _aspect ratio_, which decides the page's shape and is the Song's own. A page is landscape because its aspect ratio says so; turning it is how this reader, on this device, then looks at it.
 
 **On paper it is automatic and there is no control.** A sheet can be turned; a monitor cannot. So a printed Song is rotated a quarter whenever rotating gains it area on the paper, without being asked — nobody needs a checkbox for "do not waste half the sheet". The same judgement, offered on screen and simply made on paper, because the reader's body can answer it in one place and not the other.
