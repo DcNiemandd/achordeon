@@ -775,7 +775,16 @@ export class StagePerformPage {
     destroyRef.onDestroy(() => {
       this.session.leaveView();
       void this.fullscreen.exit();
+      this.ui.setPageTurnOffered(false);
       if (this.copiedResetTimer !== null) clearTimeout(this.copiedResetTimer);
+    });
+
+    // Tell the shell whether a quarter turn would gain this song anything, so
+    // StageBar can offer the toggle or leave it out (ADR-0013). The render
+    // surface is the only thing that knows — it holds both the song's shape and
+    // the desk's — and the bar is drawn by the shell, well out of its reach.
+    effect(() => {
+      this.ui.setPageTurnOffered(this.zoom()?.isTurnWorthwhile() ?? false);
     });
 
     // The shell draws the stage controls while this view is on screen.

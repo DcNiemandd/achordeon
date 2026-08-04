@@ -100,6 +100,21 @@ export class UiStore {
    */
   private readonly _isPageTurnArmed = signal(false);
   /**
+   * Is there a page on screen right now that a quarter turn would help?
+   *
+   * Session-only and view-fed, like `_isFullscreen` below: the answer depends on
+   * the shape of a song and the shape of a desk, and the only thing holding both
+   * is the render surface itself (`PageZoom.isTurnWorthwhile`). The bars cannot
+   * reach a page-scoped presenter, so the page tells the shell rather than the
+   * shell going looking.
+   *
+   * It exists to keep the control *honest*: hidden where a turn would gain
+   * nothing, rather than shown and inert. Which also makes it the discovery
+   * moment — the toggle appearing is itself the app pointing out that this song
+   * is not using the screen it is on.
+   */
+  private readonly _isPageTurnOffered = signal(false);
+  /**
    * How the app theme resolves, once the shell has wired it (`connectTheme`).
    *
    * A signal *holding* the accessor rather than a plain field, so that wiring it
@@ -116,6 +131,7 @@ export class UiStore {
   readonly isSongDarkFollowingTheme =
     this._isSongDarkFollowingTheme.asReadonly();
   readonly isPageTurnArmed = this._isPageTurnArmed.asReadonly();
+  readonly isPageTurnOffered = this._isPageTurnOffered.asReadonly();
   readonly isFullscreen = this._isFullscreen.asReadonly();
 
   /**
@@ -198,6 +214,16 @@ export class UiStore {
   setPageTurnArmed(armed: boolean): void {
     this._isPageTurnArmed.set(armed);
     this.persist();
+  }
+
+  togglePageTurn(): void {
+    this.setPageTurnArmed(!this._isPageTurnArmed());
+  }
+
+  /** Told by whichever render surface is on screen. Not persisted — it describes
+   * the song being looked at, and the next one may be a different shape. */
+  setPageTurnOffered(offered: boolean): void {
+    this._isPageTurnOffered.set(offered);
   }
 
   /**

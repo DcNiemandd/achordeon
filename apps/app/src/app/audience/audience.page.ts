@@ -542,6 +542,15 @@ export class AudiencePage {
       void this.fullscreen.exit();
       this.session.setMounted(false);
       this.session.reset();
+      this.ui.setPageTurnOffered(false);
+    });
+
+    // Whether a quarter turn would gain this song anything, told to the shell so
+    // AudienceBar can offer the toggle (ADR-0013). A viewer needs it more than a
+    // performer does: they never chose this song's shape, and it arrived from
+    // somebody else's screen.
+    effect(() => {
+      this.ui.setPageTurnOffered(this.zoom()?.isTurnWorthwhile() ?? false);
     });
 
     // Join whenever the routed PIN changes; a bare /audience leaves us idle.

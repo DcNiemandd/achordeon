@@ -16,6 +16,8 @@ import { Fullscreen } from './fullscreen';
 import { StageSession } from './stage-session';
 import { transposeActionLabel } from './transpose';
 import { TransposeStepper } from './transpose-stepper';
+import { turnPageActionLabel } from './turn-label';
+import { UiStore } from './ui-store';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
@@ -155,6 +157,33 @@ import { TransposeStepper } from './transpose-stepper';
           <app-icon name="moon" />
           {{ darkPageLabel }}
         </button>
+
+        <!-- Turn the page (ADR-0013). Only here when a quarter turn would gain
+             this song room — a control that cannot act is not offered, and the
+             row appearing is itself the app pointing out that the song is not
+             using the screen it is on. Device-local like the dark page, and the
+             same flag the Audience reads: it is a fact about the hands holding
+             this phone, not about the performance. -->
+        @if (ui.isPageTurnOffered()) {
+          <button
+            type="button"
+            class="item"
+            role="menuitemcheckbox"
+            [attr.aria-checked]="ui.isPageTurnArmed()"
+            [class.is-active]="ui.isPageTurnArmed()"
+            data-testid="stage-turn-page"
+            (click)="onTurnPage()"
+          >
+            <span class="item-icon">
+              <app-icon name="smartphone" />
+              <app-icon
+                class="badge"
+                [name]="ui.isPageTurnArmed() ? 'rotateCw' : 'rotateCcw'"
+              />
+            </span>
+            {{ turnPageLabel() }}
+          </button>
+        }
 
         <!-- The offset is in the row's own label, the way the audience row says
              which act it is: behind ⋯ there is nothing else on screen to show a
@@ -347,6 +376,9 @@ import { TransposeStepper } from './transpose-stepper';
 export class StageBar {
   protected readonly session = inject(StageSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** Turn the page is device-local and shared with the Audience — one flag for
+   * the Performance view, so it is `UiStore`'s rather than the session's. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);
@@ -354,6 +386,10 @@ export class StageBar {
 
   protected readonly transposeLabel = computed(() =>
     transposeActionLabel(this.session.transpose()),
+  );
+
+  protected readonly turnPageLabel = computed(() =>
+    turnPageActionLabel(this.ui.isPageTurnArmed()),
   );
 
   protected closeMenu(): void {
@@ -368,6 +404,12 @@ export class StageBar {
 
   protected closeTranspose(): void {
     this.isTransposeOpen.set(false);
+  }
+
+  /** Stays open, like the dark page above it: you turn the page, look, and turn
+   * it back if your hands disagree with the screen. */
+  protected onTurnPage(): void {
+    this.ui.togglePageTurn();
   }
 
   /** The menu hands over to the sheet: two panels over one song is one too many. */

@@ -20,6 +20,8 @@ import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
 import { transposeActionLabel } from './transpose';
+import { turnPageActionLabel } from './turn-label';
+import { UiStore } from './ui-store';
 import { TransposeStepper } from './transpose-stepper';
 
 @Component({
@@ -178,6 +180,32 @@ import { TransposeStepper } from './transpose-stepper';
           {{ darkPageLabel }}
         </button>
 
+        <!-- Turn the page (ADR-0013). Only here when a quarter turn would gain
+             this song room: a control that cannot act is not offered, and the
+             row appearing is itself the app saying this song is not using the
+             screen it arrived on. The viewer's own, like everything above it —
+             the performer is not turning their phone. -->
+        @if (ui.isPageTurnOffered()) {
+          <button
+            type="button"
+            class="item"
+            role="menuitemcheckbox"
+            [attr.aria-checked]="ui.isPageTurnArmed()"
+            [class.is-active]="ui.isPageTurnArmed()"
+            data-testid="audience-turn-page"
+            (click)="onTurnPage()"
+          >
+            <span class="item-icon">
+              <app-icon name="smartphone" />
+              <app-icon
+                class="badge"
+                [name]="ui.isPageTurnArmed() ? 'rotateCw' : 'rotateCcw'"
+              />
+            </span>
+            {{ turnPageLabel() }}
+          </button>
+        }
+
         <button
           type="button"
           class="item is-danger"
@@ -326,12 +354,19 @@ import { TransposeStepper } from './transpose-stepper';
 export class AudienceBar {
   protected readonly session = inject(AudienceSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** Turn the page is device-local and shared with Stage — one flag for the
+   * Performance view, so it is `UiStore`'s rather than either session's. */
+  protected readonly ui = inject(UiStore);
 
   protected readonly isMenuOpen = signal(false);
   protected readonly isTransposeOpen = signal(false);
 
   protected readonly transposeLabel = computed(() =>
     transposeActionLabel(this.session.transpose()),
+  );
+
+  protected readonly turnPageLabel = computed(() =>
+    turnPageActionLabel(this.ui.isPageTurnArmed()),
   );
 
   protected closeMenu(): void {
@@ -372,6 +407,12 @@ export class AudienceBar {
    * looking at the song to see whether you like it better that way. */
   protected onDarkPage(): void {
     this.session.toggleSongDark();
+  }
+
+  /** Stays open like the two above it: you turn the page, look, and turn it
+   * back if your hands disagree. */
+  protected onTurnPage(): void {
+    this.ui.togglePageTurn();
   }
 
   protected onLeave(): void {
