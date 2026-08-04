@@ -29,3 +29,9 @@ create policy "lobby_events insert anonymous"
 -- Read stays owner-only, so anonymous rows are readable by nobody. That is the
 -- intended shape rather than an oversight: they belong to no account, and this
 -- is a write-only history that only aggregate queries (service role) ever touch.
+
+-- And the privilege underneath it. A policy decides WHICH rows a role may write;
+-- it does not grant the right to write at all, and `anon` had no INSERT on this
+-- table — so a policy alone still answered `42501 permission denied`. The two
+-- are separate systems and both have to say yes.
+grant insert on public.lobby_events to anon;
