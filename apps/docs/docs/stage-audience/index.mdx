@@ -27,6 +27,9 @@ A songbook row in the [`Songbooks`](../songbooks/index.mdx) list has its own
     [Settings](/settings.mdx#application) can tie it to the dark theme so it comes
     on by itself everywhere; this button overrides that for the performance you
     are in, and forgets it when the performance ends
+  - Transpose: opens a small panel at the bottom of the screen with a down arrow,
+    the current offset and an up arrow. The row says where you are, the same way
+    the audience row says which act it is. See [Transposing](#transposing)
   - Create an audience (or "Manage audience" after): creates a lobby with a PIN, a link and a QR code
   - Exit: leaves the performing mode and goes back to the songbook list
 - **Next**: next song
@@ -54,12 +57,37 @@ Audience view is similar to the stage view. You see the full render of the song 
 - **Lobby**: info about the lobby - PIN and QR code
 - **Song**: song selected by the performer, changes automatically
 - **Re-sync**: fetch the performer's current song again
+- **Transpose**: your own key for the song on screen. See [Transposing](#transposing)
 
 The lobby is one-time and ends when the performer ends it.
 
 A phone that was locked or in another app catches up on its own when you come back
 to it, so **Re-sync** is there for the case where you suspect you are behind and do
 not want to wait.
+
+## Transposing
+
+The song is written in one key and you may not be playing in it - a capo, a
+different instrument, or a voice that does not reach the top note. Both views can
+shift the chords while you play:
+
+- On a phone, **Transpose** in the menu opens a panel at the bottom of the screen.
+  It stays open while you step, so you can see what the song does; tapping outside
+  it or pressing `Esc` puts it away
+- On a desktop the arrows and the offset sit in the bar itself
+- The number between the arrows is **how many semitones**, signed - `+2`, `-3`.
+  Press it to go back to the written key
+- Twelve semitones is the same music an octave away, so the twelfth step wraps back
+  to `0` rather than pretending to be a setting
+
+The offset holds for the whole performance, not just the song you set it on - a capo
+does not come off between numbers. It goes when you **Exit**, and it is not saved:
+after a reload you are playing what is written again.
+
+Transposing changes nothing but what you are looking at. Your song is not rewritten,
+nothing is saved to the songbook, and the offset does not travel to the audience -
+each viewer has the same control for the instrument in their own hands. To transpose
+a song for good, use the editor ([Editing](../songs/editing.mdx)).
 
 ## Zooming in
 

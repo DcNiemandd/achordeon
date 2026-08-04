@@ -7,7 +7,12 @@ import {
   ParserService,
   RenderService,
 } from '@achordeon/shared/data-access';
-import { foldForSearch, type LobbySummaryRow } from '@achordeon/shared/domain';
+import {
+  ChordTheory,
+  foldForSearch,
+  transposeContent,
+  type LobbySummaryRow,
+} from '@achordeon/shared/domain';
 import { AudienceSession } from '../shared/layout';
 
 const A4_RATIO = 210 / 297;
@@ -27,11 +32,13 @@ export class AudiencePresenter {
   private readonly viewer = inject(LobbyViewer);
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
+  /** For the viewer's own transpose below — the port the parser already uses. */
+  private readonly theory = inject(ChordTheory);
   /**
-   * Also the home of the dark page for this viewing: the app's setting says
-   * whether songs are drawn dark on this device, and this session says whether
-   * *this* viewer disagrees — beside `hideChords`, in intent as well as in
-   * fact. Neither is in the payload.
+   * Also the home of the dark page and the viewer's transpose for this viewing:
+   * the app's setting says whether songs are drawn dark on this device, and this
+   * session says whether *this* viewer disagrees — beside `hideChords`, in
+   * intent as well as in fact. None of the three is in the payload.
    */
   private readonly session = inject(AudienceSession);
 
@@ -58,7 +65,17 @@ export class AudiencePresenter {
   private readonly _plan = computed(() => {
     const p = this.payload();
     if (!p) return null;
-    const ast = this.parser.parse(p.song.content);
+    // The performer's song, shifted for the instrument in this room. A step in
+    // the flow and nothing else: the payload is untouched, nothing is written
+    // anywhere, and at offset 0 the source comes back as it arrived.
+    const ast = this.parser.parse(
+      transposeContent(
+        p.song.content,
+        this.session.transpose(),
+        this.theory,
+        p.settings.notation,
+      ),
+    );
     return this.renderer.layout(ast, p.settings, {
       hideChords: this.session.hideChords(),
       dark: this.session.isSongDark(),

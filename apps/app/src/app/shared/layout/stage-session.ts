@@ -5,6 +5,7 @@ import { LocationStrategy } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { generateLobbyPin } from '@achordeon/shared/domain';
 import { Fullscreen } from './fullscreen';
+import { stepTranspose } from './transpose';
 import { UiStore } from './ui-store';
 
 /** The audience panel phase. */
@@ -96,6 +97,25 @@ export class StageSession {
    * from the setting again rather than from a flag nobody remembers pressing.
    */
   private readonly _songDark = signal<boolean | null>(null);
+  /**
+   * How far this performance is shifted, in semitones — **the performer's own**.
+   *
+   * It is not a property of the song and it never becomes one: the source is
+   * untouched, the payload carries the song as written, and nothing about it is
+   * saved. A performer transposes because of the instrument in their hands or
+   * the voice on the night, which is a fact about this room and not about the
+   * book — the same argument the dark page makes, and it is kept the same way.
+   *
+   * **Held for the whole performance**, not reset per song: a capo does not come
+   * off between numbers. It goes when the performance goes (`end`).
+   *
+   * Deliberately **not persisted** with the rest of the record, which is the one
+   * place it parts company with `_songDark`. A page that reloads mid-set is an
+   * accident; coming back to a library that quietly plays everything a tone up,
+   * with no control on screen outside the stage saying so, is worse than coming
+   * back to the written key.
+   */
+  private readonly _transpose = signal(0);
 
   readonly bookId = this._bookId.asReadonly();
   readonly index = this._index.asReadonly();
@@ -104,6 +124,8 @@ export class StageSession {
   readonly lobbyPin = this._lobbyPin.asReadonly();
   readonly audienceCount = this._audienceCount.asReadonly();
   readonly isMounted = this._isMounted.asReadonly();
+  /** Semitones, signed. Read by both chromes and by the presenter's render. */
+  readonly transpose = this._transpose.asReadonly();
 
   /** A performance is open (whether or not its view is on screen). */
   readonly isPerforming = computed(() => this._bookId() !== null);
@@ -277,6 +299,16 @@ export class StageSession {
     this.persist();
   }
 
+  /** One step up (`1`) or down (`-1`), wrapping through the octave back to 0. */
+  transposeBy(direction: number): void {
+    this._transpose.update((offset) => stepTranspose(offset, direction));
+  }
+
+  /** Back to the written key. */
+  resetTranspose(): void {
+    this._transpose.set(0);
+  }
+
   /** Live viewer count, pushed in by the presenter from the host channel. */
   setAudienceCount(count: number): void {
     this._audienceCount.set(count);
@@ -311,6 +343,8 @@ export class StageSession {
     this._isSummaryOpen.set(false);
     // The room ends with the gig: the next performance starts from the setting.
     this._songDark.set(null);
+    // And so does the capo — the next set is played from the page again.
+    this._transpose.set(0);
     // Ends the lobby and persists — so the stored record goes with the
     // performance rather than waiting out its twelve hours.
     this.endLobby();

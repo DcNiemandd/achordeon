@@ -6,5 +6,13 @@
   "sidebar.tutorialSidebar.category.Songs": {
     "message": "Písně",
     "description": "The label for category 'Songs' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Guides": {
+    "message": "Návody",
+    "description": "The label for category 'Guides' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Guides.link.generated-index.description": {
+    "message": "Delší návody na věci, které se nevejdou na jednu stránku - jak dostat písně do Achordeonu a co se kolem toho dá dělat.",
+    "description": "The generated-index page description for category 'Guides' in sidebar 'tutorialSidebar'"
   }
 }

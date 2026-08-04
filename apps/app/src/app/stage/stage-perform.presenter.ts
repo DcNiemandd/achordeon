@@ -14,8 +14,10 @@ import {
 import { SONG_REPOSITORY } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
+  ChordTheory,
   isAllSongs,
   resolveSettings,
+  transposeContent,
   type LobbyPayload,
   type Song,
   type Songbook,
@@ -66,6 +68,8 @@ export class StagePerformPresenter {
   private readonly songRepo = inject(SONG_REPOSITORY);
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
+  /** For the transpose below — the same port the parser and the editor use. */
+  private readonly theory = inject(ChordTheory);
   private readonly settings = inject(SettingsStore);
   private readonly router = inject(Router);
   private readonly session = inject(StageSession);
@@ -117,11 +121,37 @@ export class StagePerformPresenter {
     );
   });
 
+  /**
+   * The song as it will be played tonight: the stored source, shifted by the
+   * performance's offset.
+   *
+   * **A step in the flow, not a state.** The rewrite is the same pure function
+   * the editor's transpose button calls (`transposeContent`), run on the way to
+   * the parser and thrown away after — nothing is written back, `song.content`
+   * is untouched, and `payload` below still carries the song as the author wrote
+   * it. At offset 0 it returns the source unchanged, so the ordinary case costs
+   * a call and no copy.
+   *
+   * Spelled in the song's own notation, so a German book does not turn English
+   * the moment it is transposed — the same argument the editor makes.
+   */
+  private readonly _content = computed(() => {
+    const song = this._currentSong();
+    const resolved = this._resolved();
+    if (!song || !resolved) return '';
+    return transposeContent(
+      song.content,
+      this.session.transpose(),
+      this.theory,
+      resolved.notation,
+    );
+  });
+
   private readonly _plan = computed(() => {
     const song = this._currentSong();
     const resolved = this._resolved();
     if (!song || !resolved) return null;
-    const ast = this.parser.parse(song.content);
+    const ast = this.parser.parse(this._content());
     return this.renderer.layout(ast, resolved, {
       dark: this.session.isSongDark(),
     });
@@ -132,6 +162,11 @@ export class StagePerformPresenter {
    * settings, and the setlist. `null` until a song is loaded. The host effect
    * below re-tracks it whenever it changes — which, being a computed, is
    * automatically on every prev/next (ADR-0003).
+   *
+   * `song`, deliberately, and not `_content()`: the transpose is the performer's
+   * own and travels no further than their screen, exactly like the dark page. A
+   * viewer with a capo has their own control (`AudienceSession.transpose`), and
+   * one sent from the stage would fight it.
    */
   readonly payload = computed<LobbyPayload | null>(() => {
     const song = this._currentSong();

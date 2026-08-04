@@ -26,5 +26,9 @@
   "copyright": {
     "message": "Achordeon — © 2026 dcniemandd. MIT.",
     "description": "The footer copyright"
+  },
+  "link.item.label.Account data": {
+    "message": "Data účtu",
+    "description": "The label of footer link with label=Account data linking to /docs/account-data"
   }
 }

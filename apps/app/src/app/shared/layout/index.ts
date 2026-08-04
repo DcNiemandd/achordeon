@@ -16,6 +16,7 @@ export {
   Localization,
   SOURCE_LANGUAGE,
   chosenLanguage,
+  docsPageUrl,
 } from './localization';
 export type { Language } from './localization';
 export { TierGuard } from './tier-guard';
@@ -36,6 +37,13 @@ export { StageSession } from './stage-session';
 export type { AudienceState } from './stage-session';
 export { AudienceBar } from './audience-bar';
 export { AudienceSession } from './audience-session';
+export { TransposeStepper } from './transpose-stepper';
+export {
+  TRANSPOSE_LIMIT,
+  formatSemitones,
+  stepTranspose,
+  transposeActionLabel,
+} from './transpose';
 export { SplitPane } from './split-pane';
 export { Stats } from './stats';
 export { ThemeApplier } from './theme-applier';

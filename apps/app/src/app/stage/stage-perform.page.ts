@@ -31,6 +31,7 @@ import {
   PageZoom,
   StageSession,
   TierGuard,
+  TransposeStepper,
   Viewport,
   ZoomPill,
 } from '../shared/layout';
@@ -91,6 +92,7 @@ const SWIPE_THRESHOLD_PX = 60;
     Dialog,
     PageZoom,
     ZoomPill,
+    TransposeStepper,
   ],
   template: `
     <div
@@ -183,6 +185,20 @@ const SWIPE_THRESHOLD_PX = 60;
             >
               <app-icon name="audience" />
             </button>
+
+            <!-- Transpose, in the open and **last**. Desktop's bar has no ⋯ to
+                 hide it behind and the room for the number, so the phone's two
+                 taps (menu, sheet) collapse into the control itself — the same
+                 unwrapping the dark page got. It sits at the end because it is
+                 the only thing here that is not a single button: it rules
+                 itself off, and a ruled group in the middle of the row would
+                 cut the loose icons in two. Being last is also what drops its
+                 trailing rule (see the component). -->
+            <app-transpose-stepper
+              [value]="session.transpose()"
+              (stepped)="session.transposeBy($event)"
+              (cleared)="session.resetTranspose()"
+            />
           </div>
 
           <!-- Center: Prev + Next (centered by 1fr/auto/1fr grid). -->

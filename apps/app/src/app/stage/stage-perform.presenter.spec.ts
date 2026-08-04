@@ -15,11 +15,13 @@ import {
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
+  ChordTheory,
   DEFAULT_ALL_SONGS_ORDER,
   type AllSongsOrder,
   type Song,
   type Songbook,
 } from '@achordeon/shared/domain';
+import { TonalChordTheory } from '@achordeon/shared/chord-theory';
 import { Fullscreen, StageSession } from '../shared/layout';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
@@ -63,6 +65,8 @@ class FakeSession {
   /** The performance's own answer about dark paper (the moon, or the app's
    * setting showing through) — the presenter only ever reads it. */
   readonly isSongDark = signal(false);
+  /** The performance's transpose, in semitones — read-only here too. */
+  readonly transpose = signal(0);
   readonly start = jest.fn(() => this.index.set(0));
   readonly setTotal = jest.fn((n: number) => this.total.set(n));
   readonly setAudienceCount = jest.fn();
@@ -109,6 +113,7 @@ describe('StagePerformPresenter', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        { provide: ChordTheory, useClass: TonalChordTheory },
         StagePerformPresenter,
         { provide: StageSession, useValue: session },
         { provide: LobbyHost, useValue: host },
@@ -245,6 +250,7 @@ describe('StagePerformPresenter ▸ what the audience button ends up saying', ()
 
     TestBed.configureTestingModule({
       providers: [
+        { provide: ChordTheory, useClass: TonalChordTheory },
         StagePerformPresenter,
         { provide: LobbyHost, useValue: host },
         { provide: Fullscreen, useValue: { exit: async () => undefined } },
@@ -310,6 +316,7 @@ describe('StagePerformPresenter ▸ the All songs setlist', () => {
     const session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
+        { provide: ChordTheory, useClass: TonalChordTheory },
         StagePerformPresenter,
         { provide: StageSession, useValue: session },
         { provide: LobbyHost, useValue: new FakeHost() },

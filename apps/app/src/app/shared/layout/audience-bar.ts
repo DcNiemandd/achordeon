@@ -4,11 +4,13 @@
 // The viewer's controls, dropped into the shell's one bottom bar so a phone
 // shows a single bar — the same composition as StageBar. Three icon-only targets
 // (no labels): Summary · Fullscreen · More, where More holds the rarer acts
-// (lobby info, hide chords, leave). It reads AudienceSession, never a store.
+// (lobby info, hide chords, transpose, leave). It reads AudienceSession, never a
+// store.
 
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -17,14 +19,29 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
+import { transposeActionLabel } from './transpose';
+import { TransposeStepper } from './transpose-stepper';
 
 @Component({
   selector: 'app-audience-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Icon, CdkConnectedOverlay, CdkOverlayOrigin, CdkTrapFocus],
-  host: { '(document:keydown.escape)': 'closeMenu()' },
+  imports: [
+    Button,
+    Icon,
+    CdkConnectedOverlay,
+    CdkOverlayOrigin,
+    CdkTrapFocus,
+    TransposeStepper,
+  ],
+  host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
-    <div class="bar" role="group" [attr.aria-label]="groupLabel">
+    <div
+      class="bar"
+      role="group"
+      cdkOverlayOrigin
+      #barOrigin="cdkOverlayOrigin"
+      [attr.aria-label]="groupLabel"
+    >
       <button
         appButton
         type="button"
@@ -123,6 +140,26 @@ import { Fullscreen } from './fullscreen';
           {{ hideChordsLabel }}
         </button>
 
+        <!-- The viewer's own key, exactly like Hide chords above it: the
+             performer sends one render, and the instrument in front of this
+             screen may not be the one on stage. The offset rides in the label,
+             the way the performer's menu carries it. -->
+        <button
+          type="button"
+          class="item"
+          role="menuitem"
+          aria-haspopup="dialog"
+          [class.is-active]="session.transpose() !== 0"
+          data-testid="audience-transpose"
+          (click)="onTranspose()"
+        >
+          <span class="item-icon">
+            <app-icon name="note" />
+            <app-icon class="badge" name="transposeBoth" />
+          </span>
+          {{ transposeLabel() }}
+        </button>
+
         <!-- The dark page — the viewer's own, exactly like Hide chords above
              it. The performer never sends this: a stage is dark and a kitchen
              table is not, and each screen answers for the room it is in
@@ -151,6 +188,35 @@ import { Fullscreen } from './fullscreen';
           <app-icon name="close" />
           {{ leaveLabel }}
         </button>
+      </div>
+    </ng-template>
+
+    <!-- The transpose sheet — the performer's, in the viewer's bar. It stays up
+         while you step so the song you are judging it against stays visible; the
+         backdrop or Escape puts it down. -->
+    <ng-template
+      [cdkConnectedOverlay]="{ origin: barOrigin }"
+      [cdkConnectedOverlayOpen]="isTransposeOpen()"
+      [cdkConnectedOverlayPositions]="positions"
+      [cdkConnectedOverlayHasBackdrop]="true"
+      cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+      (backdropClick)="closeTranspose()"
+      (detach)="closeTranspose()"
+    >
+      <div
+        class="sheet"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        role="dialog"
+        [attr.aria-label]="transposeTitle"
+        data-testid="audience-transpose-sheet"
+      >
+        <span class="sheet-title">{{ transposeTitle }}</span>
+        <app-transpose-stepper
+          [value]="session.transpose()"
+          (stepped)="session.transposeBy($event)"
+          (cleared)="session.resetTranspose()"
+        />
       </div>
     </ng-template>
   `,
@@ -212,12 +278,48 @@ import { Fullscreen } from './fullscreen';
       color: var(--brand);
     }
 
+    /* The performing menu's composed glyph, unchanged: a note badged with both
+       directions, held in the 20px a plain <app-icon> would have taken. */
+    .item-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .item-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
+      color: var(--brand);
+    }
+
     .item.is-danger {
       color: var(--danger, #c0362c);
     }
 
     .item.is-danger:hover {
       background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
+    }
+
+    /* The performing bar's sheet, to the pixel: the two bars read alike, and so
+       do the panels they raise. */
+    .sheet {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-overlay);
+      box-shadow: var(--shadow-2);
+    }
+
+    .sheet-title {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
     }
   `,
 })
@@ -226,9 +328,30 @@ export class AudienceBar {
   protected readonly fullscreen = inject(Fullscreen);
 
   protected readonly isMenuOpen = signal(false);
+  protected readonly isTransposeOpen = signal(false);
+
+  protected readonly transposeLabel = computed(() =>
+    transposeActionLabel(this.session.transpose()),
+  );
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);
+  }
+
+  /** Whichever is up. Both, in the order they stack, so one Escape is enough. */
+  protected onEscape(): void {
+    this.closeMenu();
+    this.closeTranspose();
+  }
+
+  protected closeTranspose(): void {
+    this.isTransposeOpen.set(false);
+  }
+
+  /** The menu hands over to the sheet: two panels over one song is one too many. */
+  protected onTranspose(): void {
+    this.closeMenu();
+    this.isTransposeOpen.set(true);
   }
 
   protected onLobby(): void {
@@ -262,7 +385,7 @@ export class AudienceBar {
       : this.enterFullscreenLabel;
   }
 
-  /** Opens upward: the trigger lives in the bottom bar. */
+  /** Opens upward: both the menu and the sheet hang off the bar. */
   protected readonly positions = [
     {
       originX: 'center' as const,
@@ -290,6 +413,7 @@ export class AudienceBar {
   // the pattern `@@stage.menu` already follows here.
   protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly leaveLabel = $localize`:@@audience.exit:Leave audience`;
+  protected readonly transposeTitle = $localize`:@@transpose.title:Transpose`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
 }
