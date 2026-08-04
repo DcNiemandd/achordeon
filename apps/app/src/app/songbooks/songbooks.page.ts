@@ -134,6 +134,7 @@ import {
       @if (presenter.currentId()) {
         <app-songbook-preview
           pane-b
+          [bookId]="presenter.currentId()"
           [preview]="presenter.preview()"
           [isDark]="presenter.isSongDark()"
           (darkToggled)="presenter.toggleSongDark()"

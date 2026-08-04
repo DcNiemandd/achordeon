@@ -20,6 +20,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import { Button, Icon, Tooltip } from '../../primitives';
@@ -319,6 +320,18 @@ export class SongbookPreview {
   readonly preview = input<SongbookPreviewModel | null>(null);
 
   /**
+   * Which book these pages are of — **the identity of the document**, which the
+   * pages themselves do not carry.
+   *
+   * The place in the book is kept per document, and a re-render is not a new
+   * document: turning the paper over, or editing the print structure, hands this
+   * component a brand-new `preview` object for the book you are already reading.
+   * Without a name for the document there is no way to tell that apart from a
+   * different book being picked, and the moon dropped the reader back to page one.
+   */
+  readonly bookId = input<string | null>(null);
+
+  /**
    * Are these pages drawn on black paper?
    *
    * An input, and the moon below is an output: this component is controlled, and
@@ -357,12 +370,22 @@ export class SongbookPreview {
 
   constructor() {
     // A new book is a new document: back to the first page. Columns stay (a
-    // person browsing at three-up wants the next book three-up too), but clamp
-    // to the new book's length.
+    // person browsing at three-up wants the next book three-up too). Keyed on
+    // the book, not on the preview object — see `bookId`.
     effect(() => {
-      this.preview();
-      this.cursor.set(0);
-      this.columns.update((cols) => Math.min(cols, this.maxColumns()));
+      this.bookId();
+      untracked(() => this.cursor.set(0));
+    });
+
+    // The same book, re-rendered: the place is kept, but the book may have got
+    // shorter under it (a slot removed, the summary switched off), so both the
+    // zoom and the cursor are clamped to what there is now.
+    effect(() => {
+      const max = this.maxColumns();
+      untracked(() => {
+        this.columns.update((cols) => Math.min(cols, max));
+        this.cursor.update((at) => Math.min(at, this.lastStart()));
+      });
     });
   }
 
