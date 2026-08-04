@@ -12,8 +12,15 @@
  * two slots later made a liar of it. So it behaves like the dark page beside it:
  * the text stays put and the row lights up.
  *
+ * **It names what is rotated, not that rotation is "automatic".** The obvious
+ * mode name was exactly that word, and it points at the wrong mechanism: every
+ * phone already has an automatic rotation, and it follows the accelerometer.
+ * This one follows the *song* — a reader who armed it expecting the device to be
+ * watched would find it firing on a page they were holding perfectly upright.
+ * "Wide" is the condition, and saying the condition out loud is the difference.
+ *
  * Shared by three bars — the phone's overflow menu, the Audience's, and Stage's
  * wide unwrapped row — because a label written out three times eventually reads
  * three ways, or ships with one of the `@@` ids left untranslated.
  */
-export const turnPageLabel = $localize`:@@stage.turnPage:Automatic rotation`;
+export const turnPageLabel = $localize`:@@stage.turnPage:Rotate wide songs`;

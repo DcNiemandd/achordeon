@@ -86,13 +86,17 @@ Adopt **C**, under one rule:
   monitor is neither. Gating on the compact breakpoint had it exactly backwards,
   and the primary pointer is asked rather than any pointer so a touchscreen
   laptop is not offered something its hinge will not do.
-- **Named as a mode, not an act.** The control reads "Automatic rotation" in
-  every state, because that is what it is: arming it does not turn the page in
-  front of you, it permits the app to turn the ones that gain by it. A label
-  promising an immediate turn was made a liar of by the next portrait song. The
-  icon carries the state instead — the phone glyph lies down the same quarter
-  turn the song does, while the arrow beside it holds still, naming an act that
-  is the same either way round.
+- **Named as a mode, not an act, and named after the songs.** The control reads
+  "Rotate wide songs" in every state, because that is what it is: arming it does
+  not turn the page in front of you, it permits the app to turn the ones that
+  gain by it, and a label promising an immediate turn was made a liar of by the
+  next portrait song. "Automatic rotation" was the obvious mode name and points
+  at the wrong mechanism — every phone already has one of those and it follows
+  the accelerometer, so a reader would arm this expecting their device to be
+  watched and find it firing on a page held perfectly upright. The condition is
+  the song's width, and the label says so. The icon carries the state instead —
+  the phone glyph lies down the same quarter turn the song does, while the arrow
+  beside it holds still, naming an act that is the same either way round.
 - **Counter-clockwise, two states.** `-90°`, matching the CCW title spine
   (`render-plan.ts:22`, `title-layout.ts:119`), so the two sideways things in
   Achordeon are read with the same turn of the head. No third state: the only
