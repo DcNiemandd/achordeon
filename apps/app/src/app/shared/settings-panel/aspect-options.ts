@@ -24,6 +24,28 @@ import type { Option, OptionGroup } from './setting-ui';
 export const MATCH_SCREEN = '@screen';
 
 /**
+ * The same measurement, the other way round — this device as it would be held
+ * sideways.
+ *
+ * A second row rather than a hint under the first, because the alternative is
+ * asking the reader to physically turn the phone before tapping, and half of
+ * them are on a device with rotation lock on, where turning it changes nothing
+ * this app can see. What it writes is still an ordinary reduced ratio (`284:131`
+ * where {@link MATCH_SCREEN} would write `131:284`), so it syncs and reads
+ * exactly like every other value here — and it is what makes a Song landscape
+ * in the first place (CONTEXT.md §Aspect ratio).
+ */
+export const MATCH_SCREEN_SIDEWAYS = '@screen-sideways';
+
+/** Is this row a measurement rather than a value? Both sentinels behave alike
+ * everywhere they are met — hidden together where there is no screen to read,
+ * and resolved together into a real ratio when picked — so the two names are
+ * asked for once, here, rather than remembered at every site. */
+export function isMatchScreen(value: string): boolean {
+  return value === MATCH_SCREEN || value === MATCH_SCREEN_SIDEWAYS;
+}
+
+/**
  * What the aspect-ratio picker offers.
  *
  * **Device rows exist now, and they are held to a testable claim.** An earlier
@@ -55,6 +77,10 @@ export const ASPECT_OPTION_GROUPS: readonly OptionGroup[] = [
       {
         value: MATCH_SCREEN,
         label: $localize`:@@aspect.matchScreen:Match this screen`,
+      },
+      {
+        value: MATCH_SCREEN_SIDEWAYS,
+        label: $localize`:@@aspect.matchScreenSideways:Match this screen, sideways`,
       },
     ],
   },

@@ -12,5 +12,7 @@ export type {
 export {
   ASPECT_OPTION_GROUPS,
   MATCH_SCREEN,
+  MATCH_SCREEN_SIDEWAYS,
+  isMatchScreen,
   allAspectOptions,
 } from './aspect-options';

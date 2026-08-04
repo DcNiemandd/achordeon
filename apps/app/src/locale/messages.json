@@ -23,6 +23,7 @@
     "aspect.group.portrait": "Portrait",
     "aspect.letter": "Letter (17:22)",
     "aspect.matchScreen": "Match this screen",
+    "aspect.matchScreenSideways": "Match this screen, sideways",
     "aspect.square": "Square (1:1)",
     "audience.close": "Close",
     "audience.connecting": "Connecting to the lobby…",

@@ -16,7 +16,11 @@ import { SETTINGS } from '@achordeon/shared/domain';
 import { FontLoader } from '@achordeon/shared/data-access';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { ScreenShape } from '../layout';
-import { MATCH_SCREEN } from './aspect-options';
+import {
+  MATCH_SCREEN,
+  MATCH_SCREEN_SIDEWAYS,
+  isMatchScreen,
+} from './aspect-options';
 import {
   GROUPS,
   GROUP_LABELS,
@@ -726,7 +730,7 @@ export class SettingsPanel {
       .map((group) => ({
         label: group.label,
         options: group.options.filter(
-          (opt) => opt.value !== MATCH_SCREEN || this.canMatchScreen,
+          (opt) => !isMatchScreen(opt.value) || this.canMatchScreen,
         ),
       }))
       .filter((group) => group.options.length > 0);
@@ -781,8 +785,11 @@ export class SettingsPanel {
     // "Match this screen" is an action wearing an option's clothes: it stands for
     // a measurement, so what gets stored is the measurement. Storing the sentinel
     // would make the setting mean "whatever device is reading it", and the shape
-    // of a song would change when it synced to a desktop.
-    const value = picked === MATCH_SCREEN ? this.screen.detect() : picked;
+    // of a song would change when it synced to a desktop. Its sideways twin is
+    // the same act asking for the other orientation.
+    const value = isMatchScreen(picked)
+      ? this.screen.detect(picked === MATCH_SCREEN_SIDEWAYS)
+      : picked;
     if (value === null) {
       return;
     }
