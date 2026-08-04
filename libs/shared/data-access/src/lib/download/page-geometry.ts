@@ -7,6 +7,8 @@
 //
 // Units are PostScript points (1/72"), which is what jsPDF measures in.
 
+import { gainsRoomTurned } from '@achordeon/shared/render-core';
+
 export interface Size {
   readonly width: number;
   readonly height: number;
@@ -61,6 +63,36 @@ export function pageForBox(box: Size, shortSide = PAGE_SIZES.A4.width): Size {
  * margin is symmetric, and a song that is wider than it is tall would otherwise
  * sit with all its slack at the bottom.
  */
+/** Where a render goes on a sheet, and whether it had to be turned to get there. */
+export interface Placement extends Rect {
+  readonly isTurned: boolean;
+}
+
+/**
+ * `content` on `page`, turned a quarter if turning gains it room (ADR-0013).
+ *
+ * **Automatic, with no setting behind it**, and the reason is physical rather
+ * than technical: on screen the same judgement is offered to the reader, because
+ * only they know whether their device will turn, but a sheet of paper always
+ * turns. Nobody needs a checkbox for "do not waste half the sheet".
+ *
+ * The rect returned is where the *turned* drawing lands — its own bounding box
+ * on the page — so a caller must draw `turnedSvg(...)` into it when `isTurned`.
+ * Handing back an untuned rect with a flag beside it would let the two drift.
+ */
+export function placeInto(content: Size, page: Size, margin = 0): Placement {
+  const isTurned =
+    content.width > 0 &&
+    content.height > 0 &&
+    page.width > 0 &&
+    page.height > 0 &&
+    gainsRoomTurned(content.width / content.height, page.width / page.height);
+  const laid = isTurned
+    ? { width: content.height, height: content.width }
+    : content;
+  return { ...fitInto(laid, page, margin), isTurned };
+}
+
 export function fitInto(content: Size, page: Size, margin = 0): Rect {
   const slotW = Math.max(page.width - margin * 2, 0);
   const slotH = Math.max(page.height - margin * 2, 0);

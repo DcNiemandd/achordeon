@@ -4,14 +4,16 @@ import { tryParseAspectRatio } from '@achordeon/shared/render-core';
 import {
   ASPECT_OPTION_GROUPS,
   MATCH_SCREEN,
+  MATCH_SCREEN_SIDEWAYS,
   allAspectOptions,
+  isMatchScreen,
 } from './aspect-options';
 
 describe('ASPECT_OPTION_GROUPS', () => {
   const values = () =>
     allAspectOptions()
       .map((opt) => opt.value)
-      .filter((value) => value !== MATCH_SCREEN);
+      .filter((value) => !isMatchScreen(value));
 
   it('offers only values the renderer can read', () => {
     // The same check the text field makes. A preset the renderer refuses would be
@@ -53,13 +55,24 @@ describe('ASPECT_OPTION_GROUPS', () => {
     }
   });
 
-  it('keeps the measure-my-screen row out of the stored values', () => {
-    const sentinel = allAspectOptions().filter(
-      (opt) => opt.value === MATCH_SCREEN,
-    );
-    expect(sentinel).toHaveLength(1);
-    // It must be unreadable as a ratio, or a stray one would render as A4 rather
-    // than being refused.
-    expect(tryParseAspectRatio(MATCH_SCREEN as never)).toBeNull();
+  it('keeps the measure-my-screen rows out of the stored values', () => {
+    for (const sentinel of [MATCH_SCREEN, MATCH_SCREEN_SIDEWAYS]) {
+      expect(
+        allAspectOptions().filter((opt) => opt.value === sentinel),
+      ).toHaveLength(1);
+      // Each must be unreadable as a ratio, or a stray one would render as A4
+      // rather than being refused.
+      expect(tryParseAspectRatio(sentinel as never)).toBeNull();
+    }
+  });
+
+  it('knows both measurement rows and nothing else', () => {
+    // The two sentinels behave alike everywhere — hidden together where there is
+    // no screen, resolved together when picked — so every site asks this one
+    // question rather than remembering both names.
+    expect(isMatchScreen(MATCH_SCREEN)).toBe(true);
+    expect(isMatchScreen(MATCH_SCREEN_SIDEWAYS)).toBe(true);
+    expect(isMatchScreen('A4')).toBe(false);
+    expect(isMatchScreen('16:9')).toBe(false);
   });
 });

@@ -196,6 +196,76 @@ describe('UiStore', () => {
     });
   });
 
+  // Turn the page — an ARMED request, not a state (ADR-0013). It says the reader
+  // is willing to hold the device the other way round; whether any given page is
+  // actually turned is `gainsRoomTurned`'s answer, asked again per render.
+  describe('turning the page', () => {
+    it('starts unarmed — nobody wakes up to a sideways song', () => {
+      expect(TestBed.inject(UiStore).isPageTurnArmed()).toBe(false);
+    });
+
+    it('flips both ways from the bars', () => {
+      const store = TestBed.inject(UiStore);
+
+      store.togglePageTurn();
+      expect(store.isPageTurnArmed()).toBe(true);
+
+      store.togglePageTurn();
+      expect(store.isPageTurnArmed()).toBe(false);
+    });
+
+    // Unlike the zoom, which resets on every song change: a phone is still
+    // sideways after the page turns, and re-tapping through a landscape set
+    // would make the feature unusable.
+    it('remembers the arming across a reload', () => {
+      TestBed.inject(UiStore).setPageTurnArmed(true);
+      TestBed.resetTestingModule();
+
+      expect(TestBed.inject(UiStore).isPageTurnArmed()).toBe(true);
+    });
+
+    it('ignores a stored flag of the wrong type', () => {
+      localStorage.setItem(
+        'achordeon.ui',
+        JSON.stringify({ isPageTurnArmed: 'yes' }),
+      );
+
+      expect(TestBed.inject(UiStore).isPageTurnArmed()).toBe(false);
+    });
+
+    it('starts unarmed on a device that stored nothing about it', () => {
+      // An older install. The field is additive, so its absence must read as off
+      // rather than as undefined leaking into a template.
+      localStorage.setItem(
+        'achordeon.ui',
+        JSON.stringify({ isSongDarkFollowingTheme: true }),
+      );
+
+      expect(TestBed.inject(UiStore).isPageTurnArmed()).toBe(false);
+    });
+
+    // The offer describes the song currently on screen, and the next one may be
+    // a different shape. Persisting it would let a control appear over a page it
+    // cannot do anything to.
+    it('keeps the offer session-only', () => {
+      TestBed.inject(UiStore).setPageTurnOffered(true);
+      TestBed.resetTestingModule();
+
+      expect(TestBed.inject(UiStore).isPageTurnOffered()).toBe(false);
+    });
+
+    it('keeps the offer and the arming independent', () => {
+      const store = TestBed.inject(UiStore);
+
+      store.setPageTurnArmed(true);
+      expect(store.isPageTurnOffered()).toBe(false);
+
+      store.setPageTurnOffered(true);
+      store.setPageTurnArmed(false);
+      expect(store.isPageTurnOffered()).toBe(true);
+    });
+  });
+
   it('keeps fullscreen session-only — a reload must not claim to restore it', () => {
     TestBed.inject(UiStore).setFullscreen(true);
     TestBed.resetTestingModule();

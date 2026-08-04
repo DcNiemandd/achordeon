@@ -32,6 +32,7 @@ import {
   DocumentTitle,
   Fullscreen,
   PageZoom,
+  UiStore,
   Viewport,
   ZoomPill,
 } from '../shared/layout';
@@ -87,6 +88,7 @@ function writeLastPin(pin: string): void {
         #zoom="appPageZoom"
         [ratio]="presenter.pageRatio()"
         [isEnabled]="view() === 'render'"
+        [isTurnArmed]="ui.isPageTurnArmed()"
         (tapped)="fullscreen.reveal()"
       >
         @switch (view()) {
@@ -148,6 +150,7 @@ function writeLastPin(pin: string): void {
               [ratio]="presenter.pageRatio()"
               [isPerforming]="true"
               [isDark]="presenter.isDark()"
+              [isTurned]="zoom.isTurned()"
               [zoom]="zoom.scale()"
               [panX]="zoom.panX()"
               [panY]="zoom.panY()"
@@ -472,6 +475,9 @@ export class AudiencePage {
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly session = inject(AudienceSession);
   protected readonly viewport = inject(Viewport);
+  /** Read for `isPageTurnArmed` only — the same flag Stage reads, because it is
+   * a fact about this device rather than about either seat. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/audience/:pin`, absent on the bare `/audience` route. */
@@ -536,6 +542,15 @@ export class AudiencePage {
       void this.fullscreen.exit();
       this.session.setMounted(false);
       this.session.reset();
+      this.ui.setPageTurnOffered(false);
+    });
+
+    // Whether a quarter turn would gain this song anything, told to the shell so
+    // AudienceBar can offer the toggle (ADR-0013). A viewer needs it more than a
+    // performer does: they never chose this song's shape, and it arrived from
+    // somebody else's screen.
+    effect(() => {
+      this.ui.setPageTurnOffered(this.zoom()?.isTurnWorthwhile() ?? false);
     });
 
     // Join whenever the routed PIN changes; a bare /audience leaves us idle.

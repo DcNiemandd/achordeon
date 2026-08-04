@@ -41,6 +41,8 @@ const A4_RATIO = 210 / 297;
     <div class="desk">
       <div
         class="page"
+        data-testid="song-page"
+        [class.is-turned]="isTurned()"
         [style.--page-ratio]="ratio()"
         [style.transform]="transform()"
       >
@@ -56,6 +58,16 @@ const A4_RATIO = 210 / 297;
 
     .desk {
       display: grid;
+      /* ONE track, pinned to the desk — not the auto size an implicit track
+         would take. A turned page's pre-rotation box is deliberately wider than
+         the desk (see .page.is-turned), and an auto track sizes itself to the
+         item: the track grew to the box, place-items centred the page on the
+         TRACK's middle rather than the desk's, and the rotation then carried it
+         off to the right. Pinned, the item overflows a track that is exactly the
+         desk, so its centre and the desk's are one point — which is the point
+         transform-origin turns about. */
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
       place-items: center;
       block-size: 100%;
       padding: var(--space-4);
@@ -87,6 +99,18 @@ const A4_RATIO = 210 / 297;
          one thing this feature exists to prevent. Re-rasterising the SVG at the
          new scale is the cost of it staying a vector. */
       transform-origin: center;
+    }
+
+    /* Turned a quarter (ADR-0013): the same fit against the same desk, measured
+       the other way round — which is the hole this page will actually occupy
+       once rotate(-90deg) has been applied to it.
+
+       So the pre-rotation box here is deliberately WIDER than the desk, and only
+       the rotation brings it back on screen. That is why this class and the
+       rotation in transform() must come from the one flag and never be applied
+       apart: either one alone is a page hanging off both edges. */
+    .page.is-turned {
+      inline-size: min(100cqb, 100cqi * var(--page-ratio));
     }
 
     /* Performing: the song is what you are here for, so give it every pixel.
@@ -184,11 +208,38 @@ export class BlankPage {
   readonly panX = input(0);
   readonly panY = input(0);
 
-  /** No transform at all while fitted, rather than an identity one: an untouched
-   * page should not be given a containing block it never asked for. */
-  protected readonly transform = computed(() =>
-    this.zoom() === 1 && this.panX() === 0 && this.panY() === 0
-      ? null
-      : `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoom()})`,
-  );
+  /**
+   * Draw this page a quarter turn round, for a reader holding the device
+   * sideways (ADR-0013).
+   *
+   * **Whether** is never decided here. This frame is handed the answer the same
+   * way it is handed `isDark`, because the question has two halves and only the
+   * caller holds one of them: `gainsRoomTurned` can say the turn would help, but
+   * only the Performance view knows whether this reader asked for it, and only a
+   * print path knows it need not ask at all.
+   */
+  readonly isTurned = input(false);
+
+  /**
+   * No transform at all while fitted and upright, rather than an identity one: an
+   * untouched page should not be given a containing block it never asked for.
+   *
+   * **The rotation goes outermost**, which is the load-bearing detail. Written the
+   * other way round, `translate` would run in the rotated frame and every pan
+   * coordinate in `zoom.ts` would silently change meaning; out here the page's
+   * own frame is what moves, so pan, clamp and fit all stay in it and `zoom.ts`
+   * needs to know nothing about any of this.
+   */
+  protected readonly transform = computed(() => {
+    const parts: string[] = [];
+    if (this.isTurned()) {
+      parts.push('rotate(-90deg)');
+    }
+    if (this.zoom() !== 1 || this.panX() !== 0 || this.panY() !== 0) {
+      parts.push(
+        `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoom()})`,
+      );
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  });
 }

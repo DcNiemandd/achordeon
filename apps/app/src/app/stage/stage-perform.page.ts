@@ -32,8 +32,11 @@ import {
   StageSession,
   TierGuard,
   TransposeStepper,
+  UiStore,
   Viewport,
   ZoomPill,
+  toPageDelta,
+  turnPageLabel,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -167,6 +170,39 @@ const SWIPE_THRESHOLD_PX = 60;
               <app-icon name="moon" />
             </button>
 
+            <!-- Turn the page (ADR-0013), beside the dark page for the same
+                 reason it sits beside it on the phone: both are about the screen
+                 you are reading off, not about the song.
+
+                 It is HERE and not only in the phone's ⋯ menu because "wide
+                 layout" and "cannot be turned" are different facts, and a tablet
+                 held sideways is both wide and turnable — the case this feature
+                 exists for. The offer answers the device question through
+                 Viewport.isScreenTurnable, so a desktop never sees this. -->
+            @if (ui.isPageTurnOffered()) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [class.is-active]="ui.isPageTurnArmed()"
+                [attr.aria-pressed]="ui.isPageTurnArmed()"
+                [attr.aria-label]="turnPageLabel"
+                [appTooltip]="turnPageLabel"
+                data-testid="stage-turn-page"
+                (click)="ui.togglePageTurn()"
+              >
+                <span class="stacked-icon">
+                  <!-- The device turns with the page: armed, the phone is drawn
+                       the quarter round the song will be. -->
+                  <app-icon
+                    name="smartphone"
+                    [class.is-turned]="ui.isPageTurnArmed()"
+                  />
+                  <app-icon class="badge" name="rotateCcw" />
+                </span>
+              </button>
+            }
+
             <!-- Audience: icon-only, plain button; the premium tint lives in
                  the dialog, not on the bar. A live lobby lights the button the
                  same way an open summary lights its own — brand-subtle, the
@@ -260,6 +296,7 @@ const SWIPE_THRESHOLD_PX = 60;
         #zoom="appPageZoom"
         [ratio]="presenter.pageRatio()"
         [isEnabled]="!presenter.isEmpty()"
+        [isTurnArmed]="ui.isPageTurnArmed()"
         (tapped)="fullscreen.reveal()"
       >
         @if (presenter.isEmpty()) {
@@ -272,6 +309,7 @@ const SWIPE_THRESHOLD_PX = 60;
             [ratio]="presenter.pageRatio()"
             [isPerforming]="true"
             [isDark]="session.isSongDark()"
+            [isTurned]="zoom.isTurned()"
             [zoom]="zoom.scale()"
             [panX]="zoom.panX()"
             [panY]="zoom.panY()"
@@ -490,6 +528,32 @@ const SWIPE_THRESHOLD_PX = 60;
       gap: var(--space-2);
       flex-wrap: nowrap;
       min-inline-size: 0;
+    }
+
+    /* A glyph with a second one badged on it, the way the phone's menu draws
+       Transpose and Turn the page. This bar has no overflow menu, so the same
+       composition has to exist here rather than being borrowed from it. */
+    .stacked-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .stacked-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
+      color: var(--brand);
+    }
+
+    /* Armed, the phone lies down the quarter turn the song does. The arrow does
+       not move — it names the act, which is the same act either way round. */
+    .stacked-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
     }
 
     .bar-title {
@@ -729,6 +793,9 @@ export class StagePerformPage {
   protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
+  /** Read for `isPageTurnArmed` only — one flag for both seats of the
+   * Performance view, which is why it is not on `StageSession`. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
@@ -768,7 +835,16 @@ export class StagePerformPage {
     destroyRef.onDestroy(() => {
       this.session.leaveView();
       void this.fullscreen.exit();
+      this.ui.setPageTurnOffered(false);
       if (this.copiedResetTimer !== null) clearTimeout(this.copiedResetTimer);
+    });
+
+    // Tell the shell whether a quarter turn would gain this song anything, so
+    // StageBar can offer the toggle or leave it out (ADR-0013). The render
+    // surface is the only thing that knows — it holds both the song's shape and
+    // the desk's — and the bar is drawn by the shell, well out of its reach.
+    effect(() => {
+      this.ui.setPageTurnOffered(this.zoom()?.isTurnWorthwhile() ?? false);
     });
 
     // The shell draws the stage controls while this view is on screen.
@@ -896,8 +972,21 @@ export class StagePerformPage {
   protected endSwipe(event: PointerEvent): void {
     if (!event.isPrimary) return;
     if (this.swipeStartX === null || this.swipeStartY === null) return;
-    const dx = event.clientX - this.swipeStartX;
-    const dy = event.clientY - this.swipeStartY;
+    // In the PAGE's frame, not the screen's. Turned, the reader's sideways runs
+    // up and down the glass, and a threshold left watching `clientX` would sit
+    // there ignoring every swipe a turned performer made — the same mapping
+    // `PageZoom` puts its pan through, from the same helper, because two
+    // answers about which way is sideways is worse than either one (ADR-0013).
+    const travelled = this.zoom()?.isTurned()
+      ? toPageDelta(
+          event.clientX - this.swipeStartX,
+          event.clientY - this.swipeStartY,
+        )
+      : {
+          dx: event.clientX - this.swipeStartX,
+          dy: event.clientY - this.swipeStartY,
+        };
+    const { dx, dy } = travelled;
     this.swipeStartX = null;
     this.swipeStartY = null;
 
@@ -947,6 +1036,7 @@ export class StagePerformPage {
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
   protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
+  protected readonly turnPageLabel = turnPageLabel;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
   /** What the browser tab says while a performance is on: "Performing - Achordeon". */
   private readonly performingTitle = $localize`:@@stage.documentTitle:Performing`;

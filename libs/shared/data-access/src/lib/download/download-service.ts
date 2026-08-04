@@ -20,7 +20,11 @@ import {
   type Songbook,
   type Uuid,
 } from '@achordeon/shared/domain';
-import { DEFAULT_TUNING, type RenderPlan } from '@achordeon/shared/render-core';
+import {
+  DEFAULT_TUNING,
+  type RenderPlan,
+  turnedSvg,
+} from '@achordeon/shared/render-core';
 import { ParserService } from '../parser/parser-service';
 import { BODY_FAMILY, FontLoader } from '../render/font-loader';
 import { RenderService } from '../render/render-service';
@@ -32,13 +36,13 @@ import { fileDate, saveFile, toFileSlug } from '../transfer/file-io';
 import {
   MM,
   PAGE_SIZES,
-  fitInto,
   orient,
   pageForBox,
+  placeInto,
   type PageSizeName,
   type Size,
 } from './page-geometry';
-import { createPdf, drawSvg, registerFonts } from './pdf-doc';
+import { createPdf, drawOnPage, drawSvg, registerFonts } from './pdf-doc';
 import { svgToPng } from './raster';
 import {
   layoutSummary,
@@ -408,7 +412,7 @@ export class DownloadService {
     if (opts.hasTitlePage) {
       const title = await this.renderTitlePage(book);
       registerFonts(doc, title.fonts);
-      await drawSvg(doc, title.svg, fitInto(title.box, page, margin));
+      await drawOnPage(doc, title.svg, title.box, page, margin);
       isFirst = false;
     }
 
@@ -433,7 +437,7 @@ export class DownloadService {
     for (const one of rendered) {
       if (!isFirst) doc.addPage([page.width, page.height]);
       isFirst = false;
-      await drawSvg(doc, one.svg, fitInto(one.plan.box, page, margin));
+      await drawOnPage(doc, one.svg, one.plan.box, page, margin);
       onProgress?.(++drawn, rendered.length);
       if (drawn < rendered.length) await yieldToPaint();
     }
@@ -722,9 +726,20 @@ export class DownloadService {
       ? await this.renderTitlePage(book, false, isDark)
       : undefined;
 
+    // The preview is a WYSIWYG of the PDF, so it turns what the PDF turns
+    // (ADR-0013) — through the same `placeInto`, never a second rule. A preview
+    // that showed a landscape song letterboxed while the file laid it sideways
+    // would be worse than no preview.
+    const asPrinted = (svg: string, box: Size): string =>
+      placeInto(box, page, margin).isTurned ? turnedSvg(svg, box) : svg;
+
     const pages: SongbookPreviewPage[] = plan.pages.map((entry) => {
       if (entry.kind === 'title') {
-        return { kind: entry.kind, svg: title?.svg ?? '', number: null };
+        return {
+          kind: entry.kind,
+          svg: title ? asPrinted(title.svg, title.box) : '',
+          number: null,
+        };
       }
       if (entry.kind === 'summary') {
         return {
@@ -740,9 +755,10 @@ export class DownloadService {
           number: null,
         };
       }
+      const one = rendered[entry.sourceIndex ?? 0];
       return {
         kind: entry.kind,
-        svg: rendered[entry.sourceIndex ?? 0].svg,
+        svg: asPrinted(one.svg, one.plan.box),
         number: entry.number,
       };
     });

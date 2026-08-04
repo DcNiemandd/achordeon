@@ -15,6 +15,8 @@
 
 import type { jsPDF } from 'jspdf';
 import type { EmbeddedFont } from '@achordeon/shared/render-core';
+import { turnedSvg } from '@achordeon/shared/render-core';
+import { placeInto } from './page-geometry';
 import type { Rect, Size } from './page-geometry';
 
 type PdfKit = {
@@ -105,4 +107,24 @@ export async function drawSvg(
     width: where.width,
     height: where.height,
   });
+}
+
+/**
+ * A render placed on a songbook sheet, turned a quarter if turning gains it room
+ * (ADR-0013).
+ *
+ * The two halves of that — deciding, and drawing what was decided — are joined
+ * here on purpose. Split across a call site they drift: a rect sized for a turned
+ * page with an upright drawing in it is a song squeezed into its own short side,
+ * and nothing about the code would look wrong.
+ */
+export async function drawOnPage(
+  doc: jsPDF,
+  svg: string,
+  box: Size,
+  page: Size,
+  margin: number,
+): Promise<void> {
+  const placed = placeInto(box, page, margin);
+  await drawSvg(doc, placed.isTurned ? turnedSvg(svg, box) : svg, placed);
 }

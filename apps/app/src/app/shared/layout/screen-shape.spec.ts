@@ -78,6 +78,32 @@ describe('ScreenShape', () => {
     expect(probe().detect()).toBe('131:284');
   });
 
+  it('reports the other orientation when asked for sideways', () => {
+    // What "Match this screen, sideways" writes: the shape this device would
+    // have if it were held the other way round. It saves the reader turning the
+    // phone first — which on a rotation-locked device would change nothing we
+    // could see anyway.
+    poseAs({ width: 393, height: 852, orientation: 'portrait-primary' });
+
+    expect(probe().detect(true)).toBe('284:131');
+  });
+
+  it('reads sideways against the orientation actually held, not the box', () => {
+    // The iOS correction and the sideways request compose into ONE swap, not two
+    // that cancel: a phone already held sideways, whose panel still measures
+    // portrait, asks for sideways and gets the upright shape back.
+    poseAs({ width: 393, height: 852, orientation: 'landscape-primary' });
+
+    expect(probe().detect(true)).toBe('131:284');
+  });
+
+  it('is its own inverse, whatever the platform reported', () => {
+    poseAs({ width: 852, height: 393, orientation: 'landscape-primary' });
+
+    expect(probe().detect(true)).toBe('131:284');
+    expect(probe().detect(false)).toBe('284:131');
+  });
+
   it('has no answer when there is no screen to measure', () => {
     // A non-browser host. The panel hides the affordance rather than offering a
     // button that does nothing.

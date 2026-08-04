@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  viewChild,
 } from '@angular/core';
 import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import {
@@ -193,7 +194,7 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
           (favoritesFirstChange)="presenter.setFavoritesFirst($event)"
           (loadMore)="presenter.loadMore()"
           (activated)="presenter.activate($event)"
-          (opened)="presenter.open($event)"
+          (opened)="openSong($event)"
           (selectToggled)="presenter.toggleSelect($event)"
           (favorited)="presenter.toggleFavorite($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
@@ -365,6 +366,8 @@ export class SongsPage {
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongsPresenter);
 
+  private readonly explorer = viewChild(SongExplorer);
+
   /**
    * `?q=` / `?sort=` / `?dir=`, delivered by `withComponentInputBinding()`.
    *
@@ -455,7 +458,32 @@ export class SongsPage {
       : $localize`:@@songs.empty:No songs yet. Create one to get started.`,
   );
 
+  /**
+   * Step from the list into the editor. The page's job in this is the one thing
+   * the presenter cannot do: **measure the list's scroll**, so a return from the
+   * editor lands on the row that was opened rather than at the top of a library
+   * you had scrolled a long way into (see `ListScrollMemory`).
+   */
+  protected openSong(id: string): void {
+    this.presenter.open(id, this.explorer()?.getScrollOffset() ?? 0);
+  }
+
   constructor() {
+    // Lay the remembered scroll back on after a return from the editor. The
+    // offset means nothing until the list has rows to scroll through, so this
+    // waits for the window to arrive, defers past the current change-detection
+    // and then clears the pending mark (which stops the effect re-firing).
+    effect(() => {
+      const offset = this.presenter.pendingScroll();
+      if (offset === null || this.presenter.rows().length === 0) {
+        return;
+      }
+      setTimeout(() => {
+        this.explorer()?.scrollToOffset(offset);
+        this.presenter.clearPendingScroll();
+      });
+    });
+
     effect(() => {
       void this.presenter.syncQuery({
         query: this.query(),

@@ -16,6 +16,8 @@ import { Fullscreen } from './fullscreen';
 import { StageSession } from './stage-session';
 import { transposeActionLabel } from './transpose';
 import { TransposeStepper } from './transpose-stepper';
+import { turnPageLabel } from './turn-label';
+import { UiStore } from './ui-store';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
@@ -155,6 +157,36 @@ import { TransposeStepper } from './transpose-stepper';
           <app-icon name="moon" />
           {{ darkPageLabel }}
         </button>
+
+        <!-- Turn the page (ADR-0013). Only here when a quarter turn would gain
+             this song room — a control that cannot act is not offered, and the
+             row appearing is itself the app pointing out that the song is not
+             using the screen it is on. Device-local like the dark page, and the
+             same flag the Audience reads: it is a fact about the hands holding
+             this phone, not about the performance. -->
+        @if (ui.isPageTurnOffered()) {
+          <button
+            type="button"
+            class="item"
+            role="menuitemcheckbox"
+            [attr.aria-checked]="ui.isPageTurnArmed()"
+            [class.is-active]="ui.isPageTurnArmed()"
+            data-testid="stage-turn-page"
+            (click)="onTurnPage()"
+          >
+            <span class="item-icon">
+              <!-- The device turns with the page: armed, the phone is drawn the
+                   quarter round the song will be, which is the state showing
+                   itself rather than a word for it. -->
+              <app-icon
+                name="smartphone"
+                [class.is-turned]="ui.isPageTurnArmed()"
+              />
+              <app-icon class="badge" name="rotateCcw" />
+            </span>
+            {{ turnPageLabel }}
+          </button>
+        }
 
         <!-- The offset is in the row's own label, the way the audience row says
              which act it is: behind ⋯ there is nothing else on screen to show a
@@ -317,6 +349,15 @@ import { TransposeStepper } from './transpose-stepper';
       color: var(--brand);
     }
 
+    /* Turn the page, armed: the phone lies down the same quarter turn the song
+       does, counter-clockwise like everything else sideways in Achordeon. The
+       arrow beside it does not move — it names the act, and the act is the same
+       one whichever way the page is currently lying. */
+    .item-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
+    }
+
     .item.is-danger {
       color: var(--danger, #c0362c);
     }
@@ -347,6 +388,9 @@ import { TransposeStepper } from './transpose-stepper';
 export class StageBar {
   protected readonly session = inject(StageSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** Turn the page is device-local and shared with the Audience — one flag for
+   * the Performance view, so it is `UiStore`'s rather than the session's. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);
@@ -355,6 +399,8 @@ export class StageBar {
   protected readonly transposeLabel = computed(() =>
     transposeActionLabel(this.session.transpose()),
   );
+
+  protected readonly turnPageLabel = turnPageLabel;
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);
@@ -368,6 +414,12 @@ export class StageBar {
 
   protected closeTranspose(): void {
     this.isTransposeOpen.set(false);
+  }
+
+  /** Stays open, like the dark page above it: you turn the page, look, and turn
+   * it back if your hands disagree with the screen. */
+  protected onTurnPage(): void {
+    this.ui.togglePageTurn();
   }
 
   /** The menu hands over to the sheet: two panels over one song is one too many. */

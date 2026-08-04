@@ -20,6 +20,8 @@ import { Button, Icon } from '../../primitives';
 import { AudienceSession } from './audience-session';
 import { Fullscreen } from './fullscreen';
 import { transposeActionLabel } from './transpose';
+import { turnPageLabel } from './turn-label';
+import { UiStore } from './ui-store';
 import { TransposeStepper } from './transpose-stepper';
 
 @Component({
@@ -178,6 +180,34 @@ import { TransposeStepper } from './transpose-stepper';
           {{ darkPageLabel }}
         </button>
 
+        <!-- Turn the page (ADR-0013). Only here when a quarter turn would gain
+             this song room: a control that cannot act is not offered, and the
+             row appearing is itself the app saying this song is not using the
+             screen it arrived on. The viewer's own, like everything above it —
+             the performer is not turning their phone. -->
+        @if (ui.isPageTurnOffered()) {
+          <button
+            type="button"
+            class="item"
+            role="menuitemcheckbox"
+            [attr.aria-checked]="ui.isPageTurnArmed()"
+            [class.is-active]="ui.isPageTurnArmed()"
+            data-testid="audience-turn-page"
+            (click)="onTurnPage()"
+          >
+            <span class="item-icon">
+              <!-- The device turns with the page: armed, the phone is drawn the
+                   quarter round the song will be. -->
+              <app-icon
+                name="smartphone"
+                [class.is-turned]="ui.isPageTurnArmed()"
+              />
+              <app-icon class="badge" name="rotateCcw" />
+            </span>
+            {{ turnPageLabel }}
+          </button>
+        }
+
         <button
           type="button"
           class="item is-danger"
@@ -288,6 +318,14 @@ import { TransposeStepper } from './transpose-stepper';
       block-size: 20px;
     }
 
+    /* Turn the page, armed: the phone lies down the same quarter turn the song
+       does. The arrow beside it does not move — it names the act, and the act is
+       the same one whichever way the page is currently lying. */
+    .item-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
+    }
+
     .item-icon .badge {
       --icon-size: 14px;
       position: absolute;
@@ -326,6 +364,9 @@ import { TransposeStepper } from './transpose-stepper';
 export class AudienceBar {
   protected readonly session = inject(AudienceSession);
   protected readonly fullscreen = inject(Fullscreen);
+  /** Turn the page is device-local and shared with Stage — one flag for the
+   * Performance view, so it is `UiStore`'s rather than either session's. */
+  protected readonly ui = inject(UiStore);
 
   protected readonly isMenuOpen = signal(false);
   protected readonly isTransposeOpen = signal(false);
@@ -333,6 +374,8 @@ export class AudienceBar {
   protected readonly transposeLabel = computed(() =>
     transposeActionLabel(this.session.transpose()),
   );
+
+  protected readonly turnPageLabel = turnPageLabel;
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);
@@ -372,6 +415,12 @@ export class AudienceBar {
    * looking at the song to see whether you like it better that way. */
   protected onDarkPage(): void {
     this.session.toggleSongDark();
+  }
+
+  /** Stays open like the two above it: you turn the page, look, and turn it
+   * back if your hands disagree. */
+  protected onTurnPage(): void {
+    this.ui.togglePageTurn();
   }
 
   protected onLeave(): void {

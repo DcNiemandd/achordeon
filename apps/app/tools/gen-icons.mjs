@@ -159,6 +159,20 @@ const ICONS = {
   // that stays put and lights up, not a two-state swap like fullscreen, so a
   // second glyph would only make the row change shape under the thumb.
   moon: 'moon',
+  // Turn the page (ADR-0013), on Stage and in the Audience. The act is physical
+  // — you are being asked to hold the device the other way round — so the glyph
+  // is the device, badged with the direction to turn it, the way Transpose above
+  // badges its note with the direction the music moves.
+  //
+  // A phone rather than a `monitor`: the control is hidden wherever a screen
+  // cannot be turned, so the only reader who ever sees it is holding one.
+  //
+  // Two arrows, unlike the moon above, because this one IS a two-state swap:
+  // counter-clockwise offers the turn, clockwise offers to put it back. A single
+  // arrow on a pressed control would be pointing the way you have already gone.
+  smartphone: 'smartphone',
+  rotateCcw: 'rotate-ccw',
+  rotateCw: 'rotate-cw',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */

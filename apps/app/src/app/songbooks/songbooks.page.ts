@@ -10,7 +10,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
+  viewChild,
 } from '@angular/core';
 import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import {
@@ -106,7 +108,7 @@ import {
           [emptyText]="emptyText"
           (loadMore)="presenter.loadMore()"
           (activated)="presenter.select($event)"
-          (opened)="presenter.open($event)"
+          (opened)="openSongbook($event)"
           (performed)="presenter.perform($event)"
           (renamed)="presenter.rename($event.id, $event.name)"
           (duplicated)="presenter.duplicate($event)"
@@ -132,6 +134,7 @@ import {
       @if (presenter.currentId()) {
         <app-songbook-preview
           pane-b
+          [bookId]="presenter.currentId()"
           [preview]="presenter.preview()"
           [isDark]="presenter.isSongDark()"
           (darkToggled)="presenter.toggleSongDark()"
@@ -323,6 +326,13 @@ import {
       border-block-end: 1px solid var(--border);
     }
 
+    /* A section that follows another stands off the rule above it. Only that
+       one: the first section is spaced from the dialog's title by the panel's
+       own gap, and padding here would double it. */
+    .fields + .fields {
+      padding-block-start: var(--space-3);
+    }
+
     /* The heading and its (?) hint, on one line. */
     .fields-head {
       display: flex;
@@ -362,6 +372,8 @@ export class SongbooksPage {
   protected readonly ui = inject(UiStore);
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbooksPresenter);
+
+  private readonly list = viewChild(SongExplorer);
 
   protected readonly capabilities = SONGBOOK_LIST_CAPABILITIES;
 
@@ -416,10 +428,34 @@ export class SongbooksPage {
     () => this.presenter.rows().length === 1,
   );
 
+  /**
+   * Step from the list into the builder. The page's job in this is the one thing
+   * the presenter cannot do: **measure the list's scroll**, so a return from the
+   * builder lands on the songbook that was opened (see `ListScrollMemory`).
+   */
+  protected openSongbook(id: string): void {
+    this.presenter.open(id, this.list()?.getScrollOffset() ?? 0);
+  }
+
   constructor() {
     // Once, on entry. Not an `effect`: nothing here depends on a signal
     // changing — it is the initial fetch, and re-running it on every store
     // write would re-read the whole library to recount one row.
     void this.presenter.load();
+
+    // Lay the remembered scroll back on after a return from the builder. The
+    // offset means nothing until the list has rows to scroll through, so this
+    // waits for the window to arrive, defers past the current change-detection
+    // and then clears the pending mark (which stops the effect re-firing).
+    effect(() => {
+      const offset = this.presenter.pendingScroll();
+      if (offset === null || this.presenter.rows().length === 0) {
+        return;
+      }
+      setTimeout(() => {
+        this.list()?.scrollToOffset(offset);
+        this.presenter.clearPendingScroll();
+      });
+    });
   }
 }

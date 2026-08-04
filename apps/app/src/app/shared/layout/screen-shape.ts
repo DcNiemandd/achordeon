@@ -35,7 +35,7 @@ export class ScreenShape {
    * same reason `Viewport` feature-detects `matchMedia`: the view can exist with
    * the API missing.
    */
-  detect(): `${number}:${number}` | null {
+  detect(isSideways = false): `${number}:${number}` | null {
     const view = this.document.defaultView;
     const screen = view?.screen;
     if (
@@ -46,9 +46,14 @@ export class ScreenShape {
     }
 
     // Swap only when the box and the orientation disagree — see `isLandscape`.
+    // `isSideways` then asks for the OTHER orientation, so the two decisions
+    // compose into one swap or none rather than fighting over the same pair:
+    // a phone held upright answers 131:284, and sideways 284:131, whichever way
+    // round this platform happened to report the panel.
     const landscape = view ? isLandscape(view, screen) : null;
     const wide = screen.width > screen.height;
-    return landscape === null || landscape === wide
+    const asHeld = landscape === null || landscape === wide;
+    return asHeld !== isSideways
       ? formatAspectRatio(screen.width, screen.height)
       : formatAspectRatio(screen.height, screen.width);
   }

@@ -92,6 +92,36 @@ export function formatAspectRatio(
   return `${width / divisor}:${height / divisor}`;
 }
 
+/**
+ * Would turning a page a quarter gain it room in the box it has to fill?
+ *
+ * **The one predicate** behind every rotation in the app (ADR-0013): the
+ * reader's, on a phone held sideways; the automatic one on paper; and later a
+ * slot's own. It lives here, beside the other things that know what a ratio
+ * means, because the print pipeline and the on-screen frame both need it and
+ * neither may import the other — two copies of this rule would be exactly the
+ * second opinion the decision exists to prevent.
+ *
+ * A page is fitted at `min(boxW, boxH × ratio)`; turned, it is fitted against
+ * the same box transposed. The turned fit is wider exactly when the two ratios
+ * sit on **opposite sides of 1** — a landscape page in a portrait box, or the
+ * reverse. Same-handed pairs never gain, and a square on either side is a tie,
+ * which is a no: a rotation that buys nothing only costs the reader their
+ * bearings.
+ *
+ * Anything unmeasurable is a no, so a half-built layout cannot turn a page by
+ * accident.
+ */
+export function gainsRoomTurned(pageRatio: number, boxRatio: number): boolean {
+  if (!Number.isFinite(pageRatio) || !Number.isFinite(boxRatio)) {
+    return false;
+  }
+  if (pageRatio <= 0 || boxRatio <= 0) {
+    return false;
+  }
+  return (pageRatio - 1) * (boxRatio - 1) < 0;
+}
+
 /** Euclid, iteratively — `formatAspectRatio` runs on a click, not in a layout. */
 function greatestCommonDivisor(a: number, b: number): number {
   let [left, right] = [a, b];

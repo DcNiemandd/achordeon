@@ -46,14 +46,14 @@ Insert-syntax buttons cover: chord, title, subtitle, label, block, markdown bold
 An ordered list of Songs to be filtered/performed together. References Songs by uuid.
 One Song may belong to many Songbooks.
 
-- **Entry (slot)** — a positioned reference to a Song inside a Songbook. The same Song may appear in multiple slots within one Songbook (e.g. a set that repeats a song). Removing a slot ("remove from songbook") does not delete the Song.
+- **Entry** — a positioned reference to a Song inside a Songbook. The same Song may appear in multiple entries within one Songbook (e.g. a set that repeats a song). Removing an entry ("remove from songbook") does not delete the Song. (Formerly also called a "slot"; that word now means only the printable region of a sheet — see Slot.)
 - **All songs** — the default Songbook; always present. A read-only-order virtual view of the whole library; cannot be reordered and Songs cannot be removed from it.
 - **Title-page fields** — a Songbook carries its own Title, Subtitle, and Author, used on the download/print title page. These are Songbook metadata, separate from any Song's Title/Subtitle.
 
 ## Delete vs Remove
 
 - **Delete Song** — removes a Song from the library entirely. Only possible from the Songs module. Cascades out of every Songbook. Before deleting, the user is warned the Song is in use, with a link that opens the Songbook and auto-selects the Song.
-- **Remove from songbook** — removes a single Entry/slot from a Songbook; the Song stays in the library. Done in the Songbooks module.
+- **Remove from songbook** — removes a single Entry from a Songbook; the Song stays in the library. Done in the Songbooks module.
 
 ## Song explorer
 
@@ -94,7 +94,20 @@ Which scopes a given setting may be overridden at is a configurable property of 
 
 The width:height shape of a single Song's rendered output (image/PDF). A Song-scope setting. Lets the output be cropped to the exact shape of the content to minimize empty space. When printing to a chosen page size (e.g. A4), the Song keeps its aspect ratio but is scaled to fit the page.
 
+A landscape Song is simply one whose aspect ratio is wider than it is tall. There is no separate "landscape" flag: the shape is the setting, and a second way to say the same thing would only raise the question of which one wins.
+
 _Match this screen_ measures the physical screen (`window.screen`) in the orientation the device is currently held, and stores the **reduced exact ratio** it measured — never a "this device" token. The stored value therefore still means the device that was measured after it syncs elsewhere. Device presets carry the same kind of value (the reduced CSS-pixel screen fraction of that family), so a device row and _Match this screen_ agree on the device they both describe.
+
+_Match this screen, sideways_ is the same measurement with the two dimensions swapped: the shape this device would have if it were held the other way round. It saves the reader from having to physically turn the phone before tapping, and it is what makes a Song landscape in the first place.
+
+## Performance view
+
+The shared surface of **Stage** and **Audience**: one Song filling the screen, read rather than edited. One thing seen from two seats, differing on exactly two axes:
+
+- **Who chooses the Song** — in Stage the reader does (prev/next, Summary, swipe). In Audience the performer does, and the choice arrives over the wire; a viewer may open the Summary but cannot open a different Song.
+- **Where the Song comes from** — Stage reads the local library. Audience receives the finished render from the Lobby and holds no library of its own.
+
+Everything a reader does to a page they did not author belongs to the Performance view rather than to either seat: **Zoom**, the **dark page**, **Hide chords**, **Turn the page**. Each is device-local and unshared — a view of the page, never a render setting. That is exactly what makes them safe in Audience, where the Song is someone else's and read-only.
 
 ## Stage
 
@@ -115,15 +128,31 @@ Mental model: one performer picks the Songs; everyone around (the Audience, each
 
 ## Zoom
 
-Looking closer at the rendered page while performing or watching. Available in Stage and Audience only.
+Looking closer at the rendered page. Available in the Performance view only.
 
-A **view of the page, not a render setting**: it does not cascade (Global → Songbook → Song), never reaches a download, a print or a PDF, and is not part of what an Audience receives — each viewer zooms their own screen, like Hide chords and the dark page. Nothing is laid out again; the finished page is magnified and can be dragged around behind the screen.
+A **view of the page, not a render setting**: it does not cascade (Global → Songbook → Song), never reaches a download, a print or a PDF, and is not part of what an Audience receives — each viewer zooms their own screen, like Hide chords, the dark page and Turn the page. Nothing is laid out again; the finished page is magnified and can be dragged around behind the screen.
 
 - **Fit** — the whole page, the normal state. There is no zooming out past it.
 - **Reset on song change** — every page turn starts fitted. A magnification framed one song's chorus and means nothing in the next.
 - Zoomed, a drag **pans** and no longer turns the page; the page turn stays on the controls and the arrow keys. Double-tap toggles between fit and a readable magnification at the point tapped.
 
 Not the same word as the Songbook preview's _zoom_, which changes how many pages are shown side by side.
+
+## Turn the page
+
+Reading a landscape page on a device held sideways. Available in the Performance view only.
+
+A **view of the page, not a render setting**, on the same terms as Zoom: the page is drawn a quarter turn round inside its frame, nothing is laid out again, and the download, the print and the Audience payload are untouched. Device-local and unshared.
+
+It exists because the device's own rotation cannot be relied on. A screen with rotation lock on does not follow the phone, so a landscape Song stays a letterboxed strip however the reader holds it — and no browser will unlock the screen on request. The reader turns the page because only the reader knows whether their device will.
+
+Offered only on a screen that can be turned — a phone or a tablet, never a monitor — and that is a question about the **device**, not about how wide the layout is. A tablet held sideways is wide enough to be laid out like a desktop and is still the case this exists for.
+
+The control is a **standing permission, not an act**: it says the reader is willing to hold the device the other way round, and the app then turns the pages that gain by it and leaves the rest upright. So it reads as a mode the way the dark page does — one label, the row lit while it is on — rather than as a button that turns the page in front of you.
+
+Distinct from _aspect ratio_, which decides the page's shape and is the Song's own. A page is landscape because its aspect ratio says so; turning it is how this reader, on this device, then looks at it.
+
+**On paper it is automatic and there is no control.** A sheet can be turned; a monitor cannot. So a printed Song is rotated a quarter whenever rotating gains it area on the paper, without being asked — nobody needs a checkbox for "do not waste half the sheet". The same judgement, offered on screen and simply made on paper, because the reader's body can answer it in one place and not the other.
 
 ## Tier
 
@@ -138,6 +167,23 @@ The user's access level. Determines available sync and Audience hosting.
 A single Achordeon identity per user, provider-agnostic. Sign-in is via Google first; email+password registration is planned, and a user may link multiple sign-in methods to the one account. Login is never required for core use — it only adds cross-device sync and Audience hosting.
 
 - **Connect Drive** — authorizing Google Drive as a storage target for sync. A storage authorization layered on the Account — not a separate **account**, but carried by the Google sign-in: connecting Drive on an account without Google links Google as a sign-in method.
+
+## Slot
+
+The printable region of a sheet — the paper minus its margins. What a Song is scaled into when a Songbook is printed.
+
+A slot holds **one Song by default and at most two**. Two Songs in one slot stand side by side as a vertical cut, each keeping its own aspect ratio inside its part of the width.
+
+## Share
+
+How much of a slot's width a Song asks for: `1`, `2/3`, `3/4`, `1/2`, `1/3`, `1/4`. A Song-scope fact — "this song only needs half a page" is true of the song wherever it is printed, so it is not a Songbook setting and imposing a whole book is the printer's job, not the author's.
+
+A share is a **ratio, not a width**. It does two things, and they are separate:
+
+- **Who may pair** — two Songs share a slot only when their shares sum to at most `1`. A `1` therefore never pairs, and that is how a Song says "give me the whole sheet".
+- **How the slot splits** — the slot is divided in proportion to the shares of whoever is actually in it. Two halves take half each; a half beside a quarter takes two thirds and a third. A Song that ends up alone in a slot fills it, whatever its share said — a share is permission to be paired, never an instruction to leave paper blank.
+
+Not a render setting: it does not cascade, and it changes nothing about the drawn page. The Song is the same shape it always was; the share only decides how much room it is given.
 
 ## Export
 

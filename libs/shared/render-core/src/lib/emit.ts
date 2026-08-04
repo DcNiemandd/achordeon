@@ -99,3 +99,31 @@ export function emit(plan: RenderPlan, opts: EmitOpts = {}): string {
     `width="${width}" height="${height}">${defs}${paper}${group}</svg>`
   );
 }
+
+/**
+ * The same drawing, a quarter turn counter-clockwise — a landscape song laid
+ * sideways on a portrait sheet (ADR-0013).
+ *
+ * **A wrapper, not a re-render.** Nothing is laid out again: the emitted
+ * document is nested whole inside a new one whose axes are swapped, so the
+ * turned sheet is the same glyphs in the same places, seen from the side. That
+ * is what keeps this a *placement* decision rather than a render setting — there
+ * is no second layout that could disagree with the first.
+ *
+ * The turn matches the CCW title spine (`rotate: -90` in `title-layout.ts`), so
+ * the two sideways things Achordeon draws are read with the same tilt of the
+ * head. `translate` runs before `rotate` here because SVG applies a transform
+ * list outermost-first: rotating `[0,w]×[0,h]` about the origin lands it in
+ * `[0,h]×[-w,0]`, and the translate lifts it back into view.
+ */
+export function turnedSvg(
+  svg: string,
+  box: { width: number; height: number },
+): string {
+  const { width, height } = box;
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${height} ${width}" ` +
+    `width="${height}" height="${width}">` +
+    `<g transform="translate(0 ${width}) rotate(-90)">${svg}</g></svg>`
+  );
+}
