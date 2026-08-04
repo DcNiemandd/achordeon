@@ -2,54 +2,12 @@
 // Spec: docs/adr/0013-rotation-is-derived-not-authored.md
 
 import type { Desk } from './zoom';
-import { gainsRoomTurned, toPageDelta, turnedDesk } from './turn';
+import { toPageDelta, turnedDesk } from './turn';
 
-/** A4 portrait, and the same sheet the other way round. */
-const A4 = 210 / 297;
+// The predicate itself is `render-core`'s (both this frame and the print
+// pipeline ask it), and is tested beside the rest of the ratio arithmetic in
+// `aspect.spec.ts`. What is the app's — and tested here — is the frame change.
 const A4_WIDE = 297 / 210;
-/** A phone panel, and a wide song written to fill one held sideways. */
-const PHONE = 131 / 284;
-const PHONE_WIDE = 284 / 131;
-
-describe('gainsRoomTurned', () => {
-  it('turns a landscape page in a portrait box', () => {
-    expect(gainsRoomTurned(PHONE_WIDE, PHONE)).toBe(true);
-    expect(gainsRoomTurned(A4_WIDE, A4)).toBe(true);
-  });
-
-  it('turns a portrait page in a landscape box', () => {
-    expect(gainsRoomTurned(A4, A4_WIDE)).toBe(true);
-    expect(gainsRoomTurned(PHONE, 16 / 9)).toBe(true);
-  });
-
-  it('leaves a page whose box is handed the same way alone', () => {
-    expect(gainsRoomTurned(A4, PHONE)).toBe(false);
-    expect(gainsRoomTurned(A4_WIDE, 16 / 9)).toBe(false);
-  });
-
-  // A tie is a no: a quarter turn that buys nothing costs the reader their
-  // bearings for free.
-  it('calls a square a tie on either side', () => {
-    expect(gainsRoomTurned(1, A4)).toBe(false);
-    expect(gainsRoomTurned(A4_WIDE, 1)).toBe(false);
-    expect(gainsRoomTurned(1, 1)).toBe(false);
-  });
-
-  // Same refusal as zoom.ts's isMeasured, and for the same reason: a render or a
-  // gesture can arrive before layout has settled.
-  it('refuses anything it cannot measure', () => {
-    expect(gainsRoomTurned(Number.NaN, A4)).toBe(false);
-    expect(gainsRoomTurned(A4_WIDE, Number.NaN)).toBe(false);
-    expect(gainsRoomTurned(Number.POSITIVE_INFINITY, A4)).toBe(false);
-    expect(gainsRoomTurned(0, A4)).toBe(false);
-    expect(gainsRoomTurned(A4_WIDE, 0)).toBe(false);
-    expect(gainsRoomTurned(-A4_WIDE, A4)).toBe(false);
-  });
-
-  it('is symmetric — the question does not care which ratio is the page', () => {
-    expect(gainsRoomTurned(A4, A4_WIDE)).toBe(gainsRoomTurned(A4_WIDE, A4));
-  });
-});
 
 describe('toPageDelta', () => {
   // rotate(-90deg) sends a page-space (x, y) to a screen-space (y, -x), so the

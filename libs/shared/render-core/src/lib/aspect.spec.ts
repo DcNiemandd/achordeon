@@ -1,9 +1,76 @@
 import {
   A4_RATIO,
   formatAspectRatio,
+  gainsRoomTurned,
   parseAspectRatio,
   tryParseAspectRatio,
 } from './aspect';
+
+/** A4 portrait, and the same sheet the other way round. */
+const A4 = 210 / 297;
+const A4_WIDE = 297 / 210;
+/** A phone panel, and a wide song written to fill one held sideways. */
+const PHONE = 131 / 284;
+const PHONE_WIDE = 284 / 131;
+
+describe('gainsRoomTurned', () => {
+  it('turns a landscape page in a portrait box', () => {
+    expect(gainsRoomTurned(PHONE_WIDE, PHONE)).toBe(true);
+    expect(gainsRoomTurned(A4_WIDE, A4)).toBe(true);
+  });
+
+  it('turns a portrait page in a landscape box', () => {
+    expect(gainsRoomTurned(A4, A4_WIDE)).toBe(true);
+    expect(gainsRoomTurned(PHONE, 16 / 9)).toBe(true);
+  });
+
+  it('leaves a page whose box is handed the same way alone', () => {
+    expect(gainsRoomTurned(A4, PHONE)).toBe(false);
+    expect(gainsRoomTurned(A4_WIDE, 16 / 9)).toBe(false);
+  });
+
+  // A tie is a no: a quarter turn that buys nothing costs the reader their
+  // bearings for free.
+  it('calls a square a tie on either side', () => {
+    expect(gainsRoomTurned(1, A4)).toBe(false);
+    expect(gainsRoomTurned(A4_WIDE, 1)).toBe(false);
+    expect(gainsRoomTurned(1, 1)).toBe(false);
+  });
+
+  // Total, like everything else in this file: a half-built layout must not be
+  // able to turn a page by accident.
+  it('refuses anything it cannot measure', () => {
+    expect(gainsRoomTurned(Number.NaN, A4)).toBe(false);
+    expect(gainsRoomTurned(A4_WIDE, Number.NaN)).toBe(false);
+    expect(gainsRoomTurned(Number.POSITIVE_INFINITY, A4)).toBe(false);
+    expect(gainsRoomTurned(0, A4)).toBe(false);
+    expect(gainsRoomTurned(A4_WIDE, 0)).toBe(false);
+    expect(gainsRoomTurned(-A4_WIDE, A4)).toBe(false);
+  });
+
+  it('is symmetric — the question does not care which ratio is the page', () => {
+    expect(gainsRoomTurned(A4, A4_WIDE)).toBe(gainsRoomTurned(A4_WIDE, A4));
+  });
+
+  it('agrees with the fit it is predicting', () => {
+    // The claim the whole feature rests on: "gains room" means the turned fit is
+    // genuinely wider than the upright one, under the same
+    // min(boxW, boxH × ratio) both the CSS and zoom.ts use.
+    const fit = (boxW: number, boxH: number, ratio: number) =>
+      Math.min(boxW, boxH * ratio);
+    for (const [boxW, boxH] of [
+      [400, 900],
+      [900, 400],
+      [500, 500],
+    ]) {
+      for (const ratio of [A4, A4_WIDE, PHONE, PHONE_WIDE, 1]) {
+        const upright = fit(boxW, boxH, ratio);
+        const turned = fit(boxH, boxW, ratio);
+        expect(gainsRoomTurned(ratio, boxW / boxH)).toBe(turned > upright);
+      }
+    }
+  });
+});
 
 describe('parseAspectRatio', () => {
   it('maps the A4 preset to portrait width÷height', () => {

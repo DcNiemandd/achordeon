@@ -1,4 +1,11 @@
-import { MM, PAGE_SIZES, fitInto, orient, pageForBox } from './page-geometry';
+import {
+  MM,
+  PAGE_SIZES,
+  fitInto,
+  orient,
+  pageForBox,
+  placeInto,
+} from './page-geometry';
 
 describe('pageForBox', () => {
   it('prints an A4-shaped song as exactly A4', () => {
@@ -60,5 +67,64 @@ describe('fitInto', () => {
 
   it('measures a margin in millimetres a person can picture', () => {
     expect(10 * MM).toBeCloseTo(28.35, 1);
+  });
+});
+
+describe('placeInto', () => {
+  const A4 = PAGE_SIZES.A4;
+  const A4_LANDSCAPE = orient(A4, true);
+
+  it('turns a landscape song on a portrait sheet', () => {
+    const placed = placeInto({ width: 297, height: 210 }, A4);
+    expect(placed.isTurned).toBe(true);
+  });
+
+  it('leaves a portrait song on a portrait sheet upright', () => {
+    const placed = placeInto({ width: 210, height: 297 }, A4);
+    expect(placed.isTurned).toBe(false);
+  });
+
+  it('turns a portrait song on a landscape sheet', () => {
+    const placed = placeInto({ width: 210, height: 297 }, A4_LANDSCAPE);
+    expect(placed.isTurned).toBe(true);
+  });
+
+  it('gives the turned song more of the sheet than leaving it alone would', () => {
+    // The whole reason paper does this without asking: upright, a landscape song
+    // on portrait A4 leaves better than half the sheet white.
+    const song = { width: 297, height: 210 };
+    const upright = fitInto(song, A4);
+    const placed = placeInto(song, A4);
+    expect(placed.width * placed.height).toBeGreaterThan(
+      upright.width * upright.height,
+    );
+  });
+
+  it('reports the turned drawing own box, not the upright one', () => {
+    // The rect IS where the rotated render lands, so a caller cannot pair a
+    // turned rect with an upright drawing without the test noticing.
+    const placed = placeInto({ width: 297, height: 210 }, A4);
+    expect(placed.height).toBeGreaterThan(placed.width);
+  });
+
+  it('keeps the margin the plain fit keeps', () => {
+    const placed = placeInto({ width: 297, height: 210 }, A4, 20);
+    expect(placed.x).toBeGreaterThanOrEqual(20);
+    expect(placed.y).toBeGreaterThanOrEqual(20);
+  });
+
+  it('never turns a degenerate box', () => {
+    expect(placeInto({ width: 0, height: 210 }, A4).isTurned).toBe(false);
+    expect(placeInto({ width: 297, height: 0 }, A4).isTurned).toBe(false);
+    expect(
+      placeInto({ width: 297, height: 210 }, { width: 0, height: 0 }).isTurned,
+    ).toBe(false);
+  });
+
+  it('agrees with fitInto whenever it does not turn', () => {
+    const song = { width: 210, height: 297 };
+    const { isTurned, ...rect } = placeInto(song, A4, 10);
+    expect(isTurned).toBe(false);
+    expect(rect).toEqual(fitInto(song, A4, 10));
   });
 });

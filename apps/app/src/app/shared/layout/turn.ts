@@ -12,32 +12,12 @@ import type { Desk } from './zoom';
 /**
  * Would turning the page a quarter gain it room?
  *
- * **The one predicate.** Every rotation in the app — the reader's on a phone, the
- * automatic one on paper, and later a slot's own — is this question asked of a
- * different box. Two settings that could disagree about when a page is sideways
- * would be exactly the second opinion ADR-0013 exists to prevent.
- *
- * The page is fitted at `min(boxW, boxH × ratio)` (`.page` in `blank-page.ts`,
- * and `contain` in `zoom.ts`); turned, it is fitted against the same box with the
- * dimensions swapped. Working that through, the turned fit is wider exactly when
- * the two ratios sit on **opposite sides of 1** — a landscape page in a portrait
- * box, or a portrait page in a landscape one. Same-handed pairs never gain, and a
- * square on either side is a tie, which is a no: a rotation that buys nothing is
- * a rotation that only costs the reader their bearings.
- *
- * Anything unmeasurable is a no, on the same grounds as `zoom.ts`'s `isMeasured`:
- * a gesture or a render can arrive before layout has settled, and a page that
- * silently turned because a ratio was briefly `NaN` is a bug nobody can reproduce.
+ * Re-exported rather than written here: the same question is asked of a sheet of
+ * paper by the print pipeline, which sits in `shared/data-access` and cannot see
+ * the app — so the rule itself lives beside the other ratio arithmetic in
+ * `render-core`, and this is the name the Performance view knows it by.
  */
-export function gainsRoomTurned(pageRatio: number, boxRatio: number): boolean {
-  if (!Number.isFinite(pageRatio) || !Number.isFinite(boxRatio)) {
-    return false;
-  }
-  if (pageRatio <= 0 || boxRatio <= 0) {
-    return false;
-  }
-  return (pageRatio - 1) * (boxRatio - 1) < 0;
-}
+export { gainsRoomTurned } from '@achordeon/shared/render-core';
 
 /** A delta, in whichever frame the function that returned it says. */
 export interface Delta {

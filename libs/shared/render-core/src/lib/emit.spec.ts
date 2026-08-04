@@ -2,7 +2,7 @@ import type { GlobalSettings, SongAst } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
 import { singleFamilyResolver } from './fonts';
 import { layoutCore } from './layout';
-import { emit } from './emit';
+import { emit, turnedSvg } from './emit';
 import type { RenderPlan } from './render-plan';
 import { DEFAULT_TUNING } from './tuning';
 
@@ -143,6 +143,48 @@ describe('emit — spine rotation (§4.5)', () => {
     );
     const svg = emit(p);
     expect(svg).toMatch(/<text[^>]*transform="rotate\(-90 /);
+  });
+});
+
+describe('turnedSvg', () => {
+  const inner = '<svg viewBox="0 0 100 50" width="100" height="50"></svg>';
+
+  it('swaps the document box', () => {
+    const turned = turnedSvg(inner, { width: 100, height: 50 });
+    expect(turned).toContain('viewBox="0 0 50 100"');
+    expect(turned).toContain('width="50"');
+    expect(turned).toContain('height="100"');
+  });
+
+  it('turns counter-clockwise, like the title spine', () => {
+    // The same handedness as `rotate: -90` in title-layout, so the two sideways
+    // things Achordeon draws are read with one tilt of the head (ADR-0013).
+    expect(turnedSvg(inner, { width: 100, height: 50 })).toContain(
+      'rotate(-90)',
+    );
+  });
+
+  it('translates the rotated box back into view', () => {
+    // Rotating [0,w]x[0,h] about the origin lands it in [0,h]x[-w,0]; without
+    // the lift by w the drawing would be entirely off the top of the sheet.
+    expect(turnedSvg(inner, { width: 100, height: 50 })).toContain(
+      'transform="translate(0 100) rotate(-90)"',
+    );
+  });
+
+  it('nests the original document untouched — nothing is laid out again', () => {
+    // A placement, not a render setting: the same glyphs in the same places,
+    // seen from the side. A re-layout here could disagree with the screen.
+    expect(turnedSvg(inner, { width: 100, height: 50 })).toContain(inner);
+  });
+
+  it('wraps a real render without disturbing its contents', () => {
+    const svg = emit(
+      plan({ blocks: [{ lines: [{ text: 'hello', chords: [] }] }] }),
+    );
+    const turned = turnedSvg(svg, { width: 210, height: 297 });
+    expect(turned).toContain(svg);
+    expect(turned).toContain('viewBox="0 0 297 210"');
   });
 });
 
