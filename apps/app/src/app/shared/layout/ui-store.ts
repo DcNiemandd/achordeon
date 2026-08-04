@@ -21,6 +21,7 @@ interface PersistedUi {
   isSplitShared: boolean;
   isRailCollapsed: boolean;
   isSongDarkFollowingTheme: boolean;
+  isPageTurnArmed: boolean;
 }
 
 /**
@@ -79,6 +80,26 @@ export class UiStore {
    */
   private readonly _isSongDarkFollowingTheme = signal(false);
   /**
+   * Does this reader want a sideways page turned upright for them? — the
+   * Performance view's Turn the page (ADR-0013).
+   *
+   * **Armed, not applied**, and the distinction is the whole design. It says "I
+   * am willing to hold this device the other way round", which is a fact about
+   * the reader and their hands, not about any one song. So it never resets on a
+   * page turn — unlike the zoom, which resets on every one, because a phone is
+   * still sideways after the next song loads. What it does *not* do is force a
+   * rotation: the page turns only where `gainsRoomTurned` also says so, so a
+   * portrait song mid-setlist draws upright with this still on and the next
+   * landscape one is turned again. That is what keeps it from lying, which is
+   * the bar `_isFullscreen` below sets.
+   *
+   * One flag for both seats of the Performance view (CONTEXT.md), because the
+   * device is the same device whether it is performing or following along — and
+   * it must never sync, for the reason the dark page must not: rotation lock is
+   * a property of the phone in this hand, not of the account.
+   */
+  private readonly _isPageTurnArmed = signal(false);
+  /**
    * How the app theme resolves, once the shell has wired it (`connectTheme`).
    *
    * A signal *holding* the accessor rather than a plain field, so that wiring it
@@ -94,6 +115,7 @@ export class UiStore {
   readonly isRailCollapsed = this._isRailCollapsed.asReadonly();
   readonly isSongDarkFollowingTheme =
     this._isSongDarkFollowingTheme.asReadonly();
+  readonly isPageTurnArmed = this._isPageTurnArmed.asReadonly();
   readonly isFullscreen = this._isFullscreen.asReadonly();
 
   /**
@@ -173,6 +195,11 @@ export class UiStore {
     this.persist();
   }
 
+  setPageTurnArmed(armed: boolean): void {
+    this._isPageTurnArmed.set(armed);
+    this.persist();
+  }
+
   /**
    * Tell this store how the app theme resolves.
    *
@@ -217,6 +244,9 @@ export class UiStore {
     if (typeof stored.isSongDarkFollowingTheme === 'boolean') {
       this._isSongDarkFollowingTheme.set(stored.isSongDarkFollowingTheme);
     }
+    if (typeof stored.isPageTurnArmed === 'boolean') {
+      this._isPageTurnArmed.set(stored.isPageTurnArmed);
+    }
   }
 
   private read(): Partial<PersistedUi> | null {
@@ -243,6 +273,7 @@ export class UiStore {
       isSplitShared: this._isSplitShared(),
       isRailCollapsed: this._isRailCollapsed(),
       isSongDarkFollowingTheme: this._isSongDarkFollowingTheme(),
+      isPageTurnArmed: this._isPageTurnArmed(),
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(state));

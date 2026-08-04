@@ -32,7 +32,7 @@ resets on a song change, and it means nothing on its own until the predicate hol
 ## 2 — The frame change
 
 A pure helper mapping a screen-space delta into page space for a `-90°` page
-(`dx, dy → dy, -dx`). No DOM, no Angular. Two callers, and both are required:
+(`dx, dy → -dy, dx`). No DOM, no Angular. Two callers, and both are required:
 
 - `apps/app/src/app/shared/layout/page-zoom.ts` — pointer deltas before they reach
   the zoom maths.

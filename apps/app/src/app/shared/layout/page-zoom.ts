@@ -24,6 +24,7 @@ import {
   zoomBy,
   zoomPercent,
 } from './zoom';
+import { type Delta, gainsRoomTurned, toPageDelta, turnedDesk } from './turn';
 
 /** Travel under which a pointer that went down and came up again was a tap. */
 const TAP_SLOP_PX = 12;
@@ -96,12 +97,53 @@ export class PageZoom {
   readonly isEnabled = input(true);
 
   /**
+   * Has the reader said they are willing to hold the device the other way round
+   * (`UiStore.isPageTurnArmed`)?
+   *
+   * Armed is only half the question; the other half is whether a quarter turn
+   * would gain this page anything, and that needs the desk — which is the box
+   * this directive is already sitting on and already observing. So the two halves
+   * meet here and `isTurned` below is the one answer everything else reads:
+   * the frame, the gestures, and Stage's page-turn swipe.
+   */
+  readonly isTurnArmed = input(false);
+
+  /**
    * A single finger (or click) that went down and came up in the same place, and
    * was not the second half of a double. The pages reveal the chrome with it.
    */
   readonly tapped = output<void>();
 
   private readonly state = signal<ZoomState>(FIT);
+
+  /** The desk's shape as last measured, width ÷ height. Zero until the first
+   * observation, which reads as "not measured" to `gainsRoomTurned`. */
+  private readonly deskRatio = signal(0);
+
+  /**
+   * Is the page drawn a quarter turn round (ADR-0013)?
+   *
+   * The gestures do not change; the **frame** does. A turned page's rightward
+   * runs up the screen, so every screen-space vector this directive collects —
+   * pan deltas, the pinch's drift, the point a double-tap should zoom about — is
+   * put through `toPageDelta` on the way in, and the desk is handed over
+   * transposed. Everything downstream then reasons in the page's own frame,
+   * which is the frame `zoom.ts` has always worked in and the reason it needed
+   * no changes for this.
+   *
+   * Derived, so it answers itself again when the window is resized or the device
+   * finally does rotate: the arming survives, and the turn quietly stops applying
+   * the moment it stops being worth anything.
+   */
+  readonly isTurned = computed(
+    () => this.isTurnArmed() && gainsRoomTurned(this.ratio(), this.deskRatio()),
+  );
+
+  /** Would turning gain this page room, whatever the reader has asked for? What
+   * the bars show their toggle on — a control that cannot act is not offered. */
+  readonly isTurnWorthwhile = computed(() =>
+    gainsRoomTurned(this.ratio(), this.deskRatio()),
+  );
 
   readonly scale = computed(() => this.state().scale);
   readonly panX = computed(() => this.state().x);
@@ -151,8 +193,13 @@ export class PageZoom {
     // A rotation or a window drag changes the desk under a zoom that was clamped
     // to the old one, and the page would sit with bare desk beside it. Re-clamp
     // rather than reset: the performer did not ask to lose their place.
+    //
+    // It is also where the desk's own shape is learned, for `isTurned` — the
+    // first observation arrives on `observe()`, so the answer is right before
+    // anyone has touched the page.
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
+        this.measureDesk();
         if (this.isZoomed())
           this.state.set(panBy(this.state(), this.desk(), 0, 0));
       });
@@ -218,14 +265,11 @@ export class PageZoom {
       this.travel = Math.max(this.travel, distance(point, this.origin));
     }
     if (this.isZoomed() && this.previous !== null) {
-      this.state.set(
-        panBy(
-          this.state(),
-          this.desk(box),
-          point.x - this.previous.x,
-          point.y - this.previous.y,
-        ),
+      const moved = this.inPageFrame(
+        point.x - this.previous.x,
+        point.y - this.previous.y,
       );
+      this.state.set(panBy(this.state(), this.desk(box), moved.dx, moved.dy));
       event.preventDefault();
     }
     this.previous = point;
@@ -261,7 +305,7 @@ export class PageZoom {
       this.lastTap = null;
       const box = this.host.nativeElement.getBoundingClientRect();
       this.state.set(
-        toggleZoom(this.state(), this.desk(box), focusOf(point, box)),
+        toggleZoom(this.state(), this.desk(box), this.focusOf(point, box)),
       );
       return;
     }
@@ -298,7 +342,7 @@ export class PageZoom {
         this.state(),
         this.desk(box),
         Math.pow(WHEEL_STEP, -pixels / 100),
-        focusOf({ x: event.clientX, y: event.clientY }, box),
+        this.focusOf({ x: event.clientX, y: event.clientY }, box),
       ),
     );
   }
@@ -325,17 +369,16 @@ export class PageZoom {
         this.state(),
         desk,
         spread / this.spread,
-        focusOf(midpoint, box),
+        this.focusOf(midpoint, box),
       );
       if (this.midpoint !== null) {
         // Two fingers moving together drag the page as well as scaling it —
         // without this, a pinch that drifts feels nailed to the glass.
-        next = panBy(
-          next,
-          desk,
+        const drift = this.inPageFrame(
           midpoint.x - this.midpoint.x,
           midpoint.y - this.midpoint.y,
         );
+        next = panBy(next, desk, drift.dx, drift.dy);
       }
       this.state.set(next);
     }
@@ -368,23 +411,53 @@ export class PageZoom {
     this._isPanning.set(false);
   }
 
+  /** Note the desk's shape. Zero-sized boxes (a hidden route, a test host with
+   * no layout) are left as they are — `gainsRoomTurned` refuses them anyway, and
+   * writing a 0 would only churn a signal to the same answer. */
+  private measureDesk(): void {
+    const rect = this.host.nativeElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      this.deskRatio.set(rect.width / rect.height);
+    }
+  }
+
   private desk(box?: DOMRect): Desk {
     const rect = box ?? this.host.nativeElement.getBoundingClientRect();
-    return { width: rect.width, height: rect.height, ratio: this.ratio() };
+    const desk = {
+      width: rect.width,
+      height: rect.height,
+      ratio: this.ratio(),
+    };
+    return this.isTurned() ? turnedDesk(desk) : desk;
+  }
+
+  /** A screen-space movement said in the page's frame — the identity while the
+   * page is upright, which is every existing caller's behaviour unchanged. */
+  private inPageFrame(dx: number, dy: number): Delta {
+    return this.isTurned() ? toPageDelta(dx, dy) : { dx, dy };
+  }
+
+  /**
+   * A client point as an offset from the desk's centre — what `zoom.ts` wants,
+   * in the frame it wants it.
+   *
+   * The focus is a vector from the centre, so the turn moves it exactly as it
+   * moves a pan. Left unmapped, a pinch or a double-tap would zoom about a point
+   * a quarter turn away from the chord the reader actually put their finger on.
+   */
+  private focusOf(point: Point, box: DOMRect): Focus {
+    const fromCentre = {
+      x: point.x - box.left - box.width / 2,
+      y: point.y - box.top - box.height / 2,
+    };
+    const { dx, dy } = this.inPageFrame(fromCentre.x, fromCentre.y);
+    return { x: dx, y: dy };
   }
 }
 
 interface Point {
   readonly x: number;
   readonly y: number;
-}
-
-/** A client point as an offset from the desk's centre — what `zoom.ts` wants. */
-function focusOf(point: Point, box: DOMRect): Focus {
-  return {
-    x: point.x - box.left - box.width / 2,
-    y: point.y - box.top - box.height / 2,
-  };
 }
 
 function distance(a: Point, b: Point): number {

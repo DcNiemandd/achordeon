@@ -32,8 +32,10 @@ import {
   StageSession,
   TierGuard,
   TransposeStepper,
+  UiStore,
   Viewport,
   ZoomPill,
+  toPageDelta,
 } from '../shared/layout';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
@@ -260,6 +262,7 @@ const SWIPE_THRESHOLD_PX = 60;
         #zoom="appPageZoom"
         [ratio]="presenter.pageRatio()"
         [isEnabled]="!presenter.isEmpty()"
+        [isTurnArmed]="ui.isPageTurnArmed()"
         (tapped)="fullscreen.reveal()"
       >
         @if (presenter.isEmpty()) {
@@ -272,6 +275,7 @@ const SWIPE_THRESHOLD_PX = 60;
             [ratio]="presenter.pageRatio()"
             [isPerforming]="true"
             [isDark]="session.isSongDark()"
+            [isTurned]="zoom.isTurned()"
             [zoom]="zoom.scale()"
             [panX]="zoom.panX()"
             [panY]="zoom.panY()"
@@ -729,6 +733,9 @@ export class StagePerformPage {
   protected readonly tier = inject(TierGuard);
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly viewport = inject(Viewport);
+  /** Read for `isPageTurnArmed` only — one flag for both seats of the
+   * Performance view, which is why it is not on `StageSession`. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/stage/:songbookId`, delivered by `withComponentInputBinding()`. */
@@ -896,8 +903,21 @@ export class StagePerformPage {
   protected endSwipe(event: PointerEvent): void {
     if (!event.isPrimary) return;
     if (this.swipeStartX === null || this.swipeStartY === null) return;
-    const dx = event.clientX - this.swipeStartX;
-    const dy = event.clientY - this.swipeStartY;
+    // In the PAGE's frame, not the screen's. Turned, the reader's sideways runs
+    // up and down the glass, and a threshold left watching `clientX` would sit
+    // there ignoring every swipe a turned performer made — the same mapping
+    // `PageZoom` puts its pan through, from the same helper, because two
+    // answers about which way is sideways is worse than either one (ADR-0013).
+    const travelled = this.zoom()?.isTurned()
+      ? toPageDelta(
+          event.clientX - this.swipeStartX,
+          event.clientY - this.swipeStartY,
+        )
+      : {
+          dx: event.clientX - this.swipeStartX,
+          dy: event.clientY - this.swipeStartY,
+        };
+    const { dx, dy } = travelled;
     this.swipeStartX = null;
     this.swipeStartY = null;
 

@@ -32,6 +32,7 @@ import {
   DocumentTitle,
   Fullscreen,
   PageZoom,
+  UiStore,
   Viewport,
   ZoomPill,
 } from '../shared/layout';
@@ -87,6 +88,7 @@ function writeLastPin(pin: string): void {
         #zoom="appPageZoom"
         [ratio]="presenter.pageRatio()"
         [isEnabled]="view() === 'render'"
+        [isTurnArmed]="ui.isPageTurnArmed()"
         (tapped)="fullscreen.reveal()"
       >
         @switch (view()) {
@@ -148,6 +150,7 @@ function writeLastPin(pin: string): void {
               [ratio]="presenter.pageRatio()"
               [isPerforming]="true"
               [isDark]="presenter.isDark()"
+              [isTurned]="zoom.isTurned()"
               [zoom]="zoom.scale()"
               [panX]="zoom.panX()"
               [panY]="zoom.panY()"
@@ -472,6 +475,9 @@ export class AudiencePage {
   protected readonly fullscreen = inject(Fullscreen);
   protected readonly session = inject(AudienceSession);
   protected readonly viewport = inject(Viewport);
+  /** Read for `isPageTurnArmed` only — the same flag Stage reads, because it is
+   * a fact about this device rather than about either seat. */
+  protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
 
   /** `/audience/:pin`, absent on the bare `/audience` route. */

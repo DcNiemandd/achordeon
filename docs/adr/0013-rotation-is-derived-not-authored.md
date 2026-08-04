@@ -91,8 +91,9 @@ Adopt **C**, under one rule:
   transform is `rotate(-90deg) translate(pan) scale(z)` — rotation _outermost_, so
   `translate` runs in page space and pan, clamp and fit share one frame. `zoom.ts`
   is handed a `Desk` with its dimensions transposed and changes by **zero lines**,
-  keeping its specs as regression cover. The screen→page delta map is a single pure
-  helper, used by both the pan adapter and Stage's swipe detector.
+  keeping its specs as regression cover. The screen→page delta map
+  (`dx, dy → -dy, dx`) is a single pure helper, used by both the pan adapter and
+  Stage's swipe detector.
 - **`Match this screen, sideways`** joins the aspect presets: the same measurement
   `ScreenShape.detect()` already takes, with the pair swapped.
 
