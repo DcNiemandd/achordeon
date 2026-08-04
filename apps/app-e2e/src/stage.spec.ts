@@ -90,6 +90,38 @@ async function swipe(page: Page, direction: 'left' | 'right'): Promise<void> {
   await cdp.detach();
 }
 
+/** The same finger, running up or down the glass — what a sideways swipe looks
+ * like once the page has been turned a quarter (ADR-0013). */
+async function swipeVertically(
+  page: Page,
+  direction: 'up' | 'down',
+): Promise<void> {
+  const box = await page.getByTestId('stage-render').boundingBox();
+  if (box === null) throw new Error('the render area is not on screen');
+
+  const x = Math.round(box.x + box.width / 2);
+  const near = Math.round(box.y + 40);
+  const far = Math.round(box.y + box.height - 40);
+  const [from, to] = direction === 'up' ? [far, near] : [near, far];
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x, y: from }],
+  });
+  for (let step = 1; step <= 10; step++) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x, y: Math.round(from + ((to - from) * step) / 10) }],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+  await cdp.detach();
+}
+
 test.describe('stage — the performance survives the page', () => {
   test('a reload comes back on the same song, not at the top of the book', async ({
     page,
@@ -168,6 +200,128 @@ test.describe('stage — swiping turns the page', () => {
     await swipe(page, 'right');
     await expect(page.getByTestId('stage-prev')).toBeDisabled();
     await expect(page.getByTestId('stage-next')).toBeEnabled();
+  });
+});
+
+/**
+ * Turn the page — ADR-0013.
+ *
+ * A landscape song on a portrait phone is fitted by width and takes about a
+ * fifth of the screen. No browser will unlock the device's rotation for us, so
+ * the app offers to draw the page sideways instead and the reader turns the
+ * phone. Offered, never automatic: only the reader knows whether their device
+ * will turn.
+ */
+test.describe('stage — turning the page', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: COMPACT });
+
+  /** The same book, with every song written to fill a screen held sideways. */
+  async function seedLandscapeBook(page: Page): Promise<string> {
+    const id = await seedBook(page);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const open = indexedDB.open('achordeon');
+          open.onsuccess = () => {
+            const db = open.result;
+            const tx = db.transaction('songs', 'readwrite');
+            const store = tx.objectStore('songs');
+            const all = store.getAll();
+            all.onsuccess = () => {
+              for (const song of all.result) {
+                store.put({
+                  ...song,
+                  settings: { ...song.settings, aspectRatio: '284:131' },
+                });
+              }
+            };
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+          };
+          open.onerror = () => reject(open.error);
+        }),
+    );
+    return id;
+  }
+
+  /** Is the drawn page taller than it is wide on screen? Playwright measures
+   * after transforms, so this is the turn itself and not a class name. */
+  async function isPageUpright(page: Page): Promise<boolean> {
+    const box = await page.getByTestId('song-page').boundingBox();
+    if (box === null) throw new Error('the page is not on screen');
+    return box.height > box.width;
+  }
+
+  test('offers the turn for a landscape song, and not for a portrait one', async ({
+    page,
+  }) => {
+    const id = await seedLandscapeBook(page);
+    await page.goto(`stage/${id}`);
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+
+    await page.getByTestId('stage-menu').click();
+    await expect(page.getByTestId('stage-turn-page')).toBeVisible();
+
+    // The control is hidden where it cannot act, rather than shown and inert —
+    // which is also what makes it appearing the discovery.
+    const portrait = await seedBook(page);
+    await page.goto(`stage/${portrait}`);
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+    await page.getByTestId('stage-menu').click();
+    await expect(page.getByTestId('stage-turn-page')).toHaveCount(0);
+  });
+
+  test('draws the page sideways once armed, and keeps it across a reload', async ({
+    page,
+  }) => {
+    const id = await seedLandscapeBook(page);
+    await page.goto(`stage/${id}`);
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+    expect(await isPageUpright(page)).toBe(false);
+
+    await page.getByTestId('stage-menu').click();
+    await page.getByTestId('stage-turn-page').click();
+    await expect(page.getByTestId('stage-turn-page')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await page.keyboard.press('Escape');
+
+    // Turned, the page stands taller than it is wide: it is now fitted to the
+    // screen's long side, which is the whole point.
+    await expect.poll(() => isPageUpright(page)).toBe(true);
+
+    // Device-local and persisted, unlike the zoom: the phone is still sideways
+    // after a reload, and re-arming on every visit would make it unusable.
+    await page.reload();
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+    await expect.poll(() => isPageUpright(page)).toBe(true);
+  });
+
+  test('still turns pages when the swipe itself has been turned', async ({
+    page,
+  }) => {
+    // The trap this test exists for: the threshold counts horizontal travel, and
+    // turned, the reader's sideways runs UP the glass. Left unmapped, a turned
+    // performer swipes and nothing happens for the rest of the set.
+    const id = await seedLandscapeBook(page);
+    await page.goto(`stage/${id}`);
+    await expect(page.getByTestId('stage-render')).toBeVisible();
+
+    await page.getByTestId('stage-menu').click();
+    await page.getByTestId('stage-turn-page').click();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => isPageUpright(page)).toBe(true);
+
+    await expect(page.getByTestId('stage-prev')).toBeDisabled();
+
+    // A swipe DOWN the screen is a swipe to the reader's left once the page has
+    // been turned counter-clockwise — so it is the one that goes forward.
+    await swipeVertically(page, 'down');
+    await expect(page.getByTestId('stage-prev')).toBeEnabled();
+
+    await swipeVertically(page, 'up');
+    await expect(page.getByTestId('stage-prev')).toBeDisabled();
   });
 });
 

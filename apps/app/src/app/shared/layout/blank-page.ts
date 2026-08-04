@@ -41,6 +41,7 @@ const A4_RATIO = 210 / 297;
     <div class="desk">
       <div
         class="page"
+        data-testid="song-page"
         [class.is-turned]="isTurned()"
         [style.--page-ratio]="ratio()"
         [style.transform]="transform()"

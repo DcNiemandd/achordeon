@@ -136,14 +136,24 @@ export class PageZoom {
    * the moment it stops being worth anything.
    */
   readonly isTurned = computed(
-    () => this.isTurnArmed() && gainsRoomTurned(this.ratio(), this.deskRatio()),
+    () => this.isTurnArmed() && this.isTurnWorthwhile(),
   );
 
-  /** Would turning gain this page room, whatever the reader has asked for? What
-   * the bars show their toggle on — a control that cannot act is not offered. */
-  readonly isTurnWorthwhile = computed(() =>
-    gainsRoomTurned(this.ratio(), this.deskRatio()),
-  );
+  /**
+   * Would turning gain this page room, whatever the reader has asked for? What
+   * the bars show their toggle on — a control that cannot act is not offered.
+   *
+   * **The desk is read first, and that ordering is load-bearing.** `ratio` is a
+   * required input, so touching it before the binding has run throws NG0950 —
+   * and this computed genuinely is read that early, by the pages' effect that
+   * reports the offer to the shell. An unmeasured desk is a "no" on its own
+   * terms anyway (there is nothing to compare against), so the short-circuit and
+   * the correct answer are the same thing.
+   */
+  readonly isTurnWorthwhile = computed(() => {
+    const desk = this.deskRatio();
+    return desk > 0 && gainsRoomTurned(this.ratio(), desk);
+  });
 
   readonly scale = computed(() => this.state().scale);
   readonly panX = computed(() => this.state().x);
