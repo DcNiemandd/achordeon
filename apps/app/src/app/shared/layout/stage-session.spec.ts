@@ -90,6 +90,38 @@ describe('StageSession', () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
+  it('holds the transpose across the set and wraps the octave back to zero', () => {
+    const session = perform('book-1', 3);
+
+    session.transposeBy(1);
+    session.transposeBy(1);
+    expect(session.transpose()).toBe(2);
+
+    // A capo does not come off between numbers.
+    session.next();
+    expect(session.transpose()).toBe(2);
+
+    // Twelve semitones is the same page, so the twelfth step is 0 and not +12.
+    for (let i = 0; i < 10; i++) session.transposeBy(1);
+    expect(session.transpose()).toBe(0);
+
+    session.transposeBy(-1);
+    expect(session.transpose()).toBe(-1);
+    for (let i = 0; i < 11; i++) session.transposeBy(-1);
+    expect(session.transpose()).toBe(0);
+  });
+
+  it('forgets the transpose at the exit cross, and never writes it down', () => {
+    const session = perform('book-1', 3);
+    session.transposeBy(1);
+
+    // Not in the record: a reload comes back playing what is written.
+    expect(localStorage.getItem(KEY)).not.toContain('transpose');
+
+    session.end();
+    expect(session.transpose()).toBe(0);
+  });
+
   it('starts a different book from the top', () => {
     const session = perform('book-1', 5);
     session.jumpTo(3);

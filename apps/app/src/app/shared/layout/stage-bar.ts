@@ -4,6 +4,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -13,6 +14,8 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { Button, Icon } from '../../primitives';
 import { Fullscreen } from './fullscreen';
 import { StageSession } from './stage-session';
+import { transposeActionLabel } from './transpose';
+import { TransposeStepper } from './transpose-stepper';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
@@ -29,10 +32,23 @@ import { StageSession } from './stage-session';
 @Component({
   selector: 'app-stage-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Icon, CdkConnectedOverlay, CdkOverlayOrigin, CdkTrapFocus],
-  host: { '(document:keydown.escape)': 'closeMenu()' },
+  imports: [
+    Button,
+    Icon,
+    CdkConnectedOverlay,
+    CdkOverlayOrigin,
+    CdkTrapFocus,
+    TransposeStepper,
+  ],
+  host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
-    <div class="bar" role="group" [attr.aria-label]="groupLabel">
+    <div
+      class="bar"
+      role="group"
+      cdkOverlayOrigin
+      #barOrigin="cdkOverlayOrigin"
+      [attr.aria-label]="groupLabel"
+    >
       <button
         appButton
         type="button"
@@ -140,6 +156,23 @@ import { StageSession } from './stage-session';
           {{ darkPageLabel }}
         </button>
 
+        <!-- The offset is in the row's own label, the way the audience row says
+             which act it is: behind ⋯ there is nothing else on screen to show a
+             number, and "Transpose" alone would not admit that the set has been
+             running a tone up for the last half hour. -->
+        <button
+          type="button"
+          class="item"
+          role="menuitem"
+          aria-haspopup="dialog"
+          [class.is-active]="session.transpose() !== 0"
+          data-testid="stage-transpose"
+          (click)="onTranspose()"
+        >
+          <app-icon name="transposeUp" />
+          {{ transposeLabel() }}
+        </button>
+
         <!-- The one action that changes its mind: create a lobby, or manage the
              one already running. Lit brand while it is running, the same
              is-active the summary control uses, so the row reads as live and
@@ -166,6 +199,37 @@ import { StageSession } from './stage-session';
           <app-icon name="close" />
           {{ exitLabel }}
         </button>
+      </div>
+    </ng-template>
+
+    <!-- The transpose sheet: a strip at the foot of the screen, the shape the
+         update offer already uses there. Not the menu it was opened from and not
+         a modal — you step, you look at the song, you step again, and the thing
+         you are looking at must stay on screen. It is anchored to the bar rather
+         than to the ⋯ button so it sits centred over the width of the screen. -->
+    <ng-template
+      [cdkConnectedOverlay]="{ origin: barOrigin }"
+      [cdkConnectedOverlayOpen]="isTransposeOpen()"
+      [cdkConnectedOverlayPositions]="positions"
+      [cdkConnectedOverlayHasBackdrop]="true"
+      cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+      (backdropClick)="closeTranspose()"
+      (detach)="closeTranspose()"
+    >
+      <div
+        class="sheet"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        role="dialog"
+        [attr.aria-label]="transposeTitle"
+        data-testid="stage-transpose-sheet"
+      >
+        <span class="sheet-title">{{ transposeTitle }}</span>
+        <app-transpose-stepper
+          [value]="session.transpose()"
+          (stepped)="session.transposeBy($event)"
+          (cleared)="session.resetTranspose()"
+        />
       </div>
     </ng-template>
   `,
@@ -235,6 +299,24 @@ import { StageSession } from './stage-session';
     .item.is-danger:hover {
       background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
     }
+
+    /* The update bar's shape, because it is the same kind of thing in the same
+       place: one line, sitting above the bottom bar rather than over the song. */
+    .sheet {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-overlay);
+      box-shadow: var(--shadow-2);
+    }
+
+    .sheet-title {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
   `,
 })
 export class StageBar {
@@ -243,9 +325,30 @@ export class StageBar {
   private readonly router = inject(Router);
 
   protected readonly isMenuOpen = signal(false);
+  protected readonly isTransposeOpen = signal(false);
+
+  protected readonly transposeLabel = computed(() =>
+    transposeActionLabel(this.session.transpose()),
+  );
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);
+  }
+
+  /** Whichever is up. Both, in the order they stack, so one Escape is enough. */
+  protected onEscape(): void {
+    this.closeMenu();
+    this.closeTranspose();
+  }
+
+  protected closeTranspose(): void {
+    this.isTransposeOpen.set(false);
+  }
+
+  /** The menu hands over to the sheet: two panels over one song is one too many. */
+  protected onTranspose(): void {
+    this.closeMenu();
+    this.isTransposeOpen.set(true);
   }
 
   protected onFullscreen(): void {
@@ -264,7 +367,7 @@ export class StageBar {
     void this.router.navigate(['/stage']);
   }
 
-  /** Opens upward: the trigger lives in the bottom bar. */
+  /** Opens upward: both the menu and the sheet hang off the bottom bar. */
   protected readonly positions = [
     {
       originX: 'center' as const,
@@ -293,4 +396,5 @@ export class StageBar {
    * and the app's own theme is untouched by it. */
   protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
   protected readonly exitLabel = $localize`:@@stage.exit:Exit performing`;
+  protected readonly transposeTitle = $localize`:@@transpose.title:Transpose`;
 }

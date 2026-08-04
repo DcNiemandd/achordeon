@@ -10,6 +10,7 @@ import {
 import { Button, Dialog } from '../../primitives';
 import { AppUpdate } from './app-update';
 import { Fullscreen } from './fullscreen';
+import { Localization, docsPageUrl } from './localization';
 
 /**
  * The whole of "a newer version exists", in three tempers (see `AppUpdate`).
@@ -49,7 +50,21 @@ import { Fullscreen } from './fullscreen';
       </app-dialog>
     } @else if (isOffered()) {
       <div class="bar" role="status" data-testid="update-available">
-        <span class="text">{{ availableBody }}</span>
+        <span class="text"
+          >{{ availableBody }}
+          <!-- A link, not a button, and it opens away from here: reading what
+               changed must not cost the user the moment the bar is careful not
+               to take. Nothing here dismisses or reloads — come back and the
+               offer is where it was. -->
+          <a
+            class="link"
+            [href]="patchNotesUrl"
+            target="_blank"
+            rel="noopener"
+            data-testid="update-patch-notes"
+            >{{ patchNotesLabel }}</a
+          ></span
+        >
         <button
           appButton
           type="button"
@@ -101,6 +116,20 @@ import { Fullscreen } from './fullscreen';
       min-inline-size: 0;
     }
 
+    /* Brand-coloured and underlined, so it is findable inside the sentence it
+       sits in — the bar is two buttons and a line of prose, and an unmarked link
+       in the prose is a link nobody presses. Kept on one line: it is three words
+       and the bar wraps badly. */
+    .link {
+      color: var(--brand);
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+
+    .link:hover {
+      color: var(--brand-hover);
+    }
+
     .body {
       margin: 0;
     }
@@ -109,6 +138,20 @@ import { Fullscreen } from './fullscreen';
 export class UpdateNotice {
   protected readonly update = inject(AppUpdate);
   private readonly fullscreen = inject(Fullscreen);
+
+  /**
+   * Where "what's new" goes. Read once at construction rather than as a computed:
+   * the language cannot change without a reload (`Localization.switchTo`), so
+   * there is nothing here for a signal to react to.
+   *
+   * The page top, not a version anchor — the app is told that *a* newer build is
+   * waiting, never which one, so there is no entry it could point at. Newest
+   * first on the page is what closes that gap.
+   */
+  protected readonly patchNotesUrl = docsPageUrl(
+    inject(Localization).current,
+    'patch-notes',
+  );
 
   /** The two prompts that insist, or `null` when neither applies. */
   protected readonly blocking = computed(() => {
@@ -131,6 +174,7 @@ export class UpdateNotice {
   );
 
   protected readonly availableBody = $localize`:@@update.available:A new version of Achordeon is ready.`;
+  protected readonly patchNotesLabel = $localize`:@@update.patchNotes:What's new`;
   protected readonly reloadLabel = $localize`:@@update.reload:Reload`;
   protected readonly laterLabel = $localize`:@@update.later:Later`;
   protected readonly updateLabel = $localize`:@@update.update:Update now`;

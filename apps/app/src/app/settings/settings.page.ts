@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
-import { ActionBar, BackNavigation, SOURCE_LANGUAGE } from '../shared/layout';
+import { ActionBar, BackNavigation, docsPageUrl } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { BUILD_DATE } from '../shared/build-info';
@@ -706,6 +706,21 @@ const MIN_PASSWORD = 8;
                   rel="noopener"
                   data-testid="about-docs"
                   >{{ docsButton }}</a
+                >
+
+                <!-- Beside the guides rather than in a row of its own: both
+                     buttons open the same site, and "what the app does" and
+                     "what changed in it lately" are one question asked twice.
+                     The other way in is the update bar, which is only there when
+                     there is an update; this one is always. -->
+                <a
+                  appButton
+                  variant="secondary"
+                  [href]="patchNotesUrl()"
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="about-patch-notes"
+                  >{{ patchNotesButton }}</a
                 >
               </div>
             </div>
@@ -1824,37 +1839,22 @@ export class SettingsPage {
   protected readonly accountWhy = $localize`:@@settings.account.why:Sign in to keep your library synced across your devices.`;
   protected readonly learnMore = $localize`:@@settings.account.learnMore:Learn more`;
   /**
-   * The published docs, in the language the app is showing.
-   *
-   * Derived from the app's own base href rather than written out: the deploy puts
-   * the docs site at the root and the app one level under it (`/app/`, see
-   * `.github/workflows/deploy.yml`), so `../` is the docs root wherever the
-   * bundle is served from — the apex domain, a project page, a fork. Nothing to
-   * re-point when the domain changes.
-   *
-   * `docs/intro` and not the docs root, deliberately: the root redirects back
-   * into the app (docusaurus.config.ts), so linking there would bounce the reader
-   * straight back to where they clicked. Non-source languages live under their
-   * own prefix, which is Docusaurus's i18n layout, not ours.
-   *
-   * In `nx serve` this resolves to the dev server, where the docs are not (they
-   * run separately, `nx serve docs`); the link is a production affordance.
+   * The three docs pages this screen links to, in the language the app is
+   * showing. The base-href reasoning lives on `docsPageUrl` (localization.ts) —
+   * it moved there when the update bar grew a link of its own and the derivation
+   * stopped being this page's alone.
    */
-  protected readonly docsUrl = computed(() => {
-    const language = this.presenter.language();
-    const path =
-      language === SOURCE_LANGUAGE ? 'docs/intro' : `${language}/docs/intro`;
-    return new URL(path, new URL('../', document.baseURI)).href;
-  });
-  /** The statistics page, by the same reasoning as `docsUrl` above. */
-  protected readonly privacyUrl = computed(() => {
-    const language = this.presenter.language();
-    const path =
-      language === SOURCE_LANGUAGE
-        ? 'docs/privacy'
-        : `${language}/docs/privacy`;
-    return new URL(path, new URL('../', document.baseURI)).href;
-  });
+  protected readonly docsUrl = computed(() =>
+    docsPageUrl(this.presenter.language(), 'intro'),
+  );
+  /** The statistics page. */
+  protected readonly privacyUrl = computed(() =>
+    docsPageUrl(this.presenter.language(), 'privacy'),
+  );
+  /** What changed, and when — the same page the update bar offers. */
+  protected readonly patchNotesUrl = computed(() =>
+    docsPageUrl(this.presenter.language(), 'patch-notes'),
+  );
   protected readonly aboutGoogle = $localize`:@@settings.account.aboutGoogle:About signing in with Google`;
 
   // The About block: the only rows on this page that leave the app, plus which
@@ -1863,6 +1863,7 @@ export class SettingsPage {
   protected readonly docsLabel = $localize`:@@settings.about.docs:Documentation`;
   protected readonly docsHelp = $localize`:@@settings.about.docsHelp:Guides for songs, songbooks and performing.`;
   protected readonly docsButton = $localize`:@@settings.about.docsButton:Open docs`;
+  protected readonly patchNotesButton = $localize`:@@settings.about.patchNotesButton:Patch notes`;
   protected readonly bugLabel = $localize`:@@settings.about.bug:Found a bug?`;
   protected readonly bugHelp = $localize`:@@settings.about.bugHelp:Say what you did and what happened instead. It comes straight to me.`;
   protected readonly bugHelpOffline = $localize`:@@settings.about.bugHelpOffline:This build has no backend, so reports go to the tracker on GitHub.`;

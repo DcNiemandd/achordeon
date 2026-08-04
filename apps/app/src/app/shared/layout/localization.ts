@@ -81,6 +81,30 @@ export class Localization {
   }
 }
 
+/**
+ * A page of the published docs, in the language the app is showing.
+ *
+ * Derived from the app's own base href rather than written out: the deploy puts
+ * the docs site at the root and the app one level under it (`/app/`, see
+ * `.github/workflows/deploy.yml`), so `../` is the docs root wherever the bundle
+ * is served from — the apex domain, a project page, a fork. Nothing to re-point
+ * when the domain changes. Non-source languages live under their own prefix,
+ * which is Docusaurus's i18n layout, not ours.
+ *
+ * `page` is a route under `docs/` (`intro`, `privacy`, `patch-notes`) — never the
+ * docs root, which redirects back into the app (docusaurus.config.ts) and would
+ * bounce the reader straight to where they clicked.
+ *
+ * In `nx serve` this resolves to the dev server, where the docs are not (they run
+ * separately, `nx serve docs`); every link built from it is a production
+ * affordance.
+ */
+export function docsPageUrl(language: Language, page: string): string {
+  const path =
+    language === SOURCE_LANGUAGE ? `docs/${page}` : `${language}/docs/${page}`;
+  return new URL(path, new URL('../', document.baseURI)).href;
+}
+
 function read(): Language | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);

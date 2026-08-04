@@ -7,11 +7,13 @@ import {
   ParserService,
   RenderService,
 } from '@achordeon/shared/data-access';
+import { ChordTheory } from '@achordeon/shared/domain';
 import type {
   GlobalSettings,
   LobbyPayload,
   Song,
 } from '@achordeon/shared/domain';
+import { TonalChordTheory } from '@achordeon/shared/chord-theory';
 import { AudienceSession } from '../shared/layout';
 import { AudiencePresenter } from './audience.presenter';
 
@@ -87,6 +89,7 @@ describe('AudiencePresenter', () => {
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
+        { provide: ChordTheory, useClass: TonalChordTheory },
         AudiencePresenter,
         { provide: LobbyViewer, useValue: viewer },
         { provide: ParserService, useValue: fakeParser },

@@ -10,6 +10,7 @@
 // which reads `hideChords` from here.
 
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { stepTranspose } from './transpose';
 import { UiStore } from './ui-store';
 
 @Injectable({ providedIn: 'root' })
@@ -31,6 +32,19 @@ export class AudienceSession {
    * darkens the song they are following has not darkened their song library.
    */
   private readonly _songDark = signal<boolean | null>(null);
+  /**
+   * How far *this viewer* is playing the song from, in semitones.
+   *
+   * Viewer-local for the reason the whole control exists: the performer is on a
+   * guitar in standard tuning and the person following along has a capo on the
+   * second fret, or a transposing instrument, or a voice that does not reach.
+   * One shared render, and each screen answers for the hands in front of it —
+   * the same rule as Hide chords and the dark page (CONTEXT.md §Audience).
+   * Nothing about it rides in the payload, and the performer never sees it.
+   *
+   * Held for the whole viewing, and gone when the viewer leaves.
+   */
+  private readonly _transpose = signal(0);
   private leaveHandler: (() => void) | null = null;
   private syncHandler: (() => void) | null = null;
 
@@ -40,6 +54,8 @@ export class AudienceSession {
   readonly isLobbyOpen = this._isLobbyOpen.asReadonly();
   /** Viewer-local, reflow-safe hide-chords (§4.6). Read by the presenter's render. */
   readonly hideChords = this._hideChords.asReadonly();
+  /** Semitones, signed. Read by the bar and by the presenter's render. */
+  readonly transpose = this._transpose.asReadonly();
 
   /** Is this viewing drawn on a black page — the moon's answer if it was given,
    * and the app's otherwise. The bar, the render and the frame all read it. */
@@ -69,6 +85,16 @@ export class AudienceSession {
 
   toggleHideChords(): void {
     this._hideChords.update((hidden) => !hidden);
+  }
+
+  /** One step up (`1`) or down (`-1`), wrapping through the octave back to 0. */
+  transposeBy(direction: number): void {
+    this._transpose.update((offset) => stepTranspose(offset, direction));
+  }
+
+  /** Back to the key the performer is sending. */
+  resetTranspose(): void {
+    this._transpose.set(0);
   }
 
   /** Turn this viewing's page over — an explicit answer, so a theme that moves
@@ -109,5 +135,7 @@ export class AudienceSession {
   reset(): void {
     this._isSummaryOpen.set(false);
     this._isLobbyOpen.set(false);
+    // The next lobby is a different room and possibly a different instrument.
+    this._transpose.set(0);
   }
 }
