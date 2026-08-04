@@ -190,9 +190,10 @@ const SWIPE_THRESHOLD_PX = 60;
                  hide it behind and the room for the number, so the phone's two
                  taps (menu, sheet) collapse into the control itself — the same
                  unwrapping the dark page got. It sits at the end because it is
-                 the only thing here that is not a single button: it carries its
-                 own frame, and a framed object in the middle of the row would
-                 cut the loose icons in two. -->
+                 the only thing here that is not a single button: it rules
+                 itself off, and a ruled group in the middle of the row would
+                 cut the loose icons in two. Being last is also what drops its
+                 trailing rule (see the component). -->
             <app-transpose-stepper
               [value]="session.transpose()"
               (stepped)="session.transposeBy($event)"

@@ -26,10 +26,12 @@ import { formatSemitones } from './transpose';
  * chords, so it may not be a different picture: an arrow alone says "move
  * something" and leaves which something to the tooltip.
  *
- * **Framed as one control.** The three sit inside a bordered, sunken pill and
- * wear the ghost skin, so what the eye reads on the bar is one object rather
- * than three more icons in a row of icons — next to Fullscreen and the moon,
- * unframed buttons would simply have joined the queue.
+ * **Ruled off as one control.** The three wear the ghost skin and sit between
+ * separators, so what the eye reads on the bar is one group rather than three
+ * more icons in a row of icons — next to Fullscreen and the moon, unruled
+ * buttons would simply have joined the queue. The trailing rule draws only when
+ * something follows it, so at the end of a bar the group closes on the edge
+ * instead of on a line with nothing after it.
  *
  * **The number is the reset.** A stepper that can wrap needs a way home that is
  * not eleven more taps, and the value was already the thing being looked at.
@@ -91,19 +93,25 @@ import { formatSemitones } from './transpose';
     </div>
   `,
   styles: `
+    /* Ruled off rather than boxed in: a rule on each side says "these three are
+       one thing" without adding an object to a bar that is already a row of
+       objects. The trailing rule only when something follows — a line at the end
+       of a row divides the row from nothing. */
     :host {
-      display: contents;
+      display: inline-flex;
+      align-items: center;
+      padding-inline: var(--space-2);
+      border-inline-start: 1px solid var(--border);
     }
 
-    /* The frame is the feature: one bordered object on a bar of loose icons. */
+    :host(:not(:last-child)) {
+      border-inline-end: 1px solid var(--border);
+    }
+
     .stepper {
       display: flex;
       align-items: center;
       gap: 2px;
-      padding: 2px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--surface-sunken);
     }
 
     .step {
