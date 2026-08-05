@@ -87,15 +87,31 @@ function extensionOf(filename: string): string {
   return at < 0 ? '' : filename.slice(at);
 }
 
-/** The classic download: an `<a download>` clicked. The browser's own "ask
- * where to save" setting still applies if the user has turned it on. */
+/**
+ * The classic download: an `<a download>` clicked. The browser's own "ask where
+ * to save" setting still applies if the user has turned it on.
+ *
+ * **The link is put in the document first.** Firefox only honours `download` on
+ * an anchor that is actually in the page — a detached one is navigated to
+ * instead, and a `blob:` navigation in an installed PWA opens a bare tab the
+ * browser then has nothing to render into: the reported "downloading a PDF opens
+ * a blank page". Chromium never needed it, which is why it went unnoticed.
+ */
 function downloadViaAnchor(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
   link.rel = 'noopener';
-  link.click();
+  // In the layout but not of it: a moment of an invisible anchor at the end of
+  // the body must not move anything the user is looking at.
+  link.style.display = 'none';
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+  }
   // Not synchronous with the click: revoking immediately kills the download in
   // Firefox, which reads the URL on a later turn of the event loop.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
