@@ -126,8 +126,11 @@ import {
       </div>
 
       <!-- Pane B: the picked songbook's whole **print preview** — every page its
-           PDF would hold, scrollable a screenful at a time and zoomable by column
-           count (app-songbook-preview). It used to be only the title page.
+           PDF would hold, scrolled through and zoomable by column count
+           (app-songbook-preview). It used to be only the title page.
+
+           The neared event is the pane saying which sheets are close enough to
+           be worth drawing; the presenter draws those and no others.
 
            Blank with nothing picked: the empty paper is the honest picture of
            "nothing to print here", and the row already says what it holds. -->
@@ -138,6 +141,7 @@ import {
           [preview]="presenter.preview()"
           [isDark]="presenter.isSongDark()"
           (darkToggled)="presenter.toggleSongDark()"
+          (neared)="presenter.needSheets($event)"
         />
       } @else {
         <app-blank-page pane-b [isDark]="presenter.isSongDark()" />

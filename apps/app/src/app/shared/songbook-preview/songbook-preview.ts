@@ -1,68 +1,102 @@
 // Songbook preview — the print preview in /songbooks pane B
 // Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §4
 //
-// A **paged** viewer, not a scroll pane. It shows the book a screenful at a time —
-// `columns` pages side by side — and a wheel notch or an arrow key turns to the
-// next screenful rather than nudging pixels. That is what a book is: pages you
-// turn, not a ribbon you slide. Zoom is the column count (1 → read one page,
-// up to every page at once → a contact sheet).
+// A **scrolling** viewer. The desk is a real scroll box and nothing more: the
+// reader gets the browser's own scrollbar, the trackpad and touch physics they
+// already know, and PageDown where they expect it. It used to turn a screenful
+// at a time off the wheel, which meant no scrollbar at all, a trackpad flick
+// flying through a dozen sheets, and no way to cross a long book quickly. There
+// is deliberately no snapping — see `.desk`. Zoom is the column count (1 → read
+// one page, up to every page at once → a contact sheet).
 //
-// A **controlled component**: it takes a `SongbookPreview` (the pages, already
-// rendered, and the paper they sit on) and shows it. It does not render, does not
-// know what a songbook is; the presenter assembles the preview through
-// `DownloadService.previewSongbook`, the WYSIWYG twin of the PDF.
+// **Nothing is drawn until it is nearly on screen.** Every sheet has a frame in
+// the DOM from the start — that is what makes the scrollbar tell the truth about
+// a two-hundred-page book — but a frame is a box with a spinner in it until the
+// reader comes within `DRAW_MARGIN_PX` of it, at which point `neared` asks the
+// owner for that sheet. Sheets that fall well behind are unmounted again, so
+// reading to the end of a book does not leave every song's SVG in the page.
+//
+// A **controlled component**: it takes a `SongbookPreview` (the paper, the
+// sequence, and whichever sheets have been drawn so far) and shows it. It does
+// not render, does not know what a songbook is; the presenter assembles the
+// preview through `DownloadService.openSongbookPreview`, the WYSIWYG twin of the
+// PDF, and answers `neared` by drawing.
 
+import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
+  inject,
   input,
   output,
   signal,
   untracked,
+  viewChild,
+  viewChildren,
 } from '@angular/core';
-import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { SongRender } from '../song-render';
 
 /**
- * How much wheel travel turns a page. Accumulated rather than one-step-per-event:
- * a mouse notch arrives as a single large delta (one turn), a trackpad as a burst
- * of small ones (coalesced into one turn past the threshold), so both feel like a
- * page turn instead of the mouse turning once and the trackpad flying through the
- * book. A dev's control surface, not a user setting.
+ * How close to the viewport a sheet has to come before it is drawn, and how far
+ * past it it stays mounted.
+ *
+ * Generous on purpose: laying a song out takes a handful of milliseconds, and a
+ * page that starts drawing when its top edge appears is a page the reader
+ * watches assemble. Roughly a screenful either side at a normal desk size, so a
+ * steady scroll always arrives at paper that is already inked.
  */
-const WHEEL_STEP_PX = 90;
+const DRAW_MARGIN_PX = 900;
+
+/** Same elements, same order — the question `watch` asks of a recomputed query. */
+function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
+  return a.length === b.length && a.every((element, i) => element === b[i]);
+}
 
 @Component({
   selector: 'app-songbook-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SongRender, Button, Icon, Tooltip],
   host: {
-    tabindex: '0',
     '[class.is-dark]': 'isDark()',
-    '(wheel)': 'onWheel($event)',
-    '(keydown)': 'onKey($event)',
   },
   template: `
-    <div class="desk" data-testid="songbook-preview">
+    <!-- The scroll box, and the thing that takes focus: a focused DESK is what
+         makes PageDown, the arrows and Home/End scroll the book instead of the
+         window. None of them are handled here — they are the browser's, and the
+         browser is better at them. -->
+    <div #desk class="desk" tabindex="0" data-testid="songbook-preview">
       <div class="spread" [style.--columns]="columns()">
-        @for (page of visible(); track page.key) {
+        @for (sheet of sheets(); track sheet.index) {
           <div
+            #pageEl
             class="page"
-            [attr.data-testid]="page.testid"
+            [attr.data-testid]="sheet.testid"
             [style.aspect-ratio]="preview()?.aspect ?? A4_RATIO"
           >
-            <div
-              class="content"
-              [class.full-bleed]="page.isFullBleed"
-              [style.inset]="page.isFullBleed ? '0' : marginInset()"
-            >
-              <app-song-render [svg]="page.svg" />
-            </div>
-            @if (page.folio) {
-              <span class="folio" [class]="folioClass()">{{ page.folio }}</span>
+            @if (sheet.svg) {
+              <div
+                class="content"
+                [class.full-bleed]="sheet.isFullBleed"
+                [style.inset]="sheet.isFullBleed ? '0' : marginInset()"
+              >
+                <app-song-render [svg]="sheet.svg" />
+              </div>
+            } @else if (sheet.isNear) {
+              <!-- Blank paper and a turning ring: the sheet is real, its size is
+                   already right, and what is missing is only the ink. -->
+              <span class="drawing" aria-hidden="true"></span>
+            }
+            @if (sheet.folio) {
+              <span class="folio" [class]="folioClass()">{{
+                sheet.folio
+              }}</span>
             }
           </div>
         }
@@ -129,16 +163,15 @@ const WHEEL_STEP_PX = 90;
     </div>
   `,
   styles: `
-    /* A pane, and panes do not scroll: the desk turns pages instead of scrolling
-       and the bar ellipsises instead of growing, so anything that still spills is
-       a bug and must not become a scrollbar on the app. */
+    /* The pane itself does not scroll — the desk inside it does, and the bar
+       ellipsises instead of growing, so anything that still spills is a bug and
+       must not become a scrollbar on the app. */
     :host {
       display: flex;
       flex-direction: column;
       block-size: 100%;
       min-inline-size: 0;
       overflow: hidden;
-      outline: none;
     }
 
     /* Under the paper, kept low. Three columns so the page number sits dead-centre
@@ -211,28 +244,29 @@ const WHEEL_STEP_PX = 90;
       min-inline-size: 26px;
     }
 
-    /* The desk the pages sit on. A definite-size box (container units below
-       measure the space, not the content), and it never scrolls — turning a page
-       is a step, not a slide. */
+    /* The desk the pages sit on — the scroll box, and a plain one: no snapping.
+       Snap points would take the scroll off the reader, and a mouse notch under
+       mandatory scroll-snap moves exactly one page, so getting from page 3 to
+       page 40 is thirty-seven gestures. Free scrolling can rest halfway between
+       two sheets, and that is the reader's business.
+
+       scroll-padding matches the desk's own padding, so a page brought into view
+       (the zoom's anchor) sits inside the desk rather than against its edge. */
     .desk {
       flex: 1;
       min-block-size: 0;
-      display: grid;
-      place-items: center;
       padding: var(--space-4);
       background: var(--surface-sunken);
-      overflow: hidden;
-      container-type: size;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-padding: var(--space-4);
+      outline: none;
     }
 
     .spread {
       display: grid;
       grid-template-columns: repeat(var(--columns), 1fr);
       gap: var(--space-3);
-      /* Fit the whole spread within the desk in both axes: the widest the row can
-         be without its tallest page overflowing the desk height. */
-      inline-size: 100%;
-      max-block-size: 100%;
       align-items: start;
       justify-items: center;
     }
@@ -243,10 +277,13 @@ const WHEEL_STEP_PX = 90;
       /* Paper is paper — white in both themes, like BlankPage. */
       background: #fff;
       box-shadow: var(--shadow-2);
-      /* The tallest page must fit the desk: cap each page's height to the desk and
-         let the aspect ratio drive the width down to match. */
-      max-block-size: 100cqb;
       overflow: hidden;
+      /* The frames are all here from the start, so that the scrollbar is honest
+         about the length of the book. This is what keeps that cheap: a sheet
+         nowhere near the viewport is not laid out or painted at all, and its
+         size is known anyway because the aspect ratio and the column width give
+         it one. */
+      content-visibility: auto;
       /* A query container so the folio can size itself off the page's own width
          (cqi) — it shrinks with the page as columns are added, the way the SVG's
          own text does; a fixed size would loom huge on a contact-sheet page. */
@@ -259,6 +296,33 @@ const WHEEL_STEP_PX = 90;
 
     .content.full-bleed {
       inset: 0;
+    }
+
+    /* The sheet is coming. A thin ring rather than a word: it sits on paper, and
+       whatever it says would be read as part of the song. */
+    .drawing {
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: 22px;
+      block-size: 22px;
+      margin: -11px;
+      border: 2px solid #0000001f;
+      border-block-start-color: #00000059;
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .drawing {
+        animation: none;
+      }
     }
 
     /* A page number sits where the PDF prints it — the corner, a margin in — and
@@ -305,6 +369,11 @@ const WHEEL_STEP_PX = 90;
         0 1px 4px rgb(255 255 255 / 5%);
     }
 
+    :host(.is-dark) .drawing {
+      border-color: #ffffff29;
+      border-block-start-color: #ffffff80;
+    }
+
     /* The folio is drawn by this component rather than by the renderer, so it
        is the one mark on the page that has to be re-inked by hand. */
     :host(.is-dark) .folio {
@@ -315,6 +384,11 @@ const WHEEL_STEP_PX = 90;
 export class SongbookPreview {
   /** A4 portrait ratio — the fallback frame shape while a preview loads. */
   protected readonly A4_RATIO = 210 / 297;
+
+  private readonly injector = inject(Injector);
+
+  private readonly desk = viewChild.required<ElementRef<HTMLElement>>('desk');
+  private readonly pageEls = viewChildren<ElementRef<HTMLElement>>('pageEl');
 
   /** The rendered book and its paper, or null while nothing is picked / loading. */
   readonly preview = input<SongbookPreviewModel | null>(null);
@@ -343,15 +417,33 @@ export class SongbookPreview {
   /** The moon was pressed. The owner re-renders the book and hands it back. */
   readonly darkToggled = output<void>();
 
+  /**
+   * The sheets now within reach of the viewport, in book order — the owner's cue
+   * to draw the ones it has not drawn yet.
+   *
+   * The whole set every time rather than the newcomers, so it is also the answer
+   * to "what is on screen" after a book is reopened and every sheet goes blank
+   * at once: nobody has scrolled, so nothing else would say.
+   */
+  readonly neared = output<readonly number[]>();
+
   /** Zoom, as a column count. Not persisted — a viewing gesture, not a
    * preference (the whole state resets when a different book is picked). */
   protected readonly columns = signal(1);
 
-  /** Index of the first page in the visible screenful. Snapped to a column
-   * boundary so a page never straddles two screenfuls. */
-  private readonly cursor = signal(0);
+  /** Sheets within `DRAW_MARGIN_PX` of the desk: what is drawn, and what stays
+   * mounted. */
+  private readonly nearIndices = signal<ReadonlySet<number>>(new Set());
+  /** Sheets actually on screen — the page-number readout, nothing else. */
+  private readonly viewIndices = signal<ReadonlySet<number>>(new Set());
 
-  private wheelAcc = 0;
+  /** Which sheet each frame is, so an observer entry can name itself. */
+  private readonly indexOf = new Map<Element, number>();
+  /** The frames the observers are on, to tell a genuinely different book from a
+   * query that merely recomputed. */
+  private observed: readonly Element[] = [];
+  private nearObserver: IntersectionObserver | null = null;
+  private viewObserver: IntersectionObserver | null = null;
 
   protected readonly pageCount = computed(
     () => this.preview()?.pages.length ?? 0,
@@ -360,44 +452,119 @@ export class SongbookPreview {
   /** At most every page at once — a one-row contact sheet of the whole book. */
   protected readonly maxColumns = computed(() => Math.max(1, this.pageCount()));
 
-  /** The first index a screenful can start on, so the last turn lands on a clean
-   * group and shows the final `columns` pages (a short last group is fine). */
-  private readonly lastStart = computed(() => {
-    const cols = this.columns();
-    const count = this.pageCount();
-    return count === 0 ? 0 : Math.floor((count - 1) / cols) * cols;
-  });
-
   constructor() {
     // A new book is a new document: back to the first page. Columns stay (a
     // person browsing at three-up wants the next book three-up too). Keyed on
     // the book, not on the preview object — see `bookId`.
     effect(() => {
       this.bookId();
-      untracked(() => this.cursor.set(0));
+      untracked(() => this.desk().nativeElement.scrollTo({ top: 0 }));
     });
 
-    // The same book, re-rendered: the place is kept, but the book may have got
-    // shorter under it (a slot removed, the summary switched off), so both the
-    // zoom and the cursor are clamped to what there is now.
+    // The same book, re-rendered: the place is kept (the scroll box was never
+    // touched), but the book may have got shorter under it — a slot removed, the
+    // summary switched off — so the zoom is clamped to what there is now.
     effect(() => {
       const max = this.maxColumns();
-      untracked(() => {
-        this.columns.update((cols) => Math.min(cols, max));
-        this.cursor.update((at) => Math.min(at, this.lastStart()));
-      });
+      untracked(() => this.columns.update((cols) => Math.min(cols, max)));
+    });
+
+    // The frames are what the observers watch, and there is one per sheet: a
+    // book of a different length is a different set of frames.
+    effect(() => {
+      const frames = this.pageEls();
+      untracked(() => this.watch(frames));
+    });
+
+    // Ask for what has come within reach. Sorted, so the owner draws the book
+    // downwards rather than in whatever order the observer happened to report.
+    effect(() => {
+      const near = [...this.nearIndices()].sort((a, b) => a - b);
+      this.neared.emit(near);
+    });
+
+    inject(DestroyRef).onDestroy(() => {
+      this.nearObserver?.disconnect();
+      this.viewObserver?.disconnect();
     });
   }
 
-  protected readonly visible = computed(() => {
+  /**
+   * Point the two observers at the current frames.
+   *
+   * Two, because the questions are different distances: one asks "is this sheet
+   * near enough to be worth drawing" with a fat margin, the other asks "is this
+   * sheet on screen" for the page-number readout, with none.
+   */
+  private watch(frames: readonly ElementRef<HTMLElement>[]): void {
+    const elements = frames.map((frame) => frame.nativeElement);
+    // The same frames as last time: a query result recomputes for reasons that
+    // have nothing to do with the book, and starting the observers again would
+    // throw away everything they have already told us — every sheet on screen
+    // would blink back to its spinner.
+    if (isSameList(this.observed, elements)) return;
+    this.observed = elements;
+
+    const root = this.desk().nativeElement;
+
+    // No IntersectionObserver (a test renderer, an old engine): draw the lot,
+    // which is what this pane did before it learned to be lazy.
+    if (typeof IntersectionObserver === 'undefined') {
+      this.nearIndices.set(new Set(frames.map((_, index) => index)));
+      return;
+    }
+
+    this.nearObserver ??= new IntersectionObserver(
+      (entries) => this.onSeen(entries, this.nearIndices),
+      { root, rootMargin: `${DRAW_MARGIN_PX}px 0px` },
+    );
+    this.viewObserver ??= new IntersectionObserver(
+      (entries) => this.onSeen(entries, this.viewIndices),
+      { root },
+    );
+
+    this.nearObserver.disconnect();
+    this.viewObserver.disconnect();
+    this.indexOf.clear();
+    // The sets are keyed by index, and the indices behind them have just been
+    // re-dealt; the observers report every frame again on their first callback.
+    this.nearIndices.set(new Set());
+    this.viewIndices.set(new Set());
+
+    for (const [index, frame] of frames.entries()) {
+      const element = frame.nativeElement;
+      this.indexOf.set(element, index);
+      this.nearObserver.observe(element);
+      this.viewObserver.observe(element);
+    }
+  }
+
+  private onSeen(
+    entries: readonly IntersectionObserverEntry[],
+    into: ReturnType<typeof signal<ReadonlySet<number>>>,
+  ): void {
+    const next = new Set(into());
+    for (const entry of entries) {
+      const index = this.indexOf.get(entry.target);
+      if (index === undefined) continue;
+      if (entry.isIntersecting) next.add(index);
+      else next.delete(index);
+    }
+    into.set(next);
+  }
+
+  protected readonly sheets = computed(() => {
     const preview = this.preview();
     if (!preview) return [];
-    const from = this.cursor();
-    const cols = this.columns();
+    const near = this.nearIndices();
     const withCorner = preview.hasCornerNumbers;
-    return preview.pages.slice(from, from + cols).map((page, i) => ({
-      key: from + i,
-      svg: page.svg,
+    return preview.pages.map((page, index) => ({
+      index,
+      // Mounted only while it is near. The owner keeps the SVG it drew, so
+      // scrolling back to a sheet puts it up again without redrawing it — but a
+      // book read to the end does not leave two hundred renders in the DOM.
+      svg: near.has(index) ? page.svg : null,
+      isNear: near.has(index),
       isFullBleed: page.kind === 'summary',
       // Named by kind so the title page stays findable — its preview shows the
       // book's own title-page fields, and that is worth asserting.
@@ -433,61 +600,36 @@ export class SongbookPreview {
     return `folio ${vertical} ${horizontal}`;
   });
 
-  /** "3–4 / 20", or "3 / 20" for a single-page screenful. */
+  /** The topmost sheet on screen, or 0 for an empty book — where the reader is. */
+  private readonly firstInView = computed(() => {
+    const seen = this.viewIndices();
+    return seen.size === 0 ? 0 : Math.min(...seen);
+  });
+
+  /** "3–4 / 20", or "3 / 20" when one sheet fills the desk. */
   protected readonly rangeLabel = computed(() => {
     const count = this.pageCount();
-    if (count === 0) return '';
-    const from = this.cursor() + 1;
-    const to = Math.min(this.cursor() + this.columns(), count);
+    const seen = this.viewIndices();
+    if (count === 0 || seen.size === 0) return '';
+    const from = Math.min(...seen) + 1;
+    const to = Math.max(...seen) + 1;
     const range = from === to ? `${from}` : `${from}–${to}`;
     return $localize`:@@songbookPreview.range:${range}:range: / ${count}:total:`;
   });
 
   protected setColumns(next: number): void {
     const cols = Math.min(Math.max(1, next), this.maxColumns());
-    // Keep the current first page in view, snapped to the new column grid.
-    const anchored = Math.floor(this.cursor() / cols) * cols;
+    // Zooming re-flows every row, and the page you were reading would slide off
+    // wherever the new arithmetic put it. Keep it: note it, then put it back at
+    // the top of the desk once the grid has been laid out again.
+    const anchor = this.firstInView();
     this.columns.set(cols);
-    this.cursor.set(Math.min(anchored, this.lastStart()));
+    afterNextRender(() => this.scrollTo(anchor), { injector: this.injector });
   }
 
-  protected onWheel(event: WheelEvent): void {
-    if (this.pageCount() === 0) return;
-    // The desk does not scroll; the wheel turns pages instead.
-    event.preventDefault();
-    this.wheelAcc += event.deltaY;
-    if (Math.abs(this.wheelAcc) < WHEEL_STEP_PX) return;
-    this.step(this.wheelAcc > 0 ? 1 : -1);
-    this.wheelAcc = 0;
-  }
-
-  protected onKey(event: KeyboardEvent): void {
-    switch (event.key) {
-      case 'PageDown':
-      case 'ArrowRight':
-      case 'ArrowDown':
-        this.step(1);
-        break;
-      case 'PageUp':
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        this.step(-1);
-        break;
-      case 'Home':
-        this.cursor.set(0);
-        break;
-      case 'End':
-        this.cursor.set(this.lastStart());
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-  }
-
-  private step(direction: 1 | -1): void {
-    const next = this.cursor() + direction * this.columns();
-    this.cursor.set(Math.min(Math.max(0, next), this.lastStart()));
+  private scrollTo(index: number): void {
+    const frame = this.pageEls()[index]?.nativeElement;
+    frame?.scrollIntoView({ block: 'start', behavior: 'instant' });
   }
 
   // The same words the performing menu uses for the same act — one name for one

@@ -38,13 +38,17 @@ export class Fullscreen {
   private readonly ui = inject(UiStore);
 
   private readonly _isChromeVisible = signal(true);
+  /** Who is currently keeping the chrome up (see `holdChrome`). */
+  private readonly holds = signal<readonly string[]>([]);
   private wakeLock: WakeLockSentinelLike | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly isActive = this.ui.isFullscreen;
-  /** Chrome shows normally; in fullscreen it hides until you move. */
+  /** Chrome shows normally; in fullscreen it hides until you move — unless
+   * something is holding it up. */
   readonly isChromeVisible = computed(
-    () => !this.isActive() || this._isChromeVisible(),
+    () =>
+      !this.isActive() || this._isChromeVisible() || this.holds().length > 0,
   );
 
   constructor() {
@@ -109,6 +113,42 @@ export class Fullscreen {
       () => this._isChromeVisible.set(false),
       IDLE_MS,
     );
+  }
+
+  /**
+   * Hold the chrome up while something transient hangs off it — the ⋯ menu, the
+   * transpose sheet — and let it go again when that closes.
+   *
+   * The bars are what those panels are anchored to, and on a phone they are more
+   * than an anchor: the shell drops `<app-stage-bar>` out of the DOM when the
+   * chrome hides, which **destroys the open panel with it**. Without this, the
+   * idle timer took the transpose sheet away three seconds after it opened, in
+   * the middle of stepping, for no reason the performer could see — and touch
+   * does not reveal (a swipe must not), so tapping the stepper never pushed the
+   * countdown back either.
+   *
+   * Keyed rather than counted: a holder may say the same thing twice without
+   * balancing it, and a bar that is torn down mid-hold cannot leave a count
+   * stuck above zero and the chrome pinned open forever.
+   */
+  holdChrome(key: string, isHeld: boolean): void {
+    // Nothing to say: a repeated hold or a release from a holder that has none
+    // must not restart the countdown behind the panel that is still up.
+    if (this.holds().includes(key) === isHeld) return;
+
+    this.holds.update((keys) =>
+      isHeld ? [...keys, key] : keys.filter((held) => held !== key),
+    );
+
+    if (this.holds().length > 0) {
+      // Nothing is counting down while a panel is up; the countdown starts over
+      // when the last one lets go, so a sheet closed after a long fiddle does
+      // not take the bars with it on the same frame.
+      this._isChromeVisible.set(true);
+      this.clearIdle();
+    } else if (this.isActive()) {
+      this.reveal();
+    }
   }
 
   private async acquireWakeLock(): Promise<void> {

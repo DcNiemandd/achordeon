@@ -218,20 +218,26 @@ interface RenderedSong {
   readonly plan: RenderPlan;
 }
 
-/** One sheet of the on-screen print preview. */
+/** One sheet of the on-screen print preview, before anything is drawn on it. */
 export interface SongbookPreviewPage {
   readonly kind: SongbookPageKind;
-  /** A screen SVG — the CSS-loaded face, not inlined bytes (far lighter per page,
-   * and the screen has CSS to lean on where an exported file does not). */
-  readonly svg: string;
   /** The printed number, or null for front matter. The preview overlays it in a
    * corner unless it is baked into the heading (`before-title`) or off. */
   readonly number: number | null;
 }
 
-/** The whole songbook, laid out for the screen — a WYSIWYG of its PDF. */
-export interface SongbookPreview {
-  readonly pages: readonly SongbookPreviewPage[];
+/** …and as the screen shows it: the sheet with its render, or `null` while it
+ * has not been drawn yet — the reader is looking at blank paper and a spinner. */
+export interface SongbookPreviewSheet extends SongbookPreviewPage {
+  /** A screen SVG — the CSS-loaded face, not inlined bytes (far lighter per page,
+   * and the screen has CSS to lean on where an exported file does not). */
+  readonly svg: string | null;
+}
+
+/** The paper the book is previewed on. One answer for the whole book: every
+ * sheet is the same size, which is what lets the pane lay them out before it
+ * knows what is on any of them. */
+export interface SongbookPaper {
   /** width / height of the paper each sheet shows on. */
   readonly aspect: number;
   /** The margin as a fraction of the paper's width and height, so a page frame
@@ -242,6 +248,34 @@ export interface SongbookPreview {
   /** Where a corner page number sits, and whether the preview draws one. */
   readonly pageNumberPosition: PageNumberPosition;
   readonly hasCornerNumbers: boolean;
+}
+
+/**
+ * A songbook **opened** for the screen: its paper and the full list of sheets at
+ * once, each sheet drawn only when somebody asks for it.
+ *
+ * The list costs a read of the songs and no layout at all — the page sequence is
+ * arithmetic (`planSongbook`) and the summary is measured off titles — so a book
+ * of two hundred songs shows its shape, and its scrollbar, immediately. Laying
+ * one song out is the expensive part, and it is now the reader's scroll that
+ * spends it: the pane draws what is near the viewport and nothing else (see
+ * `SongbookPreview`'s `neared`).
+ *
+ * A handle rather than a plain model, because the setup a draw needs — the book,
+ * the resolved settings, the loaded faces, the summary layout — is worth doing
+ * once and keeping. Reopening the book (the moon, an edited print structure)
+ * makes a new one; the old one is simply dropped.
+ */
+export interface SongbookPreviewSource extends SongbookPaper {
+  readonly pages: readonly SongbookPreviewPage[];
+  /** Sheet `index`, drawn now. An out-of-range index draws nothing. */
+  draw(index: number): Promise<string>;
+}
+
+/** The whole songbook as the pane shows it — a WYSIWYG of its PDF, some of whose
+ * sheets may not have been drawn yet. */
+export interface SongbookPreview extends SongbookPaper {
+  readonly pages: readonly SongbookPreviewSheet[];
 }
 
 /** The summary's face and ink in the preview: the body family, printed black. */
@@ -387,7 +421,7 @@ export class DownloadService {
     // registered, which it now is.
     const summary = opts.hasSummary
       ? layoutSummary(
-          summaryItems(rendered),
+          summaryItems(rendered.map((one) => one.song)),
           page,
           margin,
           measureWith(doc),
@@ -574,34 +608,69 @@ export class DownloadService {
     inlineFonts = true,
     isDark = false,
   ): Promise<RenderedSong[]> {
-    const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
-    const songs = rows.filter(
-      (row): row is Song => row !== undefined && row.deletedAt === null,
-    );
+    const songs = await this.songsFor(ids);
     const settings = songs.map((song) => this.settingsFor(song, book));
 
     // Every face first, and awaited: the screen may render a frame in a
     // fallback and correct itself, a file cannot (PRD-RENDERING §3).
     await this.renderer.ensureFonts(settings);
 
-    return songs.map((song, i) => {
-      const ast = this.parser.parse(song.content);
+    return songs.map((song, i) =>
       // The number is the song's place in *this* list — the filtered one, which
       // is also what the summary numbers off, so the two agree even when a
       // songbook points at a song that has since been deleted.
-      // `isDark` is only ever true for the on-screen preview: a file is paper
-      // (PRD-RENDERING §5), so every export path leaves it at its default.
-      const plan = this.renderer.layout(
-        isNumberInTitle ? numberedAst(ast, i + 1) : ast,
-        settings[i],
-        { dark: isDark },
-      );
-      // `inlineFonts` — a downloaded FILE has no CSS to lean on and Safari will
-      // not fetch a font from inside an SVG (ADR-0002), so exports inline the
-      // bytes. The on-screen preview leans on the CSS-loaded face and leaves them
-      // out, which is far lighter per page.
-      return { song, svg: this.renderer.emit(plan, inlineFonts), plan };
-    });
+      this.renderOne(song, settings[i], {
+        number: isNumberInTitle ? i + 1 : null,
+        inlineFonts,
+        isDark,
+      }),
+    );
+  }
+
+  /** The songs behind a list of ids, in order. Missing ids and tombstones fall
+   * out; a slot repeated in a songbook appears twice, because it prints twice. */
+  private async songsFor(ids: readonly Uuid[]): Promise<Song[]> {
+    const rows = await Promise.all(ids.map((id) => this.songs.get(id)));
+    return rows.filter(
+      (row): row is Song => row !== undefined && row.deletedAt === null,
+    );
+  }
+
+  /**
+   * One song, parsed, laid out and serialized — the expensive part, and the unit
+   * a lazy preview spends per sheet.
+   *
+   * **Synchronous**, and deliberately: the faces are loaded by the caller, once
+   * for the whole book (`ensureFonts`), so drawing a sheet the reader has just
+   * scrolled to is not a round trip.
+   */
+  private renderOne(
+    song: Song,
+    settings: GlobalSettings,
+    opts: {
+      /** Its printed number, when the number belongs in the heading. */
+      number?: number | null;
+      inlineFonts?: boolean;
+      isDark?: boolean;
+    } = {},
+  ): RenderedSong {
+    const ast = this.parser.parse(song.content);
+    // `isDark` is only ever true for the on-screen preview: a file is paper
+    // (PRD-RENDERING §5), so every export path leaves it at its default.
+    const plan = this.renderer.layout(
+      opts.number != null ? numberedAst(ast, opts.number) : ast,
+      settings,
+      { dark: opts.isDark ?? false },
+    );
+    // `inlineFonts` — a downloaded FILE has no CSS to lean on and Safari will
+    // not fetch a font from inside an SVG (ADR-0002), so exports inline the
+    // bytes. The on-screen preview leans on the CSS-loaded face and leaves them
+    // out, which is far lighter per page.
+    return {
+      song,
+      svg: this.renderer.emit(plan, opts.inlineFonts ?? true),
+      plan,
+    };
   }
 
   private settingsFor(song: Song, book?: Songbook): GlobalSettings {
@@ -665,66 +734,73 @@ export class DownloadService {
   }
 
   /**
-   * The whole songbook as on-screen pages — the print preview `/songbooks` pane B
-   * shows, WYSIWYG of the PDF `downloadSongbook` would write.
+   * The songbook opened as on-screen pages — the print preview `/songbooks` pane
+   * B shows, WYSIWYG of the PDF `downloadSongbook` would write.
    *
    * The same assembly as the PDF, drawn for the screen instead of the page: it
-   * reuses `bookFor` (so the virtual All songs works), `render` (screen SVGs,
+   * reuses `bookFor` (so the virtual All songs works), `renderOne` (screen SVGs,
    * fonts left to the CSS-loaded face), `renderTitlePage`, `layoutSummary` and the
    * one `planSongbook` — so the two sinks cannot disagree about which sheet is
    * page 7. The only thing drawn by a different hand is the summary, which the PDF
    * types and the preview emits as SVG off the identical placements.
+   *
+   * **Nothing is laid out here.** What comes back is the paper and the sequence;
+   * `draw` is what spends a layout, one sheet at a time, as the reader arrives at
+   * it (see `SongbookPreviewSource`). The PDF still renders the lot in one go, as
+   * it must — a file cannot be finished later.
    */
-  async previewSongbook(
+  async openSongbookPreview(
     id: Uuid,
     options: SongbookPdfOptions = {},
     isDark = false,
-  ): Promise<SongbookPreview> {
+  ): Promise<SongbookPreviewSource> {
     const opts = { ...DEFAULT_SONGBOOK_OPTIONS, ...options };
     const page = orient(PAGE_SIZES[opts.pageSize], opts.isLandscape);
     const margin = opts.marginMm * MM;
-    const empty: SongbookPreview = {
-      pages: [],
+    const paper: SongbookPaper = {
       aspect: page.width / page.height,
       marginRatioX: margin / page.width,
       marginRatioY: margin / page.height,
       pageNumberPosition: opts.pageNumberPosition,
       hasCornerNumbers: false,
     };
+    const nothing: SongbookPreviewSource = {
+      ...paper,
+      pages: [],
+      draw: () => Promise.resolve(''),
+    };
 
     const book = await this.bookFor(id, opts.songOrder);
-    if (!book) return empty;
+    if (!book) return nothing;
 
     const isNumberInTitle =
       opts.hasPageNumbers && opts.pageNumberPosition === 'before-title';
-    const rendered = await this.render(
-      book.entries,
-      book,
-      isNumberInTitle,
-      false,
-      isDark,
-    );
 
+    const songs = await this.songsFor(book.entries);
+    const settings = songs.map((song) => this.settingsFor(song, book));
+    // Every face the book uses, once and up front. A sheet drawn later must not
+    // wait on a font, and a face arriving after the fact would reflow pages the
+    // reader is already looking at.
+    await this.renderer.ensureFonts(settings);
+
+    // Measured off the songs' titles, not off their renders — which is what
+    // makes the contents page, and therefore the page count and the scrollbar,
+    // knowable before a single song has been laid out.
     const summary = opts.hasSummary
       ? layoutSummary(
-          summaryItems(rendered),
+          summaryItems(songs),
           page,
           margin,
           previewMeasure(),
           opts.summaryNumberPlace,
         )
       : undefined;
-    const summaryPages = summary?.pages ?? 0;
 
     const plan = planSongbook({
       hasTitlePage: opts.hasTitlePage,
-      summaryPages,
-      songCount: rendered.length,
+      summaryPages: summary?.pages ?? 0,
+      songCount: songs.length,
     });
-
-    const title = opts.hasTitlePage
-      ? await this.renderTitlePage(book, false, isDark)
-      : undefined;
 
     // The preview is a WYSIWYG of the PDF, so it turns what the PDF turns
     // (ADR-0013) — through the same `placeInto`, never a second rule. A preview
@@ -733,40 +809,47 @@ export class DownloadService {
     const asPrinted = (svg: string, box: Size): string =>
       placeInto(box, page, margin).isTurned ? turnedSvg(svg, box) : svg;
 
-    const pages: SongbookPreviewPage[] = plan.pages.map((entry) => {
+    // The one sheet worth keeping: it is a render like any other, and the reader
+    // passes it every time they scroll back to the front of the book.
+    let title: { svg: string; box: Size } | undefined;
+
+    const draw = async (index: number): Promise<string> => {
+      const entry = plan.pages[index];
+      if (!entry) return '';
+
       if (entry.kind === 'title') {
-        return {
-          kind: entry.kind,
-          svg: title ? asPrinted(title.svg, title.box) : '',
-          number: null,
-        };
+        title ??= await this.renderTitlePage(book, false, isDark);
+        return asPrinted(title.svg, title.box);
       }
+
       if (entry.kind === 'summary') {
-        return {
-          kind: entry.kind,
-          svg: summary
-            ? summaryToSvg(
-                summary,
-                page,
-                entry.sourceIndex ?? 0,
-                isDark ? SUMMARY_PREVIEW_STYLE_DARK : SUMMARY_PREVIEW_STYLE,
-              )
-            : '',
-          number: null,
-        };
+        return summary
+          ? summaryToSvg(
+              summary,
+              page,
+              entry.sourceIndex ?? 0,
+              isDark ? SUMMARY_PREVIEW_STYLE_DARK : SUMMARY_PREVIEW_STYLE,
+            )
+          : '';
       }
-      const one = rendered[entry.sourceIndex ?? 0];
-      return {
-        kind: entry.kind,
-        svg: asPrinted(one.svg, one.plan.box),
-        number: entry.number,
-      };
-    });
+
+      const at = entry.sourceIndex ?? 0;
+      const one = this.renderOne(songs[at], settings[at], {
+        number: isNumberInTitle ? at + 1 : null,
+        inlineFonts: false,
+        isDark,
+      });
+      return asPrinted(one.svg, one.plan.box);
+    };
 
     return {
-      ...empty,
-      pages,
+      ...paper,
       hasCornerNumbers: opts.hasPageNumbers && !isNumberInTitle,
+      pages: plan.pages.map((entry) => ({
+        kind: entry.kind,
+        number: entry.number,
+      })),
+      draw,
     };
   }
 
@@ -882,9 +965,9 @@ export class DownloadService {
  * (`SummaryNumberPlace`), not this function's: the number is the same fact either
  * way, and where it lands is arithmetic.
  */
-function summaryItems(songs: readonly RenderedSong[]): SummaryItem[] {
-  return songs.map((one, index) => ({
-    title: one.song.cache.title || one.song.name,
+function summaryItems(songs: readonly Song[]): SummaryItem[] {
+  return songs.map((song, index) => ({
+    title: song.cache.title || song.name,
     number: String(index + 1),
   }));
 }

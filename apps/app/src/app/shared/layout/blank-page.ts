@@ -122,6 +122,11 @@ const A4_RATIO = 210 / 297;
       background: var(--surface);
     }
 
+    /* The shadow is desk furniture: it says the sheet is lying ON something.
+       Performing there is no desk — the page is the screen — so the shadow is a
+       dark band, or on a dark page a lit rim, around the edge of the display.
+       (Stated again below, after the dark page's own rim, because that rule
+       would otherwise put the rim back.) */
     :host(.is-performing) .page {
       box-shadow: none;
     }
@@ -154,6 +159,14 @@ const A4_RATIO = 210 / 297;
       box-shadow:
         0 0 0 1px rgb(255 255 255 / 12%),
         0 1px 4px rgb(255 255 255 / 5%);
+    }
+
+    /* …but not while performing, where there is no desk for the sheet to sit on
+       and the rim is simply a lit line around the screen — the glare the dark
+       page was turned on to be rid of. Last, so it beats the rule above: the two
+       have the same specificity, and this is the one that must win. */
+    :host(.is-performing) .page {
+      box-shadow: none;
     }
   `,
 })
