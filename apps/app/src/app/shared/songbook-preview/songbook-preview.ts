@@ -35,6 +35,30 @@ import { SongRender } from '../song-render';
  */
 const WHEEL_STEP_PX = 90;
 
+/**
+ * Above this, one event is a **notch** — a mouse wheel click, which is one turn
+ * on its own and needs no accumulating. Below it the events are the fine grain
+ * of a trackpad, and are gathered instead (see `onWheel`).
+ */
+const WHEEL_NOTCH_PX = 80;
+
+/** A gap this long ends a gesture: the fingers are off the trackpad and the
+ * momentum has run out, so the next event starts a fresh count. */
+const WHEEL_IDLE_MS = 160;
+
+/** A line, in pixels, for the wheels that report their travel in lines (Firefox)
+ * or pages rather than in pixels — otherwise a Firefox notch reads as `3` and
+ * three of them would be needed to turn one page. */
+const WHEEL_LINE_PX = 40;
+const WHEEL_PAGE_PX = 800;
+
+/** One wheel event's travel in pixels, whatever unit it arrived in. */
+function wheelPx(event: WheelEvent): number {
+  if (event.deltaMode === 1) return event.deltaY * WHEEL_LINE_PX;
+  if (event.deltaMode === 2) return event.deltaY * WHEEL_PAGE_PX;
+  return event.deltaY;
+}
+
 @Component({
   selector: 'app-songbook-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -352,6 +376,10 @@ export class SongbookPreview {
   private readonly cursor = signal(0);
 
   private wheelAcc = 0;
+  private wheelAt = 0;
+  /** A page has been turned and this gesture is spent: the rest of the swipe and
+   * its momentum are swallowed until the wheel falls quiet. */
+  private isWheelSpent = false;
 
   protected readonly pageCount = computed(
     () => this.preview()?.pages.length ?? 0,
@@ -451,14 +479,49 @@ export class SongbookPreview {
     this.cursor.set(Math.min(anchored, this.lastStart()));
   }
 
+  /**
+   * The wheel turns pages — **one page per gesture**, not one per threshold
+   * crossed.
+   *
+   * A mouse notch is a whole gesture in one event, so it turns and is done. A
+   * trackpad swipe is not: it arrives as a burst of small deltas and then keeps
+   * arriving as momentum for up to a second afterwards, hundreds of pixels in
+   * all. Resetting the accumulator and taking the next crossing sent the reader
+   * flying through a dozen sheets on one flick of two fingers. So a swipe that
+   * has turned a page is **spent**, and the wheel has to fall quiet
+   * (`WHEEL_IDLE_MS` — fingers off, momentum run out) before it can turn
+   * another. Swiping again turns again, which is the gesture a paged view wants.
+   */
   protected onWheel(event: WheelEvent): void {
     if (this.pageCount() === 0) return;
     // The desk does not scroll; the wheel turns pages instead.
     event.preventDefault();
-    this.wheelAcc += event.deltaY;
+
+    const now = event.timeStamp;
+    const isNewGesture = now - this.wheelAt > WHEEL_IDLE_MS;
+    this.wheelAt = now;
+    if (isNewGesture) {
+      this.wheelAcc = 0;
+      this.isWheelSpent = false;
+    }
+    // Still coasting on a swipe that has already turned its page: the momentum
+    // keeps the gesture alive (the timestamp above) but moves nothing.
+    if (this.isWheelSpent) return;
+
+    const px = wheelPx(event);
+    // A notch is its own gesture — a mouse can be spun as fast as the hand
+    // likes, and each click is one page.
+    if (Math.abs(px) >= WHEEL_NOTCH_PX) {
+      this.step(px > 0 ? 1 : -1);
+      this.wheelAcc = 0;
+      return;
+    }
+
+    this.wheelAcc += px;
     if (Math.abs(this.wheelAcc) < WHEEL_STEP_PX) return;
     this.step(this.wheelAcc > 0 ? 1 : -1);
     this.wheelAcc = 0;
+    this.isWheelSpent = true;
   }
 
   protected onKey(event: KeyboardEvent): void {
