@@ -4,7 +4,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -18,6 +20,9 @@ import { transposeActionLabel } from './transpose';
 import { TransposeStepper } from './transpose-stepper';
 import { turnPageLabel } from './turn-label';
 import { UiStore } from './ui-store';
+
+/** This bar's name in `Fullscreen`'s hold list — one holder, whichever panel. */
+const HOLD_KEY = 'stage-bar';
 
 /**
  * The performing controls, dropped into the shell's bottom bar so a phone shows
@@ -392,6 +397,7 @@ export class StageBar {
    * the Performance view, so it is `UiStore`'s rather than the session's. */
   protected readonly ui = inject(UiStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly isMenuOpen = signal(false);
   protected readonly isTransposeOpen = signal(false);
@@ -401,6 +407,20 @@ export class StageBar {
   );
 
   protected readonly turnPageLabel = turnPageLabel;
+
+  constructor() {
+    // While a panel is up, the chrome may not go: on a phone this bar IS the
+    // chrome, so the idle timer hiding it destroys this component and takes the
+    // open menu or transpose sheet with it (`Fullscreen.holdChrome`).
+    effect(() => {
+      const isPanelOpen = this.isMenuOpen() || this.isTransposeOpen();
+      this.fullscreen.holdChrome(HOLD_KEY, isPanelOpen);
+    });
+    // …and a bar torn down with a panel open still lets go.
+    this.destroyRef.onDestroy(() =>
+      this.fullscreen.holdChrome(HOLD_KEY, false),
+    );
+  }
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);

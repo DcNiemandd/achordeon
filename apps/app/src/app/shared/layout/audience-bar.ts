@@ -10,7 +10,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -23,6 +25,9 @@ import { transposeActionLabel } from './transpose';
 import { turnPageLabel } from './turn-label';
 import { UiStore } from './ui-store';
 import { TransposeStepper } from './transpose-stepper';
+
+/** This bar's name in `Fullscreen`'s hold list — one holder, whichever panel. */
+const HOLD_KEY = 'audience-bar';
 
 @Component({
   selector: 'app-audience-bar',
@@ -367,6 +372,7 @@ export class AudienceBar {
   /** Turn the page is device-local and shared with Stage — one flag for the
    * Performance view, so it is `UiStore`'s rather than either session's. */
   protected readonly ui = inject(UiStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly isMenuOpen = signal(false);
   protected readonly isTransposeOpen = signal(false);
@@ -376,6 +382,18 @@ export class AudienceBar {
   );
 
   protected readonly turnPageLabel = turnPageLabel;
+
+  constructor() {
+    // The performing bar's hold, for the same reason: on a phone this bar is the
+    // chrome, and the chrome hiding destroys the panel hanging off it.
+    effect(() => {
+      const isPanelOpen = this.isMenuOpen() || this.isTransposeOpen();
+      this.fullscreen.holdChrome(HOLD_KEY, isPanelOpen);
+    });
+    this.destroyRef.onDestroy(() =>
+      this.fullscreen.holdChrome(HOLD_KEY, false),
+    );
+  }
 
   protected closeMenu(): void {
     this.isMenuOpen.set(false);
