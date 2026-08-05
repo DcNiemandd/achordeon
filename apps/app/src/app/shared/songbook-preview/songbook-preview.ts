@@ -1,14 +1,13 @@
 // Songbook preview — the print preview in /songbooks pane B
 // Spec: CONTEXT.md §Songbook; PRD-UI-SHELL.md §4
 //
-// A **scrolling** viewer that lands on pages. The desk is a real scroll box, so
-// the reader gets the browser's own scrollbar, the trackpad and touch physics
-// they already know, and PageDown where they expect it — and CSS scroll-snap
-// stops it on a page boundary, so it still reads as a book rather than as a
-// ribbon of paper. It used to turn a screenful at a time off the wheel, which
-// meant no scrollbar at all and a trackpad flick flying through a dozen sheets.
-// Zoom is the column count (1 → read one page, up to every page at once → a
-// contact sheet).
+// A **scrolling** viewer. The desk is a real scroll box and nothing more: the
+// reader gets the browser's own scrollbar, the trackpad and touch physics they
+// already know, and PageDown where they expect it. It used to turn a screenful
+// at a time off the wheel, which meant no scrollbar at all, a trackpad flick
+// flying through a dozen sheets, and no way to cross a long book quickly. There
+// is deliberately no snapping — see `.desk`. Zoom is the column count (1 → read
+// one page, up to every page at once → a contact sheet).
 //
 // **Nothing is drawn until it is nearly on screen.** Every sheet has a frame in
 // the DOM from the start — that is what makes the scrollbar tell the truth about
@@ -23,6 +22,7 @@
 // preview through `DownloadService.openSongbookPreview`, the WYSIWYG twin of the
 // PDF, and answers `neared` by drawing.
 
+import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -40,7 +40,6 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
-import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { SongRender } from '../song-render';
 
@@ -245,15 +244,14 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
       min-inline-size: 26px;
     }
 
-    /* The desk the pages sit on — the scroll box. Mandatory snap on the block
-       axis so the scroll always comes to rest with a row of pages at the top of
-       the desk: what the reader is doing is turning pages, and free scrolling
-       would leave them looking at the bottom half of one and the top of the
-       next. (A page taller than the desk — one column on a tall sheet — is
-       larger than the snapport, and the browser lets that scroll freely.)
+    /* The desk the pages sit on — the scroll box, and a plain one: no snapping.
+       Snap points would take the scroll off the reader, and a mouse notch under
+       mandatory scroll-snap moves exactly one page, so getting from page 3 to
+       page 40 is thirty-seven gestures. Free scrolling can rest halfway between
+       two sheets, and that is the reader's business.
 
-       scroll-padding matches the desk's own padding, so a snapped page sits
-       inside the desk rather than glued against its edge. */
+       scroll-padding matches the desk's own padding, so a page brought into view
+       (the zoom's anchor) sits inside the desk rather than against its edge. */
     .desk {
       flex: 1;
       min-block-size: 0;
@@ -261,7 +259,6 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
       background: var(--surface-sunken);
       overflow-y: auto;
       overscroll-behavior: contain;
-      scroll-snap-type: y mandatory;
       scroll-padding: var(--space-4);
       outline: none;
     }
@@ -281,7 +278,6 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
       background: #fff;
       box-shadow: var(--shadow-2);
       overflow: hidden;
-      scroll-snap-align: start;
       /* The frames are all here from the start, so that the scrollbar is honest
          about the length of the book. This is what keeps that cheap: a sheet
          nowhere near the viewport is not laid out or painted at all, and its
