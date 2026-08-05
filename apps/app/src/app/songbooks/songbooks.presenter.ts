@@ -11,6 +11,7 @@ import {
   SongStore,
   SongbookStore,
   type SongbookPreview,
+  type SongbookPreviewSource,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
@@ -180,20 +181,73 @@ export class SongbooksPresenter {
   readonly currentId = this._currentId.asReadonly();
 
   /**
-   * The picked book, **rendered as its whole print preview** — every page the PDF
-   * would hold, WYSIWYG (`DownloadService.previewSongbook`, which reuses the same
-   * assembly, so the pane and the file cannot disagree). It used to be only the
-   * title page; now you can read the book before you print it.
+   * The picked book, **opened as its whole print preview** — every page the PDF
+   * would hold, WYSIWYG (`DownloadService.openSongbookPreview`, which reuses the
+   * same assembly, so the pane and the file cannot disagree). It used to be only
+   * the title page; now you can read the book before you print it.
    *
    * All songs previews too, generated the same way it downloads — the library, in
    * its print order.
+   *
+   * The source knows the paper and the sequence and has drawn nothing. What is
+   * actually on each sheet arrives through `_drawn`, a sheet at a time, as the
+   * pane says it is nearing the viewport.
    */
-  private readonly _preview = signal<SongbookPreview | null>(null);
-  readonly preview = this._preview.asReadonly();
+  private readonly _source = signal<SongbookPreviewSource | null>(null);
+
+  /** Sheet index → its SVG, for the sheets drawn so far. A plain cache: scrolling
+   * back up a book does not redraw it. Dropped whole when the book is reopened. */
+  private readonly _drawn = signal<ReadonlyMap<number, string>>(new Map());
+
+  /** The sheets the pane last said were within reach of the viewport. Kept, so a
+   * reopened book (the moon, an edited print structure) redraws what is on screen
+   * without waiting for the reader to scroll and say it again. */
+  private neared: readonly number[] = [];
+
+  /** Sheets being drawn right now, so two passes over an overlapping range do not
+   * lay the same song out twice. */
+  private readonly drawing = new Set<number>();
+
+  /**
+   * The book as the pane shows it: the source's sequence, each sheet carrying its
+   * render or `null` for "not drawn yet" — which is the pane's cue to show blank
+   * paper and a spinner.
+   */
+  readonly preview = computed<SongbookPreview | null>(() => {
+    const source = this._source();
+    if (!source) return null;
+    const drawn = this._drawn();
+    return {
+      aspect: source.aspect,
+      marginRatioX: source.marginRatioX,
+      marginRatioY: source.marginRatioY,
+      pageNumberPosition: source.pageNumberPosition,
+      hasCornerNumbers: source.hasCornerNumbers,
+      pages: source.pages.map((page, index) => ({
+        ...page,
+        svg: drawn.get(index) ?? null,
+      })),
+    };
+  });
 
   /** Bumped per request so a slow render of a book you have already clicked past
    * cannot land in the pane after the book you are now looking at. */
   private previewToken = 0;
+
+  /**
+   * The pane reporting which sheets have come within reach of the viewport.
+   *
+   * Everything in that set that has not been drawn is drawn, oldest request
+   * first, with the main thread handed back between sheets so the spinners the
+   * reader is looking at keep turning. Sheets that scrolled away before their
+   * turn are still drawn — they are one layout each and the reader is a flick
+   * from them — but the book behind them may have changed, and the token drops
+   * anything that finishes after a newer book has been opened.
+   */
+  needSheets(indices: readonly number[]): void {
+    this.neared = indices;
+    void this.drawNeared();
+  }
 
   /**
    * The pane's own answer about dark paper, or `null` for "as the app says".
@@ -242,17 +296,50 @@ export class SongbooksPresenter {
       const print = this.printFor(id);
       this._librarySize();
 
+      // A different book, or the same book on different paper: every sheet drawn
+      // so far is of the old one.
+      this._drawn.set(new Map());
+      this.drawing.clear();
+
       if (!id) {
-        this._preview.set(null);
+        this._source.set(null);
         return;
       }
       const { format, ...opts } = composeSongbookChoice(device, print);
       void format; // the preview renders every format the same; it is not paper
       const token = ++this.previewToken;
-      void this.downloads.previewSongbook(id, opts, isDark).then((preview) => {
-        if (token === this.previewToken) this._preview.set(preview);
-      });
+      void this.downloads
+        .openSongbookPreview(id, opts, isDark)
+        .then((source) => {
+          if (token !== this.previewToken) return;
+          this._source.set(source);
+          // The reader has not moved, so nothing will tell us what is on screen:
+          // redraw what was last within reach.
+          void this.drawNeared();
+        });
     });
+  }
+
+  private async drawNeared(): Promise<void> {
+    const source = this._source();
+    if (!source) return;
+    const token = this.previewToken;
+
+    for (const index of this.neared) {
+      if (this._drawn().has(index) || this.drawing.has(index)) continue;
+      this.drawing.add(index);
+      // A macrotask, not just the await below: laying a song out is synchronous
+      // work, and without a real yield a screenful of sheets lands in one jump
+      // with the spinners frozen through all of it.
+      await new Promise<void>((resolve) => setTimeout(resolve));
+      try {
+        const svg = await source.draw(index);
+        if (token !== this.previewToken) return;
+        this._drawn.update((drawn) => new Map(drawn).set(index, svg));
+      } finally {
+        this.drawing.delete(index);
+      }
+    }
   }
 
   select(id: string): void {
