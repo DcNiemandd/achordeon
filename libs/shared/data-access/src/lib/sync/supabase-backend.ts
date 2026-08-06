@@ -8,6 +8,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
@@ -81,6 +82,7 @@ export class SupabaseSyncBackend implements SyncBackend {
     const user = profileRow ? profileToUser(profileRow) : null;
 
     return {
+      app: ACHORDEON_URL,
       schemaVersion: SCHEMA_VERSION,
       deviceId: 'supabase',
       updatedAt: Date.now(),

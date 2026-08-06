@@ -3,6 +3,7 @@
 // PRD-INFRASTRUCTURE.md §4
 
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type MigrateStatus,
   type SnapshotEnvelope,
@@ -51,6 +52,7 @@ export async function snapshotFromDb(
     db.songbooks.toArray(),
   ]);
   return {
+    app: ACHORDEON_URL,
     schemaVersion,
     deviceId,
     updatedAt: Date.now(),

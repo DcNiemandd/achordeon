@@ -2,7 +2,11 @@
 // Spec: ADR-0007, PRD-DOMAIN-MODEL.md §Schema evolution
 
 import { SETTINGS } from './settings';
-import { SCHEMA_VERSION, type SnapshotEnvelope } from './snapshot';
+import {
+  ACHORDEON_URL,
+  SCHEMA_VERSION,
+  type SnapshotEnvelope,
+} from './snapshot';
 
 /**
  * One forward-only step: takes a whole envelope at version `to - 1` and returns
@@ -86,8 +90,10 @@ export function migrate(snapshot: SnapshotEnvelope): MigrateResult {
     migrated = step.apply(migrated);
   }
 
-  // Bump: the reshaped envelope now advertises the shape it actually holds.
-  migrated = { ...migrated, schemaVersion: SCHEMA_VERSION };
+  // Bump: the reshaped envelope now advertises the shape it actually holds —
+  // and the app that reshaped it, which a file written before there was an `app`
+  // line cannot have said for itself.
+  migrated = { ...migrated, app: ACHORDEON_URL, schemaVersion: SCHEMA_VERSION };
 
   const status: MigrateStatus = hasUnknownKeys(snapshot) ? 'warn' : 'ok';
   return { snapshot: migrated, status };

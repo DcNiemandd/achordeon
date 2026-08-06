@@ -4,6 +4,7 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type SnapshotEnvelope,
   type Song,
@@ -46,6 +47,7 @@ function user(over: Partial<User> = {}): User {
 
 function envelope(songs: Song[], users: User[] = []): SnapshotEnvelope {
   return {
+    app: ACHORDEON_URL,
     schemaVersion: SCHEMA_VERSION,
     deviceId: 'elsewhere',
     updatedAt: 2,

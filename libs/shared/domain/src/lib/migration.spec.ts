@@ -1,5 +1,9 @@
 import { migrate } from './migration';
-import { SCHEMA_VERSION, type SnapshotEnvelope } from './snapshot';
+import {
+  ACHORDEON_URL,
+  SCHEMA_VERSION,
+  type SnapshotEnvelope,
+} from './snapshot';
 import type { GlobalSettings } from './settings';
 
 const globalSettings: GlobalSettings = {
@@ -21,6 +25,7 @@ function baseSnapshot(
   overrides: Partial<SnapshotEnvelope> = {},
 ): SnapshotEnvelope {
   return {
+    app: ACHORDEON_URL,
     schemaVersion: SCHEMA_VERSION,
     deviceId: 'dev-1',
     updatedAt: 0,

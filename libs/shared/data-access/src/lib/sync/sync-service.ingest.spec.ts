@@ -9,6 +9,7 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type SnapshotEnvelope,
   type Song,
@@ -37,6 +38,7 @@ function song(id: string): Song {
 
 function envelope(schemaVersion: number, songs: Song[]): SnapshotEnvelope {
   return {
+    app: ACHORDEON_URL,
     schemaVersion,
     deviceId: 'elsewhere',
     updatedAt: 2,
