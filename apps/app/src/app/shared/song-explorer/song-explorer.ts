@@ -26,6 +26,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Viewport } from '../layout';
 import {
   Autofocus,
   Button,
@@ -377,7 +378,7 @@ const NARROW_WIDTH = 480;
               type="button"
               class="open"
               [attr.data-testid]="'open-' + row.id"
-              (click)="activated.emit(row.id)"
+              (click)="onRowClick(row)"
               (dblclick)="onOpen(row)"
             >
               <span class="name">{{ row.name }}</span>
@@ -1172,6 +1173,14 @@ export class SongExplorer {
    */
   protected readonly isNarrow = signal(false);
 
+  /**
+   * The shell's breakpoint — a **different question** from `isNarrow`, which is
+   * this list's own box. Below it there is no pane B at all (both pages mount
+   * `hasTwoPanes="!isCompact()"`), and that is what changes what a click means:
+   * see `onRowClick`.
+   */
+  private readonly screen = inject(Viewport);
+
   /** Rename lives in the `⋯` menu while the list is narrow, where an inline
    * strip does not fit — only where the row already has a menu (`usesRowMenu`). */
   protected readonly isRenameInMenu = computed(
@@ -1841,14 +1850,46 @@ export class SongExplorer {
     }
   }
 
+  /**
+   * A click on the row itself — **which on a phone is a tap that opens it**.
+   *
+   * On a desktop a click picks the row and pane B renders it, and the double
+   * click is what goes in. Below the compact breakpoint there is no pane B: the
+   * page is the list at full width, so the same click sets a "current song"
+   * nothing on the screen shows, and the row reads as dead. A tap that opens is
+   * also what every list on a phone does.
+   *
+   * `canEdit` is what says which lists this applies to, and it draws exactly the
+   * line asked for: the Songs module and the songbook list have it, and the
+   * songbook builder's two panes do not — you are arranging songs there, and a
+   * tap that threw you into the editor would lose the arrangement you were part
+   * way through. The read-only All songs row keeps the plain click for the same
+   * reason `onOpen` refuses it: there is no record behind it to open.
+   */
+  protected onRowClick(row: SongRow): void {
+    if (this.screen.isCompact() && this.canOpen(row)) {
+      this.opened.emit(row.id);
+      return;
+    }
+    this.activated.emit(row.id);
+  }
+
   protected onOpen(row: SongRow): void {
-    // A read-only row does not open. There is no record behind it to show, and
-    // what it stands for — the library — is a click away in the Songs module, so a
-    // screen here would be the same list under a second name. What the row *can*
-    // be told is how it is ordered, and that is the gear (see the row's buttons).
-    if (this.capabilities().canEdit && !row.isReadOnly) {
+    if (this.canOpen(row)) {
       this.opened.emit(row.id);
     }
+  }
+
+  /**
+   * Is there anything behind this row to open?
+   *
+   * A read-only row does not open. There is no record behind it to show, and
+   * what it stands for — the library — is a click away in the Songs module, so a
+   * screen here would be the same list under a second name. What the row *can*
+   * be told is how it is ordered, and that is the gear (see the row's buttons).
+   */
+  private canOpen(row: SongRow): boolean {
+    return this.capabilities().canEdit && !row.isReadOnly;
   }
 
   protected startRename(row: SongRow): void {

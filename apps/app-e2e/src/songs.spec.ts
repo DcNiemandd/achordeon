@@ -625,6 +625,21 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('split-resizer')).toHaveCount(0);
   });
 
+  // …and because there is no pane B, a single tap has to be the way in: the
+  // click that picks a row on a desktop shows nothing here.
+  test('below the breakpoint: one tap on a row opens the editor', async ({
+    page,
+  }) => {
+    await createSong(page, 'Wonderwall');
+    await page.setViewportSize(COMPACT);
+
+    const row = page.getByTestId('song-row').filter({ hasText: 'Wonderwall' });
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`open-${id}`).click();
+
+    await expect(page).toHaveURL(/\/songs\/.+\/edit$/);
+  });
+
   test('the editor returns to the list as it was left — search and sort kept', async ({
     page,
   }) => {
