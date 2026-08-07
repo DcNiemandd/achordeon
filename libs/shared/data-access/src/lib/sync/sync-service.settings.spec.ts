@@ -6,7 +6,7 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import { LOCAL_USER_ID, type SnapshotEnvelope } from '@achordeon/shared/domain';
-import { SCHEMA_VERSION } from '@achordeon/shared/domain';
+import { ACHORDEON_URL, SCHEMA_VERSION } from '@achordeon/shared/domain';
 import { AchordeonDb } from '../persistence/db';
 import { ACHORDEON_DB } from '../stores/repositories';
 import { SettingsStore } from '../stores/settings-store';
@@ -44,6 +44,7 @@ describe('SyncService — global settings reach the cloud', () => {
     const supabaseStub = {
       id: 'supabase' as const,
       pull: async (): Promise<SnapshotEnvelope> => ({
+        app: ACHORDEON_URL,
         schemaVersion: SCHEMA_VERSION,
         deviceId: 'supabase',
         updatedAt: 1,

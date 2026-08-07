@@ -9,6 +9,7 @@
 // and the caller re-runs the OAuth flow (Flow A).
 
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
@@ -114,6 +115,7 @@ export class DriveSyncBackend implements SyncBackend {
       this.db.songbooks.toArray(),
     ]);
     return {
+      app: ACHORDEON_URL,
       schemaVersion: SCHEMA_VERSION,
       deviceId,
       updatedAt: Date.now(),

@@ -7,6 +7,7 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import {
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
@@ -37,6 +38,7 @@ let dbSeq = 0;
 
 function remoteEnvelope(songs: Song[]): SnapshotEnvelope {
   return {
+    app: ACHORDEON_URL,
     schemaVersion: SCHEMA_VERSION,
     deviceId: 'supabase',
     updatedAt: Date.now(),

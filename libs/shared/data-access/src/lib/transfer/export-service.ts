@@ -10,6 +10,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  ACHORDEON_URL,
   ALL_SONGS_ID,
   SCHEMA_VERSION,
   type Song,
@@ -62,6 +63,9 @@ export class ExportService {
       : await this.pick(this.songs, [...wanted]);
 
     return {
+      // First, so a file opened in a text editor says what it is before it says
+      // anything else.
+      app: ACHORDEON_URL,
       schemaVersion: SCHEMA_VERSION,
       deviceId: await readDeviceId(this.db),
       updatedAt: Date.now(),

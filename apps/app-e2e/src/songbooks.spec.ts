@@ -533,6 +533,22 @@ test.describe('songbooks', () => {
     await expect(page).toHaveURL(/\/songbooks\/.+$/);
   });
 
+  // On a phone the shape of screen is different, so the behaviour is: there is
+  // no pane B for a click to preview into, and the tap goes in.
+  test('on a phone, one tap on a songbook opens it', async ({ page }) => {
+    await createSongbook(page, 'Campfire');
+    await page.goto('songbooks');
+    await page.setViewportSize(PHONE);
+
+    const row = page
+      .getByTestId('songbook-row')
+      .filter({ hasText: 'Campfire' });
+    const id = await row.getAttribute('data-song-id');
+    await page.getByTestId(`open-${id}`).click();
+
+    await expect(page).toHaveURL(/\/songbooks\/.+$/);
+  });
+
   // The title page shows the songbook's own fields, not any song's.
   test('the previewed title page shows the songbook title-page fields', async ({
     page,
