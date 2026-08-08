@@ -1,17 +1,26 @@
-// Shared domain loader for the song-from-image skill scripts.
+// Shared domain loader for the song skill scripts — the IN-REPO half.
 //
-// Loads the REPO'S OWN domain layer (the same pure code the app ships) through
-// jiti, and pairs it with a tonal-backed ChordTheory that mirrors the app's
-// TonalChordTheory exactly. Everything the CLIs need — the parser, the settings
-// registry, the schema version — comes from here, so the scripts can never drift
-// from the shipped grammar or schema.
+// ┌─ TWO FILES, ONE NAME ────────────────────────────────────────────────────┐
+// │ This file loads the repo's own TypeScript through jiti. The distributable │
+// │ skill ships a file at the same path that is instead a dependency-free     │
+// │ BUNDLE of exactly these exports (built by `nx run skill:gen-skill-bundle`,│
+// │ see tools/skill/). Same specifier, two implementations — which is what    │
+// │ lets `validate.mjs`, `merge-chordlines.mjs` and `build-import.mjs` be     │
+// │ byte-identical in the repo and in the zip: the scripts that ship are the  │
+// │ scripts that were tested, with no packaging rewrite in between.           │
+// │                                                                          │
+// │ Change what this file exports and you must change the bundle's entry too. │
+// └──────────────────────────────────────────────────────────────────────────┘
+//
+// Everything the CLIs need — the parser, the chord theory, the converter, the
+// settings registry, the schema version — comes from here, so the scripts can
+// never drift from the shipped grammar or schema.
 
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
-import { get as getChord } from '@tonaljs/chord';
-import { chroma } from '@tonaljs/note';
+import { toAchordeon as convert } from './to-achordeon.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -30,33 +39,32 @@ export function findRepoRoot(start = HERE) {
 }
 
 const repoRoot = findRepoRoot();
-const jiti = createJiti(import.meta.url);
-const domain = await jiti.import(
-  resolve(repoRoot, 'libs/shared/domain/src/index.ts'),
+const domainEntry = resolve(repoRoot, 'libs/shared/domain/src/index.ts');
+// The chord-theory lib imports the domain by its workspace alias; jiti resolves
+// node specifiers, not tsconfig paths, so it is told the one mapping it needs.
+const jiti = createJiti(import.meta.url, {
+  alias: { '@achordeon/shared/domain': domainEntry },
+});
+const domain = await jiti.import(domainEntry);
+const { TonalChordTheory } = await jiti.import(
+  resolve(repoRoot, 'libs/shared/chord-theory/src/index.ts'),
 );
 
 export const { parse, toEnglishNotation, SETTINGS, SCHEMA_VERSION } = domain;
 
-/** The app's real adapter logic (tonal-chord-theory.ts), Angular-free. */
-export const theory = {
-  parseChord(text) {
-    const symbol = toEnglishNotation(text);
-    const chord = getChord(symbol);
-    if (chord.empty || !chord.tonic) return null;
-    const root = chord.tonic;
-    const bass = chord.bass ? chord.bass : null;
-    let quality = symbol.startsWith(root) ? symbol.slice(root.length) : symbol;
-    if (bass) {
-      const slash = quality.lastIndexOf('/');
-      if (slash !== -1) quality = quality.slice(0, slash);
-    }
-    return { root, bass, quality };
-  },
-  noteChroma(note) {
-    const c = chroma(toEnglishNotation(note));
-    return Number.isFinite(c) ? c : null;
-  },
-};
+/**
+ * The app's real chord recogniser (ADR-0008's one `@tonaljs/*` importer).
+ *
+ * This used to be a hand-copied reimplementation living in this file, which meant
+ * the skill and the app could disagree about what counts as a chord — the one
+ * thing a syntax checker must never do. It is the shipped adapter now.
+ */
+export const theory = new TonalChordTheory();
+
+/** Somebody else's chord sheet → Achordeon markup, with the theory bound. */
+export function toAchordeon(text, options = {}) {
+  return convert(text, { theory, ...options });
+}
 
 /** Song-scope setting keys the SETTINGS registry allows (point 5 guardrail). */
 export const SONG_SETTING_KEYS = Object.keys(SETTINGS).filter((k) =>
@@ -70,8 +78,7 @@ export const SONGBOOK_SETTING_KEYS = Object.keys(SETTINGS).filter((k) =>
  * Parse `content` and summarise what the parser made of it. This is a SYNTAX
  * check — does the markup parse, what structure came out, which brackets are not
  * recognised as chords. It says nothing about whether the chords are musically
- * right or match the source image; that is the transcriber's job, not the
- * parser's.
+ * right or match the source; that is the transcriber's job, not the parser's.
  */
 export function inspect(content) {
   const ast = parse(content, theory);
