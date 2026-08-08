@@ -89,6 +89,39 @@ export class ImportHost {
         takeUntilDestroyed(),
       )
       .subscribe(() => void this.readFragment());
+
+    this.acceptLaunchedFiles();
+  }
+
+  /**
+   * A double-clicked `.achordeon` file, where the OS knows to send it here.
+   *
+   * The manifest's `file_handlers` entry is only half of it: registering the type
+   * makes the OS launch the installed app, and this is what actually receives the
+   * file it was launched with. Chromium desktop only — `launchQueue` is absent
+   * everywhere else, which is why this is a feature test and not a capability
+   * check, and harmless where it is missing.
+   */
+  private acceptLaunchedFiles(): void {
+    const launchQueue = (
+      globalThis as {
+        launchQueue?: {
+          setConsumer(
+            consume: (params: {
+              files: readonly FileSystemFileHandle[];
+            }) => void,
+          ): void;
+        };
+      }
+    ).launchQueue;
+    launchQueue?.setConsumer((params) => {
+      void (async () => {
+        const files = await Promise.all(
+          params.files.map((handle) => handle.getFile()),
+        );
+        await this.inbox.offer(files);
+      })();
+    });
   }
 
   protected async confirm(choice: ImportChoice): Promise<void> {

@@ -223,6 +223,7 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
         [count]="presenter.downloadIds().length"
         [busy]="presenter.isBusy()"
         [progress]="presenter.downloadProgress()"
+        [isShareLinkReady]="presenter.isShareLinkReady()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />

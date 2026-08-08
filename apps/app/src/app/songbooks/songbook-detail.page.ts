@@ -301,6 +301,7 @@ import { SongbookDetailPresenter } from './songbook-detail.presenter';
               [initial]="presenter.downloadInitial()"
               [busy]="presenter.isBusy()"
               [progress]="presenter.downloadProgress()"
+              [isShareLinkReady]="presenter.isShareLinkReady()"
               (chosen)="presenter.download($event)"
               (closed)="presenter.cancelDownload()"
             />

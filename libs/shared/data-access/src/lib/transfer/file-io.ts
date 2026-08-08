@@ -5,12 +5,28 @@
 // in the transfer layer that touch the DOM. Everything above them deals in
 // blobs and strings, which is what makes an export testable without a browser.
 
+/**
+ * The Achordeon file's registered type.
+ *
+ * The vendor tree is the right space for an unregistered vendor format, and the
+ * `+json` suffix means anything that has never heard of Achordeon can still tell
+ * the bytes are parseable JSON. Registering plain `application/json` instead
+ * would put our file handler in competition with every JSON reader installed, and
+ * which one wins a double-click would stop being our decision.
+ */
+export const ACHORDEON_MIME = 'application/vnd.achordeon+json';
+
+/** The extension that goes with it. `.json` is still accepted on the way in —
+ * every file already exported is one — but this is what Export writes. */
+export const ACHORDEON_EXTENSION = '.achordeon';
+
 /** Guess at the picker's file-type hint from the extension. */
 function mimeFor(filename: string, given: string): string {
   if (given) return given;
   const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
   return (
     {
+      [ACHORDEON_EXTENSION]: ACHORDEON_MIME,
       '.json': 'application/json',
       '.pdf': 'application/pdf',
       '.png': 'image/png',

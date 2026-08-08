@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
+  ShareLinkService,
   ImportInbox,
   SettingsStore,
   SongStore,
@@ -23,6 +24,7 @@ import type { SongRow } from '../shared/song-explorer';
 import { ListScrollMemory, UiStore } from '../shared/layout';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   PrintOptionsStore,
   composeSongbookChoice,
   toDevicePrintOptions,
@@ -95,6 +97,7 @@ export class SongbooksPresenter {
   }
 
   private readonly exporter = inject(ExportService);
+  private readonly shareLinks = inject(ShareLinkService);
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
@@ -669,8 +672,26 @@ export class SongbooksPresenter {
     return id === ALL_SONGS_ID || this.find(id) !== undefined;
   }
 
+  /** Whether the picked book fits in a link, or null while it is being measured
+   * — the length is only knowable once the payload is built. */
+  private readonly _shareLink = signal<string | null>(null);
+  private readonly _isShareLinkReady = signal<boolean | null>(null);
+  readonly isShareLinkReady = this._isShareLinkReady.asReadonly();
+
   openDownloadRow(id: string): void {
-    if (this.isTransferable(id)) this._downloadId.set(id);
+    if (!this.isTransferable(id)) return;
+    this._downloadId.set(id);
+    void this.prepareShareLink(id);
+  }
+
+  private async prepareShareLink(id: string): Promise<void> {
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
+    const link = await this.shareLinks.build({ songbookIds: [id] });
+    // A late answer must not speak for a book the dialog has since moved to.
+    if (this._downloadId() !== id) return;
+    this._shareLink.set(link.url);
+    this._isShareLinkReady.set(link.isShareable);
   }
 
   /** Ignored mid-render — the dialog hosts the progress until the file is done. */
@@ -678,6 +699,8 @@ export class SongbooksPresenter {
     if (this._isBusy()) return;
     this._downloadId.set(null);
     this._progress.set(null);
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
   }
 
   /**
@@ -693,6 +716,14 @@ export class SongbooksPresenter {
       return;
     }
     const { format } = choice;
+    if (format === SHARE_LINK_FORMAT) {
+      // Not saved to the print options, for the reason the data file is not:
+      // taking a link once is not a statement about paper.
+      const url = this._shareLink();
+      if (url !== null) await this.shareLinks.copy(url);
+      this._downloadId.set(null);
+      return;
+    }
     if (format === DATA_FORMAT) {
       // Not saved to the print options — see the detail presenter: taking the
       // data file once is not a statement about paper.

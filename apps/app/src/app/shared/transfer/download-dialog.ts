@@ -20,10 +20,12 @@ import {
   computed,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { Button, Dialog, Icon } from '../../primitives';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   type DownloadChoice,
   type DownloadFormat,
   type DownloadProgress,
@@ -106,6 +108,29 @@ interface FormatOption extends Option {
             >
               <app-icon name="download" />
               {{ downloadLabel }}
+            </button>
+          </div>
+
+          <!-- The same songs with nowhere to put the file: a link, on the
+               clipboard. Not an export — nothing lands on disk — but it answers
+               the same question, so it is asked here. -->
+          <div class="option">
+            <div class="text">
+              <span class="name">{{ shareLinkLabel }}</span>
+              <span class="hint">{{ shareLinkHint() }}</span>
+            </div>
+            <button
+              appButton
+              type="button"
+              variant="primary"
+              class="go"
+              [disabled]="!isShareable()"
+              [attr.aria-label]="shareLinkAriaLabel()"
+              data-testid="download-share-link"
+              (click)="copyLink()"
+            >
+              <app-icon name="transferOut" />
+              {{ isCopied() ? copiedLabel : copyLabel }}
             </button>
           </div>
         </div>
@@ -218,11 +243,60 @@ export class DownloadDialog {
    * layout pass the total is not yet known, so the spinner stands alone). */
   readonly progress = input<DownloadProgress | null>(null);
 
+  /**
+   * Whether the selection fits in a link.
+   *
+   * `null` while it is still being measured — the length is only knowable once
+   * the payload is actually built, so the dialog waits for the real number rather
+   * than counting songs. The row is offered either way; it is the button that
+   * waits.
+   */
+  readonly isShareLinkReady = input<boolean | null>(null);
+
   readonly chosen = output<DownloadChoice>();
   readonly closed = output<void>();
 
   /** Exposed for the template's one non-`@for` row. */
   protected readonly DATA_FORMAT = DATA_FORMAT;
+
+  /** Enabled once the link is built and short enough to survive being pasted. */
+  protected readonly isShareable = computed(
+    () => this.isShareLinkReady() === true,
+  );
+
+  /**
+   * Briefly true after a copy, so the button can say "Copied" — the same
+   * two-second flip the Audience link uses, and the only feedback a clipboard
+   * write ever gets.
+   */
+  protected readonly isCopied = signal(false);
+  private copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected copyLink(): void {
+    this.chosen.emit(SHARE_LINK_FORMAT);
+    this.isCopied.set(true);
+    if (this.copiedResetTimer !== null) clearTimeout(this.copiedResetTimer);
+    this.copiedResetTimer = setTimeout(() => this.isCopied.set(false), 2000);
+  }
+
+  /**
+   * **Disabled, never hidden, when the selection will not fit.** A greyed row
+   * that explains itself teaches the limit; a row that vanishes reads as a
+   * missing feature. It names the *selection*, so nobody reads it as a permanent
+   * restriction, and it says size rather than song count — the limit is length,
+   * and one long song can trip it where three short ones would not.
+   */
+  protected readonly shareLinkHint = computed(() => {
+    if (this.isShareLinkReady() === false)
+      return $localize`:@@download.link.tooBig:This selection is too big to share as a link. Download it instead.`;
+    return this.count() === 1
+      ? $localize`:@@download.link.hint:A link that opens this song in Achordeon, copied ready to paste. The song travels inside the link — nothing is uploaded.`
+      : $localize`:@@download.link.hintMany:A link that opens these songs in Achordeon, copied ready to paste. They travel inside the link — nothing is uploaded.`;
+  });
+
+  protected readonly shareLinkAriaLabel = computed(
+    () => `${this.copyLabel}: ${this.shareLinkLabel}`,
+  );
 
   /** The spinner's caption: a bare "Generating…" until there is a count, then
    * "Generating n of N…" as each song lands. */
@@ -296,6 +370,9 @@ export class DownloadDialog {
 
   protected readonly cancelLabel = $localize`:@@download.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@download.go:Download`;
+  protected readonly shareLinkLabel = $localize`:@@download.link:Link`;
+  protected readonly copyLabel = $localize`:@@download.link.copy:Copy link`;
+  protected readonly copiedLabel = $localize`:@@download.link.copied:Copied`;
 
   /** The button repeats "Download" for every row, so its accessible name says
    * which format — the visible word alone would read "Download" five times. */

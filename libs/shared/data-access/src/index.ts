@@ -23,6 +23,7 @@ export * from './lib/transfer/embedded-metadata';
 export * from './lib/transfer/export-service';
 export * from './lib/transfer/import-service';
 export * from './lib/transfer/share-link';
+export * from './lib/transfer/share-link-service';
 export * from './lib/transfer/import-inbox';
 export * from './lib/transfer/backup-service';
 export * from './lib/lobby/supabase-client';

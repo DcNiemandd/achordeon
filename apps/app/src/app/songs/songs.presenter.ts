@@ -8,6 +8,7 @@ import {
   DownloadService,
   ExportService,
   ImportInbox,
+  ShareLinkService,
   ParserService,
   RenderService,
   SessionStore,
@@ -27,6 +28,7 @@ import {
 } from '../shared/song-explorer';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   type DownloadChoice,
   type DownloadProgress,
 } from '../shared/transfer';
@@ -71,6 +73,7 @@ export class SongsPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly shareLinks = inject(ShareLinkService);
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
@@ -495,16 +498,45 @@ export class SongsPresenter {
   /** Live for the bulk bar's Download button. */
   readonly hasBarTransfer = computed(() => this.barIds().length > 0);
 
+  /**
+   * Whether the selection fits in a link, or null while it is being measured.
+   *
+   * Built when the dialog opens, because the length is only knowable once the
+   * payload exists — the dialog measures the real thing rather than guessing from
+   * a song count.
+   */
+  private readonly _shareLink = signal<string | null>(null);
+  private readonly _isShareLinkReady = signal<boolean | null>(null);
+  readonly isShareLinkReady = this._isShareLinkReady.asReadonly();
+
   /** The bulk bar's Download: acts on the selection-or-current. */
   openDownload(): void {
     this._rowTarget.set(null);
-    if (this.barIds().length > 0) this._isDownloadOpen.set(true);
+    if (this.barIds().length > 0) {
+      this._isDownloadOpen.set(true);
+      void this.prepareShareLink();
+    }
   }
 
   /** A row's menu Download: acts on that one row. */
   openDownloadRow(id: string): void {
     this._rowTarget.set(id);
     this._isDownloadOpen.set(true);
+    void this.prepareShareLink();
+  }
+
+  private async prepareShareLink(): Promise<void> {
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
+    const ids = this.downloadIds();
+    if (ids.length === 0) return;
+    const link = await this.shareLinks.build({ songIds: ids });
+    // The dialog may have been closed and reopened on a different selection
+    // while this was building; a late answer must not speak for the new one.
+    if (!this._isDownloadOpen() || this.downloadIds().join() !== ids.join())
+      return;
+    this._shareLink.set(link.url);
+    this._isShareLinkReady.set(link.isShareable);
   }
 
   /** Ignored while a download is in flight: there is nothing to cancel back to
@@ -514,6 +546,8 @@ export class SongsPresenter {
     this._isDownloadOpen.set(false);
     this._rowTarget.set(null);
     this._progress.set(null);
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
   }
 
   /**
@@ -533,6 +567,14 @@ export class SongsPresenter {
     const ids = this.downloadIds();
     if (ids.length === 0) {
       this.cancelDownload();
+      return;
+    }
+    // The link is already built — it had to be, for the dialog to know whether
+    // to offer it — so this is a clipboard write and nothing else. The dialog
+    // stays open and says "Copied"; there is no file and nothing to wait for.
+    if (choice === SHARE_LINK_FORMAT) {
+      const url = this._shareLink();
+      if (url !== null) await this.shareLinks.copy(url);
       return;
     }
     await this.busy(async () => {

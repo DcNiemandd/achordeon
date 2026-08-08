@@ -8,6 +8,14 @@
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#c13515",
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/vnd.achordeon+json": [".achordeon"]
+      }
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",

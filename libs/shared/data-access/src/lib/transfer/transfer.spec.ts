@@ -119,10 +119,12 @@ describe('ExportService', () => {
     const { exporter } = setup([song('a', { name: 'Šárka & co' }), song('b')]);
     const one = await exporter.snapshot({ songIds: ['a'] });
     expect(exporter.filename(one)).toBe(
-      `achordeon-Sarka-co-${fileDate()}.json`,
+      `achordeon-Sarka-co-${fileDate()}.achordeon`,
     );
     const many = await exporter.snapshot({ songIds: ['a', 'b'] });
-    expect(exporter.filename(many)).toBe(`achordeon-export-${fileDate()}.json`);
+    expect(exporter.filename(many)).toBe(
+      `achordeon-export-${fileDate()}.achordeon`,
+    );
   });
 });
 

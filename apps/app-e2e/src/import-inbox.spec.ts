@@ -11,6 +11,7 @@
 // Selects only on `data-testid`, like every other suite here.
 
 import { expect, test, type Page } from '@playwright/test';
+import { createSong } from './create-song';
 
 /** The shortest valid Achordeon file: one song, nothing but what it needs. */
 function envelope(...names: string[]): string {
@@ -140,6 +141,39 @@ test.describe('a link carrying a song', () => {
     await expect(page.getByTestId('import-error-dialog')).toBeVisible();
     await page.getByTestId('import-error-close').click();
     await expect(page.getByTestId('song-row')).toHaveCount(0);
+  });
+});
+
+test.describe('sharing a song as a link', () => {
+  test('the link the app writes is the link the app reads', async ({
+    page,
+    context,
+  }) => {
+    // The round trip worth having above all the others: build a link with §5,
+    // open it with §4, and assert the song that lands is the song that left. It
+    // exercises the encoder, the reader, `normalise`, `migrate` and `planImport`
+    // in one test.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await freshLibrary(page);
+    await createSong(page, 'Shared');
+
+    await page.getByTestId('songs-download').click();
+    const copy = page.getByTestId('download-share-link');
+    await expect(copy).toBeEnabled();
+    await copy.click();
+
+    const url = await page.evaluate(() => navigator.clipboard.readText());
+    expect(url).toContain('#z1=');
+
+    // A different library entirely — the link has to carry the song, not point
+    // at it.
+    await freshLibrary(page);
+    await expect(page.getByTestId('song-row')).toHaveCount(0);
+    await page.goto(`songs${new URL(url).hash}`);
+
+    await expect(page.getByTestId('import-summary')).toBeVisible();
+    await page.getByTestId('import-confirm').click();
+    await expect(row(page, 'Shared')).toHaveCount(1);
   });
 });
 
