@@ -11,8 +11,22 @@
         "command": "pnpm --filter @achordeon/docs run start"
       }
     },
+    "gen-json-schema": {
+      "executor": "nx:run-commands",
+      "_comment": "The published import schema (plan §1, ADR-0014). Generated from the domain's own SETTINGS registry and SCHEMA_VERSION, so it can never describe last month's shape. Lands in static/, which Docusaurus copies to the site root — https://achordeon.eu/achordeon.schema.json, one stable URL with no version in the path.",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-json-schema.mjs",
+        "{workspaceRoot}/libs/shared/domain/src/lib/*.ts"
+      ],
+      "outputs": ["{projectRoot}/static/achordeon.schema.json"],
+      "options": {
+        "command": "node tools/gen-json-schema.mjs"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
+      "dependsOn": ["gen-json-schema"],
       "outputs": ["{projectRoot}/build"],
       "options": {
         "command": "pnpm --filter @achordeon/docs run build"

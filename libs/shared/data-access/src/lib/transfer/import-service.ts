@@ -21,9 +21,11 @@ import {
   type SnapshotEnvelope,
 } from '@achordeon/shared/domain';
 import { BootGate } from '../persistence/boot-gate';
+import { ParserService } from '../parser/parser-service';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
 import { readTextFile } from './file-io';
 import { readEmbeddedSnapshot } from './embedded-metadata';
+import { normalise, type InboundEnvelope } from './normalise';
 
 /** A file that could not be read as a library. */
 export class ImportError extends Error {
@@ -45,6 +47,9 @@ export class ImportService {
   private readonly songs = inject(SONG_REPOSITORY);
   private readonly songbooks = inject(SONGBOOK_REPOSITORY);
   private readonly boot = inject(BootGate);
+  /** Only ever to re-derive `Song.cache`, which is derived state and never
+   * believed off a file (ADR-0014). */
+  private readonly parser = inject(ParserService);
 
   /**
    * A picked file as a migrated envelope.
@@ -95,12 +100,18 @@ export class ImportService {
   }
 
   /**
-   * Text → envelope, with the shape actually checked.
+   * Text → envelope, with the shape actually checked and then completed.
    *
    * A file is untrusted input, and `JSON.parse` will happily hand back a number.
    * This is the boundary where "some text a user picked" becomes a typed value,
    * so it is where the check belongs — not three layers down where the failure
    * would read as a bug in the migrator.
+   *
+   * Two steps, and the order is the whole of ADR-0014: `isEnvelope` decides
+   * whether this is one of ours at all, and `normalise` then fills in what a
+   * **hand-written** envelope legitimately left out. The gate does not move and
+   * does not gain a rival — normalisation is a step inside it, before `migrate`,
+   * which every inbound path still runs (ADR-0007).
    */
   private parse(raw: string): SnapshotEnvelope {
     let value: unknown;
@@ -110,11 +121,27 @@ export class ImportService {
       throw new ImportError('unreadable');
     }
     if (!isEnvelope(value)) throw new ImportError('unreadable');
-    return value;
+    return normalise(value, {
+      newId: () => crypto.randomUUID(),
+      now: Date.now(),
+      derive: (content) => {
+        const ast = this.parser.parse(content);
+        return { title: ast.title ?? '', subtitle: ast.subtitle ?? '' };
+      },
+    });
   }
 }
 
-function isEnvelope(value: unknown): value is SnapshotEnvelope {
+/**
+ * Is this one of ours?
+ *
+ * Deliberately as little as it can be: a version to migrate from and the two
+ * collections an import reads. Everything a *complete* record carries is checked
+ * nowhere, because demanding it would reject exactly the hand-written envelopes
+ * the published schema exists to invite (ADR-0014). What the gate does not
+ * establish, `normalise` supplies.
+ */
+function isEnvelope(value: unknown): value is InboundEnvelope {
   if (typeof value !== 'object' || value === null) return false;
   const envelope = value as Partial<SnapshotEnvelope>;
   const data = envelope.data;

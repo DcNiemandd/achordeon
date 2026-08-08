@@ -18,6 +18,9 @@ apps/app/src/app/supabase.config.ts
 # Generated from the HEAD commit date via apps/app/tools/gen-build-info.mjs
 apps/app/src/app/shared/build-info.ts
 
+# Generated from the domain's SETTINGS registry via tools/gen-json-schema.mjs
+apps/docs/static/achordeon.schema.json
+
 # Local env (committed template is .env.local.example)
 .env.local
 .env
