@@ -78,7 +78,71 @@ export async function saveFile(
     }
   }
 
+  // The service worker first, where one is running: it can hand the bytes back
+  // as a real HTTP attachment, which is the only form of "this is a file" no
+  // browser argues with (see below). Falls through to the anchor when there is
+  // no worker — the first load after an install, a dev build, a test.
+  if (await downloadViaWorker(blob, filename)) return;
+
   downloadViaAnchor(blob, filename);
+}
+
+/** What the worker listens for, and how long the page waits for its answer
+ * before giving up and doing it the old way. */
+const DOWNLOAD_MESSAGE = 'achordeon:download';
+const WORKER_TIMEOUT = 2_000;
+
+/**
+ * Save through the service worker: hand it the blob, get back a same-origin URL
+ * that answers with `Content-Disposition: attachment`, and click that.
+ *
+ * **This is what fixes the PDF on Firefox for Android.** An anchor pointed at a
+ * `blob:` URL asks the browser to save something it is also perfectly capable of
+ * opening, and Firefox — in an installed PWA, where the octet-stream retype
+ * below is not enough to settle the argument either — opens it: the download
+ * attribute loses, the URL is navigated to, and a window with no tab strip has
+ * nowhere to put the result but a blank screen. A PNG survives that (nothing
+ * wants to render a PNG out from under you); a PDF does not.
+ *
+ * An HTTP response saying `attachment` is not ambiguous in the same way. It is
+ * the header the whole download stack, Android's own download manager included,
+ * exists to obey.
+ *
+ * Returns false rather than throwing when there is no worker, when the worker is
+ * an older version that does not know this message, or when it does not answer
+ * in time — every one of which is a reason to try the anchor, not to fail.
+ */
+async function downloadViaWorker(
+  blob: Blob,
+  filename: string,
+): Promise<boolean> {
+  const worker = globalThis.navigator?.serviceWorker?.controller;
+  if (!worker) return false;
+
+  const path = await new Promise<string | null>((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(null), WORKER_TIMEOUT);
+    channel.port1.onmessage = (
+      event: MessageEvent<{ path?: string | null }>,
+    ) => {
+      clearTimeout(timer);
+      resolve(event.data?.path ?? null);
+    };
+    try {
+      // The blob is transferred by structured clone, not read here: the bytes
+      // never touch the main thread again after this line.
+      worker.postMessage({ type: DOWNLOAD_MESSAGE, blob, filename }, [
+        channel.port2,
+      ]);
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
+  });
+
+  if (!path) return false;
+  clickDownload(path, filename);
+  return true;
 }
 
 /** `.pdf`, `.json` … — the extension including the dot, or empty. */
@@ -125,8 +189,17 @@ function asDownloadable(blob: Blob): Blob {
  */
 function downloadViaAnchor(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(asDownloadable(blob));
+  clickDownload(url, filename);
+  // Not synchronous with the click: revoking immediately kills the download in
+  // Firefox, which reads the URL on a later turn of the event loop.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** The click itself — shared by the worker route and the blob URL, because
+ * where the bytes come from is the only thing that differs between them. */
+function clickDownload(href: string, filename: string): void {
   const link = document.createElement('a');
-  link.href = url;
+  link.href = href;
   link.download = filename;
   link.rel = 'noopener';
   // In the layout but not of it: a moment of an invisible anchor at the end of
@@ -135,9 +208,6 @@ function downloadViaAnchor(blob: Blob, filename: string): void {
   document.body.append(link);
   link.click();
   setTimeout(() => link.remove());
-  // Not synchronous with the click either: revoking immediately kills the
-  // download in Firefox, which reads the URL on a later turn of the event loop.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /** Read a picked file as text (the Export JSON path). */

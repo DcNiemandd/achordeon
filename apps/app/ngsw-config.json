@@ -15,7 +15,8 @@
           "/media/**",
           "/locale/*.json",
           "/*.css",
-          "/*.js"
+          "/*.js",
+          "!/sw.js"
         ]
       }
     },
