@@ -513,14 +513,33 @@ reaches every phone.
 Worth revisiting if the phone turns out to be where imports actually happen —
 text-only, without the file half, is a small change on its own.
 
-## Open
+## Settled while building
 
-- Whether Export's default filename changes to `.achordeon`, or the extension is
-  only an additional thing the picker accepts.
-- What a cancelled preview means for the rest of a dropped queue (§7).
-- The length at which a writer gives up and offers a file instead. Around 8k
-  characters of whole URL is a starting point, but it is a number to test against a
-  real chat client rather than derive.
-- Three names with no consequences attached, left for whoever builds the thing: the
-  skill's zip filename, the Custom GPT and Gem names (§8), and the dialog copy for
-  `flaggedSongs` (§9).
+All six, and the reasoning where there was any.
+
+- **Export writes `.achordeon`.** The extension is not only something the picker
+  accepts — every new export gets the file-handler association for free and the
+  format has a visible identity. `.json` stays in the picker, because every file
+  already exported is one.
+- **Cancel skips one file; a second button cancels the rest** (§7). Cancel means
+  "not this one", so a five-file drop is triaged in one pass — but that needs a way
+  out, or leaving costs five clicks. The second button appears only when there is
+  something behind the current file, and the first one's label changes to say what
+  it does.
+- **8000 characters of whole URL** (§5/§4), one named constant, deliberately a
+  conservative floor across chat clients, mail and address bars rather than a
+  derived number. Raising it is a one-line change once it has been tested against a
+  real client.
+- The three names: the zip is `achordeon-song.zip`, and the Custom GPT and the Gem
+  are both **Achordeon Song** — the same name as the skill, because it is the same
+  thing in three wrappers. The `flaggedSongs` line reads "Achordeon could not make
+  sense of the markup in _n_ of these songs. They will still import — open them
+  afterwards to check."
+
+Two things the plan asked to be checked rather than assumed, and their answers:
+
+- **§9's cost.** A 200-song export — 175 KB of content — parses in ~28 ms, so the
+  whole file is checked rather than a capped sample or a lazy count.
+- **§3's sandbox condition.** The bundle is 92 KB with no imports at all, and the
+  build fails on a surviving bare specifier rather than leaving it to be found in
+  somebody else's assistant.
