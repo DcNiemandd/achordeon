@@ -86,6 +86,7 @@ const REQUIRED = [
   'toEnglishNotation',
   'SETTINGS',
   'SCHEMA_VERSION',
+  'ACHORDEON_URL',
   'theory',
   'toAchordeon',
   'SONG_SETTING_KEYS',

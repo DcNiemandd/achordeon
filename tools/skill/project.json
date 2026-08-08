@@ -22,9 +22,34 @@
         "command": "node tools/gen-skill-bundle.mjs"
       }
     },
+    "gen-skill-zip": {
+      "executor": "nx:run-commands",
+      "_comment": "The three wrappers the skill ships as: a Claude skill, a Custom GPT knowledge bundle, and a Gem's instructions. One source, three hosts that can do different amounts. They land in the docs site's static/, which Docusaurus copies to the site root.",
+      "dependsOn": [
+        "gen-skill-bundle",
+        { "projects": ["docs"], "target": "gen-json-schema" }
+      ],
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-skill-zip.mjs",
+        "{projectRoot}/*.template.md",
+        "{projectRoot}/manifest.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/*.mjs",
+        "{workspaceRoot}/dist/skill/_domain.mjs",
+        "{workspaceRoot}/apps/docs/static/achordeon.schema.json"
+      ],
+      "outputs": [
+        "{workspaceRoot}/apps/docs/static/achordeon-song.zip",
+        "{workspaceRoot}/apps/docs/static/achordeon-song-gpt.zip",
+        "{workspaceRoot}/apps/docs/static/achordeon-song-gem.md"
+      ],
+      "options": {
+        "command": "node tools/gen-skill-zip.mjs"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
-      "dependsOn": ["gen-skill-bundle"],
+      "dependsOn": ["gen-skill-bundle", "gen-skill-zip"],
       "cache": true,
       "inputs": [
         "{workspaceRoot}/.claude/skills/song-core/scripts/*.mjs",

@@ -26,7 +26,10 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "dependsOn": ["gen-json-schema"],
+      "dependsOn": [
+        "gen-json-schema",
+        { "projects": ["skill"], "target": "gen-skill-zip" }
+      ],
       "outputs": ["{projectRoot}/build"],
       "options": {
         "command": "pnpm --filter @achordeon/docs run build"

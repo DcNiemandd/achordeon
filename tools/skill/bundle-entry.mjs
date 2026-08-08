@@ -20,6 +20,7 @@ import {
   toEnglishNotation,
   SETTINGS,
   SCHEMA_VERSION,
+  ACHORDEON_URL,
 } from '../../libs/shared/domain/src/index.ts';
 import { TonalChordTheory } from '../../libs/shared/chord-theory/src/index.ts';
 import { makeDomain } from '../../.claude/skills/song-core/scripts/_domain-core.mjs';
@@ -35,7 +36,8 @@ export const {
   toEnglishNotation,
   SETTINGS,
   SCHEMA_VERSION,
+  ACHORDEON_URL,
   theory: new TonalChordTheory(),
 });
 
-export { parse, toEnglishNotation, SETTINGS, SCHEMA_VERSION };
+export { parse, toEnglishNotation, SETTINGS, SCHEMA_VERSION, ACHORDEON_URL };

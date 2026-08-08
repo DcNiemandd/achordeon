@@ -53,6 +53,7 @@ export const {
   toEnglishNotation,
   SETTINGS,
   SCHEMA_VERSION,
+  ACHORDEON_URL,
   // The app's real chord recogniser (ADR-0008's one `@tonaljs/*` importer). This
   // used to be a hand-copied reimplementation living in this file, which meant the
   // skill and the app could disagree about what counts as a chord — the one thing
@@ -67,5 +68,6 @@ export const {
   toEnglishNotation: domain.toEnglishNotation,
   SETTINGS: domain.SETTINGS,
   SCHEMA_VERSION: domain.SCHEMA_VERSION,
+  ACHORDEON_URL: domain.ACHORDEON_URL,
   theory: new TonalChordTheory(),
 });

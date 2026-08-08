@@ -36,6 +36,7 @@
 //   node build-import.mjs manifest.json                 # → JSON on stdout
 //   node build-import.mjs manifest.json -o import.json  # → file
 //   cat manifest.json | node build-import.mjs -         # stdin
+//   node build-import.mjs manifest.json --link          # + a link to open it with
 //
 // If the -o file already exists, songs are MERGED into it (kept by name, new ones
 // added, songbook re-ordered by file name) — so a folder's import file grows one
@@ -44,22 +45,49 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import {
   inspect,
+  ACHORDEON_URL,
   SCHEMA_VERSION,
   SONG_SETTING_KEYS,
   SONGBOOK_SETTING_KEYS,
 } from './_domain.mjs';
 
+/**
+ * The app reads a link's fragment wherever the user lands, so a writer appends
+ * one to the app's own URL and stops — there is no route to get wrong.
+ *
+ * `z1` is gzip then base64url, the same form the app writes. The reader branches
+ * on WHICH parameter carries the payload, never on the bytes, so the plain `j1`
+ * form stays available for a writer with no compressor.
+ *
+ * A URL much past this length is cut short somewhere on the way and arrives
+ * unreadable; the caller is told rather than handed a link that will not work.
+ */
+const SHARE_LINK_MAX_URL = 8000;
+
+function shareLink(json) {
+  const payload = gzipSync(Buffer.from(json, 'utf8'))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `${ACHORDEON_URL}#z1=${payload}`;
+}
+
 // --- args ---
 const args = process.argv.slice(2);
 const outIdx = args.indexOf('-o');
 const outFile = outIdx !== -1 ? args[outIdx + 1] : null;
+const wantsLink = args.includes('--link');
 // Guard the `outIdx + 1` arithmetic: with no -o, outIdx is -1 and its "value slot"
 // would be 0 — the manifest's own position.
 const input =
-  args.find((a, i) => a !== '-o' && (outIdx === -1 || i !== outIdx + 1)) ??
-  null;
+  args.find(
+    (a, i) =>
+      a !== '-o' && a !== '--link' && (outIdx === -1 || i !== outIdx + 1),
+  ) ?? null;
 if (!input) {
   console.error(
     'usage: node build-import.mjs <manifest.json|-> [-o import.json]',
@@ -238,10 +266,15 @@ if (manifest.songbook || existingBook) {
 }
 
 const envelope = {
+  // First, so a file opened in a text editor says what it is before it says
+  // anything else.
+  app: ACHORDEON_URL,
   schemaVersion: SCHEMA_VERSION,
-  deviceId: 'achordeon-skill-import',
+  // Human-readable, so it can never collide with a real device uuid, and legible
+  // as a breadcrumb wherever it surfaces later in sync.
+  deviceId: 'achordeon-skill',
   updatedAt: now,
-  data: { user: [], songs, songbooks },
+  data: { songs, songbooks },
 };
 
 const json = JSON.stringify(envelope, null, 2);
@@ -256,4 +289,20 @@ if (outFile) {
     `${songs.length} song(s)${songbooks.length ? `, 1 songbook` : ''}, schemaVersion ${SCHEMA_VERSION}. JSON on stdout ↓`,
   );
   process.stdout.write(json + '\n');
+}
+
+// The link, for handing the song straight to a person rather than a file. On
+// stderr with the rest of the report, so `-o`-less stdout stays the JSON alone.
+if (wantsLink) {
+  const url = shareLink(json);
+  console.error('\n' + '─'.repeat(48));
+  if (url.length > SHARE_LINK_MAX_URL) {
+    console.error(
+      `Too big for a link: ${url.length} characters, and much past ${SHARE_LINK_MAX_URL} gets cut short on the way.`,
+    );
+    console.error('Hand over the file instead.');
+  } else {
+    console.error(`Link (${url.length} characters) — opens in Achordeon:`);
+    console.error(url);
+  }
 }
