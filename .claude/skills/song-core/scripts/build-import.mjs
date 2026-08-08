@@ -18,12 +18,19 @@
 //     "songs": [
 //       {
 //         "name": "Vizovice",              // library label (defaults to Title, then "Song")
-//         "content": "* Vizovice\n** Fleret\n...",   // Achordeon markup
+//         "content": "* Vizovice\n** Fleret\n...",   // Achordeon markup, inline, OR:
+//         "contentFile": "…/Vizovice.txt", // …a file holding it (preferred)
 //         "favorite": false,               // optional
 //         "settings": { "columns": 1 }     // optional song-scope
 //       }
 //     ]
 //   }
+//
+// `contentFile` is how a song whose markup already lives in a file gets built
+// without that markup ever passing through a model's context or output — the
+// builder reads it off disk itself. Absolute paths are used as given; relative ones
+// resolve against the manifest's own directory (the cwd when the manifest is piped
+// in on stdin). Give exactly one of `content` / `contentFile`.
 //
 // Usage:
 //   node build-import.mjs manifest.json                 # → JSON on stdout
@@ -35,6 +42,7 @@
 // batch at a time. Name that file after the folder: -o "<Folder>.json".
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
   inspect,
@@ -47,7 +55,11 @@ import {
 const args = process.argv.slice(2);
 const outIdx = args.indexOf('-o');
 const outFile = outIdx !== -1 ? args[outIdx + 1] : null;
-const input = args.find((a, i) => a !== '-o' && i !== outIdx + 1) ?? null;
+// Guard the `outIdx + 1` arithmetic: with no -o, outIdx is -1 and its "value slot"
+// would be 0 — the manifest's own position.
+const input =
+  args.find((a, i) => a !== '-o' && (outIdx === -1 || i !== outIdx + 1)) ??
+  null;
 if (!input) {
   console.error(
     'usage: node build-import.mjs <manifest.json|-> [-o import.json]',
@@ -56,6 +68,9 @@ if (!input) {
 }
 const rawManifest =
   input === '-' ? readFileSync(0, 'utf8') : readFileSync(input, 'utf8');
+// Relative `contentFile` paths are read against the manifest's own directory, so a
+// manifest and the files it points at can be moved around together.
+const manifestDir = input === '-' ? process.cwd() : dirname(resolve(input));
 
 let manifest;
 try {
@@ -89,12 +104,49 @@ console.error('─'.repeat(48));
 console.error('Building Achordeon import');
 console.error('─'.repeat(48));
 
-const newSongs = manifest.songs.map((s, i) => {
-  if (typeof s.content !== 'string' || s.content.trim() === '') {
-    console.error(`Song #${i + 1} has no "content".`);
+/** Drop a leading byte-order mark, which a text editor may have left on the file. */
+function stripBom(text) {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+/** Markup for a song entry: inline `content`, or read from `contentFile`. */
+function contentOf(s, i) {
+  const inline = typeof s.content === 'string' && s.content.trim() !== '';
+  const fromFile = typeof s.contentFile === 'string' && s.contentFile !== '';
+  if (inline && fromFile) {
+    console.error(
+      `Song #${i + 1} has both "content" and "contentFile" — give exactly one.`,
+    );
     process.exit(1);
   }
-  const info = inspect(s.content);
+  if (inline) return s.content;
+  if (!fromFile) {
+    console.error(`Song #${i + 1} has no "content" and no "contentFile".`);
+    process.exit(1);
+  }
+  const path = isAbsolute(s.contentFile)
+    ? s.contentFile
+    : resolve(manifestDir, s.contentFile);
+  let text;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch (e) {
+    console.error(
+      `Song #${i + 1}: cannot read contentFile ${path}: ${e.message}`,
+    );
+    process.exit(1);
+  }
+  text = stripBom(text).replace(/\r\n?/g, '\n');
+  if (text.trim() === '') {
+    console.error(`Song #${i + 1}: contentFile ${path} is empty.`);
+    process.exit(1);
+  }
+  return text;
+}
+
+const newSongs = manifest.songs.map((s, i) => {
+  const content = contentOf(s, i);
+  const info = inspect(content);
   const name = (s.name ?? info.title ?? 'Song').trim() || 'Song';
 
   console.error(`\n• ${name}`);
@@ -114,7 +166,7 @@ const newSongs = manifest.songs.map((s, i) => {
     updatedAt: now,
     deletedAt: null,
     name,
-    content: s.content,
+    content,
     favorite: s.favorite === true,
     settings: pickSettings(s.settings, SONG_SETTING_KEYS, `song "${name}"`),
     cache: info.cache, // DERIVED via the real parser — matches what the app recomputes on save

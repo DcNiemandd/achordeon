@@ -104,10 +104,13 @@ out and the song takes the shape I chose in my own settings.
 
 1. **Settings**: a table of the settings you chose, with one line of reasoning
    each, then your list of corrections and uncertain chords.
-2. **Content**: the markup, in one code block, ready to copy.
-3. **Import file**: the JSON below, filled in. Offer it as a `.json` file to
+2. **Import file**: the JSON below, filled in. Offer it as a `.json` file to
    download if you are able to make files, otherwise print it in one code block
    and I will save it myself.
+
+Do not write the song out on its own, outside the import file. I have the photo,
+so the words are the one thing I do not need twice, and printing them is where an
+answer gets stopped part of the way through - which loses me the import file too.
 
 ```json
 {
@@ -134,8 +137,8 @@ out and the song takes the shape I chose in my own settings.
 }
 ```
 
-- `content` is the same markup as #2, as a single JSON string: `\n` for line
-  breaks, `\"` for quotes.
+- `content` is the markup, as a single JSON string: `\n` for line breaks, `\"`
+  for quotes.
 - `id` is any random UUID. The three time fields are the current time in
   milliseconds since 1970 (a 13-digit number).
 - `name` is my label for the song in the library, so use the title.
@@ -151,8 +154,8 @@ out and the song takes the shape I chose in my own settings.
 
 ## 3. Import the file
 
-You get three things back - a settings table, the song text, and the import file.
-The import file is the one you need, it has the other two in it.
+You get two things back - a settings table and the import file. The import file is
+the one you need, the song and the settings are both inside it.
 
 - save it with a name ending in `.json` - take the download if the chatbot offers
   one, otherwise copy the JSON code block into a plain text file
@@ -160,8 +163,10 @@ The import file is the one you need, it has the other two in it.
 - the [rules of importing](/export-import.mdx#import) are the same as for any
   other import
 
-The other way round, without a file: create a new song, paste the song text into
-the [editor](/songs/editing.mdx), and set the settings from the table by hand.
+The other way round, without importing: the song text is inside the file, on the
+`content` line. Open the file in any text editor, copy that text into a new song
+in the [editor](/songs/editing.mdx), turn every `\n` back into a line break, and
+set the settings from the table by hand.
 
 :::note[Check the chords]
 The chatbot reads what it sees and it can be wrong - a chord one letter off, a

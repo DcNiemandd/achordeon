@@ -103,10 +103,13 @@ nastavený u sebe.
 
 1. **Nastavení**: tabulku nastavení, která jsi zvolil, u každého jednu řádku
    odůvodnění, a pak seznam oprav a nejistých akordů.
-2. **Obsah**: značkování v jednom bloku kódu, připravené ke zkopírování.
-3. **Importní soubor**: JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
+2. **Importní soubor**: JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
    ho jako soubor `.json` ke stažení, jinak ho vypiš v jednom bloku kódu a uložím
    si ho sám.
+
+Nevypisuj text písničky zvlášť, mimo importní soubor. Fotku mám, takže slova jsou
+jediná věc, kterou nepotřebuju dvakrát, a právě na jejich vypisování se odpověď
+zastaví v půlce - a s ní přijdu i o importní soubor.
 
 ```json
 {
@@ -133,8 +136,8 @@ nastavený u sebe.
 }
 ```
 
-- `content` je stejné značkování jako v bodě 2, jako jeden JSON string: `\n` pro
-  zlomy řádků, `\"` pro uvozovky.
+- `content` je značkování, jako jeden JSON string: `\n` pro zlomy řádků, `\"` pro
+  uvozovky.
 - `id` je libovolné náhodné UUID. Tři časová pole jsou aktuální čas v
   milisekundách od roku 1970 (třináctimístné číslo).
 - `name` je můj štítek písničky v knihovně, použij název.
@@ -150,8 +153,8 @@ nastavený u sebe.
 
 ## 3. Naimportujte soubor
 
-Vrátí se vám tři věci - tabulka nastavení, text písničky a importní soubor.
-Potřebujete ten soubor, ostatní dvě věci jsou v něm.
+Vrátí se vám dvě věci - tabulka nastavení a importní soubor. Potřebujete ten
+soubor, písnička i nastavení jsou v něm.
 
 - uložte ho pod jménem, které končí na `.json` - když chatbot nabídne stažení,
   vezměte ho, jinak zkopírujte blok s JSONem do obyčejného textového souboru
@@ -159,8 +162,10 @@ Potřebujete ten soubor, ostatní dvě věci jsou v něm.
 - [pravidla importu](/export-import.mdx#import) jsou stejná jako u každého jiného
   importu
 
-Druhá cesta, bez souboru: vytvořte novou písničku, vložte text písničky do
-[editoru](/songs/editing.mdx) a nastavení nastavte podle tabulky ručně.
+Druhá cesta, bez importu: text písničky je v souboru, na řádku `content`. Otevřete
+soubor v libovolném textovém editoru, text zkopírujte do nové písničky v
+[editoru](/songs/editing.mdx), každé `\n` vraťte zpátky na zlom řádku a nastavení
+nastavte podle tabulky ručně.
 
 :::note[Zkontrolujte akordy]
 Chatbot čte to, co vidí, a může se mýlit - akord o písmeno vedle, slovo špatně
