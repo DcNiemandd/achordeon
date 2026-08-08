@@ -6,8 +6,25 @@
   "tags": ["type:tool"],
   "_comment": "The distributable skill: the build that turns this repo's own domain into something an assistant can carry, and the tests over the scripts that ride along. The scripts themselves live where the repo's skills already keep them (.claude/skills/song-core/scripts) — the point of the packaging is that the file that ships IS the file that was tested, so nothing is copied into a staging folder to be tested twice.",
   "targets": {
+    "gen-skill-bundle": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-skill-bundle.mjs",
+        "{projectRoot}/bundle-entry.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/to-achordeon.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/_domain-core.mjs",
+        "{workspaceRoot}/libs/shared/domain/src/**/*.ts",
+        "{workspaceRoot}/libs/shared/chord-theory/src/**/*.ts"
+      ],
+      "outputs": ["{workspaceRoot}/dist/skill/_domain.mjs"],
+      "options": {
+        "command": "node tools/gen-skill-bundle.mjs"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
+      "dependsOn": ["gen-skill-bundle"],
       "cache": true,
       "inputs": [
         "{workspaceRoot}/.claude/skills/song-core/scripts/*.mjs",
@@ -16,7 +33,11 @@
         "{projectRoot}/**/*"
       ],
       "options": {
-        "command": "node --test \".claude/skills/song-core/scripts/*.test.mjs\""
+        "commands": [
+          "node --test \".claude/skills/song-core/scripts/*.test.mjs\"",
+          "node --test \"tools/skill/*.test.mjs\""
+        ],
+        "parallel": false
       }
     }
   }
