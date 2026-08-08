@@ -24,6 +24,7 @@ import {
   UpdateNotice,
   WarnUnsynced,
 } from './shared/layout';
+import { ImportHost } from './import-host';
 
 /**
  * The root: mount the shell and connect the cross-cutting services to the stores.
@@ -35,8 +36,11 @@ import {
  */
 @Component({
   selector: 'app-root',
-  imports: [Shell, UpdateNotice],
-  template: `<app-shell /> <app-update-notice />`,
+  imports: [Shell, UpdateNotice, ImportHost],
+  // The import host is mounted here rather than inside the shell because what it
+  // catches — a dropped file, a tapped link — belongs to the window, not to
+  // whichever page is on screen (plan §4/§7).
+  template: `<app-shell /> <app-update-notice /> <app-import-host />`,
   styles: `
     :host {
       display: block;

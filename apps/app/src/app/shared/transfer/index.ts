@@ -1,6 +1,8 @@
 export { DownloadDialog } from './download-dialog';
 export { SongbookDownloadDialog } from './songbook-download-dialog';
 export { ImportDialog } from './import-dialog';
+export { ImportDropOverlay } from './import-drop-overlay';
+export { ImportInboxPanel } from './import-inbox-panel';
 export { ImportPanel } from './import-panel';
 export { PrintOptionsStore } from './print-options-store';
 export {

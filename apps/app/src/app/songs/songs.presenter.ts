@@ -7,7 +7,7 @@ import {
   DEFAULT_SORT_DIR,
   DownloadService,
   ExportService,
-  ImportService,
+  ImportInbox,
   ParserService,
   RenderService,
   SessionStore,
@@ -17,11 +17,7 @@ import {
   type MultiFormat,
   type SongFormat,
 } from '@achordeon/shared/data-access';
-import {
-  resolveSettings,
-  type ImportPlan,
-  type Song,
-} from '@achordeon/shared/domain';
+import { resolveSettings, type Song } from '@achordeon/shared/domain';
 import {
   RowSelection,
   type ExplorerSort,
@@ -33,9 +29,6 @@ import {
   DATA_FORMAT,
   type DownloadChoice,
   type DownloadProgress,
-  type ImportChoice,
-  type ImportFailure,
-  type ImportPreview,
 } from '../shared/transfer';
 import { ListScrollMemory, ReturnUrl, UiStore } from '../shared/layout';
 import { NEW_SONG_CONTENT } from './new-song';
@@ -78,7 +71,9 @@ export class SongsPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
-  private readonly importer = inject(ImportService);
+  /** Import is the app-level owner's, not this screen's — a drop or a link
+   * reaches it too, and two owners would mean two dialogs (plan §7). */
+  private readonly inbox = inject(ImportInbox);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnUrl = inject(ReturnUrl);
@@ -91,11 +86,6 @@ export class SongsPresenter {
   private readonly _pendingDelete = signal<PendingDelete | null>(null);
   private readonly _isDownloadOpen = signal(false);
   private readonly _isBusy = signal(false);
-  private readonly _importPreview = signal<ImportPreview | null>(null);
-  private readonly _importError = signal<ImportFailure | null>(null);
-  /** The plan behind the preview. Kept out of the view model: the dialog asks a
-   * question about it, it does not need to hold the records. */
-  private importPlan: ImportPlan | null = null;
 
   /** The delete awaiting confirmation, or null. Session-only and the feature's,
    * like any transient dialog state (PRD-UI-SHELL.md §7). */
@@ -111,8 +101,6 @@ export class SongsPresenter {
    * first song is rendered. */
   private readonly _progress = signal<DownloadProgress | null>(null);
   readonly downloadProgress = this._progress.asReadonly();
-  readonly importPreview = this._importPreview.asReadonly();
-  readonly importError = this._importError.asReadonly();
 
   readonly rows = computed<SongRow[]>(() =>
     this.store.live().map((song, index) => ({
@@ -566,52 +554,15 @@ export class SongsPresenter {
   }
 
   /**
-   * Read a picked file and work out what it would do. Nothing is written until
-   * `confirmImport`, which is the whole point of the two steps.
+   * Hand the picked files to the inbox and let go of them.
+   *
+   * The preview, the choice, the write and the refresh are all its (plan §7). A
+   * page's Import button is one of three transports into the same event — the
+   * others being a drop and a link, neither of which belongs to a page — so the
+   * flow cannot live here without existing twice.
    */
-  async readImport(file: File): Promise<void> {
-    this._importError.set(null);
-    try {
-      const source = await this.importer.read(file);
-      const plan = await this.importer.plan(source.snapshot);
-      this.importPlan = plan;
-      this._importPreview.set({
-        songCount: plan.songs.length,
-        songbookCount: plan.songbooks.length,
-        conflicts: plan.conflicts.map((conflict) => ({ ...conflict })),
-        hasUnknownSettings: source.status === 'warn',
-      });
-    } catch (error) {
-      this.importPlan = null;
-      this._importPreview.set(null);
-      this._importError.set(
-        (error as { reason?: ImportFailure }).reason === 'refused'
-          ? 'refused'
-          : 'unreadable',
-      );
-    }
-  }
-
-  cancelImport(): void {
-    this.importPlan = null;
-    this._importPreview.set(null);
-    this._importError.set(null);
-  }
-
-  async confirmImport(choice: ImportChoice): Promise<void> {
-    const plan = this.importPlan;
-    this.cancelImport();
-    if (!plan) return;
-    await this.busy(async () => {
-      await this.importer.apply(plan, choice);
-      // The window is a query result, and the import just changed what that
-      // query answers — several times over, at ids the window never held.
-      await this.store.refresh();
-      // A file can bring songbooks too, and the Songbooks module reads the same
-      // singleton store — so refresh it here, or a book imported from this
-      // screen stays invisible over there until a reload.
-      await this.songbooks.refresh();
-    });
+  readImport(files: readonly File[]): void {
+    void this.inbox.offer(files);
   }
 
   /** Run a long job with the screen saying so. */

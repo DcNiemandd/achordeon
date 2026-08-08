@@ -93,6 +93,22 @@ const NAMED_CONFLICTS = 5;
 
       <p class="note">{{ songbookNote }}</p>
 
+      <!-- Several files at once are previewed one after another, so Cancel here
+           means "not this one" and the queue moves on. That needs a way out, or
+           leaving a five-file drop costs five clicks — hence the second button,
+           which appears only when there is actually something behind this. -->
+      @if (remaining() > 0) {
+        <button
+          dialog-actions
+          appButton
+          type="button"
+          variant="secondary"
+          data-testid="import-cancel-all"
+          (click)="cancelledAll.emit()"
+        >
+          {{ cancelAllLabel() }}
+        </button>
+      }
       <button
         dialog-actions
         appButton
@@ -101,7 +117,7 @@ const NAMED_CONFLICTS = 5;
         data-testid="import-cancel"
         (click)="closed.emit()"
       >
-        {{ cancelLabel }}
+        {{ cancelLabel() }}
       </button>
       <button
         dialog-actions
@@ -173,9 +189,17 @@ const NAMED_CONFLICTS = 5;
 })
 export class ImportDialog {
   readonly preview = input.required<ImportPreview>();
+  /** How many more files are queued behind this one. Several dropped at once are
+   * previewed one after another — `planImport` computes conflicts against the
+   * library as it stands, so the second cannot be planned until the first is
+   * applied. Zero for a picked file or a link, which is the usual case. */
+  readonly remaining = input(0);
 
   readonly confirmed = output<ImportChoice>();
+  /** This one is not wanted — the queue moves on. */
   readonly closed = output<void>();
+  /** This one and everything still waiting. */
+  readonly cancelledAll = output<void>();
 
   /** Replace is the default: the file is usually the newer copy — it is the one
    * you just brought over — and ignoring by default makes an import that looks
@@ -192,8 +216,26 @@ export class ImportDialog {
 
   protected readonly summary = computed(() => {
     const { songCount, songbookCount } = this.preview();
-    return $localize`:@@import.summary:This file holds ${songCount}:songs: songs and ${songbookCount}:books: songbooks.`;
+    const held = $localize`:@@import.summary:This file holds ${songCount}:songs: songs and ${songbookCount}:books: songbooks.`;
+    const rest = this.remaining();
+    if (rest === 0) return held;
+    // A dropped queue has to say so, or the second dialog reads as the first one
+    // failing to close.
+    return `${held} ${$localize`:@@import.queued:${rest}:count: more files after this one.`}`;
   });
+
+  /** "Cancel" while a queue is running would read as "stop", which is not what it
+   * does — so it says what it does, and the way out gets its own button. */
+  protected readonly cancelLabel = computed(() =>
+    this.remaining() === 0
+      ? $localize`:@@import.cancel:Cancel`
+      : $localize`:@@import.skipOne:Skip this one`,
+  );
+
+  protected readonly cancelAllLabel = computed(
+    () =>
+      $localize`:@@import.cancelAll:Cancel all ${this.remaining() + 1}:count:`,
+  );
 
   protected readonly conflictText = computed(
     () =>
@@ -237,6 +279,5 @@ export class ImportDialog {
   protected readonly allNewLabel = $localize`:@@import.allNew:Import everything as new, with today's date in the name`;
   protected readonly songbookNote = $localize`:@@import.songbookNote:Songbooks are always added as new — an existing one is never overwritten.`;
   protected readonly unknownText = $localize`:@@import.unknown:This file was made by a newer version. Settings this one does not know are kept, but not shown.`;
-  protected readonly cancelLabel = $localize`:@@import.cancel:Cancel`;
   protected readonly importLabel = $localize`:@@import.confirm:Import`;
 }

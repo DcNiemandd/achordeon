@@ -4,10 +4,10 @@
   "projectType": "library",
   "sourceRoot": "tools/skill",
   "tags": ["type:tool"],
-  "_comment": "The distributable skill: the build that turns this repo's own domain into something an assistant can carry, and the tests over the scripts that ride along. The scripts themselves live where the repo's skills already keep them (.claude/skills/song-core/scripts) — the point of the packaging is that the file that ships IS the file that was tested, so nothing is copied into a staging folder to be tested twice.",
   "targets": {
     "gen-skill-bundle": {
       "executor": "nx:run-commands",
+      "_comment": "The distributable skill's dependency-free domain. The scripts that go in the zip beside it live where the repo's own skills already keep them (.claude/skills/song-core/scripts) and are copied byte for byte — the point of the packaging is that the file that ships IS the file that was tested, so nothing is staged and tested twice.",
       "cache": true,
       "inputs": [
         "{workspaceRoot}/tools/gen-skill-bundle.mjs",
