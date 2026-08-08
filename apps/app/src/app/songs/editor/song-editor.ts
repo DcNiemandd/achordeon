@@ -410,15 +410,16 @@ export class SongEditor {
   /**
    * Flip one emphasis bit over `[start, end)` — the Bold and Italic buttons.
    *
-   * The markers are a **run** of asterisks, not a pair: its length is the state
-   * (1 italic, 2 bold, 3 both — PARSER-GRAMMAR §Phase 2). So this reads the run
-   * already around the range, flips its own bit, and rewrites the run to whatever
-   * length the new pair of bits spells. That is what makes Bold and Italic compose
-   * (`*x*` + bold → `***x***`) and undo themselves (`***x***` + italic → `**x**`)
-   * instead of stacking a fourth asterisk, which the grammar reads as literal text.
+   * The markers are a **run** of asterisks, not a pair: every pair in it is bold and
+   * a lone leftover one is italic, so its length is the state — 1 italic, 2 bold, 3
+   * both (PARSER-GRAMMAR §Emphasis). So this reads the run already around the range,
+   * flips its own bit, and rewrites the run to whatever length the new pair of bits
+   * spells. That is what makes Bold and Italic compose (`*x*` + bold → `***x***`)
+   * and undo themselves (`***x***` + italic → `**x**`) instead of stacking a fourth
+   * asterisk, which the grammar reads as bold twice over — no emphasis at all.
    *
-   * A run of four or more is already literal, so it is left alone and treated as no
-   * emphasis at all — the same reading Phase 2 gives it.
+   * A longer run is read by the same arithmetic and rewritten whole, so pressing a
+   * button on `****x****` leaves one clean pair behind instead of a fifth asterisk.
    */
   private flipEmphasis(
     kind: 'italic' | 'bold',
@@ -437,24 +438,26 @@ export class SongEditor {
     const runBefore = this.emphasisRun(start, -1);
     const runAfter = this.emphasisRun(end, 1);
     const run = Math.min(runBefore, runAfter);
-    const held = run > 3 ? 0 : run;
 
-    let italic = held === 1 || held === 3;
-    let bold = held === 2 || held === 3;
+    // The run's own arithmetic, whatever its length: a lone leftover asterisk is
+    // italic, every pair is bold. The rewrite then spells the new pair of bits in
+    // one, two or three, so a long run collapses to a clean one.
+    let italic = run % 2 === 1;
+    let bold = Math.floor(run / 2) % 2 === 1;
     if (kind === 'italic') italic = !italic;
     else bold = !bold;
     const markers = '*'.repeat((italic ? 1 : 0) + (bold ? 2 : 0));
 
     const inner = view.state.sliceDoc(start, end);
-    const shift = markers.length - held;
+    const shift = markers.length - run;
     const innerStart = start + shift;
 
     view.dispatch({
       // One change over the old run, the text, and the old run — never two edits at
       // one empty position, which is what an empty range would otherwise produce.
       changes: {
-        from: start - held,
-        to: end + held,
+        from: start - run,
+        to: end + run,
         insert: markers + inner + markers,
       },
       selection:

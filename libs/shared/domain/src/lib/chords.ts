@@ -143,6 +143,133 @@ export function bracketAt(s: string, index: number): BracketSpan | null {
   return null;
 }
 
+/** A stretch of asterisks still looking for its other half. */
+interface OpenEmphasis {
+  /** Index of the first of the asterisks still unspent. */
+  at: number;
+  remaining: number;
+}
+
+/**
+ * The emphasis markers on a line (PARSER-GRAMMAR §Emphasis), as **start index →
+ * how many asterisks** — one entry per match, on each side of it. Every asterisk
+ * the map does not cover is printed text, and one run of `*` can hold both, so the
+ * groups are the unit here rather than the runs.
+ *
+ * Matching runs in two passes, and the second never overrides the first:
+ *
+ * 1. **Exact.** A closer that can spend exactly what the innermost opener holds
+ *    does, and repeats for the next one out; a run that can close nothing opens
+ *    with all of its asterisks. This pass is what makes nesting work — the `*` in
+ *    `**a *b* c**` opens italic instead of eating one of the bold's asterisks.
+ * 2. **Repair.** What never matched pairs up anyway, as far as the shorter side
+ *    goes, and only the asterisks left over print. So `***** a as****` spends four
+ *    against four and prints the odd one, rather than dumping nine asterisks on the
+ *    page because the author typed one too many.
+ *
+ * A match spends an opener's **rightmost** asterisks and a closer's **leftmost**,
+ * so what prints always ends up outside the emphasis, never between the marker and
+ * the words it marks.
+ *
+ * Asterisks that are never matched at all print, which is the whole point: one
+ * stray `*` used to italicise everything after it, and demanding `\*` for every
+ * footnote mark in a lyric is a trap, not a grammar. **Nothing is required on
+ * either side of a marker** either — `* a *` is italic, spaces included, because
+ * song text is full of asterisks hugging a space and Markdown's flanking rules
+ * would have made that phrase un-emphasisable.
+ *
+ * `from` skips a label marker, which is plain text that Phase 2 never sees — the
+ * returned indices stay absolute in `s`.
+ *
+ * One recogniser, like `findClosingBracket`: the inline scan resolves emphasis with
+ * it and the editor's highlighter colours it with it, so an asterisk cannot print
+ * as text in the preview and colour as a marker in the editor.
+ */
+export function emphasisMarkers(s: string, from = 0): Map<number, number> {
+  const markers = new Map<number, number>();
+  /** Emphasis opened and not yet closed, innermost last. */
+  const open: OpenEmphasis[] = [];
+
+  let i = from;
+  while (i < s.length) {
+    if (s[i] === '\\' && i + 1 < s.length && ESCAPABLE.has(s[i + 1])) {
+      i += 2; // `\*` is a printed asterisk, never a marker
+      continue;
+    }
+    if (s[i] === '[') {
+      // Bracket content is chord text, where a `*` means nothing. Unterminated →
+      // the `[` is literal and the scan resumes inside it, exactly as Phase 2 does.
+      const inline = s[i + 1] === '[';
+      const close = inline
+        ? findClosingDoubleBracket(s, i)
+        : findClosingBracket(s, i);
+      i = close === -1 ? i + 1 : close + (inline ? 2 : 1);
+      continue;
+    }
+    if (s[i] === '*') {
+      let length = 0;
+      while (s[i + length] === '*') {
+        length += 1;
+      }
+      // Spend the run left to right: close the innermost emphasis it can afford
+      // in full, then the next one out, for as long as its asterisks last.
+      let spent = 0;
+      while (spent < length) {
+        const innermost = open[open.length - 1];
+        if (innermost === undefined || innermost.remaining > length - spent) {
+          break;
+        }
+        open.pop();
+        markers.set(innermost.at, innermost.remaining);
+        markers.set(i + spent, innermost.remaining);
+        spent += innermost.remaining;
+      }
+      if (spent === 0) {
+        open.push({ at: i, remaining: length }); // closed nothing, so it all opens
+      }
+      // A closer's surplus is text: left out of the map, and left out of the
+      // repair below, because this run has already had its say.
+      i += length;
+      continue;
+    }
+    i += 1;
+  }
+
+  repairEmphasis(open, markers);
+  return markers;
+}
+
+/**
+ * Pair up what the exact pass could not, taking as many asterisks as the shorter
+ * side has. Runs arrive outermost-first, which is the order they were written in,
+ * and whatever is still unspent at the end is simply text.
+ */
+function repairEmphasis(
+  leftover: readonly OpenEmphasis[],
+  markers: Map<number, number>,
+): void {
+  const open: OpenEmphasis[] = [];
+  for (const run of leftover) {
+    let spent = 0;
+    while (spent < run.remaining && open.length > 0) {
+      const innermost = open[open.length - 1];
+      const use = Math.min(innermost.remaining, run.remaining - spent);
+      // The opener gives up its rightmost asterisks and the closer its leftmost,
+      // so the pair closes in around the words and the surplus stays outside.
+      innermost.remaining -= use;
+      markers.set(innermost.at + innermost.remaining, use);
+      markers.set(run.at + spent, use);
+      if (innermost.remaining === 0) {
+        open.pop();
+      }
+      spent += use;
+    }
+    if (spent < run.remaining) {
+      open.push({ at: run.at + spent, remaining: run.remaining - spent });
+    }
+  }
+}
+
 /**
  * Split a bracket's inner content into chord tokens on spaces/commas. Multiple
  * tokens = multiple anchors at the same index (PARSER-GRAMMAR §Line model).

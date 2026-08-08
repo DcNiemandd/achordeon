@@ -8,6 +8,7 @@
 import type { Line, Span } from './ast';
 import {
   ESCAPABLE,
+  emphasisMarkers,
   findClosingBracket,
   findClosingDoubleBracket,
   splitChordTokens,
@@ -22,17 +23,20 @@ import type { ChordTheory } from './theory';
  * A doubled bracket `[[…]]` is an **inline** chord group — same tokens, same
  * anchor index, but rendered in the flow rather than above the line.
  *
- * **Emphasis is a toggle over runs of `*`** (docs/PARSER-GRAMMAR §Emphasis): a
- * run of one flips italic, two flips bold, three flips both; four or more is
- * literal. State that is still on at end of line closes there — an unclosed
- * emphasis emphasises to the line's end rather than being reinterpreted, and
- * `\*` is the way to write a literal asterisk. Markers are consumed from `text`,
- * so a span's indices line up with the same clean `text` the chords anchor into.
+ * **Emphasis is a toggle over groups of `*`** (docs/PARSER-GRAMMAR §Emphasis):
+ * every pair of asterisks in a group flips bold and a lone leftover one flips
+ * italic, so a group of one/two/three is italic/bold/both. Which asterisks are
+ * markers at all — and which are text, because nothing on the line matches them —
+ * is `emphasisMarkers`' answer, taken before the scan starts because it needs the
+ * whole line. Markers are consumed from `text`, so a span's indices line up with
+ * the same clean `text` the chords anchor into.
  */
 export function scanContent(content: string, theory: ChordTheory): Line {
   let text = '';
   const chords: Line['chords'] = [];
   const spans: Span[] = [];
+
+  const markers = emphasisMarkers(content);
 
   // Emphasis state, and where the current styled run began in `text`.
   let italic = false;
@@ -59,21 +63,27 @@ export function scanContent(content: string, theory: ChordTheory): Line {
     }
 
     if (c === '*') {
-      let run = 0;
-      while (content[i + run] === '*') run += 1;
-      // Four or more is not an emphasis marker — the asterisks are literal.
-      if (run > 3) {
+      // A whole run at a time would miss that one run can be part markup and part
+      // text (`*asd**`), so the unit is the marker group — `markers` says where
+      // one starts and how long it is, and everything else here is an asterisk.
+      const group = markers.get(i);
+      if (group === undefined) {
+        let run = 0;
+        while (content[i + run] === '*' && !markers.has(i + run)) run += 1;
+        // Printed asterisks belong to whatever emphasis is in force around them.
         text += '*'.repeat(run);
         i += run;
         continue;
       }
-      // Close the run that was open, then flip: one → italic, two → bold, three
-      // → both. The span just closed carries the flags as they were.
+      // Close the run that was open, then flip. Every PAIR of asterisks in the
+      // group is a bold marker and a lone leftover one is italic — so one/two/
+      // three read as italic/bold/both, and a longer group simply keeps going:
+      // `****` is bold twice over, which emphasises nothing.
       closeSpan(text.length);
-      if (run === 1 || run === 3) italic = !italic;
-      if (run === 2 || run === 3) bold = !bold;
+      if (Math.floor(group / 2) % 2 === 1) bold = !bold;
+      if (group % 2 === 1) italic = !italic;
       if (italic || bold) styleStart = text.length;
-      i += run;
+      i += group;
       continue;
     }
 
@@ -126,8 +136,8 @@ export function scanContent(content: string, theory: ChordTheory): Line {
     i += 1;
   }
 
-  // An emphasis left open runs to the end of the line.
-  closeSpan(text.length);
-
+  // No end-of-line close is needed: every marker that survived pairs with another
+  // of its own length, so each bit is flipped an even number of times and the last
+  // marker of a pair is what closed the span.
   return spans.length > 0 ? { text, chords, spans } : { text, chords };
 }
