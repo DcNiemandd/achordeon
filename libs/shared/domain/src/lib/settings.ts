@@ -77,7 +77,9 @@ export const SETTINGS = {
     default: 'english' as ChordNotation,
     scopes: ['songbook', 'song'],
   }, // English (B/Bb) or German (H/B) note names — a SPELLING of the rendered
-  // chord, never a rewrite of the source (see notation.ts). Song scope because a
+  // chord, never a rewrite of the source (see notation.ts). Both settings spell:
+  // English is a language, not "as typed", so it writes an `H` back to `B`.
+  // Song scope because a
   // German hymn among English songs is the normal case; songbook scope because a
   // book printed for one congregation should not be spelled two ways.
   // font: {

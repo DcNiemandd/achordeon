@@ -1553,10 +1553,14 @@ natural as `H` and B♭ as `B`.
 - **One seam: `RenderService.layout`.** Not the parser, so the editor keeps
   showing the source as written; not each caller, so screen, PNG, PDF and the
   songbook exports cannot disagree about what a chord is called.
-- **English is the identity.** It means "as you typed it", so no existing song
-  renders differently than it did yesterday — including one already written with
-  `H`, which has been a valid chord since Epic 2 and still is under either
-  setting.
+- **English is a language, not "as you typed it".** It shipped as the identity,
+  which made the setting `german | off`: a song written with `H` kept its `H` on
+  an English page, a book pasted from two sources printed `H` beside `Bb`, and
+  `[Hb]` printed `Hb` — a spelling neither language has. English now writes `H`
+  as `B` and `Hb` as `Bb`, so either setting turns a mixed song into one
+  language. It is exactly `toEnglishNotation`, the rewrite reading already
+  applies, so it needs no engine — only the validity check, without which the
+  annotation `[Hold]` would print `[Bold]`.
 
 **Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
 tests (`audience-fullscreen` never becomes visible). They fail identically on the

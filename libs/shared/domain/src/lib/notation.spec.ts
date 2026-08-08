@@ -20,10 +20,33 @@ const spelt = (tree: SongAst) =>
   tree.blocks[0].lines[0].chords.map((c) => c.raw);
 
 describe('spellChord', () => {
-  it('leaves every symbol alone in English', () => {
+  it('leaves a symbol already written in English alone', () => {
     expect(english('B')).toBe('B');
     expect(english('Bb')).toBe('Bb');
-    expect(english('H')).toBe('H'); // written German, printed as written
+    expect(english('C#m7/G#')).toBe('C#m7/G#');
+  });
+
+  it('writes H as B', () => {
+    expect(english('H')).toBe('B');
+    expect(english('Hm7')).toBe('Bm7');
+    expect(english('C/H')).toBe('C/B');
+    expect(english('Hb/H')).toBe('Bb/B');
+  });
+
+  it('writes Hb as Bb — a spelling neither language has', () => {
+    // The clearest case for English not being the identity: `Hb` is not English
+    // and not German either (German writes B flat as a bare `B`), so "as typed"
+    // was never a third notation — it was the absence of one.
+    expect(english('Hb')).toBe('Bb');
+    expect(english('Hbmaj7')).toBe('Bbmaj7');
+  });
+
+  it('spells the same song one way in either language', () => {
+    // A book pasted from two sources: the setting is what makes it consistent,
+    // and that has to be true of both settings or it is not a language switch.
+    const mixed = ['H', 'Hb', 'B', 'Bb'];
+    expect(mixed.map(english)).toEqual(['B', 'Bb', 'B', 'Bb']);
+    expect(mixed.map(german)).toEqual(['H', 'B', 'H', 'B']);
   });
 
   it('writes B natural as H and B flat as B', () => {
@@ -58,6 +81,16 @@ describe('spellChord', () => {
     expect(german('Solo')).toBe('Solo');
     expect(german('x2')).toBe('x2');
     expect(german('N.C.')).toBe('N.C.');
+  });
+
+  it('does not turn an H-initial annotation English', () => {
+    // The English spelling is a text rewrite, so on its own it would make
+    // `[Hold]` read `[Bold]`. The validity check is what stops it: an annotation
+    // is text, and text has no notation. (tonal rejects `Hold`; the fake's
+    // grammar is looser, so this uses a token both of them refuse.)
+    expect(theory.parseChord('Hush/Hush')).toBeNull();
+    expect(english('Hush/Hush')).toBe('Hush/Hush');
+    expect(english('Solo')).toBe('Solo');
   });
 });
 
@@ -100,7 +133,7 @@ describe('spellNoteInSource', () => {
 });
 
 describe('respellChords', () => {
-  it('returns the very same tree in English', () => {
+  it('returns the very same tree when English changes nothing', () => {
     const tree = ast('B', 'Bb');
     expect(respellChords(tree, 'english', theory)).toBe(tree);
   });
@@ -108,6 +141,16 @@ describe('respellChords', () => {
   it('returns the very same tree when German changes nothing', () => {
     const tree = ast('C', 'Am', 'G/D');
     expect(respellChords(tree, 'german', theory)).toBe(tree);
+  });
+
+  it('re-spells a German-written song into English', () => {
+    const tree = ast('H', 'Hb', 'Solo', 'Hm7/H');
+    expect(spelt(respellChords(tree, 'english', theory))).toEqual([
+      'B',
+      'Bb',
+      'Solo',
+      'Bm7/B',
+    ]);
   });
 
   it('re-spells every anchor it can and leaves the rest', () => {

@@ -292,8 +292,14 @@ clean `text`, with the markers consumed.
   names and re-spells into **English** (`[H]`+1 ⇒ `[C]`).
 - **Now (shipped, Epic 12): the `notation` setting (`german | english`, default
   `english`, `scopes: ['songbook','song']`) — the SPELLING half of it.** German
-  prints B natural as `H` and B♭ as `B`; English prints every chord exactly as it
-  was typed. It is applied once, at the top of the render (`respellChords` in
+  prints B natural as `H` and B♭ as `B`; English prints B natural as `B` and B♭ as
+  `Bb`, rewriting an `H` or an `Hb` that was typed into the source. **Both settings
+  spell** — English shipped as the identity ("as typed"), which made the row
+  `german | off`: a book pasted from two sources printed `H` beside `Bb`, and an
+  `[Hb]` printed `Hb`, which is neither language. The English half is exactly
+  `toEnglishNotation`, the same rewrite reading applies, so it needs no engine —
+  only the validity gate, or the annotation `[Hold]` would print `[Bold]`.
+  It is applied once, at the top of the render (`respellChords` in
   `shared/domain`, called by `RenderService.layout`), so screen, PNG, PDF and the
   songbook exports cannot disagree — and it never touches `content`. Choosing what
   a stored symbol _means_ from a preference would make the same file sound
