@@ -35,6 +35,10 @@ export interface InboxItem {
   /** The file carries settings this build does not know — additive, from a newer
    * app. Kept, not dropped; the user is told, not stopped. */
   readonly hasUnknownSettings: boolean;
+  /** How many incoming songs the parser has something to say about — said before
+   * anything is written, because import otherwise never looks at the content and
+   * a song whose markup is wrong lands silently. */
+  readonly flaggedSongs: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -172,7 +176,11 @@ export class ImportInbox {
     try {
       const source = await this.importer.read(next);
       const plan = await this.importer.plan(source.snapshot);
-      this._item.set({ plan, hasUnknownSettings: source.status === 'warn' });
+      this._item.set({
+        plan,
+        hasUnknownSettings: source.status === 'warn',
+        flaggedSongs: this.importer.flagged(plan.songs),
+      });
     } catch (error) {
       this._failure.set(
         error instanceof ImportError && error.reason === 'refused'

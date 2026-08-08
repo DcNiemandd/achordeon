@@ -138,6 +138,46 @@ describe('ImportInbox', () => {
     expect(inbox.failure()).toBe('unreadable');
   });
 
+  describe('saying what arrived, not just how much', () => {
+    /** An envelope whose songs carry the content given, verbatim. */
+    const withContent = (...contents: string[]) =>
+      new Blob([
+        JSON.stringify({
+          schemaVersion: SCHEMA_VERSION,
+          data: {
+            songs: contents.map((content, i) => ({ name: `s${i}`, content })),
+            songbooks: [],
+          },
+        }),
+      ]);
+
+    it('counts a song the parser has something to say about', async () => {
+      // Two title lines: only the last one shows, and the first is silently
+      // lost — exactly the sort of thing that is discovered on the page.
+      const { inbox } = setup();
+      await inbox.offer([withContent('* First\n* Second\n\nWords')]);
+      expect(inbox.item()?.flaggedSongs).toBe(1);
+    });
+
+    it('counts a clean song as nothing', async () => {
+      const { inbox } = setup();
+      await inbox.offer([withContent('* Title\n\nVerse: Some [Am]words')]);
+      expect(inbox.item()?.flaggedSongs).toBe(0);
+    });
+
+    it('counts songs, not warnings — one song with several is one song', async () => {
+      const { inbox } = setup();
+      await inbox.offer([
+        withContent(
+          '* One\n* Two\n** A\n** B\n\nWords',
+          '* Clean\n\nWords',
+          '* Three\n* Four\n\nWords',
+        ),
+      ]);
+      expect(inbox.item()?.flaggedSongs).toBe(2);
+    });
+  });
+
   it('counts a write, so a screen holding its own number can hear about it', async () => {
     const { inbox } = setup();
     const before = inbox.writes();

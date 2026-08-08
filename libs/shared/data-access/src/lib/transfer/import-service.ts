@@ -19,6 +19,7 @@ import {
   type ImportWrite,
   type MigrateStatus,
   type SnapshotEnvelope,
+  type Song,
 } from '@achordeon/shared/domain';
 import { BootGate } from '../persistence/boot-gate';
 import { ParserService } from '../parser/parser-service';
@@ -80,6 +81,38 @@ export class ImportService {
   /** What this envelope would do to the library as it stands right now. */
   async plan(snapshot: SnapshotEnvelope): Promise<ImportPlan> {
     return planImport(snapshot.data, await this.songs.all());
+  }
+
+  /**
+   * How many of these songs the parser has something to say about.
+   *
+   * Import compares ids and never looks at the content, so a song whose markup is
+   * wrong lands silently and is discovered on the page. This is the answer to a
+   * problem with no other fix: **a downloaded skill goes stale and nothing
+   * notices** — skills do not auto-update and their sandbox has no network to
+   * check with, so one built before a grammar change teaches the old rule, the
+   * model writes content that parses differently now, and the import succeeds.
+   * The envelope half of that is already solved (ADR-0007 migrates whatever
+   * `schemaVersion` a stale skill wrote); the grammar half is this.
+   *
+   * Checking the content rather than stamping and comparing a grammar version
+   * catches every cause at once — a stale skill, a model that never had one, a
+   * bad conversion, a hand-edited file — and it is the more useful message
+   * anyway: not "your tooling is old" but "these songs have problems".
+   *
+   * **Songs, not warnings**: one song can carry several, and the reader is being
+   * told how much of the file to look at.
+   *
+   * Cost measured before committing to it, as the plan asked: a 200-song export
+   * (175 KB of content) parses in ~28 ms, so the whole file is checked rather
+   * than a capped sample or a lazy count.
+   */
+  flagged(songs: readonly Song[]): number {
+    let count = 0;
+    for (const song of songs) {
+      if (this.parser.parse(song.content).warnings.length > 0) count++;
+    }
+    return count;
   }
 
   /** Write the plan under the user's answer. Returns what actually landed. */

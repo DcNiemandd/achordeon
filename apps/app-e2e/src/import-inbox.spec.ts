@@ -144,6 +144,41 @@ test.describe('a link carrying a song', () => {
   });
 });
 
+test.describe('what arrived, not just how much', () => {
+  test('a song whose markup is wrong is named before it is written', async ({
+    page,
+  }) => {
+    // Two title lines: only the last shows and the first is silently lost.
+    // Import compares ids and never looks at the content, so without this the
+    // song lands quietly and is discovered on the page.
+    await freshLibrary(page);
+    const file = JSON.stringify({
+      schemaVersion: 1,
+      data: {
+        songs: [
+          { name: 'Muddled', content: '* First\n* Second\n\nSome words' },
+          { name: 'Clean', content: '* Fine\n\nSome [Am]words' },
+        ],
+        songbooks: [],
+      },
+    });
+    await page.goto(`songs${linkFragment(file)}`);
+
+    await expect(page.getByTestId('import-flagged')).toContainText('1');
+    await page.getByTestId('import-confirm').click();
+    // It still imports — the point is to look afterwards, not to be stopped.
+    await expect(row(page, 'Muddled')).toHaveCount(1);
+  });
+
+  test('a clean file says nothing about markup', async ({ page }) => {
+    await freshLibrary(page);
+    await page.goto(`songs${linkFragment(envelope('Tidy'))}`);
+
+    await expect(page.getByTestId('import-summary')).toBeVisible();
+    await expect(page.getByTestId('import-flagged')).toHaveCount(0);
+  });
+});
+
 test.describe('sharing a song as a link', () => {
   test('the link the app writes is the link the app reads', async ({
     page,

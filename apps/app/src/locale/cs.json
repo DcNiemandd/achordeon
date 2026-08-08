@@ -188,6 +188,7 @@
     "import.dropTitle": "Přetažením importujete",
     "import.errorCancelAll": "Zrušit zbytek",
     "import.failedTitle": "Tento soubor se nepodařilo importovat",
+    "import.flagged": "Achordeon nerozumí zápisu u {$count} z těchto písní. Naimportují se i tak — po importu je otevřete a zkontrolujte.",
     "import.ignore": "Ponechat moje a přeskočit je",
     "import.legend": "Co se s nimi má stát?",
     "import.more": "…a další ({$count}).",

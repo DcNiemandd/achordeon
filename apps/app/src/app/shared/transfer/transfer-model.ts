@@ -214,6 +214,16 @@ export interface ImportPreview {
   /** The file carries settings this build does not know — additive, from a
    * newer app. Kept, not dropped; the user is told, not stopped. */
   readonly hasUnknownSettings: boolean;
+  /**
+   * How many incoming songs the parser has something to say about.
+   *
+   * The same warning as {@link hasUnknownSettings} pointed the other way: that
+   * one says "this file knows things this build does not", this one says "this
+   * build cannot make sense of some of what this file says". Counts **songs**,
+   * not warnings — one song can carry several, and what the reader is being told
+   * is how much of the file to go and look at.
+   */
+  readonly flaggedSongs: number;
 }
 
 export interface ImportChoice {

@@ -44,6 +44,16 @@ const NAMED_CONFLICTS = 5;
         </p>
       }
 
+      <!-- Said before anything is written. Import compares ids and never looks
+           at the content, so without this a song whose markup is wrong lands
+           silently and is discovered on the page. -->
+      @if (preview().flaggedSongs > 0) {
+        <p class="note" data-testid="import-flagged">
+          <app-icon name="warning" class="note-icon" />
+          {{ flaggedText() }}
+        </p>
+      }
+
       @if (preview().conflicts.length > 0) {
         <p class="summary" data-testid="import-conflicts">
           {{ conflictText() }}
@@ -240,6 +250,16 @@ export class ImportDialog {
   protected readonly conflictText = computed(
     () =>
       $localize`:@@import.conflicts:${this.preview().conflicts.length}:count: of them are already in your library:`,
+  );
+
+  /**
+   * Not "your tooling is old" but "these songs have problems", which is what the
+   * person actually wants to know before accepting them. It says the import still
+   * happens, because it does — the point is to look afterwards, not to stop.
+   */
+  protected readonly flaggedText = computed(
+    () =>
+      $localize`:@@import.flagged:Achordeon could not make sense of the markup in ${this.preview().flaggedSongs}:count: of these songs. They will still import — open them afterwards to check.`,
   );
 
   protected readonly moreText = computed(

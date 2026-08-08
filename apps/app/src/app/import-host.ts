@@ -62,6 +62,7 @@ export class ImportHost {
       songbookCount: item.plan.songbooks.length,
       conflicts: item.plan.conflicts.map((conflict) => ({ ...conflict })),
       hasUnknownSettings: item.hasUnknownSettings,
+      flaggedSongs: item.flaggedSongs,
     };
   });
 
