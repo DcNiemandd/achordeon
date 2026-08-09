@@ -298,13 +298,10 @@ Corrections the build forced, recorded so they aren't re-litigated:
 (`apps/app/public/fonts`), fetched by `FontLoader`, inlined into the export SVG
 and registered with jsPDF (§3, §4.10).
 
-**Still open — keyboard navigability.** Escape leaves the editor for the library
-(guarded so the settings dialog and the rename field keep their own Escape). That
-is _one shortcut, not a keymap_. The whole-app requirement — every action
-reachable without a pointer, a documented map, roving focus in the toolbars and
-the list, and the custom-shortcut config UI that `DOC-REVISION-PLAN.md` carries as
-TBD — is **not** done and does not belong to this epic. It wants its own, after
-the module set is complete and there is a full inventory of actions to bind.
+**Closed by the keyboard-shortcuts epic (below).** What this epic left as _one
+shortcut, not a keymap_ — Escape out of the editor, guarded by hand so the
+settings dialog and the rename field kept their own — is now a registration like
+every other, and the editor's whole bar is reachable from the keys.
 
 ---
 
@@ -1565,6 +1562,55 @@ natural as `H` and B♭ as `B`.
 **Still failing on this branch, and not ours:** two `shell.spec.ts` fullscreen
 tests (`audience-fullscreen` never becomes visible). They fail identically on the
 branch head; left alone so the fix is reviewable on its own.
+
+---
+
+## Epic 15: Keyboard shortcuts
+
+**User stories**: write a song without reaching for the pointer — make one, move
+through the library, open the editor, mark up the content, get out again; find
+out what the keys are without leaving the app.
+**Depends on**: Epics 5, 6, 8, 13 (it binds their actions, so it needs them to
+exist first — this is the "after the module set is complete" epic Epic 5 parked).
+
+### What to build
+
+A registry the whole app declares into, and a dialog that lists what is in it.
+`docs/adr/0015-keyboard-shortcuts-avoid-the-browsers-key-space.md` carries the
+decision and the reasoning; `CONTEXT.md` §Keyboard shortcut carries the words.
+
+### Subtasks
+
+- [x] The registry: presses matched by physical position, a stack of layers where
+      the topmost holding a key runs it, and two scopes — the `alt` tier stays
+      live inside the song's content, the bare tier does not.
+- [x] Stage and the editor migrate onto it. Their hand-written "is the dialog
+      open?" guards become layers, and a `Dialog` now says it is open
+      (`DialogStack`) so a key cannot reach the screen behind one.
+- [x] The editor's bar becomes action declarations: one object per action feeds
+      the button, its key, its `aria-keyshortcuts` and its row in the dialog.
+- [x] The library answers to the keys, behind an explorer capability — the two
+      explorers of the songbook builder share a screen and neither takes them.
+- [x] `g` then a letter for the modules, with a visible armed state.
+- [x] The **Keyboard shortcuts** dialog (`?`, or `alt + /` while writing).
+- [x] The keys are **discoverable from the controls they double**: each button and
+      each rail link ends its tooltip with its own key, and Settings ▸ About opens
+      the same dialog for somebody who has never heard of `?`.
+- [x] Nothing traps the keyboard: the search box has two ways out — Escape back to
+      whatever was current, Enter forward onto the first result (flushing the
+      debounce, so the press that ends the typing is not overtaken by it) — an
+      arrow key takes focus off whatever the last Tab landed on (so `Enter` is the
+      list's again rather than the focused link's), and `alt + e` reaches the
+      editor without tabbing past the whole bar.
+
+**Not in it, and still open:** the config UI that rebinds a key
+(`DOC-REVISION-PLAN.md` §Still genuinely open). The map is hard-coded, and the
+one action declaration per action is what a future settings screen would rebind
+without touching a single component.
+
+**Undo and redo are listed, not bound.** They are CodeMirror's (ADR-0010) and its
+keymap matches the character produced rather than the position everything else
+here binds to — and a Czech QWERTZ swaps exactly the two letters they use.
 
 ---
 

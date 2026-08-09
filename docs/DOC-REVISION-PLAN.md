@@ -98,5 +98,6 @@ This file lists the concrete documentation changes to make, per file, plus the d
 ## Still genuinely open
 
 1. Local-network Audience over PWA without internet — research.
-2. Custom shortcuts — keymap + config UI (TBD).
+2. Custom shortcuts — the config UI that rebinds them (TBD). The keymap itself
+   shipped: ADR-0015 and the `?` dialog.
 3. Theme colors — pending design.
