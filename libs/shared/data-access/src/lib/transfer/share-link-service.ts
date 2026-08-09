@@ -11,7 +11,7 @@
 // other side and what carries the Song's own settings with it.
 
 import { Injectable, inject } from '@angular/core';
-import { ACHORDEON_URL } from '@achordeon/shared/domain';
+import { LocationStrategy } from '@angular/common';
 import { ExportService, type ExportSelection } from './export-service';
 import { SHARE_LINK_MAX_URL, toShareLink } from './share-link';
 
@@ -31,6 +31,25 @@ export interface ShareLink {
 @Injectable({ providedIn: 'root' })
 export class ShareLinkService {
   private readonly exporter = inject(ExportService);
+  private readonly locationStrategy = inject(LocationStrategy);
+
+  /**
+   * Where the link points: **the app doing the sharing**, not `ACHORDEON_URL`.
+   *
+   * That constant is the address a *file* carries — it travels, is read by a
+   * person who found it two years later, and must not name whichever host
+   * happened to write it. A link is the opposite: it is opened, not filed, and it
+   * has to open the app it came from. Pointing a link copied on `localhost` — or
+   * on a preview deployment, or a self-hosted instance — at production would send
+   * the user somewhere their song does not exist.
+   *
+   * `origin` plus `prepareExternalUrl`, the same way the Audience join link is
+   * built (`StageSession.audienceUrl`), because it is the same question: the app
+   * lives under a deploy base (`/app/`) and a bare origin would miss it.
+   */
+  private base(): string {
+    return `${location.origin}${this.locationStrategy.prepareExternalUrl('/')}`;
+  }
 
   /**
    * The selection as a link.
@@ -42,7 +61,7 @@ export class ShareLinkService {
    */
   async build(selection: ExportSelection): Promise<ShareLink> {
     const snapshot = await this.exporter.snapshot(selection);
-    const url = await toShareLink(JSON.stringify(snapshot), ACHORDEON_URL);
+    const url = await toShareLink(JSON.stringify(snapshot), this.base());
     return { url, isShareable: url.length <= SHARE_LINK_MAX_URL };
   }
 

@@ -201,6 +201,11 @@ test.describe('sharing a song as a link', () => {
 
     const url = await page.evaluate(() => navigator.clipboard.readText());
     expect(url).toContain('#z1=');
+    // The app doing the sharing, not the published address: a link copied here
+    // has to open HERE. Pointing it at production would send the reader to a
+    // library the song is not in.
+    expect(new URL(url).origin).toBe(new URL(page.url()).origin);
+    expect(url).not.toContain('achordeon.eu');
 
     // A different library entirely — the link has to carry the song, not point
     // at it.

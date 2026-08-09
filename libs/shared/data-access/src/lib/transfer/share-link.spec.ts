@@ -1,6 +1,12 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import {
+  APP_BASE_HREF,
+  LocationStrategy,
+  PathLocationStrategy,
+} from '@angular/common';
+import { provideLocationMocks } from '@angular/common/testing';
+import {
   ACHORDEON_URL,
   SCHEMA_VERSION,
   type Song,
@@ -15,6 +21,7 @@ import {
 } from '../stores/repositories';
 import { provideAchordeonData } from '../providers';
 import { ImportService } from './import-service';
+import { ShareLinkService } from './share-link-service';
 import {
   SHARE_LINK_COMPRESSED,
   SHARE_LINK_PLAIN,
@@ -131,6 +138,68 @@ describe('share link', () => {
     await expect(
       fromShareLink(`#${SHARE_LINK_COMPRESSED}=not-gzip-at-all`),
     ).rejects.toBeDefined();
+  });
+});
+
+describe('ShareLinkService', () => {
+  function service(baseHref: string): ShareLinkService {
+    TestBed.configureTestingModule({
+      providers: [
+        ...provideAchordeonData(),
+        provideLocationMocks(),
+        { provide: APP_BASE_HREF, useValue: baseHref },
+        { provide: LocationStrategy, useClass: PathLocationStrategy },
+        {
+          provide: SONG_REPOSITORY,
+          useValue: new PagedRepository(
+            new MemoryEntitySource<Song>([
+              {
+                id: 'a',
+                createdAt: 1,
+                updatedAt: 1,
+                deletedAt: null,
+                name: 'Shared',
+                content: '* Shared',
+                favorite: false,
+                settings: {},
+                cache: { title: 'Shared', subtitle: '' },
+              },
+            ]),
+            songPagingConfig,
+          ),
+        },
+        {
+          provide: SONGBOOK_REPOSITORY,
+          useValue: new PagedRepository(
+            new MemoryEntitySource([]),
+            songbookPagingConfig,
+          ),
+        },
+      ],
+    });
+    return TestBed.inject(ShareLinkService);
+  }
+
+  it('points at the app doing the sharing, not at the published address', async () => {
+    // `ACHORDEON_URL` is the address a FILE carries — it travels, and must not
+    // name whichever host wrote it. A link is the opposite: it is opened, so a
+    // link copied on localhost that pointed at production would send the reader
+    // somewhere their song does not exist.
+    const { url } = await service('/app/').build({ songIds: ['a'] });
+    expect(url.startsWith(`${location.origin}/app/#`)).toBe(true);
+    expect(url).not.toContain(ACHORDEON_URL);
+  });
+
+  it('folds in whatever deploy base the app is actually served under', async () => {
+    const { url } = await service('/preview/two/').build({ songIds: ['a'] });
+    expect(url.startsWith(`${location.origin}/preview/two/#`)).toBe(true);
+  });
+
+  it('reads back as the song that left', async () => {
+    const { url } = await service('/app/').build({ songIds: ['a'] });
+    const blob = await fromShareLink(new URL(url).hash);
+    const envelope = JSON.parse(await (blob as Blob).text());
+    expect(envelope.data.songs[0].name).toBe('Shared');
   });
 });
 
