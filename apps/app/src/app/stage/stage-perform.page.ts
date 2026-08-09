@@ -446,16 +446,26 @@ const SWIPE_THRESHOLD_PX = 60;
               <dd>
                 <!-- Click to copy: the link is long and hand-typing it is the
                      thing we are trying to avoid. A button, not a code span, so
-                     it is focusable and announces the copy action. -->
+                     it is focusable and announces the copy action.
+
+                     The clipboard mark leads, and the URL after it is plain
+                     text rather than underlined brand: this control does not
+                     GO anywhere, and the host is the one reader who must never
+                     follow it — opening the audience page on the performing
+                     device is the stage walking off itself. The icon says what
+                     the click does before the eye reaches the address; a tick
+                     replaces it for two seconds to say it did. -->
                 <button
                   type="button"
                   class="lobby-link"
+                  [class.is-copied]="isCopied()"
                   data-testid="stage-lobby-link"
                   [attr.aria-label]="isCopied() ? copiedLabel : copyLinkLabel"
                   [appTooltip]="isCopied() ? copiedLabel : copyLinkLabel"
                   (click)="copyLink()"
                 >
-                  {{ session.audienceUrl() }}
+                  <app-icon [name]="isCopied() ? 'check' : 'copy'" />
+                  <span class="lobby-url">{{ session.audienceUrl() }}</span>
                 </button>
               </dd>
               <dt>{{ lobbyQrLabel }}</dt>
@@ -750,21 +760,43 @@ const SWIPE_THRESHOLD_PX = 60;
       font-variant-numeric: tabular-nums;
     }
 
+    /* A field you press, not a link you follow: the mark on the left, the
+       address beside it, and a border round the pair so the whole strip reads
+       as one target. */
     .lobby-link {
-      padding: 0;
-      border: 0;
-      background: none;
-      color: var(--brand);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      inline-size: 100%;
+      padding: var(--space-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-sunken);
+      color: var(--text);
       font-family: var(--font-ui);
       font-size: var(--text-xs);
       text-align: start;
-      text-decoration: underline;
-      word-break: break-all;
       cursor: pointer;
     }
 
+    .lobby-link app-icon {
+      --icon-size: 16px;
+      flex: none;
+      color: var(--text-muted);
+    }
+
     .lobby-link:hover {
-      color: var(--brand-hover);
+      border-color: var(--brand);
+    }
+
+    .lobby-link:hover app-icon,
+    .lobby-link.is-copied app-icon {
+      color: var(--brand);
+    }
+
+    .lobby-url {
+      min-inline-size: 0;
+      word-break: break-all;
     }
 
     .lobby-qr {

@@ -173,6 +173,15 @@ const ICONS = {
   smartphone: 'smartphone',
   rotateCcw: 'rotate-ccw',
   rotateCw: 'rotate-cw',
+  // Copy to the clipboard — the Audience link. A CLIPBOARD with an arrow, not
+  // the two stacked sheets `duplicate` above uses: those sheets say "make
+  // another one of these", which is what the explorer row means and is not what
+  // happens here. Same word, two acts; two glyphs.
+  copy: 'clipboard-copy',
+  // The tick that answers it. The clipboard gives no feedback of its own, and a
+  // tooltip flipping to "Copied" is not feedback on a touch screen, where
+  // nothing was hovering to read it.
+  check: 'check',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */
