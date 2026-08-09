@@ -35,10 +35,10 @@ export interface InboxItem {
   /** The file carries settings this build does not know — additive, from a newer
    * app. Kept, not dropped; the user is told, not stopped. */
   readonly hasUnknownSettings: boolean;
-  /** How many incoming songs the parser has something to say about — said before
-   * anything is written, because import otherwise never looks at the content and
-   * a song whose markup is wrong lands silently. */
-  readonly flaggedSongs: number;
+  /** Which incoming songs the parser has something to say about, by name — said
+   * before anything is written, because import otherwise never looks at the
+   * content and a song whose markup is wrong lands silently. */
+  readonly flaggedSongs: readonly string[];
 }
 
 @Injectable({ providedIn: 'root' })

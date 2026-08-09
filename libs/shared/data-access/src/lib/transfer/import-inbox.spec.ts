@@ -151,21 +151,23 @@ describe('ImportInbox', () => {
         }),
       ]);
 
-    it('counts a song the parser has something to say about', async () => {
+    it('names a song the parser has something to say about', async () => {
       // Two title lines: only the last one shows, and the first is silently
       // lost — exactly the sort of thing that is discovered on the page.
       const { inbox } = setup();
       await inbox.offer([withContent('* First\n* Second\n\nWords')]);
-      expect(inbox.item()?.flaggedSongs).toBe(1);
+      expect(inbox.item()?.flaggedSongs).toEqual(['s0']);
     });
 
-    it('counts a clean song as nothing', async () => {
+    it('says nothing about a clean song', async () => {
       const { inbox } = setup();
       await inbox.offer([withContent('* Title\n\nVerse: Some [Am]words')]);
-      expect(inbox.item()?.flaggedSongs).toBe(0);
+      expect(inbox.item()?.flaggedSongs).toEqual([]);
     });
 
-    it('counts songs, not warnings — one song with several is one song', async () => {
+    it('names each song once, however many warnings it carries', async () => {
+      // Named, not counted: a number says how bad it is, a name says where the
+      // reader has to go and look.
       const { inbox } = setup();
       await inbox.offer([
         withContent(
@@ -174,7 +176,7 @@ describe('ImportInbox', () => {
           '* Three\n* Four\n\nWords',
         ),
       ]);
-      expect(inbox.item()?.flaggedSongs).toBe(2);
+      expect(inbox.item()?.flaggedSongs).toEqual(['s0', 's2']);
     });
   });
 

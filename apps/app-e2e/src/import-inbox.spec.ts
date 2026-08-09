@@ -164,7 +164,9 @@ test.describe('what arrived, not just how much', () => {
     });
     await page.goto(`songs${linkFragment(file)}`);
 
-    await expect(page.getByTestId('import-flagged')).toContainText('1');
+    // Named, not counted — which song is what tells the reader where to look.
+    await expect(page.getByTestId('import-flagged')).toContainText('Muddled');
+    await expect(page.getByTestId('import-flagged')).not.toContainText('Clean');
     await page.getByTestId('import-confirm').click();
     // It still imports — the point is to look afterwards, not to be stopped.
     await expect(row(page, 'Muddled')).toHaveCount(1);

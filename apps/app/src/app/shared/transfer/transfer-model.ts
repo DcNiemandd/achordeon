@@ -215,15 +215,17 @@ export interface ImportPreview {
    * newer app. Kept, not dropped; the user is told, not stopped. */
   readonly hasUnknownSettings: boolean;
   /**
-   * How many incoming songs the parser has something to say about.
+   * Which incoming songs the parser has something to say about, by name.
    *
    * The same warning as {@link hasUnknownSettings} pointed the other way: that
    * one says "this file knows things this build does not", this one says "this
-   * build cannot make sense of some of what this file says". Counts **songs**,
-   * not warnings — one song can carry several, and what the reader is being told
-   * is how much of the file to go and look at.
+   * build cannot make sense of some of what this file says".
+   *
+   * **Named, not counted** — the same rule {@link conflicts} follows, because a
+   * number tells the reader how bad it is and a name tells them where to look.
+   * One entry per song however many warnings it carries.
    */
-  readonly flaggedSongs: number;
+  readonly flaggedSongs: readonly string[];
 }
 
 export interface ImportChoice {

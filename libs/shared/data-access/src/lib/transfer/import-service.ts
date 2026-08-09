@@ -100,19 +100,23 @@ export class ImportService {
    * bad conversion, a hand-edited file — and it is the more useful message
    * anyway: not "your tooling is old" but "these songs have problems".
    *
-   * **Songs, not warnings**: one song can carry several, and the reader is being
-   * told how much of the file to look at.
+   * **Named, not counted**, and one entry per song however many warnings it
+   * carries — the same rule the conflict list follows, for the same reason: "4
+   * songs have problems" is a number, and what the reader needs is which four,
+   * because that is what tells them where to go and look.
    *
    * Cost measured before committing to it, as the plan asked: a 200-song export
    * (175 KB of content) parses in ~28 ms, so the whole file is checked rather
    * than a capped sample or a lazy count.
    */
-  flagged(songs: readonly Song[]): number {
-    let count = 0;
+  flagged(songs: readonly Song[]): string[] {
+    const names: string[] = [];
     for (const song of songs) {
-      if (this.parser.parse(song.content).warnings.length > 0) count++;
+      if (this.parser.parse(song.content).warnings.length > 0) {
+        names.push(song.name);
+      }
     }
-    return count;
+    return names;
   }
 
   /** Write the plan under the user's answer. Returns what actually landed. */
