@@ -38,6 +38,7 @@ import {
   toPageDelta,
   turnPageLabel,
 } from '../shared/layout';
+import { type ShortcutAction, registerShortcuts } from '../shared/keyboard';
 import { SongRender } from '../shared/song-render';
 import { StagePerformPresenter } from './stage-perform.presenter';
 
@@ -80,7 +81,6 @@ const SWIPE_THRESHOLD_PX = 60;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StagePerformPresenter],
   host: {
-    '(document:keydown)': 'onKeyDown($event)',
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
   },
   imports: [
@@ -861,6 +861,19 @@ export class StagePerformPage {
 
   constructor() {
     const destroyRef = inject(DestroyRef);
+
+    // The song list goes on top of the perform keys, so while it is open it is
+    // the only thing that hears anything.
+    registerShortcuts({
+      name: this.performingLabel,
+      actions: this.stageShortcuts,
+    });
+    registerShortcuts({
+      name: this.summaryLabel,
+      isBlocking: this.session.isSummaryOpen,
+      actions: this.summaryShortcuts,
+    });
+
     // Leaving the route drops fullscreen (chrome must come back on the next
     // module) and stops the shell drawing the stage controls — but the session
     // itself lives on. Only the exit cross ends it (see exit()).
@@ -929,45 +942,75 @@ export class StagePerformPage {
     this.copiedResetTimer = setTimeout(() => this.isCopied.set(false), 2000);
   }
 
-  protected onKeyDown(event: KeyboardEvent): void {
-    if (this.session.isSummaryOpen()) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        this.session.closeSummary();
-      }
-      return;
-    }
-
+  /**
+   * Performing from the keyboard (ADR-0015).
+   *
+   * **The arrows keep turning pages while zoomed**: a keyboard has no finger to
+   * take away, so there is nothing here for the pan to be competing with.
+   *
+   * `0` is the reset that always works. Escape is offered too because it is the
+   * reflex — but only while something *is* magnified, and a disabled action
+   * leaves the press to the browser. Escape in fullscreen is how you get out of
+   * fullscreen, and that is the browser's key, not ours to take.
+   */
+  private readonly stageShortcuts = computed<readonly ShortcutAction[]>(() => {
     const zoom = this.zoom();
-    // `0` is the one that always works. Escape is offered because it is the
-    // reflex, but the browser eats it in fullscreen to leave fullscreen — and
-    // that is its key, not ours to take.
-    if (event.key === '0' || (event.key === 'Escape' && zoom?.isZoomed())) {
-      event.preventDefault();
-      zoom?.reset();
-      return;
-    }
-    if (event.key === '+' || event.key === '=') {
-      event.preventDefault();
-      zoom?.zoomIn();
-      return;
-    }
-    if (event.key === '-') {
-      event.preventDefault();
-      zoom?.zoomOut();
-      return;
-    }
+    return [
+      {
+        id: 'stage.prev',
+        label: this.prevLabel,
+        keys: ['ArrowLeft', 'ArrowUp'],
+        run: () => this.session.prev(),
+      },
+      {
+        id: 'stage.next',
+        label: this.nextLabel,
+        keys: ['ArrowRight', 'ArrowDown'],
+        run: () => this.session.next(),
+      },
+      {
+        id: 'stage.zoomIn',
+        label: this.zoomInLabel,
+        keys: ['+', '='],
+        run: () => zoom?.zoomIn(),
+      },
+      {
+        id: 'stage.zoomOut',
+        label: this.zoomOutLabel,
+        keys: ['-'],
+        run: () => zoom?.zoomOut(),
+      },
+      {
+        id: 'stage.resetZoom',
+        label: this.resetZoomLabel,
+        keys: ['0', 'Escape'],
+        isDisabled: !(zoom?.isZoomed() ?? false),
+        run: () => zoom?.reset(),
+      },
+    ];
+  });
 
-    // The arrows keep turning pages while zoomed: a keyboard has no finger to
-    // take away, so there is nothing here for the pan to be competing with.
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      this.session.prev();
-    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault();
-      this.session.next();
-    }
-  }
+  /**
+   * The song list, while it is open: it takes every key, and gives back only
+   * the one that closes it.
+   *
+   * It is a panel the perform view draws itself rather than a component of its
+   * own, so the layer is registered once and shadows only while it is open —
+   * which is what the "is the summary open?" question at the top of the old
+   * key handler was for.
+   */
+  private readonly summaryShortcuts = computed<readonly ShortcutAction[]>(() =>
+    this.session.isSummaryOpen()
+      ? [
+          {
+            id: 'stage.closeSummary',
+            label: this.closeSummaryLabel,
+            keys: ['Escape'],
+            run: () => this.session.closeSummary(),
+          },
+        ]
+      : [],
+  );
 
   protected startSwipe(event: PointerEvent): void {
     // Only track gestures that start on the render area, not on the summary
@@ -1064,6 +1107,11 @@ export class StagePerformPage {
   protected readonly prevLabel = $localize`:@@stage.prev:Previous song`;
   protected readonly nextLabel = $localize`:@@stage.next:Next song`;
   protected readonly summaryLabel = $localize`:@@stage.summary:Song list`;
+  /** Names this screen's group in the shortcuts dialog. */
+  protected readonly performingLabel = $localize`:@@stage.performing:Performing`;
+  protected readonly zoomInLabel = $localize`:@@stage.zoomIn:Zoom in`;
+  protected readonly zoomOutLabel = $localize`:@@stage.zoomOut:Zoom out`;
+  protected readonly resetZoomLabel = $localize`:@@stage.resetZoom:Reset zoom`;
   protected readonly closeSummaryLabel = $localize`:@@stage.closeSummary:Close song list`;
   protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
   protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
