@@ -10,6 +10,7 @@ import {
   songPagingConfig,
   songbookPagingConfig,
 } from '../stores/repositories';
+import { provideAchordeonData } from '../providers';
 import { ExportService } from './export-service';
 import { ImportError, ImportService } from './import-service';
 import { embedSnapshot, readEmbeddedSnapshot } from './embedded-metadata';
@@ -51,6 +52,9 @@ function setup(songs: Song[] = [], books: Songbook[] = []) {
   const bookSource = new MemoryEntitySource<Songbook>(books);
   TestBed.configureTestingModule({
     providers: [
+      // Import re-derives `Song.cache` from the parser rather than believing a
+      // file's copy (ADR-0014), so the theory port has to be bound here now.
+      ...provideAchordeonData(),
       {
         provide: SONG_REPOSITORY,
         useValue: new PagedRepository(songSource, songPagingConfig),
@@ -115,10 +119,12 @@ describe('ExportService', () => {
     const { exporter } = setup([song('a', { name: 'Šárka & co' }), song('b')]);
     const one = await exporter.snapshot({ songIds: ['a'] });
     expect(exporter.filename(one)).toBe(
-      `achordeon-Sarka-co-${fileDate()}.json`,
+      `achordeon-Sarka-co-${fileDate()}.achordeon`,
     );
     const many = await exporter.snapshot({ songIds: ['a', 'b'] });
-    expect(exporter.filename(many)).toBe(`achordeon-export-${fileDate()}.json`);
+    expect(exporter.filename(many)).toBe(
+      `achordeon-export-${fileDate()}.achordeon`,
+    );
   });
 });
 
@@ -199,6 +205,167 @@ describe('ImportService', () => {
     });
     expect(write.ignored).toBe(1);
     expect((await songSource.all())[0].name).toBe('mine');
+  });
+});
+
+// The boundary that makes a HAND-WRITTEN envelope an ordinary inbound file
+// (ADR-0014). Every case here is a field a model would leave out because it
+// carries no information about a new song, and each one used to fail differently.
+describe('a hand-written envelope', () => {
+  /** The whole of what the published schema asks for: a version, two arrays,
+   * and per song a name and its content. */
+  const handWritten = (songs: unknown[], songbooks: unknown[] = []): Blob =>
+    new Blob([
+      JSON.stringify({
+        schemaVersion: SCHEMA_VERSION,
+        data: { songs, songbooks },
+      }),
+    ]);
+
+  it('imports a song that is only a name and its content', async () => {
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([{ name: 'Thyme', content: '* Wild Mountain Thyme' }]),
+    );
+    const plan = await importer.plan(source.snapshot);
+    expect(plan.songs).toHaveLength(1);
+    expect(plan.songs[0]).toMatchObject({
+      name: 'Thyme',
+      favorite: false,
+      settings: {},
+      deletedAt: null,
+    });
+    expect(plan.songs[0].id).toEqual(expect.any(String));
+  });
+
+  it('does not lose a song for want of a deletedAt', async () => {
+    // The dangerous one: `undefined === null` is false, so `planImport` used to
+    // filter the song out and the preview reported an empty file with no reason.
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([{ name: 'a', content: 'x' }]),
+    );
+    expect(source.snapshot.data.songs[0].deletedAt).toBeNull();
+    expect((await importer.plan(source.snapshot)).songs).toHaveLength(1);
+  });
+
+  it('survives a song with no settings bag', async () => {
+    // `Object.keys(undefined)` used to throw inside the migrator, which is not an
+    // ImportError and so never reached the "could not be imported" dialog.
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([{ name: 'a', content: 'x' }]),
+    );
+    expect(source.status).toBe('ok');
+  });
+
+  it('survives an envelope with no user array', async () => {
+    const { importer } = setup();
+    await expect(importer.read(handWritten([]))).resolves.toMatchObject({
+      status: 'ok',
+    });
+  });
+
+  it('never carries an account row in, even when the file offers one', async () => {
+    // `data.user` is a Snapshot's field, not an Export's: it holds the account and
+    // the GLOBAL render defaults, and a file that re-based someone's whole library
+    // on the sender's would change every song they already had.
+    const { importer } = setup();
+    const source = await importer.read(
+      new Blob([
+        JSON.stringify({
+          schemaVersion: SCHEMA_VERSION,
+          data: {
+            user: [
+              { id: 'local-user', username: 'someone-else', settings: {} },
+            ],
+            songs: [],
+            songbooks: [],
+          },
+        }),
+      ]),
+    );
+    expect(source.snapshot.data.user).toEqual([]);
+  });
+
+  it('mints an id per song, so two nameless songs are two songs', async () => {
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([
+        { name: 'a', content: 'x' },
+        { name: 'b', content: 'y' },
+      ]),
+    );
+    const [first, second] = source.snapshot.data.songs;
+    expect(first.id).not.toEqual(second.id);
+  });
+
+  it('keeps an id the file did give, so a re-import replaces', async () => {
+    const { importer } = setup([song('a', { name: 'mine' })]);
+    const source = await importer.read(
+      handWritten([{ id: 'a', name: 'theirs', content: 'x' }]),
+    );
+    expect((await importer.plan(source.snapshot)).conflicts).toEqual([
+      { id: 'a', incomingName: 'theirs', existingName: 'mine' },
+    ]);
+  });
+
+  it('re-derives the cache from the content instead of believing the file', async () => {
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([
+        {
+          name: 'a',
+          content: '* Real Title\n** Real Subtitle',
+          cache: { title: 'A Lie', subtitle: 'Also A Lie' },
+        },
+      ]),
+    );
+    expect(source.snapshot.data.songs[0].cache).toEqual({
+      title: 'Real Title',
+      subtitle: 'Real Subtitle',
+    });
+  });
+
+  it('falls back to the song’s own title when no name was written', async () => {
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([{ content: '* Wild Mountain Thyme' }]),
+    );
+    expect(source.snapshot.data.songs[0].name).toBe('Wild Mountain Thyme');
+  });
+
+  it('completes a songbook that is only a name and an order', async () => {
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten(
+        [{ id: 'one', name: 'a', content: 'x' }],
+        [{ name: 'Set list', entries: ['one'] }],
+      ),
+    );
+    const plan = await importer.plan(source.snapshot);
+    expect(plan.songbooks).toHaveLength(1);
+    expect(plan.songbooks[0]).toMatchObject({
+      name: 'Set list',
+      entries: ['one'],
+      settings: {},
+      deletedAt: null,
+    });
+  });
+
+  it('still preserves a setting key this build does not know', async () => {
+    // Tolerance at the boundary must not turn into a whitelist: preserve-unknown
+    // (ADR-0007) is what makes an additive change lossless.
+    const { importer } = setup();
+    const source = await importer.read(
+      handWritten([
+        { name: 'a', content: 'x', settings: { fromTheFuture: 'yes' } },
+      ]),
+    );
+    expect(source.status).toBe('warn');
+    expect(source.snapshot.data.songs[0].settings).toMatchObject({
+      fromTheFuture: 'yes',
+    });
   });
 });
 

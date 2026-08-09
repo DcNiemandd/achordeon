@@ -24,6 +24,7 @@ import {
 import { Button, Dialog } from '../../primitives';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   DEFAULT_SONGBOOK_CHOICE,
   type DownloadProgress,
   type PageSizeChoice,
@@ -58,8 +59,20 @@ import {
             <option value="pdf">{{ pdfLabel }}</option>
             <option value="zip-png">{{ zipPngLabel }}</option>
             <option value="json">{{ dataLabel }}</option>
+            <!-- Disabled, never removed, when the book will not fit: a greyed
+                 option that explains itself teaches the limit, where one that
+                 vanishes reads as a missing feature. -->
+            <option value="share-link" [disabled]="isShareLinkReady() !== true">
+              {{ shareLinkLabel }}
+            </option>
           </select>
         </label>
+
+        @if (isShareLinkReady() === false) {
+          <p class="warn" data-testid="songbook-link-too-big">
+            {{ linkTooBigText }}
+          </p>
+        }
 
         @if (choice().format === 'pdf') {
           <label class="row">
@@ -139,7 +152,7 @@ import {
           <span class="spinner" aria-hidden="true"></span>
           {{ generatingLabel() }}
         } @else {
-          {{ downloadLabel }}
+          {{ downloadLabel() }}
         }
       </button>
     </app-dialog>
@@ -182,6 +195,14 @@ import {
       font-size: var(--text-xs);
     }
 
+    /* Why the greyed option is greyed, said next to it rather than hidden
+       behind a hover. */
+    .warn {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: var(--text-xs);
+    }
+
     /* Rides inside the confirm button while the book renders. Sized to the
        button's text and tinted for its surface, since a primary button's face
        is the brand colour. */
@@ -219,6 +240,10 @@ export class SongbookDownloadDialog {
   /** How far it has got, or null during the layout pass before the count is
    * known. */
   readonly progress = input<DownloadProgress | null>(null);
+  /** Whether the book fits in a link — `null` while it is still being measured.
+   * The length is only knowable once the payload is built, so this waits for the
+   * real number rather than counting songs. */
+  readonly isShareLinkReady = input<boolean | null>(null);
 
   readonly chosen = output<SongbookPdfChoice>();
   readonly closed = output<void>();
@@ -237,9 +262,13 @@ export class SongbookDownloadDialog {
   // it. Local edits win until `initial` itself changes.
   protected readonly choice = linkedSignal(() => this.initial());
 
-  /** The data file is picked — nothing below the format row applies. */
+  /** The data file or the link is picked — nothing below the format row applies.
+   * Neither is about paper: one is the book as a file, the other the same book as
+   * a link, and every question underneath is about a printer. */
   protected readonly isData = computed(
-    () => this.choice().format === DATA_FORMAT,
+    () =>
+      this.choice().format === DATA_FORMAT ||
+      this.choice().format === SHARE_LINK_FORMAT,
   );
 
   protected readonly title = computed(
@@ -289,13 +318,25 @@ export class SongbookDownloadDialog {
   /** The book **and its songs** — `ExportService` adds them, because a book of
    * references imports as a book of nothing on a machine that lacks them. */
   protected readonly dataNote = $localize`:@@songbookDownload.dataNote:The songbook and its songs as data, to import here or on another device.`;
+  protected readonly shareLinkLabel = $localize`:@@songbookDownload.format.link:Link`;
+  protected readonly linkNote = $localize`:@@songbookDownload.linkNote:A link that opens this songbook in Achordeon, copied ready to paste. The songs travel inside the link — nothing is uploaded.`;
+  /** Names the *selection*, so nobody reads it as a permanent restriction, and
+   * says size rather than song count — the limit is length, and one long song can
+   * trip it where three short ones would not. */
+  protected readonly linkTooBigText = $localize`:@@songbookDownload.linkTooBig:This selection is too big to share as a link. Download it instead.`;
   protected readonly note = computed(() =>
-    this.isData()
-      ? this.dataNote
-      : this.choice().format === 'pdf'
-        ? this.fitNote
-        : this.zipNote,
+    this.choice().format === SHARE_LINK_FORMAT
+      ? this.linkNote
+      : this.isData()
+        ? this.dataNote
+        : this.choice().format === 'pdf'
+          ? this.fitNote
+          : this.zipNote,
   );
   protected readonly cancelLabel = $localize`:@@songbookDownload.cancel:Cancel`;
-  protected readonly downloadLabel = $localize`:@@songbookDownload.confirm:Download`;
+  protected readonly downloadLabel = computed(() =>
+    this.choice().format === SHARE_LINK_FORMAT
+      ? $localize`:@@songbookDownload.copyLink:Copy link`
+      : $localize`:@@songbookDownload.confirm:Download`,
+  );
 }

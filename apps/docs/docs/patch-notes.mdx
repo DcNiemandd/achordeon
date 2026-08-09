@@ -7,6 +7,62 @@ sidebar_position: 99
 Achordeon updates itself in the background and tells you when a new version is
 waiting - this is the page that says what you would be reloading into.
 
+## 2026-08-09
+
+### Songs written by an AI assistant
+
+An assistant can write a song for Achordeon and hand you a file the app takes. There
+is a file to give any chatbot that tells it what the file should look like, and a
+ready-made skill that teaches it the song syntax and lets it check its work before
+you ever see the song, in three builds: one for Claude, one for a Custom GPT, one
+file to paste into a Gem. What comes back is a file to import or a link to open.
+[Writing a song with an AI assistant](/export-import.mdx#writing-a-song-with-an-ai-assistant)
+
+### New features
+
+- **Share a song as a link** - the Download dialog offers a **Link** beside the
+  file. The song travels inside the link itself, so nothing is uploaded and nothing
+  is fetched when it is opened - it works on a device that is offline, in a browser
+  tab or in the installed app. A selection too long to fit in a link says so and
+  points you at the file instead.
+  [Sharing a song as a link](/export-import.mdx#sharing-a-song-as-a-link)
+- **Drop a file on the page** - dropping an Achordeon file anywhere on Achordeon
+  imports it, with no button to find and no particular page to be on first. Several
+  files at once are offered one after another, and turning one down does not cancel
+  the rest. [Import](/export-import.mdx#import)
+- **A file of its own** - an export is written as `.achordeon` rather than `.json`,
+  so it is Achordeon's file to look at and not one more `.json` among your
+  downloads. Where Achordeon is installed and the system offers it, you can open
+  one from your files and land in the app. Files already exported as `.json` still
+  import, and the picker takes both. [Import](/export-import.mdx#import)
+
+### Changes
+
+- **The preview says what it could not read** - importing now names the songs
+  Achordeon cannot make sense of, before anything is written. It used to look only
+  at which songs were arriving and never at what was written in them, so a song
+  that came out wrong was something you found on the page afterwards.
+  [Import](/export-import.mdx#import)
+
+### Bugfixes
+
+- **A stray asterisk is text** - an unclosed `*` italicised everything after it, so
+  `Refrain (2*)` set the rest of the line in italics, and so did a marker you had
+  not finished typing. An asterisk marks anything only when something on the same
+  line closes it. [Markdown](/songs/syntax.mdx#markdown)
+- **English is a spelling too** - with chord notation set to English, a song written
+  with `H` still printed `H`, so a book pasted from two sources showed `H` beside
+  `Bb`. English now prints `H` as `B` and `Hb` as `Bb`, so either setting brings a
+  mixed song out in one language. Your song text is left as you wrote it, as
+  always. [Rendering](/settings.mdx#rendering)
+- **Downloading in Firefox on Android** - a PDF downloaded from the installed app
+  opened a blank screen instead of saving. The file is handed over as a download
+  now, rather than as something the browser is also free to open.
+  [Download](/export-import.mdx#download)
+- **The Docs link goes straight there** - the link to the documentation in Settings
+  went through a redirect that flashed a blank page on the way. The documentation
+  opens at its front page in one step now, and older links still arrive.
+
 ## 2026-08-06
 
 ### New features
@@ -22,12 +78,12 @@ waiting - this is the page that says what you would be reloading into.
 
 - **A tap opens it** - on a phone, tapping a song or a songbook opens it. On a
   desktop a click picks the row and shows it in the pane beside the list, and a
-  double click goes in; a phone has no room for that second pane, so the tap
+  double click goes in. A phone has no room for that second pane, so the tap
   that used to do nothing you could see now takes you straight there. Inside a
   songbook, tapping a song still just picks it - you are arranging the book, not
   leaving it. [Songs](/songs/index.mdx#list)
 - **The file says where it came from** - an Achordeon file now carries the app's
-  address on its first line. Nothing reads it; it is for the person who finds
+  address on its first line. Nothing reads it, it is for the person who finds
   the file on a disk a year from now.
   [Export](/export-import.mdx#export)
 
@@ -58,7 +114,7 @@ waiting - this is the page that says what you would be reloading into.
   of your screen laid on its side, for when the device is locked to portrait and
   turning it changes nothing. [Rendering](/settings.mdx#rendering)
 - **Transpose while performing** - play a song in another key without changing
-  the song. The performing menu has a **Transpose** row; on a desktop the control
+  the song. The performing menu has a **Transpose** row, and on a desktop the control
   sits in the bar. The audience has one of its own, so a viewer with a capo is not
   bound to what the performer is playing. [Transposing](/stage-audience/index.mdx#transposing)
 

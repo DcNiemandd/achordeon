@@ -184,15 +184,91 @@ describe('phase2 — inline scan', () => {
       });
     });
 
-    it('closes an unclosed emphasis at end of line', () => {
-      expect(scan('*ab')).toEqual({
+    it('prints an asterisk that closes nothing', () => {
+      expect(scan('*ab')).toEqual({ text: '*ab', chords: [] });
+      expect(scan('Refrain (2*)')).toEqual({
+        text: 'Refrain (2*)',
+        chords: [],
+      });
+      // `*a*` closes; the third has nothing left to close.
+      expect(scan('*a*b*')).toEqual({
+        text: 'ab*',
+        chords: [],
+        spans: [{ start: 0, end: 1, italic: true }],
+      });
+    });
+
+    it('emphasises text that starts or ends with a space', () => {
+      expect(scan('* a *')).toEqual({
+        text: ' a ',
+        chords: [],
+        spans: [{ start: 0, end: 3, italic: true }],
+      });
+    });
+
+    it('prints the asterisks a closer has left over', () => {
+      // One `*` closes the italic; the second closed nothing, so it is text.
+      expect(scan('*asd**')).toEqual({
+        text: 'asd*',
+        chords: [],
+        spans: [{ start: 0, end: 3, italic: true }],
+      });
+      // A closer spends what the opener spent: two here, one over.
+      expect(scan('**asd***')).toEqual({
+        text: 'asd*',
+        chords: [],
+        spans: [{ start: 0, end: 3, bold: true }],
+      });
+    });
+
+    it('pairs what is left over as far as it goes, and prints the rest', () => {
+      // A lone `*` cannot close a `**` exactly, so nothing matches on the first
+      // pass; the repair then pairs one asterisk with one and prints the other.
+      expect(scan('**a*b')).toEqual({
+        text: '*ab',
+        chords: [],
+        spans: [{ start: 1, end: 2, italic: true }],
+      });
+      // Five open, four close: four pair off and the odd one out prints, rather
+      // than nine asterisks landing on the page.
+      expect(scan('***** a as****')).toEqual({ text: '* a as', chords: [] });
+    });
+
+    it('does not read a marker across a chord bracket', () => {
+      // The `*` inside the bracket is chord text, so the lyric `*` closes nothing.
+      expect(scan('*a [Solo*] b')).toEqual({
+        text: '*a  b',
+        chords: [{ raw: 'Solo*', at: 3, valid: false }],
+      });
+    });
+
+    it('emphasises to the end of the line when the run closes there', () => {
+      expect(scan('*ab*')).toEqual({
         text: 'ab',
         chords: [],
         spans: [{ start: 0, end: 2, italic: true }],
       });
     });
 
-    it('treats four or more asterisks as literal', () => {
+    it('counts a longer run in pairs of bold, plus a leftover italic', () => {
+      // Four is bold twice over: it closes, so the asterisks go, but the two
+      // flips cancel and leave the text plain.
+      expect(scan('****A****')).toEqual({ text: 'A', chords: [] });
+      // Five is those two bold flips plus the odd one out.
+      expect(scan('*****A*****')).toEqual({
+        text: 'A',
+        chords: [],
+        spans: [{ start: 0, end: 1, italic: true }],
+      });
+      // Six is three bold flips.
+      expect(scan('******A******')).toEqual({
+        text: 'A',
+        chords: [],
+        spans: [{ start: 0, end: 1, bold: true }],
+      });
+    });
+
+    it('prints a long run with nothing on the line to pair with', () => {
       expect(scan('****x')).toEqual({ text: '****x', chords: [] });
     });
 

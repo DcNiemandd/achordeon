@@ -39,6 +39,23 @@ function readBlob(
   });
 }
 
+// jsdom has no web streams, which the share link is compressed and read through.
+// Node's own are the real implementations — the same gzip a browser runs — so the
+// shim cannot disagree with what ships. They come as a set: a `CompressionStream`
+// only accepts a readable of its own kind.
+const nodeStreams =
+  jest.requireActual<Record<string, unknown>>('node:stream/web');
+const globals = globalThis as unknown as Record<string, unknown>;
+for (const name of [
+  'ReadableStream',
+  'WritableStream',
+  'TransformStream',
+  'CompressionStream',
+  'DecompressionStream',
+]) {
+  globals[name] ??= nodeStreams[name];
+}
+
 // jsdom's crypto lacks randomUUID (used for the device id). A counter-backed shim
 // keeps ids unique within a test run; production uses the real browser crypto.
 if (typeof globalThis.crypto?.randomUUID !== 'function') {

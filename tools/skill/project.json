@@ -1,0 +1,69 @@
+{
+  "name": "skill",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "tools/skill",
+  "tags": ["type:tool"],
+  "targets": {
+    "gen-skill-bundle": {
+      "executor": "nx:run-commands",
+      "_comment": "The distributable skill's dependency-free domain. The scripts that go in the zip beside it live where the repo's own skills already keep them (.claude/skills/song-core/scripts) and are copied byte for byte — the point of the packaging is that the file that ships IS the file that was tested, so nothing is staged and tested twice.",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-skill-bundle.mjs",
+        "{projectRoot}/bundle-entry.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/to-achordeon.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/_domain-core.mjs",
+        "{workspaceRoot}/libs/shared/domain/src/**/*.ts",
+        "{workspaceRoot}/libs/shared/chord-theory/src/**/*.ts"
+      ],
+      "outputs": ["{workspaceRoot}/dist/skill/_domain.mjs"],
+      "options": {
+        "command": "node tools/gen-skill-bundle.mjs"
+      }
+    },
+    "gen-skill-zip": {
+      "executor": "nx:run-commands",
+      "_comment": "The three wrappers the skill ships as: a Claude skill, a Custom GPT knowledge bundle, and a Gem's instructions. One source, three hosts that can do different amounts. They land in the docs site's static/, which Docusaurus copies to the site root.",
+      "dependsOn": [
+        "gen-skill-bundle",
+        { "projects": ["docs"], "target": "gen-json-schema" }
+      ],
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-skill-zip.mjs",
+        "{projectRoot}/*.template.md",
+        "{projectRoot}/manifest.mjs",
+        "{workspaceRoot}/.claude/skills/song-core/scripts/*.mjs",
+        "{workspaceRoot}/dist/skill/_domain.mjs",
+        "{workspaceRoot}/apps/docs/static/achordeon.schema.json"
+      ],
+      "outputs": [
+        "{workspaceRoot}/apps/docs/static/achordeon-song.zip",
+        "{workspaceRoot}/apps/docs/static/achordeon-song-gpt.zip",
+        "{workspaceRoot}/apps/docs/static/achordeon-song-gem.md"
+      ],
+      "options": {
+        "command": "node tools/gen-skill-zip.mjs"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["gen-skill-bundle", "gen-skill-zip"],
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/.claude/skills/song-core/scripts/*.mjs",
+        "{workspaceRoot}/libs/shared/domain/src/**/*.ts",
+        "{workspaceRoot}/libs/shared/chord-theory/src/**/*.ts",
+        "{projectRoot}/**/*"
+      ],
+      "options": {
+        "commands": [
+          "node --test \".claude/skills/song-core/scripts/*.test.mjs\"",
+          "node --test \"tools/skill/*.test.mjs\""
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

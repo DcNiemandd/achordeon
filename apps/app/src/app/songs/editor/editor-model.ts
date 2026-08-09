@@ -111,7 +111,7 @@ export interface InsertRequest {
    * (PARSER-GRAMMAR §Phase 2). So Bold on `*x*` has to write `***x***`, and Italic
    * on `***x***` has to write `**x**`: the button flips its own bit and leaves the
    * other one exactly as it was. Wrapping instead of flipping is how a second press
-   * used to pile up a fourth asterisk (which the grammar reads as literal text),
+   * used to pile up a fourth asterisk (which the grammar reads as no emphasis),
    * and how Italic inside a bold run used to quietly un-bold it — the two markers
    * are the same character, so "is it already wrapped in `*`" cannot tell them
    * apart. Only the run length can.

@@ -7,13 +7,19 @@
 // the same thing on every device, `transposeContent` stays a lossless token
 // rewrite, and switching the setting is a view change you can switch back.
 //
+// Both settings spell. English used to be the identity — "as typed" — which made
+// the setting `german | off` rather than `german | english`: a book pasted from
+// two sources printed `H` beside `Bb`, and `Hb` printed as `Hb`, a spelling no
+// notation has. Each half now names B natural and B flat its own way, so either
+// setting turns a mixed song into one language.
+//
 // One rule of it reaches further than the page: transpose already rewrites the
 // source, and when it does it has to pick a spelling. `spellNoteInSource` is the
 // subset of the German rule that is safe to write into text that will be parsed
 // again — see its doc for why that subset is smaller than what the page prints.
 
 import type { Line, SongAst } from './ast';
-import type { ChordNotation } from './chords';
+import { toEnglishNotation, type ChordNotation } from './chords';
 import type { ChordTheory } from './theory';
 
 /**
@@ -63,24 +69,41 @@ function germanNote(note: string): string {
 /**
  * One chord symbol as `notation` spells it.
  *
- * **English is the identity.** It is the language the source is written in, so
- * "spelled in English" means "as it was typed": a song that has always rendered
- * `Bb` still renders `Bb`, and one written `[H]` keeps its `H`. Only German
- * re-spells — and it re-spells every chord it can parse, so a book that mixes
- * `H` and `Bb` comes out consistent.
+ * Both settings re-spell, and each re-spells every chord it can parse, so a book
+ * that mixes `H` and `Bb` comes out in one language whichever is chosen. English
+ * is **not** the identity: it is a language, not "as it was typed", so a `[H]` in
+ * an English song prints `B` and an `[Hb]` prints `Bb` — the latter being a
+ * spelling neither language has, and the clearest sign that "as typed" was never
+ * a third notation but the absence of one.
+ *
+ * English is exactly {@link toEnglishNotation}, the same rewrite reading applies,
+ * which is why it needs no engine: the read step already defines what German
+ * spelling a source may carry (a leading `H` and a `/H`), so undoing it in the
+ * text is the whole of the English spelling. German has to go through the parse,
+ * because its `Bb` → `B` half is about the *note*, not about the letters typed.
  *
  * Anything the engine does not recognise as a chord is returned untouched: an
  * annotation (`[Solo]`, `[x2]`) is text, not a symbol, and re-spelling text would
- * be a bug. So is a chord whose notes are the same in both languages — the symbol
- * is handed back verbatim rather than rebuilt, so no reformatting can leak in
- * through a chord that had nothing to do with the setting.
+ * be a bug — `[Hold]` is the case that bites, since the English rewrite alone
+ * would make it `[Bold]`. So is a chord whose notes are the same in both
+ * languages — the symbol is handed back verbatim rather than rebuilt, so no
+ * reformatting can leak in through a chord that had nothing to do with the
+ * setting.
  */
 export function spellChord(
   symbol: string,
   notation: ChordNotation,
   theory: ChordTheory,
 ): string {
-  if (notation !== 'german') return symbol;
+  if (notation !== 'german') {
+    const spelt = toEnglishNotation(symbol);
+    // Nothing German in it, so nothing to re-spell — and no reason to ask the
+    // engine whether it is even a chord. This is every symbol in almost every
+    // song, so the English render stays as cheap as it was when it did nothing.
+    if (spelt === symbol) return symbol;
+    return theory.parseChord(symbol) === null ? symbol : spelt;
+  }
+
   const parsed = theory.parseChord(symbol);
   if (parsed === null) return symbol;
 
@@ -97,17 +120,16 @@ export function spellChord(
  * PNG, PDF and the songbook exports cannot disagree about what a chord is called
  * — and so the editor keeps showing the source as it really is.
  *
- * Returns the AST itself when nothing moved, which is every render in English and
- * most renders in German (a song with no B in it). A `computed` downstream then
- * sees the same reference and has nothing to recompute.
+ * Returns the AST itself when nothing moved, which is most renders in either
+ * language — English unless the song was typed with an `H`, German unless it has
+ * a B in it. A `computed` downstream then sees the same reference and has nothing
+ * to recompute.
  */
 export function respellChords(
   ast: SongAst,
   notation: ChordNotation,
   theory: ChordTheory,
 ): SongAst {
-  if (notation !== 'german') return ast;
-
   let changed = false;
   const blocks = ast.blocks.map((block) => {
     let blockChanged = false;

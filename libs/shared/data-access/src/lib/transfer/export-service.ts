@@ -21,7 +21,13 @@ import {
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
 import { ACHORDEON_DB } from '../stores/repositories';
 import { readDeviceId } from '../persistence/gateway';
-import { fileDate, saveFile, toFileSlug } from './file-io';
+import {
+  ACHORDEON_EXTENSION,
+  ACHORDEON_MIME,
+  fileDate,
+  saveFile,
+  toFileSlug,
+} from './file-io';
 
 /** What to put in the file. Empty means empty — this never means "everything". */
 export interface ExportSelection {
@@ -94,15 +100,20 @@ export class ExportService {
     await saveFile(
       this.toJson(snapshot),
       this.filename(snapshot, name),
-      'application/json',
+      ACHORDEON_MIME,
     );
     return snapshot;
   }
 
   /**
-   * `achordeon-<what>-<date>.json`. A single item is named after itself, because
-   * that is the file the user will go looking for; anything else is just "an
-   * export", and the date is what tells two of them apart.
+   * `achordeon-<what>-<date>.achordeon`. A single item is named after itself,
+   * because that is the file the user will go looking for; anything else is just
+   * "an export", and the date is what tells two of them apart.
+   *
+   * **The bytes are unchanged** — still the same JSON. What the extension buys is
+   * a double-click that opens Achordeon rather than a text editor
+   * (`file_handlers` in the manifest) and a name that says what the file is. Every
+   * `.json` already written still imports: the picker accepts both.
    */
   filename(snapshot: SnapshotEnvelope, name?: string): string {
     const { songs, songbooks } = snapshot.data;
@@ -111,7 +122,7 @@ export class ExportService {
       (songs.length + songbooks.length === 1
         ? (songbooks[0]?.name ?? songs[0]?.name)
         : undefined);
-    return `achordeon-${toFileSlug(only ?? 'export', 'export')}-${fileDate()}.json`;
+    return `achordeon-${toFileSlug(only ?? 'export', 'export')}-${fileDate()}${ACHORDEON_EXTENSION}`;
   }
 
   /** Rows by id, tombstones dropped, in the order asked for. */

@@ -201,6 +201,66 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
      literal doubled bracket.
    - `[[]]` yields no anchors, exactly as `[]` does.
 
+### Emphasis [decided]
+
+Markdown emphasis is overlaid by index like a chord — a `spans: Span[]` over the same
+clean `text`, with the markers consumed.
+
+- **Every pair of asterisks in a marker group is a bold marker; a lone leftover one is
+  italic** [decided]. So one is italic, two bold, three both — and it does not stop
+  there: `****A****` is bold twice over at each end, which leaves `A` plain and the
+  asterisks consumed. Every flip in a group lands on the same character, so only their
+  parity can survive; Phase 2 therefore flips bold when `⌊n/2⌋` is odd and italic when
+  `n` is odd, and never needs to model the empty spans in between.
+  - **The group, not the run, is the unit** — one run of `*` can hold two groups (it
+    closes one emphasis and then the next one out) or a group and some printed text.
+    Parity over a whole run would get `1+3` wrong, where parity over each group cannot.
+  - **Why not "four or more is literal text"** (the earlier rule): it made the ladder
+    stop for no reason a reader could see, and it was a second, competing answer to the
+    question "is this asterisk markup?" — which is the matching rule's job, below. One
+    rule decides that; this one only says what a marker _means_.
+
+- **An asterisk is only markup if something matches it** [decided], and matching runs
+  in **two passes, the second never overriding the first**:
+  1. **Exact.** A closer that can spend exactly what the innermost opener holds does,
+     and repeats for the next one out; a run that can close nothing opens with all of
+     its asterisks. This pass is what makes nesting work — the `*` in `**a *b* c**`
+     opens italic instead of eating one of the bold's asterisks.
+  2. **Repair.** Whatever never matched pairs up anyway, as far as the shorter side
+     goes. So `***** a as****` spends four against four and renders `* a as`, instead
+     of dumping nine asterisks on the page because the author typed one too many.
+
+  Only the asterisks still unspent after both passes are **printed**. So `*ab` prints
+  its asterisk, `*asd**` is italic `asd` followed by a printed `*`, `**asd***` is bold
+  `asd` followed by one, and `**a*b` is a printed `*` then italic `a` then `b`.
+  - **A match spends an opener's rightmost asterisks and a closer's leftmost**, so what
+    prints ends up outside the emphasis — never between a marker and the words it marks.
+  - **Nothing is required on either side of a marker.** `* a *` is italic, spaces and
+    all. Markdown's flanking rules would forbid it, and song text is full of asterisks
+    hugging a space — the phrase has to stay emphasisable.
+  - **Accepted cost:** two stray asterisks on one line therefore do pair, so
+    `2* and 3*` italicises what is between them. `\*` is the answer there. It is the
+    better half of the trade: strays are usually alone on a line, and the rule that
+    catches the pair would lose `* a *`.
+  - **Why not "an unclosed run emphasises to end of line"** (the earlier rule): one
+    stray `*` — a footnote mark, `2*` — silently italicised the whole rest of the line
+    while the author was still typing, and the only defence was escaping every asterisk
+    in every lyric. A grammar for chord sheets cannot make the common character the
+    dangerous one. `\*` stays available, and is now belt-and-braces rather than the
+    price of writing `*`.
+  - **Consequence: nothing is ever left open at end of line.** A match's two sides are
+    the same length, so they flip the same bits and every bit is flipped an even number
+    of times — the closing side closes its span, and Phase 2 needs no end-of-line fixup.
+
+- **Deciding this needs the whole line**, not the text to the left of an asterisk, so it
+  is one recogniser — `emphasisMarkers`, which answers _where each marker group starts
+  and how long it is_ (groups rather than runs, since one run can be part markup and
+  part text) — shared by Phase 2 and the editor's highlight grammar, the same reason
+  `findClosingBracket` and `findLabelDelimiter` are shared. A stray asterisk must not
+  colour as a marker in the editor and print as text in the preview.
+- **Not inside `[…]`**, where asterisks are chord text, and not in title/subtitle/label
+  text, which never reaches Phase 2.
+
 ### Chord validity & transpose [decided]
 
 - The **only** reason to parse a chord is transpose, so the AST keeps **no parsed
@@ -232,8 +292,14 @@ exact character" model; the renderer gets the x from `measureText(text.slice(0, 
   names and re-spells into **English** (`[H]`+1 ⇒ `[C]`).
 - **Now (shipped, Epic 12): the `notation` setting (`german | english`, default
   `english`, `scopes: ['songbook','song']`) — the SPELLING half of it.** German
-  prints B natural as `H` and B♭ as `B`; English prints every chord exactly as it
-  was typed. It is applied once, at the top of the render (`respellChords` in
+  prints B natural as `H` and B♭ as `B`; English prints B natural as `B` and B♭ as
+  `Bb`, rewriting an `H` or an `Hb` that was typed into the source. **Both settings
+  spell** — English shipped as the identity ("as typed"), which made the row
+  `german | off`: a book pasted from two sources printed `H` beside `Bb`, and an
+  `[Hb]` printed `Hb`, which is neither language. The English half is exactly
+  `toEnglishNotation`, the same rewrite reading applies, so it needs no engine —
+  only the validity gate, or the annotation `[Hold]` would print `[Bold]`.
+  It is applied once, at the top of the render (`respellChords` in
   `shared/domain`, called by `RenderService.layout`), so screen, PNG, PDF and the
   songbook exports cannot disagree — and it never touches `content`. Choosing what
   a stored symbol _means_ from a preference would make the same file sound
@@ -339,10 +405,10 @@ noted) but are an editor concern:
   pair of markers, so each button reads the run already around the selection or the
   word at the caret, flips its own bit, and rewrites the run to what the new pair of
   bits spells. Hence `*x*` + bold ⇒ `***x***`, and `***x***` + italic ⇒ `**x**`.
-  Wrapping blindly instead would write a **fourth** asterisk — which this grammar
-  reads as literal text — and could not tell `**` from `*` well enough to keep Italic
-  from un-bolding a bold run. A run of four or more is already literal and counts as
-  no emphasis. Still **disabled inside a chord** (the asterisks would be chord text);
+  Wrapping blindly instead would write a **fourth** asterisk — which this grammar reads
+  as bold twice over, so the run emphasises nothing at all — and could not tell `**`
+  from `*` well enough to keep Italic from un-bolding a bold run. Still **disabled
+  inside a chord** (the asterisks would be chord text);
   that guard is a **future upgrade**.
 - **Chord — three states in one button** [decided]. Not disabled inside a bracket,
   because in there it has something to say:

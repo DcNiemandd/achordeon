@@ -13,10 +13,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
+import { BUILD_DATE } from '../shared/build-info';
+import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { ActionBar, BackNavigation, docsPageUrl } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
-import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
-import { BUILD_DATE } from '../shared/build-info';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
 
 /**
@@ -1845,7 +1845,7 @@ export class SettingsPage {
    * stopped being this page's alone.
    */
   protected readonly docsUrl = computed(() =>
-    docsPageUrl(this.presenter.language(), 'intro'),
+    docsPageUrl(this.presenter.language(), ''),
   );
   /** The statistics page. */
   protected readonly privacyUrl = computed(() =>

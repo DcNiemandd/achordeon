@@ -306,6 +306,7 @@ import { SongEditorPresenter } from './song-editor.presenter';
           <app-download-dialog
             [count]="1"
             [busy]="presenter.isDownloading()"
+            [isShareLinkReady]="presenter.isShareLinkReady()"
             (chosen)="presenter.download($event)"
             (closed)="presenter.closeDownload()"
           />

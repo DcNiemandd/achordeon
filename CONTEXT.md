@@ -189,12 +189,26 @@ Not a render setting: it does not cascade, and it changes nothing about the draw
 
 Producing a JSON file — a small database of Songs/Songbooks "for computers": moving data between machines, human-editable in a text editor. The canonical round-trip format.
 
+An Export carries **Songs and Songbooks only**. The account row is never written into one and never read out of one: a file is someone handing you songs, not handing you their account. That is what separates an Export from a Snapshot.
+
+## Snapshot
+
+The whole library serialized — Songs, Songbooks **and the account row** — which is what sync and backup move. The same shape as an Export with one more table and a different job: a Snapshot restores a library, an Export adds to one.
+
+Tombstones ride in a Snapshot so a delete propagates; an Import drops them, because a file that silently deleted songs on the receiving side would be the last thing it was expected to do.
+
 ## Download
 
 Producing an output "for players" (playing, printing, sharing).
 
 - **Song download** — PDF or an image format (PNG; rendered cross-browser via the SVG renderer). Multiple songs: a ZIP of images, or PDF (single or multi-page via a switch).
 - **Songbook download** — a PDF (see Songbook download options).
+
+## Share
+
+Handing Songs to another person as a **link** — the Export's own data carried inside the link itself, opening straight into that person's Import.
+
+The third way to take something away, beside Download and Export, and the only one that produces no file. Offered wherever an export is, and bounded by how long a link can be: a selection too large to fit is offered as a file instead.
 
 ## Import / re-import
 

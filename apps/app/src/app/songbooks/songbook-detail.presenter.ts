@@ -7,6 +7,7 @@ import {
   DEFAULT_SORT_DIR,
   DownloadService,
   ExportService,
+  ShareLinkService,
   ParserService,
   RenderService,
   SessionStore,
@@ -35,6 +36,7 @@ import {
 } from '../shared/song-explorer';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   PrintOptionsStore,
   composeSongbookChoice,
   toDevicePrintOptions,
@@ -71,6 +73,7 @@ export class SongbookDetailPresenter {
   private readonly settings = inject(SettingsStore);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly shareLinks = inject(ShareLinkService);
   private readonly parser = inject(ParserService);
   private readonly renderer = inject(RenderService);
   private readonly returnUrl = inject(ReturnUrl);
@@ -827,8 +830,26 @@ export class SongbookDetailPresenter {
 
   readonly isTransferable = computed(() => this._book() !== null);
 
+  /** Whether the book fits in a link, or null while it is being measured — the
+   * length is only knowable once the payload is built. */
+  private readonly _shareLink = signal<string | null>(null);
+  private readonly _isShareLinkReady = signal<boolean | null>(null);
+  readonly isShareLinkReady = this._isShareLinkReady.asReadonly();
+
   openDownload(): void {
-    if (this.isTransferable()) this._isDownloadOpen.set(true);
+    if (!this.isTransferable()) return;
+    this._isDownloadOpen.set(true);
+    void this.prepareShareLink();
+  }
+
+  private async prepareShareLink(): Promise<void> {
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
+    const id = this._id();
+    const link = await this.shareLinks.build({ songbookIds: [id] });
+    if (!this._isDownloadOpen() || this._id() !== id) return;
+    this._shareLink.set(link.url);
+    this._isShareLinkReady.set(link.isShareable);
   }
 
   /** Ignored mid-render — the dialog hosts the progress until the file is done. */
@@ -849,6 +870,15 @@ export class SongbookDetailPresenter {
       return;
     }
     const { format } = choice;
+    if (format === SHARE_LINK_FORMAT) {
+      // Already built — it had to be, for the dialog to know whether to offer
+      // it. Not remembered as a print choice, for the reason the data file is
+      // not: taking a link once says nothing about paper.
+      const url = this._shareLink();
+      if (url !== null) await this.shareLinks.copy(url);
+      this._isDownloadOpen.set(false);
+      return;
+    }
     if (format === DATA_FORMAT) {
       // Not remembered: the paper answers are a habit worth keeping, but
       // "I once took the data file" is not a preference about printing, and

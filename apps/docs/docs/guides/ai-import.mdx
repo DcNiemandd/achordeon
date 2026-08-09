@@ -7,16 +7,111 @@ sidebar_position: 30
 An AI chatbot can read a photo of a song and write it out for Achordeon. You send
 it the photo, it gives you a file, you import the file. No typing.
 
+There are two ways to get a chatbot to do it. You can teach it once, with the
+ready-made skill, and then every song after that is just a photo. Or you can
+paste the whole prompt into the chat each time, which needs nothing set up. The
+skill is the better of the two, and the prompt is [at the bottom of this
+page](#without-setting-anything-up) for when you cannot use one.
+
 ## 1. Take a photo
 
 - one song per photo, the whole sheet in the frame
 - two photos if the song runs over two pages, sent together
 - the chords must be readable when you zoom in
 
-## 2. Send it to a chatbot
+## 2. Teach the chatbot once
 
-Any of these will do. All of them read photos on the free plan, and all you need
-is an account:
+There is one file per chatbot, with the same instructions inside all three. Take
+the one for the chatbot you use. This is a one-off, not something you do per
+song.
+
+| Chatbot     | Where               | File                                                         | Plan                             |
+| ----------- | ------------------- | ------------------------------------------------------------ | -------------------------------- |
+| **Claude**  | `claude.ai`         | [achordeon-song.zip](pathname:///achordeon-song.zip)         | free is enough                   |
+| **ChatGPT** | `chatgpt.com`       | [achordeon-song-gpt.zip](pathname:///achordeon-song-gpt.zip) | a paid plan, Go or Plus or above |
+| **Gemini**  | `gemini.google.com` | [achordeon-song-gem.md](pathname:///achordeon-song-gem.md)   | free is enough                   |
+
+### Claude
+
+1. In `Settings > Capabilities`, switch on **Code execution and file creation**.
+   A skill cannot be uploaded or run without it.
+2. Go to `Customize > Skills`, press `+`, choose **Create skill** and then
+   **Upload a skill**, and pick the zip.
+
+This is the fullest of the three, because Claude can run the scripts the zip
+carries. It checks its own markup with Achordeon's own parser before it hands
+anything over, and for a short song it can give you a
+[link](/export-import.mdx#sharing-a-song-as-a-link) instead of a file.
+
+### ChatGPT
+
+1. Unpack the zip. There are three files inside.
+2. Open the GPT builder, `Explore GPTs > Create`, and on the **Configure** tab
+   paste the whole of `instructions.md` into **Instructions**.
+3. Upload `GRAMMAR.md` and `achordeon.schema.json` under **Knowledge**.
+
+A free account can use a GPT somebody else made, but it cannot make one. If you
+are on the free plan, use the prompt at the bottom of this page instead.
+
+### Gemini
+
+Open **Gem manager** in the sidebar, make a new Gem, and paste the whole of the
+downloaded file into the instructions box. It is one file rather than three
+because a Gem has only the one box, so the markup rules are written inside it.
+
+:::note[Why a skill and not a prompt]
+The three files are generated from the app itself, so none of them can teach you
+markup the app no longer reads: the list of settings comes from the app's own
+list, and every example in them is run through the real parser when the files are
+built. A prompt written out by hand goes out of date quietly. And whatever wrote
+the file, the import preview tells you before anything is written how many songs
+have markup Achordeon could not make sense of.
+:::
+
+## 3. Send the photo
+
+Open a chat with the skill, the GPT or the Gem, attach the photo, and ask for the
+song. 'Write this song for Achordeon' is enough - the instructions are already
+there, so there is nothing to paste.
+
+Send the next photo the same way. One song at a time, because ten songs in one
+answer is where mistakes multiply.
+
+## 4. Import the file
+
+What comes back is the import file, with the song and its settings both inside
+it.
+
+- save it with a name ending in `.json` or `.achordeon` - take the download if
+  the chatbot offers one, otherwise copy the JSON code block into a plain text
+  file
+- in `Songs` press `Import` and pick the file
+- a link, if you were given one instead, opens the same preview when you tap it,
+  with nothing to save first
+- the [rules of importing](/export-import.mdx#import) are the same as for any
+  other import
+
+The other way round, without importing: the song text is inside the file, on the
+`content` line. Open the file in any text editor, copy that text into a new song
+in the [editor](/songs/editing.mdx), turn every `\n` back into a line break, and
+set the settings by hand.
+
+:::note[Check the chords]
+The chatbot reads what it sees and it can be wrong - a chord one letter off, a
+word misread from bad handwriting. Compare the render with your photo before you
+play from it. Everything is editable afterwards.
+:::
+
+:::note[File can't be read]
+The JSON was cut off. Ask for it again in one code block and save it without
+editing it.
+:::
+
+## Without setting anything up
+
+If you cannot install a skill, or you would rather not, the whole thing fits in
+one message. Any of these will do. All of them read photos on the free plan, and
+all you need is an account:
 
 | Chatbot     | Where               | Made by   |
 | ----------- | ------------------- | --------- |
@@ -25,7 +120,15 @@ is an account:
 | **ChatGPT** | `chatgpt.com`       | OpenAI    |
 
 Open a new chat, attach the photo, and paste the whole prompt below into the same
-message. Use the copy button in the corner of the block.
+message. Use the copy button in the corner of the block. For the next song, send
+the photo in the same chat with 'same again for this photo', the instructions are
+still there.
+
+This prompt is written out by hand and kept short enough to paste, so it is the
+smaller half of what the skill knows. Use the skill if you can.
+
+<details>
+<summary>The prompt</summary>
 
 ````text
 I'm attaching a photo of a song's chord sheet. Transcribe it into Achordeon
@@ -104,10 +207,13 @@ out and the song takes the shape I chose in my own settings.
 
 1. **Settings**: a table of the settings you chose, with one line of reasoning
    each, then your list of corrections and uncertain chords.
-2. **Content**: the markup, in one code block, ready to copy.
-3. **Import file**: the JSON below, filled in. Offer it as a `.json` file to
+2. **Import file**: the JSON below, filled in. Offer it as a `.json` file to
    download if you are able to make files, otherwise print it in one code block
    and I will save it myself.
+
+Do not write the song out on its own, outside the import file. I have the photo,
+so the words are the one thing I do not need twice, and printing them is where an
+answer gets stopped part of the way through - which loses me the import file too.
 
 ```json
 {
@@ -134,8 +240,8 @@ out and the song takes the shape I chose in my own settings.
 }
 ```
 
-- `content` is the same markup as #2, as a single JSON string: `\n` for line
-  breaks, `\"` for quotes.
+- `content` is the markup, as a single JSON string: `\n` for line breaks, `\"`
+  for quotes.
 - `id` is any random UUID. The three time fields are the current time in
   milliseconds since 1970 (a 13-digit number).
 - `name` is my label for the song in the library, so use the title.
@@ -149,33 +255,4 @@ out and the song takes the shape I chose in my own settings.
   left out.
 ````
 
-## 3. Import the file
-
-You get three things back - a settings table, the song text, and the import file.
-The import file is the one you need, it has the other two in it.
-
-- save it with a name ending in `.json` - take the download if the chatbot offers
-  one, otherwise copy the JSON code block into a plain text file
-- in `Songs` press `Import` and pick the file
-- the [rules of importing](/export-import.mdx#import) are the same as for any
-  other import
-
-The other way round, without a file: create a new song, paste the song text into
-the [editor](/songs/editing.mdx), and set the settings from the table by hand.
-
-:::note[Check the chords]
-The chatbot reads what it sees and it can be wrong - a chord one letter off, a
-word misread from bad handwriting. Compare the render with your photo before you
-play from it. Everything is editable afterwards.
-:::
-
-## Next song
-
-Send the next photo in the same chat with 'same again for this photo', the
-instructions are still there. One song at a time - ten songs in one answer is
-where mistakes multiply.
-
-:::note[File can't be read]
-The JSON was cut off. Ask for it again in one code block and save it without
-editing it.
-:::
+</details>

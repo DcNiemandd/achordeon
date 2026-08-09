@@ -8,6 +8,7 @@ import {
   ESCAPABLE,
   findClosingBracket,
   findClosingDoubleBracket,
+  emphasisMarkers,
   findLabelDelimiter,
   splitChordTokens,
   unescape,
@@ -49,10 +50,14 @@ interface HighlightState {
   bracketEnd: number | null;
   /** How many `]` close it: 2 for an inline group `[[…]]`, 1 otherwise. */
   bracketCloseLength: number;
-  /** Emphasis in force, toggled by `*` runs; reset at the start of every line
-   * (an unclosed run emphasises to line end, exactly as Phase 2 resolves it). */
+  /** Emphasis in force, toggled by `*` runs; reset at the start of every line,
+   * because emphasis never spans lines. */
   italic: boolean;
   bold: boolean;
+  /** This line's emphasis markers, as start index → how many asterisks (§Emphasis);
+   * every `*` outside them is text. Read from the whole line at `sol()`, since an
+   * asterisk cannot be judged from the left alone; recomputed for every line. */
+  markers: ReadonlyMap<number, number>;
   /** Set the moment an escaping backslash is emitted, so the very next `token()`
    * call knows to consume the char it protects and colour it as ordinary text
    * rather than reprocessing it as a bracket or a `*` marker. Same-line only. */
@@ -72,6 +77,16 @@ interface HighlightState {
  * an annotation there, and a token inside a bracket is judged by the same rule
  * that decides whether the parser will transpose it.
  */
+/**
+ * Where Phase 2 — and so emphasis — starts on a line: past a label marker, whose
+ * text is plain and never reaches the inline scan. A title/subtitle line is
+ * consumed whole below, so its leading `*` never reaches the emphasis branch.
+ */
+const emphasisFrom = (line: string): number => {
+  const delimiter = findLabelDelimiter(line);
+  return delimiter === -1 ? 0 : delimiter + 1;
+};
+
 export function achordeonHighlight(
   theory: ChordTheory,
 ): StreamLanguage<HighlightState> {
@@ -98,6 +113,7 @@ export function achordeonHighlight(
       bracketCloseLength: 1,
       italic: false,
       bold: false,
+      markers: new Map<number, number>(),
       escapedChar: false,
     }),
     copyState: (state) => ({
@@ -105,18 +121,24 @@ export function achordeonHighlight(
       bracketCloseLength: state.bracketCloseLength,
       italic: state.italic,
       bold: state.bold,
+      markers: state.markers,
       escapedChar: state.escapedChar,
     }),
 
     token(stream, state) {
       // A bracket never spans lines, so a live `bracketEnd` at the start of one
       // is stale — an offset into the previous line's text. Dropping it here
-      // stops that ever being read against the wrong string. Emphasis resets too:
-      // a run left open colours to end of line, and the next line starts plain.
+      // stops that ever being read against the wrong string. Emphasis resets too —
+      // it never spans lines — and this is where the line's asterisks are sorted
+      // into markers and printed text, which needs the whole line at once.
       if (stream.sol()) {
         state.bracketEnd = null;
         state.italic = false;
         state.bold = false;
+        state.markers = emphasisMarkers(
+          stream.string,
+          emphasisFrom(stream.string),
+        );
       }
 
       // The char right after an escaping backslash. Emitted on its own so the
@@ -220,18 +242,29 @@ export function achordeonHighlight(
         return 'chord';
       }
 
-      // Markdown emphasis (§Phase 2): a run of one/two/three `*` toggles
-      // italic/bold/both; four or more is literal text. The markers colour as
-      // punctuation; the text between takes the current emphasis (below).
+      // Markdown emphasis (§Phase 2): every pair of asterisks in a marker group
+      // toggles bold and a lone leftover one toggles italic, so a group of one/
+      // two/three is italic/bold/both. An asterisk that matches nothing is text
+      // instead — which is why the author sees a stray `*` stay ordinary while
+      // they type, rather than the rest of the line going italic under them.
+      // Markers colour as punctuation; the text between takes the current
+      // emphasis (below).
+      //
+      // A run can be part markup and part text (`*asd**` closes the italic and
+      // prints one `*`), so the unit is the group, not the run.
       if (char === '*') {
-        let run = 0;
-        while (stream.peek() === '*') {
-          stream.next();
-          run += 1;
+        const group = state.markers.get(stream.pos);
+        if (group === undefined) {
+          while (stream.peek() === '*' && !state.markers.has(stream.pos)) {
+            stream.next();
+          }
+          return emphasisTag(state); // printed asterisks, not markers
         }
-        if (run > 3) return emphasisTag(state); // literal asterisks
-        if (run === 1 || run === 3) state.italic = !state.italic;
-        if (run === 2 || run === 3) state.bold = !state.bold;
+        for (let k = 0; k < group; k++) {
+          stream.next();
+        }
+        if (Math.floor(group / 2) % 2 === 1) state.bold = !state.bold;
+        if (group % 2 === 1) state.italic = !state.italic;
         return 'emphasis';
       }
 

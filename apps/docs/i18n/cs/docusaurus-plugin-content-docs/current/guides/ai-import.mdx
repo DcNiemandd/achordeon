@@ -7,16 +7,110 @@ sidebar_position: 30
 Chatbot s AI umí přečíst fotku písničky a přepsat ji pro Achordeon. Pošlete mu
 fotku, on vám vrátí soubor, ten naimportujete. Žádné psaní.
 
+Přimět ho k tomu jde dvěma způsoby. Můžete ho naučit jednou provždy, hotovou
+dovedností, a každá další písnička je pak jen fotka. Nebo můžete pokaždé vložit
+do chatu celý prompt, k čemuž není potřeba nic nastavovat. Dovednost je z těch
+dvou lepší, a prompt je [na konci téhle stránky](#bez-nastavování) pro případ, že
+dovednost použít nejde.
+
 ## 1. Vyfoťte písničku
 
 - jedna písnička na jednu fotku, na fotce celý list
 - dvě fotky, když je písnička na dvou stranách - pošlete je společně
 - akordy musí být čitelné, když si fotku přiblížíte
 
-## 2. Pošlete ji chatbotovi
+## 2. Naučte chatbota, jednou
 
-Poslouží kterýkoli z nich. Fotky čtou všechny i v bezplatné verzi, stačí mít
-účet:
+Na každého chatbota je jeden soubor a instrukce uvnitř všech tří jsou stejné.
+Vezměte ten pro chatbota, kterého používáte. Je to jednorázová věc, ne něco, co
+se dělá u každé písničky.
+
+| Chatbot     | Kde                 | Soubor                                                       | Verze                        |
+| ----------- | ------------------- | ------------------------------------------------------------ | ---------------------------- |
+| **Claude**  | `claude.ai`         | [achordeon-song.zip](pathname:///achordeon-song.zip)         | stačí bezplatná              |
+| **ChatGPT** | `chatgpt.com`       | [achordeon-song-gpt.zip](pathname:///achordeon-song-gpt.zip) | placená: Go, Plus nebo vyšší |
+| **Gemini**  | `gemini.google.com` | [achordeon-song-gem.md](pathname:///achordeon-song-gem.md)   | stačí bezplatná              |
+
+### Claude
+
+1. V `Settings > Capabilities` zapněte **Code execution and file creation**. Bez
+   toho se dovednost nedá nahrát ani spustit.
+2. Jděte do `Customize > Skills`, klikněte na `+`, zvolte **Create skill** a pak
+   **Upload a skill** a vyberte zip.
+
+Ze všech tří je tenhle nejúplnější, protože Claude umí spustit skripty, které zip
+nese. Vlastní značkování si zkontroluje parserem samotného Achordeonu, ještě než
+vám cokoli předá, a u krátké písničky vám místo souboru může dát
+[odkaz](/export-import.mdx#sdílení-písničky-odkazem).
+
+### ChatGPT
+
+1. Rozbalte zip. Jsou v něm tři soubory.
+2. Otevřete tvůrce GPT, `Explore GPTs > Create`, a na kartě **Configure** vložte
+   celý obsah `instructions.md` do pole **Instructions**.
+3. Soubory `GRAMMAR.md` a `achordeon.schema.json` nahrajte pod **Knowledge**.
+
+Bezplatný účet umí používat cizí GPT, ale vlastní si udělat nemůže. Když máte
+bezplatnou verzi, použijte prompt na konci téhle stránky.
+
+### Gemini
+
+Otevřete v postranním panelu **Gem manager**, vytvořte nový Gem a vložte celý
+stažený soubor do pole s instrukcemi. Je to jeden soubor místo tří, protože Gem
+má jen to jedno pole, takže pravidla značkování jsou napsaná uvnitř něj.
+
+:::note[Proč dovednost, a ne prompt]
+Ty tři soubory se generují z aplikace samotné, takže vás žádný z nich nemůže
+naučit značkování, které aplikace už nečte: seznam nastavení pochází z vlastního
+seznamu aplikace a každý příklad v nich při sestavení projde skutečným parserem.
+Ručně psaný prompt zastará potichu. A ať už soubor napsalo cokoli, náhled importu
+vám ještě předtím, než se cokoli zapíše, řekne, u kolika písniček značkování
+Achordeon nerozluštil.
+:::
+
+## 3. Pošlete fotku
+
+Otevřete chat s dovedností, s GPT nebo s Gemem, přiložte fotku a řekněte si o
+písničku. Stačí 'napiš tuhle písničku pro Achordeon' - instrukce už tam jsou,
+takže není co vkládat.
+
+Další fotku pošlete stejně. Po jedné - deset písniček v jedné odpovědi je místo,
+kde se chyby začnou hromadit.
+
+## 4. Naimportujte soubor
+
+Vrátí se vám importní soubor, písnička i nastavení jsou v něm.
+
+- uložte ho pod jménem, které končí na `.json` nebo `.achordeon` - když chatbot
+  nabídne stažení, vezměte ho, jinak zkopírujte blok s JSONem do obyčejného
+  textového souboru
+- v `Písně` klikněte na `Importovat písně ze souboru` a soubor vyberte
+- odkaz, pokud jste místo souboru dostali ten, otevře po klepnutí stejný náhled a
+  není co ukládat
+- [pravidla importu](/export-import.mdx#import) jsou stejná jako u každého jiného
+  importu
+
+Druhá cesta, bez importu: text písničky je v souboru, na řádku `content`. Otevřete
+soubor v libovolném textovém editoru, text zkopírujte do nové písničky v
+[editoru](/songs/editing.mdx), každé `\n` vraťte zpátky na zlom řádku a nastavení
+nastavte ručně.
+
+:::note[Zkontrolujte akordy]
+Chatbot čte to, co vidí, a může se mýlit - akord o písmeno vedle, slovo špatně
+přečtené z ruky. Než začnete podle písničky hrát, porovnejte render s fotkou.
+Všechno se dá potom upravit.
+:::
+
+:::note[Soubor se nedá přečíst]
+JSON je odříznutý. Vyžádejte si ho znovu v jednom bloku kódu a uložte ho bez
+úprav.
+:::
+
+## Bez nastavování
+
+Když dovednost nainstalovat nejde nebo nechcete, vejde se celá věc do jedné
+zprávy. Poslouží kterýkoli z nich. Fotky čtou všechny i v bezplatné verzi, stačí
+mít účet:
 
 | Chatbot     | Kde                 | Od koho   |
 | ----------- | ------------------- | --------- |
@@ -25,7 +119,14 @@ Poslouží kterýkoli z nich. Fotky čtou všechny i v bezplatné verzi, stačí
 | **ChatGPT** | `chatgpt.com`       | OpenAI    |
 
 Otevřete nový chat, přiložte fotku a do stejné zprávy vložte celý prompt níže.
-Použijte tlačítko pro kopírování v jeho rohu.
+Použijte tlačítko pro kopírování v jeho rohu. Další fotku pošlete do stejného
+chatu se slovy 'stejně tak i pro tuhle fotku', instrukce v něm pořád jsou.
+
+Tenhle prompt je psaný ručně a držený tak krátký, aby se dal vložit, takže je
+z toho, co umí dovednost, ta menší půlka. Když můžete, použijte dovednost.
+
+<details>
+<summary>Prompt</summary>
 
 ````text
 Přikládám fotku písničky s akordy. Přepiš ji do značkování Achordeonu a dej mi
@@ -103,10 +204,13 @@ nastavený u sebe.
 
 1. **Nastavení**: tabulku nastavení, která jsi zvolil, u každého jednu řádku
    odůvodnění, a pak seznam oprav a nejistých akordů.
-2. **Obsah**: značkování v jednom bloku kódu, připravené ke zkopírování.
-3. **Importní soubor**: JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
+2. **Importní soubor**: JSON níže, vyplněný. Pokud umíš vytvářet soubory, dej mi
    ho jako soubor `.json` ke stažení, jinak ho vypiš v jednom bloku kódu a uložím
    si ho sám.
+
+Nevypisuj text písničky zvlášť, mimo importní soubor. Fotku mám, takže slova jsou
+jediná věc, kterou nepotřebuju dvakrát, a právě na jejich vypisování se odpověď
+zastaví v půlce - a s ní přijdu i o importní soubor.
 
 ```json
 {
@@ -133,8 +237,8 @@ nastavený u sebe.
 }
 ```
 
-- `content` je stejné značkování jako v bodě 2, jako jeden JSON string: `\n` pro
-  zlomy řádků, `\"` pro uvozovky.
+- `content` je značkování, jako jeden JSON string: `\n` pro zlomy řádků, `\"` pro
+  uvozovky.
 - `id` je libovolné náhodné UUID. Tři časová pole jsou aktuální čas v
   milisekundách od roku 1970 (třináctimístné číslo).
 - `name` je můj štítek písničky v knihovně, použij název.
@@ -148,33 +252,4 @@ nastavený u sebe.
   vynechaného.
 ````
 
-## 3. Naimportujte soubor
-
-Vrátí se vám tři věci - tabulka nastavení, text písničky a importní soubor.
-Potřebujete ten soubor, ostatní dvě věci jsou v něm.
-
-- uložte ho pod jménem, které končí na `.json` - když chatbot nabídne stažení,
-  vezměte ho, jinak zkopírujte blok s JSONem do obyčejného textového souboru
-- v `Písně` klikněte na `Importovat písně ze souboru` a soubor vyberte
-- [pravidla importu](/export-import.mdx#import) jsou stejná jako u každého jiného
-  importu
-
-Druhá cesta, bez souboru: vytvořte novou písničku, vložte text písničky do
-[editoru](/songs/editing.mdx) a nastavení nastavte podle tabulky ručně.
-
-:::note[Zkontrolujte akordy]
-Chatbot čte to, co vidí, a může se mýlit - akord o písmeno vedle, slovo špatně
-přečtené z ruky. Než začnete podle písničky hrát, porovnejte render s fotkou.
-Všechno se dá potom upravit.
-:::
-
-## Další písnička
-
-Další fotku pošlete do stejného chatu se slovy 'stejně tak i pro tuhle fotku',
-instrukce v něm pořád jsou. Po jedné - deset písniček v jedné odpovědi je místo,
-kde se chyby začnou hromadit.
-
-:::note[Soubor se nedá přečíst]
-JSON je odříznutý. Vyžádejte si ho znovu v jednom bloku kódu a uložte ho bez
-úprav.
-:::
+</details>

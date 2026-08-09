@@ -434,8 +434,8 @@ test.describe('song editor', () => {
 
   // Emphasis is a RUN of asterisks whose length is the state (1 italic, 2 bold, 3
   // both), so each button owns one bit of it. Wrapping instead of flipping stacked
-  // a fourth asterisk — which the grammar reads as literal text — and let Italic
-  // inside a bold run quietly un-bold it.
+  // a fourth asterisk — which the grammar reads as bold twice over, so no emphasis
+  // at all — and let Italic inside a bold run quietly un-bold it.
   test('bold and italic each flip their own bit of the emphasis run', async ({
     page,
   }) => {

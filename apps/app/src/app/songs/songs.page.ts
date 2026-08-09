@@ -223,21 +223,19 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
         [count]="presenter.downloadIds().length"
         [busy]="presenter.isBusy()"
         [progress]="presenter.downloadProgress()"
+        [isShareLinkReady]="presenter.isShareLinkReady()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
     }
 
-    <!-- The file input and the import/error dialogs, shared with Songbooks. The
-         Import button above opens its picker. -->
+    <!-- Just the file input; the Import button above opens its picker. The
+         preview and error dialogs belong to the shell, because a drop or a link
+         can arrive with no page to own them (plan §7). -->
     <app-import-panel
       #importPanel
       inputTestid="songs-import-input"
-      [preview]="presenter.importPreview()"
-      [error]="presenter.importError()"
       (picked)="presenter.readImport($event)"
-      (confirmed)="presenter.confirmImport($event)"
-      (dismissed)="presenter.cancelImport()"
     />
 
     @if (presenter.pendingDelete(); as pending) {

@@ -12,6 +12,7 @@ import {
 import {
   DownloadService,
   ExportService,
+  ShareLinkService,
   ParserService,
   RenderService,
   SessionStore,
@@ -20,7 +21,11 @@ import {
   SyncService,
   type SongFormat,
 } from '@achordeon/shared/data-access';
-import { DATA_FORMAT, type DownloadChoice } from '../shared/transfer';
+import {
+  DATA_FORMAT,
+  SHARE_LINK_FORMAT,
+  type DownloadChoice,
+} from '../shared/transfer';
 import { UiStore } from '../shared/layout';
 import {
   ChordTheory,
@@ -60,6 +65,7 @@ export class SongEditorPresenter {
   private readonly theory = inject(ChordTheory);
   private readonly downloads = inject(DownloadService);
   private readonly exporter = inject(ExportService);
+  private readonly shareLinks = inject(ShareLinkService);
   private readonly sync = inject(SyncService);
   private readonly document = inject(DOCUMENT);
   /** The dark page. It reaches the preview as `RenderOpts.dark` and never joins
@@ -408,8 +414,23 @@ export class SongEditorPresenter {
   readonly isDownloadOpen = this._isDownloadOpen.asReadonly();
   readonly isDownloading = this._isDownloading.asReadonly();
 
+  /** Whether this song fits in a link, or null while it is being measured — the
+   * length is only knowable once the payload is built. */
+  private readonly _isShareLinkReady = signal<boolean | null>(null);
+  readonly isShareLinkReady = this._isShareLinkReady.asReadonly();
+
+  private async prepareShareLink(): Promise<void> {
+    this._isShareLinkReady.set(null);
+    const song = this._song();
+    if (!song) return;
+    const link = await this.shareLinks.build({ songIds: [song.id] });
+    if (!this._isDownloadOpen()) return;
+    this._isShareLinkReady.set(link.isShareable);
+  }
+
   openDownload(): void {
     this._isDownloadOpen.set(true);
+    void this.prepareShareLink();
   }
 
   closeDownload(): void {
@@ -464,6 +485,15 @@ export class SongEditorPresenter {
   async download(choice: DownloadChoice): Promise<void> {
     const song = this._song();
     if (!song || this._isDownloading()) {
+      return;
+    }
+    if (choice === SHARE_LINK_FORMAT) {
+      // Already built — it had to be, for the dialog to know whether to offer
+      // it. Rebuilt after the flush, though, so the link carries the keystrokes
+      // the dialog was opened over rather than the ones before them.
+      await this.flushSave();
+      const link = await this.shareLinks.build({ songIds: [song.id] });
+      await this.shareLinks.copy(link.url);
       return;
     }
     this._isDownloading.set(true);

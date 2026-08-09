@@ -154,6 +154,7 @@ import {
         [initial]="presenter.downloadInitial()"
         [busy]="presenter.isBusy()"
         [progress]="presenter.downloadProgress()"
+        [isShareLinkReady]="presenter.isShareLinkReady()"
         (chosen)="presenter.download($event)"
         (closed)="presenter.cancelDownload()"
       />
@@ -271,16 +272,13 @@ import {
       </app-dialog>
     }
 
-    <!-- The file input and the import/error dialogs, shared with Songs. The
-         Import button above opens its picker. -->
+    <!-- Just the file input; the Import button above opens its picker. The
+         preview and error dialogs belong to the shell, because a drop or a link
+         can arrive with no page to own them (plan §7). -->
     <app-import-panel
       #importPanel
       inputTestid="songbooks-import-input"
-      [preview]="presenter.importPreview()"
-      [error]="presenter.importError()"
       (picked)="presenter.readImport($event)"
-      (confirmed)="presenter.confirmImport($event)"
-      (dismissed)="presenter.cancelImport()"
     />
   `,
   styles: `

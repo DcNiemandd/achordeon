@@ -180,10 +180,15 @@ const config: Config = {
   i18n,
 
   plugins: [
+    // Old links only. `/docs` is the intro page itself now (`slug: /` in
+    // intro.mdx), because this plugin runs in `postBuild` and nowhere else: a
+    // redirect FROM `/docs` left the docs root a 404 under `docusaurus start`,
+    // where there is no build to write the redirect file into. A real route is
+    // one page in dev, in `serve` and on the deployed site alike.
     [
       '@docusaurus/plugin-client-redirects',
       {
-        redirects: [{ from: '/docs', to: '/docs/intro' }],
+        redirects: [{ from: '/docs/intro', to: '/docs' }],
       },
     ],
     achordeonLibs,
@@ -258,7 +263,7 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            { label: 'Docs', to: '/docs/intro' },
+            { label: 'Docs', to: '/docs' },
             { label: 'Launch App', href: appLink },
           ],
         },

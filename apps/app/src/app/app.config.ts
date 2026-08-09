@@ -49,7 +49,11 @@ export const appConfig: ApplicationConfig = {
     // the production configuration, and registering a missing script in dev would
     // be a 404 on every boot. Registration waits for stability so the first paint
     // never competes with the precache for bandwidth.
-    provideServiceWorker('ngsw-worker.js', {
+    //
+    // `sw.js`, not `ngsw-worker.js`: our own worker imports ngsw whole and adds
+    // exactly one route in front of it, the `__download/` attachment bridge that
+    // lets a PDF save inside an installed PWA (see `apps/app/public/sw.js`).
+    provideServiceWorker('sw.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),

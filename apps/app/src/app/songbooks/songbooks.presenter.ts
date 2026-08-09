@@ -6,7 +6,8 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
-  ImportService,
+  ShareLinkService,
+  ImportInbox,
   SettingsStore,
   SongStore,
   SongbookStore,
@@ -16,7 +17,6 @@ import {
 import {
   ALL_SONGS_ID,
   resolveSongbookPrint,
-  type ImportPlan,
   type Songbook,
   type SongbookPrint,
 } from '@achordeon/shared/domain';
@@ -24,13 +24,11 @@ import type { SongRow } from '../shared/song-explorer';
 import { ListScrollMemory, UiStore } from '../shared/layout';
 import {
   DATA_FORMAT,
+  SHARE_LINK_FORMAT,
   PrintOptionsStore,
   composeSongbookChoice,
   toDevicePrintOptions,
   type DownloadProgress,
-  type ImportChoice,
-  type ImportFailure,
-  type ImportPreview,
   type SongbookPdfChoice,
   type SongOrder,
 } from '../shared/transfer';
@@ -99,7 +97,10 @@ export class SongbooksPresenter {
   }
 
   private readonly exporter = inject(ExportService);
-  private readonly importer = inject(ImportService);
+  private readonly shareLinks = inject(ShareLinkService);
+  /** Import is the app-level owner's, not this screen's — a drop or a link
+   * reaches it too, and two owners would mean two dialogs (plan §7). */
+  private readonly inbox = inject(ImportInbox);
   private readonly router = inject(Router);
   private readonly listScroll = inject(ListScrollMemory);
 
@@ -128,6 +129,20 @@ export class SongbooksPresenter {
    * windowed cache of one page, so a library of 500 would have advertised "50".
    */
   private readonly _librarySize = signal(0);
+
+  /**
+   * An import can land from anywhere — this screen's button, a file dropped on
+   * another page, a tapped link — and the count above is a repository query
+   * rather than something this list watches, so nothing else would tell it.
+   */
+  private readonly onImported = effect(() => {
+    this.inbox.writes();
+    void this.refreshLibrarySize();
+  });
+
+  private async refreshLibrarySize(): Promise<void> {
+    this._librarySize.set((await this.songs.allLive()).length);
+  }
 
   private readonly _pendingDelete = signal<PendingSongbookDelete | null>(null);
   readonly pendingDelete = this._pendingDelete.asReadonly();
@@ -350,7 +365,7 @@ export class SongbooksPresenter {
     if (!this.store.loaded()) {
       await this.store.load();
     }
-    this._librarySize.set((await this.songs.allLive()).length);
+    await this.refreshLibrarySize();
   }
 
   /**
@@ -657,8 +672,26 @@ export class SongbooksPresenter {
     return id === ALL_SONGS_ID || this.find(id) !== undefined;
   }
 
+  /** Whether the picked book fits in a link, or null while it is being measured
+   * — the length is only knowable once the payload is built. */
+  private readonly _shareLink = signal<string | null>(null);
+  private readonly _isShareLinkReady = signal<boolean | null>(null);
+  readonly isShareLinkReady = this._isShareLinkReady.asReadonly();
+
   openDownloadRow(id: string): void {
-    if (this.isTransferable(id)) this._downloadId.set(id);
+    if (!this.isTransferable(id)) return;
+    this._downloadId.set(id);
+    void this.prepareShareLink(id);
+  }
+
+  private async prepareShareLink(id: string): Promise<void> {
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
+    const link = await this.shareLinks.build({ songbookIds: [id] });
+    // A late answer must not speak for a book the dialog has since moved to.
+    if (this._downloadId() !== id) return;
+    this._shareLink.set(link.url);
+    this._isShareLinkReady.set(link.isShareable);
   }
 
   /** Ignored mid-render — the dialog hosts the progress until the file is done. */
@@ -666,6 +699,8 @@ export class SongbooksPresenter {
     if (this._isBusy()) return;
     this._downloadId.set(null);
     this._progress.set(null);
+    this._shareLink.set(null);
+    this._isShareLinkReady.set(null);
   }
 
   /**
@@ -681,6 +716,14 @@ export class SongbooksPresenter {
       return;
     }
     const { format } = choice;
+    if (format === SHARE_LINK_FORMAT) {
+      // Not saved to the print options, for the reason the data file is not:
+      // taking a link once is not a statement about paper.
+      const url = this._shareLink();
+      if (url !== null) await this.shareLinks.copy(url);
+      this._downloadId.set(null);
+      return;
+    }
     if (format === DATA_FORMAT) {
       // Not saved to the print options — see the detail presenter: taking the
       // data file once is not a statement about paper.
@@ -709,60 +752,13 @@ export class SongbooksPresenter {
   //
   // The same import a file offers the Songs module — a file holds songs and
   // songbooks alike, so importing from here is no different, and either module
-  // should be able to start it. The UI is the shared `ImportPanel`; the flow is
-  // here, because it touches the stores.
+  // should be able to start it. The flow is `ImportInbox`'s: a drop and a link
+  // reach the same event and belong to no page, so one owner runs it and the
+  // dialogs are mounted once at the shell (plan §7).
 
-  private readonly _importPreview = signal<ImportPreview | null>(null);
-  private readonly _importError = signal<ImportFailure | null>(null);
-  /** The plan behind the preview — held for the confirm, out of the view model. */
-  private importPlan: ImportPlan | null = null;
-  readonly importPreview = this._importPreview.asReadonly();
-  readonly importError = this._importError.asReadonly();
-
-  /** Read a picked file and work out what it would do. Nothing is written until
-   * `confirmImport`, which is the whole point of the two steps. */
-  async readImport(file: File): Promise<void> {
-    this._importError.set(null);
-    try {
-      const source = await this.importer.read(file);
-      const plan = await this.importer.plan(source.snapshot);
-      this.importPlan = plan;
-      this._importPreview.set({
-        songCount: plan.songs.length,
-        songbookCount: plan.songbooks.length,
-        conflicts: plan.conflicts.map((conflict) => ({ ...conflict })),
-        hasUnknownSettings: source.status === 'warn',
-      });
-    } catch (error) {
-      this.importPlan = null;
-      this._importPreview.set(null);
-      this._importError.set(
-        (error as { reason?: ImportFailure }).reason === 'refused'
-          ? 'refused'
-          : 'unreadable',
-      );
-    }
-  }
-
-  cancelImport(): void {
-    this.importPlan = null;
-    this._importPreview.set(null);
-    this._importError.set(null);
-  }
-
-  async confirmImport(choice: ImportChoice): Promise<void> {
-    const plan = this.importPlan;
-    this.cancelImport();
-    if (!plan) return;
-    await this.busy(async () => {
-      await this.importer.apply(plan, choice);
-      // Both stores: a file brings songs and songbooks, and this list is the
-      // songbooks, but the library size the All songs row shows comes from the
-      // song store — refresh both, then re-read the count.
-      await this.store.refresh();
-      await this.songs.refresh();
-      this._librarySize.set((await this.songs.allLive()).length);
-    });
+  /** Hand the picked files over and let go of them. */
+  readImport(files: readonly File[]): void {
+    void this.inbox.offer(files);
   }
 
   private async busy(job: () => Promise<unknown>): Promise<void> {

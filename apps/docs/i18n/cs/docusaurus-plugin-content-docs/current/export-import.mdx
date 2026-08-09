@@ -20,6 +20,10 @@ písní a zpěvníků. Soubor lze snadno upravovat v textovém editoru dle vaš�
 Najdete jej v `Písních` i `Zpěvnících` všude, kde je tlačítko Stáhnout, jako volbu
 **Soubor Achordeonu**. Stačí vybrat nějaké položky.
 
+První řádek souboru říká, kde bydlí aplikace, která ho napsala:
+`"app": "https://achordeon.eu/app/"`. Sama aplikace ten řádek nikdy nečte - je tam
+pro toho, kdo soubor za rok najde a bude přemýšlet, čím se otvírá.
+
 ## Stažení
 
 Stahování je o něco složitější. Základ je:
@@ -51,3 +55,46 @@ Pravidla importu jsou následující:
 
 - Import zpěvníku vždy vytvoří nový zpěvník, i když se jména shodují.
 - Import písní dá uživateli možnosti nahradit, ignorovat nebo vytvořit nové. Všechny písně můžete také importovat jako nové s datem jako předponou.
+
+Cesty dovnitř jsou tři a všechny tři končí u téhož náhledu:
+
+- tlačítko **Importovat** v Písních nebo Zpěvnících, které otevře výběr souboru
+- soubor **puštěný kamkoli na stránku**, několik naráz se nabídne jeden po druhém
+- **odkaz**, který otevře náhled už vyplněný
+
+Soubor Achordeonu se teď píše jako `.achordeon`. Soubory už vyvezené jako `.json`
+se pořád importují a výběr souboru bere obojí.
+
+## Sdílení písničky odkazem
+
+Vedle souboru nabízí dialog Stáhnout i **Odkaz**. Zkopíruje se do schránky a
+písnička cestuje uvnitř něj, takže se nic nenahrává a při otevření se nic
+nestahuje. Klepnutí otevře náhled importu na jakémkoli zařízení, v nainstalované
+aplikaci i v prohlížeči, online i bez připojení.
+
+Dlouhý výběr se do odkazu nevejde: něco po cestě ho ustřihne a dorazí nečitelný.
+Když to nastane, možnost zešedne a řekne to, a odpovědí je místo něj soubor.
+
+## Psaní písničky s asistentem s AI
+
+Formát souboru je zveřejněný, takže vám ho asistent umí napsat. Schéma bydlí na
+[achordeon.schema.json](pathname:///achordeon.schema.json). Předhoďte mu ho a
+řekněte si o importní soubor Achordeonu.
+
+Existuje i hotová dovednost, která asistenta naučí značkování a nese s sebou
+vlastní parser Achordeonu, aby si asistent mohl práci zkontrolovat, ještě než vám
+ji předá:
+
+- [achordeon-song.zip](pathname:///achordeon-song.zip) - pro Clauda, který umí
+  spustit skripty, které jsou uvnitř
+- [achordeon-song-gpt.zip](pathname:///achordeon-song-gpt.zip) - instrukce a
+  soubory se znalostmi pro Custom GPT
+- [achordeon-song-gem.md](pathname:///achordeon-song-gem.md) - jeden soubor
+  k vložení do Gemu
+
+Návod, jak je nainstalovat, je v [AI importu](/guides/ai-import.mdx).
+
+Ať soubor napsalo cokoli, náhled importu vám ještě předtím, než se cokoli zapíše,
+řekne, u kolika písniček značkování Achordeon nerozluštil, takže o zastaralé
+dovednosti, nebo o asistentovi, který žádnou nikdy neměl, se dozvíte dopředu, ne
+až na stránce.

@@ -45,8 +45,22 @@ export type DownloadFormat = SongDownloadFormat | MultiDownloadFormat;
 export const DATA_FORMAT = 'json';
 export type DataFormat = typeof DATA_FORMAT;
 
-/** What the download dialog can hand back: a render, or the data file. */
-export type DownloadChoice = DownloadFormat | DataFormat;
+/**
+ * The same songs as a **link**, copied to the clipboard rather than written to
+ * disk (CONTEXT.md §Share).
+ *
+ * A third choice in the same dialog for the same reason the Achordeon file is the
+ * second: a person deciding what to take away should not have to know which of
+ * our words applies to which file. It is not an export — nothing lands on disk —
+ * but it answers the same question, so it is asked in the same place, and the
+ * presenter fans it out to its own service exactly as it already splits
+ * `DownloadService` from `ExportService`.
+ */
+export const SHARE_LINK_FORMAT = 'share-link';
+export type ShareLinkFormat = typeof SHARE_LINK_FORMAT;
+
+/** What the download dialog can hand back: a render, the data file, or a link. */
+export type DownloadChoice = DownloadFormat | DataFormat | ShareLinkFormat;
 
 export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
 
@@ -63,7 +77,10 @@ export type SongbookFormat = 'pdf' | 'zip-png';
  * file** — the same merge the song dialog makes, expressed through the format
  * control the dialog already had. Picking `json` retires every paper question
  * below it, because none of them is about a database. */
-export type SongbookChoiceFormat = SongbookFormat | DataFormat;
+export type SongbookChoiceFormat =
+  | SongbookFormat
+  | DataFormat
+  | ShareLinkFormat;
 
 /**
  * The axis the **All songs** book is ordered by when it prints.
@@ -197,6 +214,18 @@ export interface ImportPreview {
   /** The file carries settings this build does not know — additive, from a
    * newer app. Kept, not dropped; the user is told, not stopped. */
   readonly hasUnknownSettings: boolean;
+  /**
+   * Which incoming songs the parser has something to say about, by name.
+   *
+   * The same warning as {@link hasUnknownSettings} pointed the other way: that
+   * one says "this file knows things this build does not", this one says "this
+   * build cannot make sense of some of what this file says".
+   *
+   * **Named, not counted** — the same rule {@link conflicts} follows, because a
+   * number tells the reader how bad it is and a name tells them where to look.
+   * One entry per song however many warnings it carries.
+   */
+  readonly flaggedSongs: readonly string[];
 }
 
 export interface ImportChoice {

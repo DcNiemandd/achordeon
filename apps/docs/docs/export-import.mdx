@@ -42,3 +42,31 @@ The rules of importing are as follows:
 
 - Importing songbook will always create new songbook, even if the names are the same.
 - Importing songs will give user options to replace, ignore, or create new. You can also import all songs as new with date tag as a prefix
+
+There are three ways in, and all three end at the same preview:
+
+- the **Import** button in Songs or Songbooks, which opens the file picker
+- a file **dropped anywhere on the page**, several at once being offered one after another
+- a **link**, which opens the preview already filled in
+
+The Achordeon file is written as `.achordeon` now. Files already exported as `.json` still import, and the picker accepts both.
+
+## Sharing a song as a link
+
+Alongside the file, the Download dialog offers a **Link**. It is copied to the clipboard, and the song travels inside it, so nothing is uploaded and nothing is fetched when it is opened. Tapping it opens the import preview on any device, installed app or browser tab, online or not.
+
+A long selection will not fit in a link: something along the way cuts it short and it arrives unreadable. When that happens the option is greyed and says so, and the file is the answer instead.
+
+## Writing a song with an AI assistant
+
+The file format is published, so an assistant can write one for you. The schema lives at [achordeon.schema.json](pathname:///achordeon.schema.json). Hand it that and ask for an Achordeon import file.
+
+There is also a ready-made skill, which teaches the markup and carries Achordeon's own parser so the assistant can check its work before handing it over:
+
+- [achordeon-song.zip](pathname:///achordeon-song.zip) - for Claude, which can run the scripts it contains
+- [achordeon-song-gpt.zip](pathname:///achordeon-song-gpt.zip) - instructions and knowledge files for a Custom GPT
+- [achordeon-song-gem.md](pathname:///achordeon-song-gem.md) - one file to paste into a Gem
+
+How to install each one is in the [AI import guide](/guides/ai-import.mdx).
+
+Whatever writes the file, the import preview tells you before anything is written how many of the songs have markup Achordeon could not make sense of, so a stale skill, or an assistant that never had one, is something you find out about up front rather than on the page.

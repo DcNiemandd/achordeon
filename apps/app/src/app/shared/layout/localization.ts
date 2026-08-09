@@ -91,17 +91,20 @@ export class Localization {
  * when the domain changes. Non-source languages live under their own prefix,
  * which is Docusaurus's i18n layout, not ours.
  *
- * `page` is a route under `docs/` (`intro`, `privacy`, `patch-notes`) — never the
- * docs root, which redirects back into the app (docusaurus.config.ts) and would
- * bounce the reader straight to where they clicked.
+ * `page` is a route under `docs/` (`privacy`, `patch-notes`), or `''` for the docs
+ * root, which is the intro page itself. Empty is joined without a separator on
+ * purpose: the docs are built with `trailingSlash: false`, so the deploy writes
+ * `docs.html` and no `docs/index.html` — GitHub Pages answers `/docs` with the
+ * page and `/docs/` with a 404. A dev server hides that, since its router matches
+ * either form.
  *
  * In `nx serve` this resolves to the dev server, where the docs are not (they run
- * separately, `nx serve docs`); every link built from it is a production
+ * separately, `nx serve docs`), so every link built from it is a production
  * affordance.
  */
 export function docsPageUrl(language: Language, page: string): string {
-  const path =
-    language === SOURCE_LANGUAGE ? `docs/${page}` : `${language}/docs/${page}`;
+  const root = language === SOURCE_LANGUAGE ? 'docs' : `${language}/docs`;
+  const path = page === '' ? root : `${root}/${page}`;
   return new URL(path, new URL('../', document.baseURI)).href;
 }
 
