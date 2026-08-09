@@ -130,7 +130,14 @@ interface FormatOption extends Option {
               (click)="copyLink()"
             >
               <app-icon name="transferOut" />
-              {{ isCopied() ? copiedLabel : copyLabel }}
+              <!-- "Copied" is shorter than "Copy link", and this button is the
+                   one that makes the column as wide as it is — so the longer
+                   word stays in the layout, hidden, and the column keeps still
+                   while the label flips. -->
+              <span class="swap">
+                <span class="ghost" aria-hidden="true">{{ copyLabel }}</span>
+                <span>{{ isCopied() ? copiedLabel : copyLabel }}</span>
+              </span>
             </button>
           </div>
         </div>
@@ -152,18 +159,23 @@ interface FormatOption extends Option {
     </app-dialog>
   `,
   styles: `
+    /* Two columns for the whole list, not per row: the text takes the room, the
+       buttons share one column and are therefore all as wide as the widest of
+       them. Each row opts into the parent's columns with subgrid — a row that
+       measured itself would give "Copy link" a wider button than "Download",
+       which reads as five different controls rather than one column of them. */
     .options {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: var(--space-3);
     }
 
-    /* Two columns: the text takes the room (flex: 1), the button sits at the
-       end. Top-aligned, so a two-line hint does not shove the button down. */
     .option {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-3);
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+      /* Top-aligned, so a two-line hint does not shove the button down. */
+      align-items: start;
     }
 
     /* The data file, set apart from the renders above it — the same hairline
@@ -176,7 +188,6 @@ interface FormatOption extends Option {
     }
 
     .text {
-      flex: 1;
       min-inline-size: 0;
       display: flex;
       flex-direction: column;
@@ -193,8 +204,23 @@ interface FormatOption extends Option {
       white-space: normal;
     }
 
+    /* Stretched to the shared column — the button is what the column is for. */
     .go {
-      flex: none;
+      inline-size: 100%;
+    }
+
+    /* Both labels in one cell, so the button's width is the longer one's. */
+    .swap {
+      display: grid;
+    }
+
+    .swap > * {
+      grid-area: 1 / 1;
+      justify-self: center;
+    }
+
+    .swap > .ghost {
+      visibility: hidden;
     }
 
     /* The progress that replaces the format list once one is picked. */
