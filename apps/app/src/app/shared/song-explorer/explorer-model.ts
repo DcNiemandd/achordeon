@@ -208,6 +208,18 @@ export interface ExplorerCapabilities {
    * action is already on the row.
    */
   readonly hasInlineDuplicate: boolean;
+  /**
+   * This mount answers to the keyboard: the arrows move the current row, Enter
+   * opens it, and the row actions have bare keys (ADR-0015).
+   *
+   * **A capability rather than "whichever list has focus"**, because the rows
+   * are drawn by a virtual scroll: there is no focus ring roving over them to
+   * read, and the current row is a signal the presenter owns. Where two
+   * explorers share a screen (the songbook builder) neither takes the keys —
+   * with no focus to arbitrate between them, a bare `f` would have to guess
+   * which list it meant.
+   */
+  readonly hasKeyboard: boolean;
 }
 
 /** The Songs module: everything on. */
@@ -234,6 +246,7 @@ export const FULL_CAPABILITIES: ExplorerCapabilities = {
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,
+  hasKeyboard: true,
 };
 
 /**
@@ -264,6 +277,7 @@ export const REDUCED_CAPABILITIES: ExplorerCapabilities = {
   canDropRemove: true,
   usesRowMenu: false,
   hasInlineDuplicate: false,
+  hasKeyboard: false,
 };
 
 /**
@@ -302,6 +316,7 @@ export const ENTRY_CAPABILITIES: ExplorerCapabilities = {
   canDropRemove: false,
   usesRowMenu: false,
   hasInlineDuplicate: false,
+  hasKeyboard: false,
 };
 
 /**
@@ -342,6 +357,7 @@ export const SONGBOOK_LIST_CAPABILITIES: ExplorerCapabilities = {
   canDropRemove: false,
   usesRowMenu: true,
   hasInlineDuplicate: true,
+  hasKeyboard: true,
 };
 
 /** Where a per-row move sends that one row. Same vocabulary as the toolbar's,
