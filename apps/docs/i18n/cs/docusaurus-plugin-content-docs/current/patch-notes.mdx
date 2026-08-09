@@ -7,6 +7,101 @@ sidebar_position: 99
 Achordeon se aktualizuje na pozadí a dá vám vědět, když čeká nová verze - tahle
 stránka říká, do čeho byste se načítali.
 
+## 9. 8. 2026
+
+### Písničky psané asistentem s AI
+
+Asistent umí napsat písničku pro Achordeon a předat vám soubor, který aplikace vezme.
+Je tu soubor, který dáte jakémukoli chatbotovi a který mu řekne, jak má takový soubor
+vypadat, a hotová dovednost, která ho naučí značkování písničky a nechá ho zkontrolovat
+si práci dřív, než písničku vůbec uvidíte, ve třech vydáních: jedno pro Clauda, jedno
+pro Custom GPT, jeden soubor k vložení do Gemu. Zpátky přijde soubor k importu nebo
+odkaz k otevření.
+[Psaní písničky s asistentem s AI](/export-import.mdx#psaní-písničky-s-asistentem-s-ai)
+
+### Nové funkce
+
+- **Sdílení písničky odkazem** - dialog Stáhnout nabízí vedle souboru i **Odkaz**.
+  Písnička cestuje uvnitř odkazu, takže se nic nenahrává a při otevření se nic
+  nestahuje - funguje na zařízení bez připojení, v kartě prohlížeče i v nainstalované
+  aplikaci. Výběr, který je na odkaz příliš dlouhý, to řekne a pošle vás místo něj
+  k souboru. [Sdílení písničky odkazem](/export-import.mdx#sdílení-písničky-odkazem)
+- **Puštění souboru na stránku** - soubor Achordeonu puštěný kamkoli na Achordeon se
+  naimportuje, není co hledat za tlačítko ani na jaké stránce být první. Několik
+  souborů naráz se nabídne jeden po druhém a odmítnutí jednoho nezruší ostatní.
+  [Import](/export-import.mdx#import)
+- **Vlastní soubor** - export se píše jako `.achordeon`, ne jako `.json`, takže je to
+  soubor Achordeonu, a ne další `.json` mezi vašimi staženými. Tam, kde je Achordeon
+  nainstalovaný a systém to nabídne, ho otevřete ze svých souborů a přistanete
+  v aplikaci. Soubory už vyvezené jako `.json` se pořád importují a výběr souboru bere
+  obojí. [Import](/export-import.mdx#import)
+
+### Změny
+
+- **Náhled řekne, co nepřečetl** - import teď pojmenuje písně, kterým Achordeon
+  nerozumí, ještě než se cokoli zapíše. Dřív se díval jen na to, které písně
+  přicházejí, a nikdy na to, co je v nich napsáno, takže špatně dopadlou píseň jste
+  našli až potom na stránce. [Import](/export-import.mdx#import)
+- **Odkaz na publikum říká, že se kopíruje** - odkaz ve **Spravovat publikum** byl
+  podtržený jako něco, co se má otevřít, a otevřít ho na zařízení, na kterém hrajete,
+  je to poslední, co chcete. Nese teď značku kopírování, čte se jako políčko, a ne
+  jako odkaz, a na chvíli se odškrtne, jakmile je adresa ve schránce.
+  [Publikum](/stage-audience/index.mdx#publikum)
+
+### Opravy
+
+- **Zatoulaná hvězdička je text** - neuzavřená `*` položila do kurzívy všechno za
+  sebou, takže `Refrén (2*)` naklonil zbytek řádku, a stejně tak značka, kterou jste
+  nedopsali. Hvězdička něco označuje jen tehdy, když ji něco na témže řádku uzavře.
+  [Markdown](/songs/syntax.mdx#markdown)
+- **I angličtina je pravopis** - při anglickém značení akordů se píseň napsaná s `H`
+  pořád tiskla s `H`, takže zpěvník poskládaný ze dvou zdrojů ukazoval `H` vedle `Bb`.
+  Angličtina teď tiskne `H` jako `B` a `Hb` jako `Bb`, takže obě nastavení dostanou
+  smíchanou píseň ven v jedné řeči. Text vaší písně zůstává tak, jak jste ho napsali,
+  jako vždy. [Vykreslování](/settings.mdx#vykreslování)
+- **Stahování ve Firefoxu na Androidu** - PDF stažené z nainstalované aplikace
+  otevřelo prázdnou obrazovku místo toho, aby se uložilo. Soubor se teď předává jako
+  stahování, a ne jako něco, co může prohlížeč také otevřít.
+  [Stažení](/export-import.mdx#stažení)
+- **Odkaz na dokumentaci vede rovnou tam** - odkaz na dokumentaci v Nastavení vedl
+  přes přesměrování, které cestou bliklo prázdnou stránkou. Dokumentace se teď otevře
+  na své úvodní stránce v jednom kroku a starší odkazy pořád dorazí.
+
+## 6. 8. 2026
+
+### Nové funkce
+
+- **Přečtěte si v náhledu celý zpěvník** - náhled zpěvníku roluje. Má posuvník, který
+  říká, jak je zpěvník dlouhý, a odpovídá na kolečko, na trackpad i na klávesy, které
+  už znáte, takže dlouhý zpěvník je od konce ke konci jedno mrsknutí. Listy se kreslí,
+  jak k nim dojedete, takže zpěvník o dvou stech písních se otevře hned, místo aby
+  rozvrhl každou píseň dřív, než vám cokoli ukáže. [Zpěvníky](/songbooks/index.mdx)
+
+### Změny
+
+- **Klepnutí otevírá** - na telefonu klepnutí na píseň nebo na zpěvník otevře. Na
+  počítači kliknutí vybere řádek a ukáže ho v panelu vedle seznamu a dvojklik jde
+  dovnitř. Telefon na ten druhý panel nemá místo, takže klepnutí, po kterém se dřív
+  viditelně nedělo nic, vás teď vezme rovnou tam. Uvnitř zpěvníku klepnutí na píseň
+  pořád jen vybírá - skládáte zpěvník, neodcházíte z něj.
+  [Písně](/songs/index.mdx#seznam)
+- **Soubor říká, odkud přišel** - soubor Achordeonu teď nese na prvním řádku adresu
+  aplikace. Nikdo ji nečte, je to pro toho, kdo soubor za rok najde na disku.
+  [Export](/export-import.mdx#export)
+
+### Opravy
+
+- **Transponování zůstane nahoře, dokud ho používáte** - proužek transponování zmizel
+  pár vteřin po tom, co se otevřel. V režimu celé obrazovky se lišty samy uklidí,
+  jakmile přestanete sahat na obrazovku, a na telefonu braly otevřený panel s sebou.
+  Cokoli, co jste otevřeli, je teď drží na místě, dokud to nezavřete.
+  [Transponování](/stage-audience/index.mdx#transponování)
+- **Stahování v nainstalované aplikaci** - stažení PDF z Achordeonu nainstalovaného
+  jako aplikace otevřelo prázdnou kartu místo toho, aby soubor uložilo, a na Androidu
+  se nestalo vůbec nic: prohlížeč bere PDF jako něco k otevření, ne jako něco
+  k uložení, a nainstalovaná aplikace nemá kartu, ve které by ho otevřela. Ukládá se.
+  [Stažení](/export-import.mdx#stažení)
+
 ## 4. 8. 2026
 
 ### Nové funkce
