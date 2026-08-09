@@ -18,6 +18,7 @@ import {
   UiStore,
   Viewport,
 } from '../shared/layout';
+import { registerShortcuts } from '../shared/keyboard';
 import { SongRender } from '../shared/song-render';
 import {
   SelectionStatus,
@@ -467,6 +468,20 @@ export class SongsPage {
   }
 
   constructor() {
+    // The one thing the list itself cannot offer: it knows how to open, rename
+    // and delete a row, and nothing about how a song comes into being.
+    registerShortcuts({
+      name: this.title,
+      actions: computed(() => [
+        {
+          id: 'songs.create',
+          label: this.addLabel,
+          keys: ['KeyN'],
+          run: () => void this.presenter.create(),
+        },
+      ]),
+    });
+
     // Lay the remembered scroll back on after a return from the editor. The
     // offset means nothing until the list has rows to scroll through, so this
     // waits for the window to arrive, defers past the current change-detection

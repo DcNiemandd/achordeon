@@ -36,6 +36,7 @@ import {
   Viewport,
   ZoomPill,
 } from '../shared/layout';
+import { type ShortcutAction, registerShortcuts } from '../shared/keyboard';
 import { SongRender } from '../shared/song-render';
 import { AudiencePresenter } from './audience.presenter';
 
@@ -62,7 +63,6 @@ function writeLastPin(pin: string): void {
   selector: 'app-audience-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [AudiencePresenter],
-  host: { '(document:keydown)': 'onKeyDown($event)' },
   imports: [
     BlankPage,
     SongRender,
@@ -522,6 +522,16 @@ export class AudiencePage {
   });
 
   constructor() {
+    registerShortcuts({
+      name: this.watchingLabel,
+      actions: this.watchingShortcuts,
+    });
+    registerShortcuts({
+      name: this.summaryLabel,
+      isBlocking: this.session.isSummaryOpen,
+      actions: this.summaryShortcuts,
+    });
+
     // The shell-side bar cannot reach the presenter (data-access); it asks the
     // session to leave or re-sync, which runs these.
     this.session.registerLeave(() => this.exit());
@@ -605,27 +615,55 @@ export class AudiencePage {
     this.presenter.setSummaryQuery((event.target as HTMLInputElement).value);
   }
 
-  protected onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && this.session.isSummaryOpen()) {
-      event.preventDefault();
-      this.session.closeSummary();
-      return;
-    }
+  /**
+   * Watching from the keyboard (ADR-0015) — **the same keys as performing**, and
+   * only the zoom: a viewer does not turn the page, the performer does.
+   *
+   * `0` is the reliable reset. Escape is offered alongside it, but only while
+   * something is magnified: a disabled action leaves the press to the browser,
+   * and in fullscreen Escape is how you get out of fullscreen.
+   */
+  private readonly watchingShortcuts = computed<readonly ShortcutAction[]>(
+    () => {
+      const zoom = this.zoom();
+      return [
+        {
+          id: 'audience.zoomIn',
+          label: this.zoomInLabel,
+          keys: ['+', '='],
+          run: () => zoom?.zoomIn(),
+        },
+        {
+          id: 'audience.zoomOut',
+          label: this.zoomOutLabel,
+          keys: ['-'],
+          run: () => zoom?.zoomOut(),
+        },
+        {
+          id: 'audience.resetZoom',
+          label: this.resetZoomLabel,
+          keys: ['0', 'Escape'],
+          isDisabled: !(zoom?.isZoomed() ?? false),
+          run: () => zoom?.reset(),
+        },
+      ];
+    },
+  );
 
-    // The same keys as performing. `0` is the reliable reset — the browser takes
-    // Escape for itself in fullscreen.
-    const zoom = this.zoom();
-    if (event.key === '0' || (event.key === 'Escape' && zoom?.isZoomed())) {
-      event.preventDefault();
-      zoom?.reset();
-    } else if (event.key === '+' || event.key === '=') {
-      event.preventDefault();
-      zoom?.zoomIn();
-    } else if (event.key === '-') {
-      event.preventDefault();
-      zoom?.zoomOut();
-    }
-  }
+  /** The song list, while it is open: it takes every key and gives back the one
+   * that closes it — the perform view's arrangement, for the same panel. */
+  private readonly summaryShortcuts = computed<readonly ShortcutAction[]>(() =>
+    this.session.isSummaryOpen()
+      ? [
+          {
+            id: 'audience.closeSummary',
+            label: this.closeLabel,
+            keys: ['Escape'],
+            run: () => this.session.closeSummary(),
+          },
+        ]
+      : [],
+  );
 
   /** What the browser tab says while following a lobby: "Watching - Achordeon". */
   private readonly watchingTitle = $localize`:@@audience.documentTitle:Watching`;
@@ -640,6 +678,11 @@ export class AudiencePage {
   protected readonly unavailableText = $localize`:@@audience.unavailable:Audiences are unavailable right now.`;
 
   protected readonly summaryLabel = $localize`:@@audience.summary:Song list`;
+  /** Names this screen's group in the shortcuts dialog. */
+  protected readonly watchingLabel = $localize`:@@audience.watching:Watching`;
+  protected readonly zoomInLabel = $localize`:@@stage.zoomIn:Zoom in`;
+  protected readonly zoomOutLabel = $localize`:@@stage.zoomOut:Zoom out`;
+  protected readonly resetZoomLabel = $localize`:@@stage.resetZoom:Reset zoom`;
   protected readonly summaryHeading = $localize`:@@stage.summaryHeading:Songs`;
   protected readonly closeLabel = $localize`:@@audience.close:Close`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;

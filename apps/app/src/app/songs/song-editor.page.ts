@@ -24,12 +24,43 @@ import {
 } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { FeedbackContext } from '../shared/feedback';
+import {
+  KeyboardLayout,
+  type ShortcutAction,
+  ariaKeyShortcuts,
+  registerShortcuts,
+  withKeyHint,
+} from '../shared/keyboard';
 import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
 import { SNIPPETS } from './editor/snippets';
 import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
+
+/**
+ * An action as the bar draws it: the declaration the keymap and the shortcuts
+ * dialog read, widened with the face this particular bar gives it.
+ */
+interface BarAction extends ShortcutAction {
+  readonly testid: string;
+  readonly className?: string;
+  readonly icon?: IconName;
+  /** Mirror the glyph horizontally — Lucide has a slash but no backslash. */
+  readonly isFlipped?: boolean;
+  /** A second icon over the first — the direction badge on the transpose note. */
+  readonly badge?: IconName;
+  /** A character where there is no icon for the thing (♯, ♭). */
+  readonly face?: string;
+  /** The markup this writes, printed under the icon so the bar teaches it. */
+  readonly syntax?: string;
+  /** Drawn pressed, and announced as such: the settings toggle. */
+  readonly isActive?: boolean;
+  /** `aria-keyshortcuts`, filled in from `keys` — see `withHints`. */
+  readonly keyHint?: string;
+  /** The label with the key after it, for the tooltip — see `withHints`. */
+  readonly tooltip?: string;
+}
 
 /**
  * The authoring screen: content on the left, the render on the right (§4).
@@ -41,7 +72,6 @@ import { SongEditorPresenter } from './song-editor.presenter';
   selector: 'app-song-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SongEditorPresenter],
-  host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
     RouterLink,
     ActionBar,
@@ -93,137 +123,54 @@ import { SongEditorPresenter } from './song-editor.presenter';
                box: the actions ride at its far end and tuck onto the last command
                row when it wraps. As a sibling column they instead forced a whole
                extra row on a phone — two rows of commands plus one of actions. -->
+          <!-- Every button here is an entry in commandGroups / barActions, and
+               so is its key and its row in the shortcuts dialog: one
+               declaration per action, or a key and a greyed-out button could
+               disagree about what is possible (ADR-0015). -->
           <div class="commands">
-            <div
-              class="group"
-              role="group"
-              [attr.aria-label]="insertGroupLabel"
-            >
-              @for (item of insertButtons; track item.testid) {
-                <button
-                  appButton
-                  type="button"
-                  variant="secondary"
-                  class="insert"
-                  [disabled]="isInsertBlocked(item)"
-                  [attr.aria-label]="item.label"
-                  [appTooltip]="item.label"
-                  [attr.data-testid]="item.testid"
-                  (click)="press(item)"
-                >
-                  <app-icon
-                    [name]="item.icon"
-                    [class.is-flipped]="item.isFlipped"
-                  />
-                  <!-- aria-hidden: the button is already named by its
+            @for (group of commandGroups(); track group.id) {
+              <div class="group" role="group" [attr.aria-label]="group.label">
+                @for (item of group.actions; track item.id) {
+                  <button
+                    appButton
+                    type="button"
+                    variant="secondary"
+                    [class]="item.className"
+                    [isIconOnly]="!item.syntax"
+                    [disabled]="item.isDisabled"
+                    [attr.aria-label]="item.label"
+                    [appTooltip]="item.tooltip ?? item.label"
+                    [attr.aria-keyshortcuts]="item.keyHint"
+                    [attr.data-testid]="item.testid"
+                    (click)="item.run()"
+                  >
+                    @if (item.icon) {
+                      <app-icon
+                        [name]="item.icon"
+                        [class.is-flipped]="item.isFlipped"
+                      />
+                    }
+                    <!-- A note badged with a direction. Transposing is a
+                         musical act on the chords, and a bare arrow said only
+                         "move something" — which something was left to the
+                         tooltip. -->
+                    @if (item.badge) {
+                      <app-icon class="transpose-badge" [name]="item.badge" />
+                    }
+                    @if (item.face) {
+                      {{ item.face }}
+                    }
+                    <!-- aria-hidden: the button is already named by its
                          aria-label, and "Title, star" helps nobody. -->
-                  <span class="insert-syntax" aria-hidden="true">{{
-                    item.glyph
-                  }}</span>
-                </button>
-              }
-            </div>
-
-            <div
-              class="group"
-              role="group"
-              [attr.aria-label]="transposeGroupLabel"
-            >
-              <!-- A note badged with a direction. Transposing is a musical
-                     act on the chords, and a bare arrow said only "move
-                     something" — which something was left to the tooltip. -->
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="transpose"
-                [isIconOnly]="true"
-                [attr.aria-label]="transposeUpLabel"
-                [appTooltip]="transposeUpLabel"
-                data-testid="transpose-up"
-                (click)="presenter.transpose(1)"
-              >
-                <app-icon name="note" />
-                <app-icon class="transpose-badge" name="transposeUp" />
-              </button>
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="transpose"
-                [isIconOnly]="true"
-                [attr.aria-label]="transposeDownLabel"
-                [appTooltip]="transposeDownLabel"
-                data-testid="transpose-down"
-                (click)="presenter.transpose(-1)"
-              >
-                <app-icon name="note" />
-                <app-icon class="transpose-badge" name="transposeDown" />
-              </button>
-
-              <!-- Sharp/flat raise or lower the ONE chord under the cursor, and
-                     so are enabled only while the caret is inside a chord — off a
-                     chord there is nothing for them to change. -->
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="accidental"
-                [isIconOnly]="true"
-                [disabled]="!editor().caret().isInsideChord"
-                [attr.aria-label]="sharpLabel"
-                [appTooltip]="sharpLabel"
-                data-testid="chord-sharp"
-                (click)="editor().transposeChordAtCaret(1)"
-              >
-                ♯
-              </button>
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                class="accidental"
-                [isIconOnly]="true"
-                [disabled]="!editor().caret().isInsideChord"
-                [attr.aria-label]="flatLabel"
-                [appTooltip]="flatLabel"
-                data-testid="chord-flat"
-                (click)="editor().transposeChordAtCaret(-1)"
-              >
-                ♭
-              </button>
-            </div>
-
-            <div
-              class="group"
-              role="group"
-              [attr.aria-label]="historyGroupLabel"
-            >
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                [isIconOnly]="true"
-                [attr.aria-label]="undoLabel"
-                [appTooltip]="undoLabel"
-                data-testid="editor-undo"
-                (click)="editor().undo()"
-              >
-                <app-icon name="undo" />
-              </button>
-              <button
-                appButton
-                type="button"
-                variant="secondary"
-                [isIconOnly]="true"
-                [attr.aria-label]="redoLabel"
-                [appTooltip]="redoLabel"
-                data-testid="editor-redo"
-                (click)="editor().redo()"
-              >
-                <app-icon name="redo" />
-              </button>
-            </div>
+                    @if (item.syntax) {
+                      <span class="insert-syntax" aria-hidden="true">{{
+                        item.syntax
+                      }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
 
             <!-- These are plain actions, not code-editing commands, so they are
                  borderless (ghost) — the bordered buttons on the left are the ones
@@ -232,37 +179,25 @@ import { SongEditorPresenter } from './song-editor.presenter';
                  its far end, so they sit far-right on one row and fall onto the
                  last command row (never a row of their own) when it wraps. -->
             <div class="bar-actions">
-              <!-- Take the song away, in whichever of the three shapes: a page,
-                   a picture, or the Achordeon file. One button and one dialog,
-                   as everywhere else — Export used to be a second icon here,
-                   and the pair asked you to know the difference before it would
-                   show you either. -->
-              <button
-                appButton
-                type="button"
-                [isIconOnly]="true"
-                [attr.aria-label]="downloadLabel"
-                [appTooltip]="downloadLabel"
-                data-testid="editor-download"
-                (click)="presenter.openDownload()"
-              >
-                <app-icon name="download" />
-              </button>
-
-              <button
-                appButton
-                type="button"
-                class="settings"
-                [isIconOnly]="true"
-                [class.is-active]="presenter.isSettingsOpen()"
-                [attr.aria-pressed]="presenter.isSettingsOpen()"
-                [attr.aria-label]="settingsLabel"
-                [appTooltip]="settingsLabel"
-                data-testid="editor-settings"
-                (click)="presenter.toggleSettings()"
-              >
-                <app-icon name="settings" />
-              </button>
+              @for (item of barActions(); track item.id) {
+                <button
+                  appButton
+                  type="button"
+                  [class]="item.className"
+                  [isIconOnly]="true"
+                  [class.is-active]="item.isActive"
+                  [attr.aria-pressed]="item.isActive"
+                  [attr.aria-label]="item.label"
+                  [appTooltip]="item.tooltip ?? item.label"
+                  [attr.aria-keyshortcuts]="item.keyHint"
+                  [attr.data-testid]="item.testid"
+                  (click)="item.run()"
+                >
+                  @if (item.icon) {
+                    <app-icon [name]="item.icon" />
+                  }
+                </button>
+              }
             </div>
           </div>
         </app-action-bar>
@@ -452,6 +387,7 @@ export class SongEditorPage {
   protected readonly presenter = inject(SongEditorPresenter);
   private readonly router = inject(Router);
   private readonly returnUrl = inject(ReturnUrl);
+  private readonly layout = inject(KeyboardLayout);
 
   /** The list's query params, pulled off the remembered list URL — what makes
    * the back link and Escape restore search/sort/favourites (and, from a
@@ -489,6 +425,10 @@ export class SongEditorPage {
    * inserting and undoing are things you do *to an editor* (ADR-0010). */
   protected readonly editor = viewChild.required(SongEditor);
 
+  /** For the rename shortcut: the name lives in the bar's heading, so renaming
+   * from the keyboard is a matter of reaching the field already on screen. */
+  private readonly bar = viewChild(ActionBar);
+
   /**
    * The page frame follows the song's own aspect ratio, so the paper you are
    * looking at is the paper it prints on. The plan's box has already resolved the
@@ -520,6 +460,11 @@ export class SongEditorPage {
   protected readonly downloadLabel = $localize`:@@editor.download:Download`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
+  protected readonly focusEditorLabel = $localize`:@@editor.focusEditor:Go to the song text`;
+  protected readonly closeDialogLabel = $localize`:@@editor.closeDialog:Close`;
+  protected readonly dialogGroupLabel = $localize`:@@editor.dialogGroup:Dialog`;
+  /** Names this screen's group in the shortcuts dialog. */
+  protected readonly editorGroupLabel = $localize`:@@editor.group:Editor`;
 
   /**
    * The insert bar: **a mark and the syntax it writes, stacked**.
@@ -534,180 +479,368 @@ export class SongEditorPage {
    *
    * `label` remains the accessible name and the tooltip; both the icon and the
    * glyph are decoration to a screen reader.
+   *
+   * **Greyed out where the line's grammar would ignore what it writes.** A `*` or
+   * `**` line never reaches the inline scan (PARSER-GRAMMAR §Phase 1), so a chord
+   * typed into a title is not a chord — it is the literal text `[C]`, which then
+   * prints on the page. Same for a label. Brackets do not nest either: a `[`
+   * written inside one closes nothing and the parser reads the whole thing as a
+   * single malformed bracket. Disabled rather than hidden, because a bar whose
+   * buttons come and go as the caret moves is harder to use than one where a
+   * button greys out — and the tooltip still names what it would have done. The
+   * key is disabled with the button: that is what one declaration buys.
    */
-  protected readonly insertButtons: readonly {
-    testid: string;
-    icon: IconName;
-    /** Mirror the glyph horizontally — Lucide has a slash but no backslash. */
-    isFlipped?: boolean;
-    /** Writes markup the grammar ignores on a title/subtitle line — see `isInsertBlocked`. */
-    isContentOnly?: boolean;
-    /** Writes a `[` — meaningless inside a bracket, since they do not nest. */
-    isBlockedInsideChord?: boolean;
-    /** Inside a bracket this button rewrites it rather than writing a new one. */
-    cyclesChord?: boolean;
-    glyph: string;
-    label: string;
-    snippet: InsertRequest;
-  }[] = [
-    {
-      // The one button that is NOT blocked inside a bracket: there it means
-      // "make this chord inline", and pressing it once more takes the brackets
-      // off — bracket, inline, plain, round again (`cycleChordAt`).
-      testid: 'insert-chord',
-      icon: 'brackets',
-      isContentOnly: true,
-      cyclesChord: true,
-      glyph: '[ ]',
-      label: $localize`:@@editor.insertChord:Chord`,
-      snippet: SNIPPETS.chord,
-    },
-    {
-      testid: 'insert-title',
-      icon: 'heading1',
-      glyph: '*',
-      label: $localize`:@@editor.insertTitle:Title`,
-      snippet: SNIPPETS.title,
-    },
-    {
-      testid: 'insert-subtitle',
-      icon: 'heading2',
-      glyph: '**',
-      label: $localize`:@@editor.insertSubtitle:Subtitle`,
-      snippet: SNIPPETS.subtitle,
-    },
-    {
-      testid: 'insert-label',
-      icon: 'tag',
-      isContentOnly: true,
-      glyph: ':',
-      label: $localize`:@@editor.insertLabel:Label`,
-      snippet: SNIPPETS.label,
-    },
-    {
-      // Emphasis is content-only and cannot live in a chord: `**` on a title line
-      // is literal, and inside a bracket the asterisks are chord text.
-      testid: 'insert-bold',
-      icon: 'bold',
-      isContentOnly: true,
-      isBlockedInsideChord: true,
-      glyph: '**',
-      label: $localize`:@@editor.insertBold:Bold`,
-      snippet: SNIPPETS.bold,
-    },
-    {
-      testid: 'insert-italic',
-      icon: 'italic',
-      isContentOnly: true,
-      isBlockedInsideChord: true,
-      glyph: '*',
-      label: $localize`:@@editor.insertItalic:Italic`,
-      snippet: SNIPPETS.italic,
-    },
-    {
-      // A block boundary is a blank line, which has no character to show — `↵`
-      // stands in for it, being the key you would press to make one.
-      testid: 'insert-block',
-      icon: 'pilcrow',
-      glyph: '↵',
-      label: $localize`:@@editor.insertBlock:New block`,
-      snippet: SNIPPETS.block,
-    },
-    {
-      testid: 'insert-escape',
-      icon: 'backslash',
-      // Lucide ships `slash` and no backslash, and an icon leaning the opposite
-      // way to the character it writes is a small lie the eye catches.
-      isFlipped: true,
-      glyph: '\\',
-      label: $localize`:@@editor.insertEscape:Escape the next character`,
-      snippet: SNIPPETS.escape,
-    },
-  ];
-
-  /**
-   * Escape leaves the editor for the library.
-   *
-   * **Only when it is not already someone else's Escape.** The settings dialog
-   * and the rename field both use it to mean "undo this smaller thing", and a key
-   * that sometimes throws you out of the screen entirely is worse than no key at
-   * all. So the dialog closes first and stops there, and a keypress that came
-   * from a text field is left to the field.
-   *
-   * The guard reads the event's **target**, not `document.activeElement`: the
-   * rename field blurs itself on Escape, so by the time this runs the active
-   * element is already `<body>` and the field's Escape looked exactly like a bare
-   * one. The target still names where the key was pressed.
-   *
-   * `input`/`textarea` only — deliberately **not** `isContentEditable`, because
-   * the song editor itself is a contenteditable and Escape out of it is the whole
-   * point of this handler.
-   *
-   * There is no keyboard-shortcut epic yet — the docs carry "custom shortcuts" as
-   * TBD. This is one shortcut, not a keymap; full keyboard navigability is
-   * recorded as a follow-up in `docs/achordeon-implementation.md` rather than
-   * smuggled in here.
-   */
-  protected onEscape(event: Event): void {
-    if (this.presenter.isSettingsOpen()) {
-      this.presenter.closeSettings();
-      return;
-    }
-    const target = event.target;
-    if (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement
-    ) {
-      return;
-    }
-    event.preventDefault();
-    // The remembered list URL — search, sort and all — not a bare /songs (see
-    // ReturnUrl). The same place the back link points.
-    void this.router.navigateByUrl(this.returnUrl.url() ?? '/songs');
-  }
-
-  /**
-   * Grey out an insert that would write markup this line's grammar ignores.
-   *
-   * A `*` or `**` line never reaches the inline scan (PARSER-GRAMMAR §Phase 1),
-   * so a chord typed into a title is not a chord — it is the literal text `[C]`,
-   * which then prints on the page. Same for a label: a title line cannot carry
-   * one. The buttons offering to write them there were offering a mistake, and
-   * the result was invisible until you looked at the render.
-   *
-   * Disabled rather than hidden: a bar whose buttons come and go as the caret
-   * moves is harder to use than one where a button greys out, and the tooltip
-   * still names what it would have done.
-   */
-  protected isInsertBlocked(item: {
-    isContentOnly?: boolean;
-    isBlockedInsideChord?: boolean;
-  }): boolean {
+  private readonly insertActions = computed<readonly BarAction[]>(() => {
     const caret = this.editor().caret();
-    if (item.isContentOnly && caret.lineKind !== 'content') {
-      return true;
-    }
-    // Brackets do not nest: a `[` written inside one closes nothing and the
-    // parser reads the whole thing as a single malformed bracket.
-    return !!item.isBlockedInsideChord && caret.isInsideChord;
-  }
+    const isContentLine = caret.lineKind === 'content';
+    const write =
+      (snippet: InsertRequest): (() => void) =>
+      () =>
+        this.editor().insert(snippet);
+    return this.withHints([
+      {
+        // The one button that is NOT blocked inside a bracket: there it means
+        // "make this chord inline", and pressing it once more takes the brackets
+        // off — bracket, inline, plain, round again (`cycleChordAt`).
+        id: 'editor.chord',
+        testid: 'insert-chord',
+        className: 'insert',
+        icon: 'brackets',
+        syntax: '[ ]',
+        label: $localize`:@@editor.insertChord:Chord`,
+        keys: ['Alt+KeyC'],
+        isDisabled: !isContentLine,
+        run: () => this.editor().cycleChord(SNIPPETS.chord),
+      },
+      {
+        id: 'editor.title',
+        testid: 'insert-title',
+        className: 'insert',
+        icon: 'heading1',
+        syntax: '*',
+        label: $localize`:@@editor.insertTitle:Title`,
+        keys: ['Alt+KeyT'],
+        run: write(SNIPPETS.title),
+      },
+      {
+        id: 'editor.subtitle',
+        testid: 'insert-subtitle',
+        className: 'insert',
+        icon: 'heading2',
+        syntax: '**',
+        label: $localize`:@@editor.insertSubtitle:Subtitle`,
+        keys: ['Alt+KeyS'],
+        run: write(SNIPPETS.subtitle),
+      },
+      {
+        id: 'editor.label',
+        testid: 'insert-label',
+        className: 'insert',
+        icon: 'tag',
+        syntax: ':',
+        label: $localize`:@@editor.insertLabel:Label`,
+        keys: ['Alt+KeyL'],
+        isDisabled: !isContentLine,
+        run: write(SNIPPETS.label),
+      },
+      {
+        // Emphasis is content-only and cannot live in a chord: `**` on a title
+        // line is literal, and inside a bracket the asterisks are chord text.
+        id: 'editor.bold',
+        testid: 'insert-bold',
+        className: 'insert',
+        icon: 'bold',
+        syntax: '**',
+        label: $localize`:@@editor.insertBold:Bold`,
+        keys: ['Alt+KeyB'],
+        isDisabled: !isContentLine || caret.isInsideChord,
+        run: write(SNIPPETS.bold),
+      },
+      {
+        id: 'editor.italic',
+        testid: 'insert-italic',
+        className: 'insert',
+        icon: 'italic',
+        syntax: '*',
+        label: $localize`:@@editor.insertItalic:Italic`,
+        keys: ['Alt+KeyI'],
+        isDisabled: !isContentLine || caret.isInsideChord,
+        run: write(SNIPPETS.italic),
+      },
+      {
+        // A block boundary is a blank line, which has no character to show — `↵`
+        // stands in for it, being the key you would press to make one.
+        id: 'editor.block',
+        testid: 'insert-block',
+        className: 'insert',
+        icon: 'pilcrow',
+        syntax: '↵',
+        label: $localize`:@@editor.insertBlock:New block`,
+        keys: ['Alt+Enter'],
+        run: write(SNIPPETS.block),
+      },
+      {
+        id: 'editor.escape',
+        testid: 'insert-escape',
+        className: 'insert',
+        icon: 'backslash',
+        // Lucide ships `slash` and no backslash, and an icon leaning the opposite
+        // way to the character it writes is a small lie the eye catches.
+        isFlipped: true,
+        syntax: '\\',
+        label: $localize`:@@editor.insertEscape:Escape the next character`,
+        keys: ['Alt+Backslash'],
+        run: write(SNIPPETS.escape),
+      },
+    ]);
+  });
 
   /**
-   * Run an insert button. Chord is the one that does more than write its snippet:
-   * inside a bracket it rewrites that bracket instead (`SongEditor.cycleChord`).
+   * Transposing, whole song and one chord.
+   *
+   * Sharp/flat raise or lower the ONE chord under the cursor, and so are enabled
+   * only while the caret is inside a chord — off a chord there is nothing for
+   * them to change. Their keys are the brackets, which is where a chord's own
+   * `[` and `]` live: `Alt` plus the bracket that closes it raises, the one that
+   * opens it lowers.
    */
-  protected press(item: {
-    cyclesChord?: boolean;
-    snippet: InsertRequest;
-  }): void {
-    if (item.cyclesChord) {
-      this.editor().cycleChord(item.snippet);
-      return;
-    }
-    this.editor().insert(item.snippet);
+  private readonly transposeActions = computed<readonly BarAction[]>(() => {
+    const isInsideChord = this.editor().caret().isInsideChord;
+    return this.withHints([
+      {
+        id: 'editor.transposeUp',
+        testid: 'transpose-up',
+        className: 'transpose',
+        icon: 'note',
+        badge: 'transposeUp',
+        label: this.transposeUpLabel,
+        keys: ['Alt+Equal'],
+        run: () => this.presenter.transpose(1),
+      },
+      {
+        id: 'editor.transposeDown',
+        testid: 'transpose-down',
+        className: 'transpose',
+        icon: 'note',
+        badge: 'transposeDown',
+        label: this.transposeDownLabel,
+        keys: ['Alt+Minus'],
+        run: () => this.presenter.transpose(-1),
+      },
+      {
+        id: 'editor.sharp',
+        testid: 'chord-sharp',
+        className: 'accidental',
+        face: '♯',
+        label: this.sharpLabel,
+        keys: ['Alt+BracketRight'],
+        isDisabled: !isInsideChord,
+        run: () => this.editor().transposeChordAtCaret(1),
+      },
+      {
+        id: 'editor.flat',
+        testid: 'chord-flat',
+        className: 'accidental',
+        face: '♭',
+        label: this.flatLabel,
+        keys: ['Alt+BracketLeft'],
+        isDisabled: !isInsideChord,
+        run: () => this.editor().transposeChordAtCaret(-1),
+      },
+    ]);
+  });
+
+  /**
+   * Undo and redo — **listed, not bound** (`isUnbound`).
+   *
+   * The history is CodeMirror's (ADR-0010) and its keymap matches the character
+   * produced, not the position. Everything else here binds to a position, and a
+   * Czech QWERTZ swaps exactly the two letters this uses — so a second binding
+   * of our own would put undo under a different finger than the editor's own.
+   * The dialog still says what the keys are, because the user needs to know.
+   */
+  private readonly historyActions = computed<readonly BarAction[]>(() =>
+    this.withHints([
+      {
+        id: 'editor.undo',
+        testid: 'editor-undo',
+        icon: 'undo',
+        label: this.undoLabel,
+        keys: ['Ctrl+z'],
+        isUnbound: true,
+        run: () => this.editor().undo(),
+      },
+      {
+        id: 'editor.redo',
+        testid: 'editor-redo',
+        icon: 'redo',
+        label: this.redoLabel,
+        keys: ['Ctrl+y', 'Ctrl+Shift+z'],
+        isUnbound: true,
+        run: () => this.editor().redo(),
+      },
+    ]),
+  );
+
+  /** The three bordered groups, in the order the bar wraps them. */
+  protected readonly commandGroups = computed(() => [
+    {
+      id: 'insert',
+      label: this.insertGroupLabel,
+      actions: this.insertActions(),
+    },
+    {
+      id: 'transpose',
+      label: this.transposeGroupLabel,
+      actions: this.transposeActions(),
+    },
+    {
+      id: 'history',
+      label: this.historyGroupLabel,
+      actions: this.historyActions(),
+    },
+  ]);
+
+  /**
+   * The borderless pair at the far end.
+   *
+   * Download takes the song away in whichever of the three shapes: a page, a
+   * picture, or the Achordeon file. One button and one dialog, as everywhere
+   * else — Export used to be a second icon here, and the pair asked you to know
+   * the difference before it would show you either.
+   */
+  protected readonly barActions = computed<readonly BarAction[]>(() =>
+    this.withHints([
+      {
+        id: 'editor.download',
+        testid: 'editor-download',
+        icon: 'download',
+        label: this.downloadLabel,
+        keys: ['Alt+KeyD'],
+        run: () => this.presenter.openDownload(),
+      },
+      {
+        id: 'editor.settings',
+        testid: 'editor-settings',
+        className: 'settings',
+        icon: 'settings',
+        label: this.settingsLabel,
+        keys: ['Alt+Comma'],
+        isActive: this.presenter.isSettingsOpen(),
+        run: () => this.presenter.toggleSettings(),
+      },
+    ]),
+  );
+
+  /**
+   * Everything the editor answers to, bar buttons included (ADR-0015).
+   *
+   * The two that have no button: renaming, which puts the caret in the heading
+   * the bar already draws, and Escape.
+   *
+   * **Escape is scoped, not guarded.** `outside-fields` is the rule the
+   * hand-written handler used to spell out: a press that came from an
+   * `input`/`textarea` belongs to that field, which uses Escape to mean "undo
+   * this smaller thing" — deliberately *not* extended to `contenteditable`,
+   * because the song editor is one and leaving it is the whole point. The
+   * dialog case is no longer a guard at all: an open dialog puts a blocking
+   * layer on top of this one.
+   */
+  private readonly editorShortcuts = computed<readonly ShortcutAction[]>(() => [
+    ...this.insertActions(),
+    ...this.transposeActions(),
+    ...this.historyActions(),
+    ...this.barActions(),
+    {
+      id: 'editor.rename',
+      label: this.nameLabel,
+      keys: ['Alt+KeyR'],
+      run: () => this.bar()?.startRename(),
+    },
+    {
+      // The way back to the text. Everything above acts *on* the song from
+      // outside it; this is how you get in without tabbing past the entire bar.
+      id: 'editor.focus',
+      label: this.focusEditorLabel,
+      keys: ['Alt+KeyE'],
+      run: () => this.editor().focus(),
+    },
+    {
+      id: 'editor.leave',
+      label: this.backLabel(),
+      keys: ['Escape'],
+      scope: 'outside-fields',
+      // The remembered list URL — search, sort and all — not a bare /songs (see
+      // ReturnUrl). The same place the back link points.
+      run: () =>
+        void this.router.navigateByUrl(this.returnUrl.url() ?? '/songs'),
+    },
+  ]);
+
+  /**
+   * An open dialog, shadowing the editor beneath it.
+   *
+   * `app-dialog` stops an Escape pressed *inside* it from ever reaching the
+   * document, so this is for the other case: focus that wandered back to the
+   * page while a dialog is still up. Without it, Escape would close the dialog
+   * and leave the editor in the same press.
+   */
+  private readonly isDialogOpen = computed(
+    () => this.presenter.isSettingsOpen() || this.presenter.isDownloadOpen(),
+  );
+
+  private readonly dialogShortcuts = computed<readonly ShortcutAction[]>(() =>
+    this.isDialogOpen()
+      ? [
+          {
+            id: 'editor.closeDialog',
+            label: this.closeDialogLabel,
+            keys: ['Escape'],
+            run: () =>
+              this.presenter.isSettingsOpen()
+                ? this.presenter.closeSettings()
+                : this.presenter.closeDownload(),
+          },
+        ]
+      : [],
+  );
+
+  /**
+   * The key each button carries, in this keyboard's own glyphs: once in
+   * `aria-keyshortcuts` for a screen reader, once at the end of the tooltip for
+   * everybody else.
+   *
+   * The tooltip is where a shortcut is actually learned — you find it while
+   * reaching for the button with the mouse, which is the moment you are asking
+   * "is there a faster way?". The dialog answers the same question, but only for
+   * somebody who already suspects the answer.
+   */
+  private withHints(items: readonly BarAction[]): readonly BarAction[] {
+    const labels = this.layout.labels();
+    return items.map((item) =>
+      item.keys.length === 0
+        ? item
+        : {
+            ...item,
+            keyHint: ariaKeyShortcuts(item.keys[0], labels),
+            tooltip: withKeyHint(item.label, item.keys[0], labels),
+          },
+    );
   }
 
   constructor() {
+    // A dialog goes on top of the editor's own keys, so while one is up it is
+    // the only layer anything reaches.
+    registerShortcuts({
+      name: this.editorGroupLabel,
+      actions: this.editorShortcuts,
+    });
+    registerShortcuts({
+      name: this.dialogGroupLabel,
+      isBlocking: this.isDialogOpen,
+      actions: this.dialogShortcuts,
+    });
+
     // `untracked` for the same reason the stage's does: `load()` reads the song
     // store's entity list to find the song before it falls back to a fetch, so a
     // plain effect re-ran on *every* store change — including the autosave's own

@@ -4,9 +4,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  type ElementRef,
   inject,
   input,
   output,
+  viewChild,
 } from '@angular/core';
 import { Fullscreen } from './fullscreen';
 
@@ -178,6 +180,22 @@ export class ActionBar {
   readonly isTitleEditable = input(false);
   readonly titleLabel = input($localize`:@@actionBar.rename:Name`);
   readonly titleChange = output<string>();
+
+  private readonly titleInput =
+    viewChild<ElementRef<HTMLInputElement>>('titleInput');
+
+  /**
+   * Rename from the keyboard: put the caret in the heading and select what is
+   * there, so the next thing typed replaces the name (ADR-0015).
+   *
+   * The whole rename UI is this field, so a feature's rename shortcut has
+   * nothing to open — it just has to reach the input the bar already draws.
+   */
+  startRename(): void {
+    const field = this.titleInput()?.nativeElement;
+    field?.focus();
+    field?.select();
+  }
 
   /**
    * Enter and blur commit; Esc reverts. The same contract as renaming in the song

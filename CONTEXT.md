@@ -111,7 +111,7 @@ Everything a reader does to a page they did not author belongs to the Performanc
 
 ## Stage
 
-Performing mode for a selected Songbook. Its own nav module: pick a Songbook, then perform (a "Perform" shortcut from the Songbooks module is also assumed). Shows one Song at a time with prev/next, Summary, swipe navigation, and Fullscreen (tap toggles the navbar, swipe navigates — no dedicated tap zone).
+Performing mode for a selected Songbook. Its own nav module: pick a Songbook, then perform (a **Perform** action on a songbook row in the Songbooks module is also assumed). Shows one Song at a time with prev/next, Summary, swipe navigation, and Fullscreen (tap toggles the navbar, swipe navigates — no dedicated tap zone).
 
 - An empty Songbook cannot be performed. A single-Song Songbook has prev/next disabled.
 
@@ -217,6 +217,17 @@ Bringing Songs/Songbooks back in.
 - Accepts Exported (JSON) files and, as a nice-to-have, **Downloaded** files that still carry their embedded metadata. Re-import of downloads is a QOL "more backups for the user" feature — counted on but may be dropped if costly. Editing a downloaded file can strip its metadata, breaking re-import.
 - **Song import conflict** — import a Song if missing; on conflict the user chooses to keep the existing one or re-import the incoming one under a different uuid/name (replace / ignore / create-new).
 - **Songbook import** — always creates a new Songbook, even on name collision.
+
+## Keyboard shortcut
+
+A key press bound to an action the user could otherwise reach by pointing. The word belongs to keys and to nothing else: a quick path through the UI (the **Perform** action on a songbook row) is an action on a row, not a "shortcut".
+
+Shortcuts come in two kinds, and which kind an action gets depends on whether it can be pressed while writing:
+
+- **Leader chord** — two keys pressed in sequence with nothing held down: `g`, then a letter naming where to go. Navigation only. Bare keys mean nothing while text is being typed, so a leader chord never reaches an action from inside a Song's content or a search box.
+- **Modifier shortcut** — a key held with `Alt`, acting on the content under the caret (insert a Chord, transpose, an accidental). These stay live while writing, because that is where they are for.
+
+**Keyboard shortcuts** is also the dialog, opened with `?`, that lists them. It is the authoritative list — the documentation teaches the two kinds and points here rather than repeating the map.
 
 ## Premium highlight
 

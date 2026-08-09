@@ -8,6 +8,13 @@ export interface NavItem {
   readonly icon: IconName;
   readonly label: string;
   readonly route: string;
+  /**
+   * The second press of this destination's leader chord — `g` then this
+   * (ADR-0015). A physical key position, so it survives a layout change; the
+   * letter names the destination wherever one is free, and Settings takes `,`
+   * because Songs already has the S.
+   */
+  readonly key: string;
 }
 
 /**
@@ -22,24 +29,28 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: 'songs',
     label: $localize`:@@nav.songs:Songs`,
     route: '/songs',
+    key: 'KeyS',
   },
   {
     id: 'songbooks',
     icon: 'songbooks',
     label: $localize`:@@nav.songbooks:Songbooks`,
     route: '/songbooks',
+    key: 'KeyB',
   },
   {
     id: 'stage',
     icon: 'stage',
     label: $localize`:@@nav.stage:Stage`,
     route: '/stage',
+    key: 'KeyT',
   },
   {
     id: 'audience',
     icon: 'audience',
     label: $localize`:@@nav.audience:Audience`,
     route: '/audience',
+    key: 'KeyA',
   },
 ];
 
@@ -48,6 +59,7 @@ export const NAV_SETTINGS: NavItem = {
   icon: 'settings',
   label: $localize`:@@nav.settings:Settings`,
   route: '/settings',
+  key: ',',
 };
 
 export const ALL_NAV_ITEMS: readonly NavItem[] = [...NAV_ITEMS, NAV_SETTINGS];

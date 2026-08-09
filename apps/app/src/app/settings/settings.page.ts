@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { BUILD_DATE } from '../shared/build-info';
 import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
+import { ShortcutsDialog } from '../shared/keyboard';
 import { ActionBar, BackNavigation, docsPageUrl } from '../shared/layout';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
@@ -53,6 +54,7 @@ const MIN_PASSWORD = 8;
     Icon,
     Premium,
     RouterLink,
+    ShortcutsDialog,
     Tooltip,
   ],
   template: `
@@ -761,6 +763,31 @@ const MIN_PASSWORD = 8;
               </div>
             </div>
 
+            <!-- The one row here that opens something *inside* the app. It is in
+                 About because that is where a user goes to find out what the app
+                 can do, and a keymap nobody can find is a keymap nobody has: the
+                 question mark only helps somebody who has already been told
+                 about the question mark. The dialog itself is live — it lists
+                 whatever is bound right now, which on this screen is the
+                 anywhere layer. -->
+            <div class="setting">
+              <div class="head">
+                <span class="label">{{ shortcutsLabel }}</span>
+              </div>
+              <p class="hint">{{ shortcutsHelp }}</p>
+              <div class="actions">
+                <button
+                  appButton
+                  type="button"
+                  variant="secondary"
+                  data-testid="about-shortcuts"
+                  (click)="isShortcutsOpen.set(true)"
+                >
+                  {{ shortcutsButton }}
+                </button>
+              </div>
+            </div>
+
             <!-- Dropped rather than shown empty: a build outside a git checkout
                  has no commit date, and an "unknown" version helps nobody. -->
             @if (buildDate !== null) {
@@ -1191,6 +1218,10 @@ const MIN_PASSWORD = 8;
           {{ okLabel }}
         </button>
       </app-dialog>
+    }
+
+    @if (isShortcutsOpen()) {
+      <app-shortcuts-dialog (closed)="isShortcutsOpen.set(false)" />
     }
 
     <!-- The report itself. The thank-you replaces it rather than stacking on it,
@@ -1869,6 +1900,11 @@ export class SettingsPage {
   protected readonly bugHelpOffline = $localize`:@@settings.about.bugHelpOffline:This build has no backend, so reports go to the tracker on GitHub.`;
   protected readonly bugButton = $localize`:@@settings.about.bugButton:Report a problem`;
   protected readonly bugButtonGithub = $localize`:@@settings.about.bugButtonGithub:Report on GitHub`;
+  protected readonly shortcutsLabel = $localize`:@@settings.about.shortcuts:Keyboard shortcuts`;
+  protected readonly shortcutsHelp = $localize`:@@settings.about.shortcutsHelp:The list is live and follows the screen you are on. Press ? — or g then h, which is the same key on every layout — anywhere you are not typing to open it there.`;
+  protected readonly shortcutsButton = $localize`:@@settings.about.shortcutsButton:Show shortcuts`;
+  /** The list, opened from the row above. It is a dialog like any other here. */
+  protected readonly isShortcutsOpen = signal(false);
   protected readonly versionLabel = $localize`:@@settings.about.version:Version`;
   /** The issue tracker. Only reached by an offline-only build, which has no
    * endpoint to post to. The repo is the repo — not a deploy-time value. */

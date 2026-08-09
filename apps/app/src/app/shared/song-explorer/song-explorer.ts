@@ -27,6 +27,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Viewport } from '../layout';
+import { type ShortcutAction, registerShortcuts } from '../keyboard';
 import {
   Autofocus,
   Button,
@@ -159,6 +160,8 @@ const NARROW_WIDTH = 480;
               [attr.placeholder]="searchLabel"
               data-testid="explorer-search"
               (input)="onSearchInput($event)"
+              (keydown.enter)="enterList($event)"
+              (keydown.escape)="leaveSearch($event)"
             />
             <!-- Only while there is something to clear. Unlike the row actions this
                button is not a shortcut for anything reachable another way — with an
@@ -244,6 +247,7 @@ const NARROW_WIDTH = 480;
       <app-empty-state
         #dropArea
         class="list empty"
+        tabindex="-1"
         cdkDropList
         [text]="emptyText()"
         [cdkDropListEnterPredicate]="acceptsDrop"
@@ -259,6 +263,7 @@ const NARROW_WIDTH = 480;
       <cdk-virtual-scroll-viewport
         #dropArea
         class="list"
+        tabindex="-1"
         cdkDropList
         [itemSize]="ROW_HEIGHT"
         [cdkDropListSortingDisabled]="true"
@@ -860,6 +865,13 @@ const NARROW_WIDTH = 480;
       min-block-size: 0;
     }
 
+    /* Focusable but never a tab stop (see focusList): the focus here is always
+       something the keyboard asked for, and the current-row mark already says
+       where you are — a ring around the whole box would say it twice. */
+    .list:focus {
+      outline: none;
+    }
+
     /* The CDK content wrapper is position:absolute, so at width:auto it
        shrink-wraps to the widest row's max-content — the list then scrolls
        sideways and a row's actions slide off a narrow screen. Capping it at the
@@ -1187,7 +1199,184 @@ export class SongExplorer {
     () => this.isNarrow() && this.capabilities().usesRowMenu,
   );
 
+  /**
+   * The row the keys act on: the current one, or the first if nothing is
+   * current yet — arriving on a list and pressing `↓` should reach row two,
+   * not row nothing.
+   *
+   * **Not the focused row.** The rows are drawn by a virtual scroll, so most of
+   * them do not exist as elements and a roving tabindex would be roving over a
+   * window rather than a list. The current row is a signal the presenter owns
+   * and pane B already renders, which makes "the row the keyboard means" and
+   * "the row you are looking at" the same row by construction.
+   */
+  private readonly keyRow = computed<SongRow | null>(() => {
+    const rows = this.rows();
+    const id = this.currentId();
+    return rows.find((row) => row.id === id) ?? rows[0] ?? null;
+  });
+
+  /**
+   * The list from the keyboard (ADR-0015), where the mount asks for it.
+   *
+   * Every key is the row action of the same name, so a key can only do what the
+   * capability set already allows — a bare `f` in a list without favourites is
+   * not a favourite that fails, it is a key that was never bound.
+   *
+   * The arrows move `currentId` by emitting `activated`, which is exactly what
+   * a click does, and scroll the row into view. That is the whole difference
+   * the virtual scroll makes: moving means moving the signal, never the focus.
+   */
+  private readonly listShortcuts = computed<readonly ShortcutAction[]>(() => {
+    const can = this.capabilities();
+    if (!can.hasKeyboard) return [];
+    const row = this.keyRow();
+    const rows = this.rows();
+    const step = (by: number): void => {
+      // First, because it is true even when the cursor cannot move: pressing an
+      // arrow says "I am in the list now", and at the last row that is still
+      // the answer — the focus has to leave whatever button it was on either way.
+      this.focusList();
+      const at = row ? rows.indexOf(row) : -1;
+      const next = rows[Math.min(Math.max(at + by, 0), rows.length - 1)];
+      if (!next || next === row) return;
+      this.activated.emit(next.id);
+      this.scrollRowIntoView(next.position);
+    };
+    return [
+      {
+        id: 'explorer.prev',
+        label: this.PREVIOUS_ROW,
+        keys: ['ArrowUp'],
+        isDisabled: rows.length === 0,
+        run: () => step(-1),
+      },
+      {
+        id: 'explorer.next',
+        label: this.NEXT_ROW,
+        keys: ['ArrowDown'],
+        isDisabled: rows.length === 0,
+        run: () => step(1),
+      },
+      {
+        id: 'explorer.open',
+        label: this.EDIT,
+        keys: ['Enter'],
+        isDisabled: !row || !this.canOpen(row),
+        run: () => row && this.onOpen(row),
+      },
+      {
+        id: 'explorer.rename',
+        label: this.RENAME,
+        keys: ['F2'],
+        isDisabled: !can.canRename || !row || !!row.isReadOnly,
+        run: () => row && this.startRename(row),
+      },
+      {
+        id: 'explorer.select',
+        label: this.SELECT,
+        keys: ['Space'],
+        isDisabled: !can.canSelect || !row,
+        run: () => row && this.selectToggled.emit(row.id),
+      },
+      {
+        id: 'explorer.favorite',
+        label: this.FAVORITE,
+        keys: ['KeyF'],
+        isDisabled: !can.canFavorite || !row,
+        run: () => row && this.favorited.emit(row.id),
+      },
+      {
+        id: 'explorer.delete',
+        label: this.DELETE,
+        keys: ['Delete'],
+        isDisabled: !can.canDelete || !row || !!row.isReadOnly,
+        run: () => row && this.deleted.emit([row.id]),
+      },
+      {
+        id: 'explorer.search',
+        label: this.searchLabel,
+        keys: ['/'],
+        isDisabled: !can.canSearch,
+        run: () => this.searchInput()?.nativeElement.focus(),
+      },
+    ];
+  });
+
+  /**
+   * Put the keyboard back **on the list**.
+   *
+   * The rows are virtual and hold no focus (see `keyRow`), so "I am reading the
+   * list now" has to be said by something that exists — the scroll box, which is
+   * focusable and never a tab stop. It matters because `Enter` belongs to the
+   * browser wherever a button or a link has focus (`stealsActivation`): after a
+   * Tab or two the focus sits on a rail link, Enter means *that link*, and the
+   * list's own Enter was unreachable without a mouse. Every key that means
+   * "I am navigating rows" comes through here first, and so does Escape on the
+   * way out of the search box.
+   */
+  private focusList(): void {
+    const list = this.dropArea()?.nativeElement as HTMLElement | undefined;
+    list?.focus({ preventScroll: true });
+  }
+
+  /**
+   * Escape leaves the search box for the list.
+   *
+   * Without it the field was a **trap**: every bare shortcut is dead while you
+   * are typing (`outside-text`, ADR-0015), so once the caret was in here neither
+   * the arrows, nor Enter, nor `?` for the shortcut list would answer — and
+   * nothing but the mouse could get back out.
+   *
+   * The query stays. Escape is "I am done typing", not "throw that away"; the X
+   * beside the field discards, and `/` comes back to edit it.
+   */
+  protected leaveSearch(event: Event): void {
+    // Ours, so no outer Escape handler reads it as "leave the screen".
+    event.preventDefault();
+    this.focusList();
+  }
+
+  /**
+   * Enter hands the list over: **done typing, take me to the results.**
+   *
+   * The other way out of the box, and the one with an answer already picked —
+   * Escape steps back to whatever was current, this steps forward to the top of
+   * what you searched for. The first row becomes current exactly as a click on
+   * it would, and focus moves to the list, so a second Enter opens it.
+   *
+   * It flushes the debounce first. Enter *is* the end of the typing the debounce
+   * was sitting out, and waiting the rest of it would apply the query after the
+   * press that said it was finished.
+   *
+   * The row it lands on is the first of the rows on screen — a query typed and
+   * confirmed in one breath is still being fetched here. When those rows do
+   * arrive, `keyRow` falls back to the first of them, so the keyboard is on row
+   * one either way; only the current-row mark lags by a fetch.
+   */
+  protected enterList(event: Event): void {
+    event.preventDefault();
+    this.flushQuery();
+    this.focusList();
+    const first = this.rows()[0];
+    if (!first) return;
+    this.activated.emit(first.id);
+    this.scrollRowIntoView(first.position);
+  }
+
+  /** Apply what has been typed **now**, dropping the debounce still holding it.
+   * Distinct from `clearQuery`, which drops the debounce *without* applying it,
+   * because there the pending keystrokes are the thing being thrown away. */
+  private flushQuery(): void {
+    if (this.searchTimer === null) return;
+    clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    this.queryChange.emit(this.typedQuery());
+  }
+
   constructor() {
+    registerShortcuts({ name: this.listLabel, actions: this.listShortcuts });
+
     // Watch the list's own width and keep `isNarrow` in step with it. Guarded
     // because `ResizeObserver` is absent in jsdom (the unit tests) and any
     // non-browser host — there the list simply stays roomy, which is the honest
@@ -1268,6 +1457,9 @@ export class SongExplorer {
   protected readonly DRAG_START_DELAY = DRAG_START_DELAY;
 
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
+  /** For the `/` shortcut — the box it puts the caret in. */
+  private readonly searchInput =
+    viewChild<ElementRef<HTMLInputElement>>('searchInput');
   /** Whatever is carrying `cdkDropList` — the viewport, or the empty state that
    * stands in for it. The geometry a drop is measured against. */
   private readonly dropArea = viewChild('dropArea', { read: ElementRef });
@@ -1437,6 +1629,11 @@ export class SongExplorer {
   protected readonly DOWNLOAD = $localize`:@@explorer.download:Download`;
   protected readonly CONFIGURE = $localize`:@@explorer.configure:Settings`;
   protected readonly MORE = $localize`:@@explorer.more:More actions`;
+  protected readonly SELECT = $localize`:@@explorer.select:Select`;
+  protected readonly PREVIOUS_ROW = $localize`:@@explorer.previousRow:Previous song`;
+  protected readonly NEXT_ROW = $localize`:@@explorer.nextRow:Next song`;
+  /** Names this list's group in the shortcuts dialog. */
+  protected readonly listLabel = $localize`:@@explorer.list:List`;
   protected readonly REMOVE_DROP = $localize`:@@explorer.removeDrop:Drop to remove from the songbook`;
 
   /** The only state this component owns: which row is mid-rename. */

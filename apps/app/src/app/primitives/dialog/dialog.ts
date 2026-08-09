@@ -4,13 +4,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
+  inject,
   input,
   output,
 } from '@angular/core';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { Button } from '../button/button';
 import { Icon } from '../icon/icon';
+import { DialogStack } from './dialog-stack';
 
 /**
  * A dialog: title bar, content, actions.
@@ -189,6 +192,13 @@ import { Icon } from '../icon/icon';
   `,
 })
 export class Dialog {
+  constructor() {
+    // Say that something is open, for as long as this is. What reads it is the
+    // keyboard layer, which has to know that the screen behind a dialog is not
+    // to be acted on — see `DialogStack`.
+    inject(DestroyRef).onDestroy(inject(DialogStack).claim());
+  }
+
   readonly title = input.required<string>();
   readonly mode = input<'viewport' | 'container'>('viewport');
   /** `default` is a form's width (520px); `large` is for content that is the

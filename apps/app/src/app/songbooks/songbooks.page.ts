@@ -22,6 +22,7 @@ import {
   UiStore,
   Viewport,
 } from '../shared/layout';
+import { registerShortcuts } from '../shared/keyboard';
 import { SettingsPanel } from '../shared/settings-panel';
 import {
   SONGBOOK_LIST_CAPABILITIES,
@@ -440,6 +441,20 @@ export class SongbooksPage {
   }
 
   constructor() {
+    // The list knows how to open, rename and delete a row; making one is the
+    // page's, so the key for it is too.
+    registerShortcuts({
+      name: this.title,
+      actions: computed(() => [
+        {
+          id: 'songbooks.create',
+          label: this.addLabel,
+          keys: ['KeyN'],
+          run: () => void this.presenter.create(),
+        },
+      ]),
+    });
+
     // Once, on entry. Not an `effect`: nothing here depends on a signal
     // changing — it is the initial fetch, and re-running it on every store
     // write would re-read the whole library to recount one row.

@@ -1,10 +1,16 @@
 // Rail — Epic 13
 // Spec: PRD-UI-SHELL.md §4 (desktop)
 
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Icon, Tooltip } from '../../primitives';
-import { NAV_ITEMS, NAV_SETTINGS } from './nav-items';
+import { KeyboardLayout, ariaKeyShortcuts, withKeyHint } from '../keyboard';
+import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
 
 /**
  * The full-height icon rail: the four nav modules, with Settings pinned to the
@@ -31,7 +37,7 @@ import { NAV_ITEMS, NAV_SETTINGS } from './nav-items';
       i18n-aria-label="@@rail.label"
     >
       <ul class="group">
-        @for (item of items; track item.id) {
+        @for (item of items(); track item.id) {
           <li>
             <a
               class="item"
@@ -39,7 +45,8 @@ import { NAV_ITEMS, NAV_SETTINGS } from './nav-items';
               routerLinkActive="is-active"
               [attr.data-testid]="'rail-' + item.id"
               [attr.aria-label]="item.label"
-              [appTooltip]="item.label"
+              [appTooltip]="item.tooltip"
+              [attr.aria-keyshortcuts]="item.keyHint"
             >
               <app-icon [name]="item.icon" />
             </a>
@@ -48,16 +55,18 @@ import { NAV_ITEMS, NAV_SETTINGS } from './nav-items';
       </ul>
 
       <ul class="group group-end">
+        @let end = settings();
         <li>
           <a
             class="item"
-            [routerLink]="settings.route"
+            [routerLink]="end.route"
             routerLinkActive="is-active"
-            [attr.data-testid]="'rail-' + settings.id"
-            [attr.aria-label]="settings.label"
-            [appTooltip]="settings.label"
+            [attr.data-testid]="'rail-' + end.id"
+            [attr.aria-label]="end.label"
+            [appTooltip]="end.tooltip"
+            [attr.aria-keyshortcuts]="end.keyHint"
           >
-            <app-icon [name]="settings.icon" />
+            <app-icon [name]="end.icon" />
           </a>
         </li>
       </ul>
@@ -126,7 +135,27 @@ import { NAV_ITEMS, NAV_SETTINGS } from './nav-items';
   `,
 })
 export class Rail {
-  protected readonly items = NAV_ITEMS;
-  protected readonly settings = NAV_SETTINGS;
+  private readonly layout = inject(KeyboardLayout);
+
+  /**
+   * The nav items, each carrying the chord that reaches it — `g` then the
+   * letter (ADR-0015). The rail is where somebody is already pointing when they
+   * wonder whether there is a faster way, so it is where the chord should be
+   * legible; the shortcuts dialog lists them all, but only for a user who
+   * already knows to press `?`.
+   */
+  protected readonly items = computed(() => NAV_ITEMS.map(this.described));
+  protected readonly settings = computed(() => this.described(NAV_SETTINGS));
+
+  private readonly described = (item: NavItem) => {
+    const key = `KeyG ${item.key}`;
+    const labels = this.layout.labels();
+    return {
+      ...item,
+      tooltip: withKeyHint(item.label, key, labels),
+      keyHint: ariaKeyShortcuts(key, labels),
+    };
+  };
+
   protected readonly navLabel = $localize`:@@rail.label:Main`;
 }
