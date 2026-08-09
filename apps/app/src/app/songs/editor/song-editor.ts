@@ -604,6 +604,13 @@ export class SongEditor {
     }
   }
 
+  /**
+   * Put the caret in the text.
+   *
+   * Also the way in from the keyboard (`Alt+E`, ADR-0015): the action bar above
+   * is a dozen tab stops of commands, which made the writing surface — the
+   * reason the screen exists — the furthest thing on it from a Tab key.
+   */
   focus(): void {
     this.view?.focus();
   }
