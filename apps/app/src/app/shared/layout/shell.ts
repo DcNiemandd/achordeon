@@ -1,9 +1,17 @@
 // App shell — Epic 13
 // Spec: PRD-UI-SHELL.md §4
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Button } from '../../primitives';
+import { LeaderHint, ShortcutsDialog, registerShortcuts } from '../keyboard';
+import { ALL_NAV_ITEMS } from './nav-items';
 import { Fullscreen } from './fullscreen';
 import { BackNavigation } from './back-navigation';
 import { DocumentTitle } from './document-title';
@@ -32,7 +40,16 @@ import { Viewport } from './viewport';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, Rail, ModuleSwitcher, StageBar, AudienceBar, Button],
+  imports: [
+    RouterOutlet,
+    Rail,
+    ModuleSwitcher,
+    StageBar,
+    AudienceBar,
+    Button,
+    LeaderHint,
+    ShortcutsDialog,
+  ],
   // While performing, mouse movement or a key brings the bars back. Touch is
   // deliberately excluded here: a swipe to change song must NOT reveal the
   // chrome — the perform view itself reveals on a genuine tap (a pointerup that
@@ -96,6 +113,14 @@ import { Viewport } from './viewport';
             }
           </div>
         </div>
+      }
+
+      <!-- The two things the shortcuts need drawn, and the shell is the one
+           component that is always mounted: what an armed leader is waiting
+           for, and the list of everything (ADR-0015). -->
+      <app-leader-hint />
+      @if (isHelpOpen()) {
+        <app-shortcuts-dialog (closed)="isHelpOpen.set(false)" />
       }
     </div>
   `,
@@ -226,6 +251,56 @@ export class Shell {
       queryParams: { pane: value },
       queryParamsHandling: 'merge',
       replaceUrl: true,
+    });
+  }
+
+  protected readonly isHelpOpen = signal(false);
+
+  protected readonly anywhereLabel = $localize`:@@shell.shortcutsGroup:Anywhere`;
+  protected readonly helpLabel = $localize`:@@shell.shortcutsHelp:Keyboard shortcuts`;
+
+  constructor() {
+    // The bottom of the stack: every screen's own layer goes on top of this
+    // one, so a module can shadow a key it needs and everything it does not
+    // touch still works from anywhere.
+    //
+    // Navigation is a leader chord — `g`, released, then the letter naming the
+    // destination — because the browser owns every modifier map that would be
+    // more obvious (ADR-0015). The letters come from the nav items themselves,
+    // so a new module cannot arrive without one.
+    registerShortcuts({
+      name: this.anywhereLabel,
+      actions: computed(() => [
+        ...ALL_NAV_ITEMS.map((item) => ({
+          id: `nav.${item.id}`,
+          label: item.label,
+          keys: [`KeyG ${item.key}`],
+          run: () => void this.router.navigateByUrl(item.route),
+        })),
+        {
+          id: 'shell.shortcuts',
+          label: this.helpLabel,
+          // **Three keys, because this is the one action that has to be
+          // findable.** Every other shortcut can afford to be learned from this
+          // dialog; this dialog cannot.
+          //
+          // - `?` is the convention, and it is a *character*, so it is whatever
+          //   key produces one. On a US layout that is Shift+/; on a Czech one it
+          //   is Shift+comma, which nobody guesses.
+          // - `g` then `h` is the one that always works: both halves are physical
+          //   positions, so they sit under the same fingers on every layout — and
+          //   an armed `g` puts this in the leader hint, which is the only place
+          //   in the app where a shortcut advertises itself unprompted.
+          // - `alt + h` for the same reason, while you are typing, where the bare
+          //   tier is dead.
+          //
+          // The previous `Alt+/` was a bug of exactly the kind ADR-0015 warns
+          // about: `Slash` is a *position*, and on a Czech keyboard that position
+          // is the dash.
+          keys: ['?', 'KeyG KeyH', 'Alt+KeyH'],
+          run: () => this.isHelpOpen.set(true),
+        },
+      ]),
     });
   }
 
