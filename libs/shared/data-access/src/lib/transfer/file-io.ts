@@ -157,8 +157,39 @@ async function downloadViaWorker(
   });
 
   if (!path) return false;
-  clickDownload(path, filename);
+  loadInFrame(path);
   return true;
+}
+
+/**
+ * Ask for the worker's URL **from a hidden iframe**, rather than by clicking a
+ * link that points at it.
+ *
+ * This is the other half of the Firefox fix, and without it the worker route is
+ * dead code there. An anchor carrying `download` is not an ordinary request: the
+ * browser hands it to its own download machinery, which in Firefox sits outside
+ * the page's service worker. The fetch handler never sees it, the request goes to
+ * the server, and `__download/` exists on no server — so the click that was
+ * supposed to save a PDF fetched a 404 instead. (Chromium routes the same click
+ * through the worker, which is why the route tested fine there.)
+ *
+ * A plain navigation *is* intercepted, in every browser that has a worker at all.
+ * So the frame simply navigates, the worker answers with the attachment, and the
+ * browser does what an attachment always makes it do — download it, leaving the
+ * frame blank and the app it is parked in untouched. It is the same shape
+ * StreamSaver has used to save from a worker for years.
+ *
+ * A frame rather than `location.href` because a top-level navigation puts the
+ * whole app on the line for a route that might miss; and it is left in the page
+ * afterwards, because the download is finished off the frame that started it and
+ * removing it too early cancels the save.
+ */
+function loadInFrame(path: string): void {
+  const frame = document.createElement('iframe');
+  frame.src = path;
+  frame.style.display = 'none';
+  document.body.append(frame);
+  setTimeout(() => frame.remove(), 60_000);
 }
 
 /** `.pdf`, `.json` … — the extension including the dot, or empty. */
@@ -211,8 +242,8 @@ function downloadViaAnchor(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** The click itself — shared by the worker route and the blob URL, because
- * where the bytes come from is the only thing that differs between them. */
+/** The click itself: the blob URL's way in, and the last resort wherever no
+ * worker is running to serve the bytes as an attachment. */
 function clickDownload(href: string, filename: string): void {
   const link = document.createElement('a');
   link.href = href;

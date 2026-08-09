@@ -78,9 +78,12 @@ function cspMeta(source) {
     "font-src 'self' data:",
     `connect-src ${connect.join(' ')}`,
     "object-src 'none'",
-    // Nothing is embedded. (`frame-ancestors` is ignored in a meta policy, so it
-    // is deliberately absent rather than present and misleading.)
-    "frame-src 'none'",
+    // Ours and nobody else's: the only frame the app makes is the hidden one a
+    // download is fetched in, which is a same-origin URL the service worker
+    // answers (`file-io.ts`). No third-party embed is or ever should be.
+    // (`frame-ancestors` is ignored in a meta policy, so it is deliberately
+    // absent rather than present and misleading.)
+    "frame-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
   ];
