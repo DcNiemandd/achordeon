@@ -31,6 +31,12 @@ const siteDir = resolve(args[0] || 'dist/site');
 const key = process.env.INDEXNOW_KEY || '';
 const siteUrl = process.env.DOCS_URL || 'https://achordeon.eu';
 
+// The key file is written into the build's root, which is `baseUrl` on the live
+// host — not necessarily the origin root. Deployed under a sub-path, a
+// `keyLocation` of `/<key>.txt` would point at a 404 and the submission would be
+// rejected for want of proof.
+const basePath = process.env.DOCS_BASE_URL || '/';
+
 async function main() {
   if (!key) {
     console.log('ping-indexnow: no INDEXNOW_KEY, nothing submitted.');
@@ -51,7 +57,7 @@ async function main() {
   const body = {
     host,
     key,
-    keyLocation: new URL(`/${key}.txt`, siteUrl).href,
+    keyLocation: new URL(`${basePath}${key}.txt`, siteUrl).href,
     urlList: urls,
   };
 

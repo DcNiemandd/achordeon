@@ -160,3 +160,4 @@ jobs:
         env:
           INDEXNOW_KEY: ${{ vars.INDEXNOW_KEY }}
           DOCS_URL: ${{ env.DOCS_URL }}
+          DOCS_BASE_URL: ${{ env.DOCS_BASE_URL }}
