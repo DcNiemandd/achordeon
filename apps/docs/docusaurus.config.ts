@@ -247,6 +247,23 @@ const config: Config = {
   baseUrl,
 
   headTags: [
+    // Proves this domain is ours to Seznam Webmaster (reporter.seznam.cz/wm),
+    // the way the `google-site-verification` TXT record does for Search Console.
+    // Seznam is its own engine with its own crawler, and Google's verification
+    // means nothing to it — which matters here, because the `/cs/` half of this
+    // site is written for the audience that searches on it.
+    //
+    // Hardcoded rather than an env var, unlike the deploy-target values above:
+    // the token belongs to the domain, not to where the build is going, and it
+    // is public by design — it only ever asserts ownership to whoever already
+    // holds the account.
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'seznam-wmt',
+        content: 'DGyYyzAwrYcno6KWdns7e4s4lF8CiYE3',
+      },
+    },
     // The vector favicon, beside the `.ico` above. Both come out of the app's
     // `tools/gen-app-icons.mjs`, which writes them into `static/img` as well as
     // into the app — one mark, two properties. `favicon` takes a single path, so
