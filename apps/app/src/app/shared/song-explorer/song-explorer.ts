@@ -48,6 +48,7 @@ import {
   type RowDrop,
   type RowMove,
   type RowMoveRequest,
+  type RowSelect,
   type SongRow,
   type SortChange,
 } from './explorer-model';
@@ -309,6 +310,9 @@ const NARROW_WIDTH = 480;
             </span>
           }
 
+          <!-- Two handlers, and they do not overlap: click takes the SHIFT press
+               and stops there (see onCheckClick), so an ordinary tick falls
+               through to the browser's own toggle and its change event. -->
           @if (capabilities().canSelect) {
             <input
               type="checkbox"
@@ -316,7 +320,8 @@ const NARROW_WIDTH = 480;
               [checked]="selectedIds().has(row.id)"
               [attr.aria-label]="selectRowLabel(row)"
               [attr.data-testid]="'select-' + row.id"
-              (change)="selectToggled.emit(row.id)"
+              (click)="onCheckClick($event, row)"
+              (change)="selectToggled.emit({ id: row.id, isRange: false })"
             />
           }
 
@@ -1277,7 +1282,8 @@ export class SongExplorer {
         label: this.SELECT,
         keys: ['Space'],
         isDisabled: !can.canSelect || !row,
-        run: () => row && this.selectToggled.emit(row.id),
+        run: () =>
+          row && this.selectToggled.emit({ id: row.id, isRange: false }),
       },
       {
         id: 'explorer.favorite',
@@ -1420,7 +1426,10 @@ export class SongExplorer {
    * the row's own id (a song id in the library, a slot key in a book); the
    * presenter, which is the only thing that knows both id-spaces, resolves it. */
   readonly previewed = output<string>();
-  readonly selectToggled = output<string>();
+  /** A tick was pressed — with or without Shift (see `RowSelect`). Where the
+   * range reaches back to is the presenter's to work out; the list knows only
+   * which row was pressed and how. */
+  readonly selectToggled = output<RowSelect>();
   readonly favorited = output<string>();
   /**
    * A request to delete, never the deed — one id from a row, many from the bulk
@@ -2075,6 +2084,29 @@ export class SongExplorer {
     if (this.canOpen(row)) {
       this.opened.emit(row.id);
     }
+  }
+
+  /**
+   * A press on a tick, caught **only to notice the Shift key** — a `change`
+   * event has no modifiers on it, and this is the one gesture in the list that
+   * means something different when a key is held.
+   *
+   * Without Shift this returns and touches nothing: the browser toggles the box,
+   * fires `change`, and the ordinary tick is exactly the gesture it always was.
+   *
+   * With Shift the default is cancelled, which is what keeps the box from
+   * arguing with the list. A range only ever adds rows, so shift-clicking one
+   * that is already ticked leaves the selection as it was — and a box the
+   * browser had just emptied would then stay empty, because the `checked`
+   * binding it is drawn from never changed. Cancel the toggle and the selection
+   * is the only thing saying what a tick looks like.
+   */
+  protected onCheckClick(event: MouseEvent, row: SongRow): void {
+    if (!event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    this.selectToggled.emit({ id: row.id, isRange: true });
   }
 
   /**
