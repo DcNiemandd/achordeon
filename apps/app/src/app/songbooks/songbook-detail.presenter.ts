@@ -31,6 +31,7 @@ import {
   RowSelection,
   type ExplorerSort,
   type ExplorerSortDir,
+  type RowSelect,
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
@@ -261,8 +262,17 @@ export class SongbookDetailPresenter {
     this.session.setCurrentSong(id);
   }
 
-  toggleSelect(id: Uuid): void {
-    this.selection.toggle(id);
+  /** The library pane's checkbox — with Shift, the run of songs between the last
+   * one picked and this, in the order the pane is showing them. */
+  toggleSelect(select: RowSelect): void {
+    if (select.isRange) {
+      this.selection.extendTo(
+        select.id,
+        this.rows().map((row) => row.id),
+      );
+    } else {
+      this.selection.toggle(select.id);
+    }
   }
 
   clearSelection(): void {
@@ -386,8 +396,17 @@ export class SongbookDetailPresenter {
     return at === -1 ? null : String(at);
   });
 
-  toggleSelectSlot(key: string): void {
-    this.slotSelection.toggle(key);
+  /** The entry list's checkbox. The order a range runs through is the book's own
+   * — the slots as they sit, which is what the numbers down the list say. */
+  toggleSelectSlot(select: RowSelect): void {
+    if (select.isRange) {
+      this.slotSelection.extendTo(
+        select.id,
+        this.entries().map((row) => row.id),
+      );
+    } else {
+      this.slotSelection.toggle(select.id);
+    }
   }
 
   /** A click on a slot's body: pick just it, and make its song current. */

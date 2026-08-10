@@ -16,6 +16,7 @@ const settings: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0,
+  blockGap: DEFAULT_TUNING.spacing.interBlockGapFactor,
   contentX: 'left',
   contentY: 'top',
   chordColor: '#123456',

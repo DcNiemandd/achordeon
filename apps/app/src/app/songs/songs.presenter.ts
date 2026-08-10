@@ -23,6 +23,7 @@ import {
   RowSelection,
   type ExplorerSort,
   type ExplorerSortDir,
+  type RowSelect,
   type SongRow,
   type SortChange,
 } from '../shared/song-explorer';
@@ -301,8 +302,21 @@ export class SongsPresenter {
     void this.router.navigate(['/songs', id, 'edit']);
   }
 
-  toggleSelect(id: string): void {
-    this.selection.toggle(id);
+  /**
+   * The checkbox. With Shift, everything from the last row picked to this one —
+   * and the order that "between" is measured in is the window the list is
+   * showing, search, sort and favourites-first included, which is the only order
+   * the person holding Shift can see.
+   */
+  toggleSelect(select: RowSelect): void {
+    if (select.isRange) {
+      this.selection.extendTo(
+        select.id,
+        this.rows().map((row) => row.id),
+      );
+    } else {
+      this.selection.toggle(select.id);
+    }
   }
 
   clearSelection(): void {

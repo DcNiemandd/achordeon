@@ -226,6 +226,8 @@
     "scale.auto": "Auto",
     "setting.aspectRatio": "Poměr stran",
     "setting.aspectRatio.help": "Tvar stránky. Ořízněte ji podle svého obsahu, ať se neplýtvá místem — tisk tvar zachová a přizpůsobí ho velikosti stránky. Vyberte poměr, zařízení, nebo »Podle této obrazovky« a použijte tvar té, kterou právě držíte. Vlastní hodnota přijímá poměr jako 3:4, zlomek jako 3/4 nebo číslo.",
+    "setting.blockGap": "Mezera mezi bloky",
+    "setting.blockGap.help": "Mezera mezi bloky — prostor, který odděluje sloku od refrénu. Měří se v řádcích textu, takže zůstává v poměru, ať je píseň vytištěná jakkoli velká. Zmenšit ji je často to, co dlouhou píseň dostane na jednu stránku: s Měřítkem na „Auto“ se místo, které uberete, vrátí jako větší text.",
     "setting.chordColor": "Barva",
     "setting.chordColor.help": "Barva všech akordů v písni.",
     "setting.chordSize": "Velikost",

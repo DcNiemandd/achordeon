@@ -170,6 +170,18 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     group: 'page',
     control: { kind: 'stepper', min: 0, max: 4, step: 0.25 },
   },
+  blockGap: {
+    label: $localize`:@@setting.blockGap:Block gap`,
+    // Says what it does to the page, not what it multiplies. The second sentence
+    // is the reason this row exists at all: it is the cheapest way to win room on
+    // a song that will not fit, and nothing about a spacing control says so.
+    help: $localize`:@@setting.blockGap.help:The gap between blocks — the space that separates a verse from a chorus. Measured in lines of lyrics, so it keeps its proportion however big the song is printed. Closing it up is often what fits a long song on one page: with Scale on Auto, the room you take out comes back as bigger text.`,
+    group: 'page',
+    // 0 is a real answer — blocks abut, which is how you squeeze the last verse
+    // on. Tenths, because the difference between 0.8 and 0.9 of a line is one the
+    // eye can see on a full page.
+    control: { kind: 'stepper', min: 0, max: 4, step: 0.1 },
+  },
   contentX: {
     label: $localize`:@@setting.contentX:Horizontal`,
     help: $localize`:@@setting.contentX.help:Where the song sits across the page when it does not fill the width. Left hugs the corner.`,

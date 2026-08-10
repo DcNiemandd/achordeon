@@ -386,6 +386,21 @@ export interface RowDrop {
   readonly at: number;
 }
 
+/**
+ * A tick was pressed.
+ *
+ * `isRange` is Shift being held: **everything from the last row picked to this
+ * one**, the gesture every file manager and mail client already taught. The list
+ * says only *which row and how*, because the two facts a range needs — where the
+ * previous pick was, and what counts as "in between" — belong to the selection
+ * and to the order it is being drawn in, and neither of those is a checkbox's
+ * business.
+ */
+export interface RowSelect {
+  readonly id: string;
+  readonly isRange: boolean;
+}
+
 /** A rename committed in a row. */
 export interface RenameChange {
   readonly id: string;

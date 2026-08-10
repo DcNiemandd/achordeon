@@ -17,6 +17,7 @@ export type {
   ExplorerSortDir,
   RenameChange,
   RowDrop,
+  RowSelect,
   SongRow,
   SortChange,
 } from './explorer-model';

@@ -226,6 +226,8 @@
     "scale.auto": "Auto",
     "setting.aspectRatio": "Aspect ratio",
     "setting.aspectRatio.help": "The shape of the page. Crop it to your content to waste less space — printing keeps the shape and scales to fit. Pick a ratio, a device, or \"Match this screen\" to use the shape of the one you are holding. Custom accepts a ratio like 3:4, a fraction like 3/4, or a number.",
+    "setting.blockGap": "Block gap",
+    "setting.blockGap.help": "The gap between blocks — the space that separates a verse from a chorus. Measured in lines of lyrics, so it keeps its proportion however big the song is printed. Closing it up is often what fits a long song on one page: with Scale on Auto, the room you take out comes back as bigger text.",
     "setting.chordColor": "Colour",
     "setting.chordColor.help": "The colour of every chord in the song.",
     "setting.chordSize": "Size",

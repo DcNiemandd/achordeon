@@ -57,8 +57,10 @@ The renderer allows you to customize the output. There is global setting and sco
 **Title** and **Chords**:
 
 - _Page_: scale (custom text size, useful for maximizing the page space), columns (for
-  really long songs), aspect ratio, padding (the white border around the song), and where
-  a song that doesn't fill the page sits, horizontal and vertical
+  really long songs), aspect ratio, padding (the white border around the song), block gap
+  (the air between a verse and a chorus — closing it up is often what fits a long song on
+  one page, because with scale on Auto the room you take out comes back as bigger text),
+  and where a song that doesn't fill the page sits, horizontal and vertical
 - _Title_: position (on top of the page or sideways up the side), layout (the subtitle
   stacked under the title or inline beside it), and the font the title and subtitle share
 - _Chords_: the same colour, size and notation a songbook can set, here for a single song
@@ -71,6 +73,7 @@ The render settings exist to make the content fit one page.
 
 `Songbooks` scope:
 
+- block gap - the air between blocks, set once for every song in the book
 - chords color
 - chords size
 - chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**, but your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick, and English simply prints it as `B`, so a song that mixes the two spellings comes out in one language either way.

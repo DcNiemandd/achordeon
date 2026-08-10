@@ -78,7 +78,7 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
             #pageEl
             class="page"
             [attr.data-testid]="sheet.testid"
-            [style.aspect-ratio]="preview()?.aspect ?? A4_RATIO"
+            [style.--page-ratio]="preview()?.aspect ?? A4_RATIO"
           >
             @if (sheet.svg) {
               <div
@@ -251,7 +251,12 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
        two sheets, and that is the reader's business.
 
        scroll-padding matches the desk's own padding, so a page brought into view
-       (the zoom's anchor) sits inside the desk rather than against its edge. */
+       (the zoom's anchor) sits inside the desk rather than against its edge.
+
+       A size container, so the sheets can be fitted to it in BOTH axes the way
+       BlankPage fits the single-song preview — see .page below. Its own size
+       comes from the flex row above and never from the book inside it, so size
+       containment costs nothing here. */
     .desk {
       flex: 1;
       min-block-size: 0;
@@ -261,6 +266,7 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
       overscroll-behavior: contain;
       scroll-padding: var(--space-4);
       outline: none;
+      container-type: size;
     }
 
     .spread {
@@ -273,7 +279,14 @@ function isSameList(a: readonly Element[], b: readonly Element[]): boolean {
 
     .page {
       position: relative;
-      inline-size: 100%;
+      /* Contain-fit in BOTH axes, exactly as BlankPage fits the single-song
+         preview: the column's full width, or the width a page of this shape may
+         have if its HEIGHT is to fit the desk — whichever is smaller. It used to
+         be a flat 100%, so on a wide, short pane one page was taller than the
+         desk and "one page at a time" meant scrolling through a single sheet.
+         The aspect ratio then sets the height, so a page never spills either way. */
+      inline-size: min(100%, 100cqb * var(--page-ratio));
+      aspect-ratio: var(--page-ratio);
       /* Paper is paper — white in both themes, like BlankPage. */
       background: #fff;
       box-shadow: var(--shadow-2);
