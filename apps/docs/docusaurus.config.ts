@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import type * as Preset from '@docusaurus/preset-classic';
@@ -94,6 +95,35 @@ const localeRedirectScript = `(function () {
  * Docusaurus transpiles any `.ts` outside `node_modules`, so no loader rule is
  * needed — the libs compile with the site's own JS pipeline.
  */
+/**
+ * Writes `robots.txt` at the site root.
+ *
+ * Not a file in `static/`, because the one line that matters — where the
+ * sitemaps are — has to name an absolute URL, and this site's URL is an env var
+ * (`DOCS_URL`). A checked-in robots.txt would either hardcode `achordeon.eu` and
+ * lie the moment the site moves, or omit the sitemaps and do nothing.
+ *
+ * Both locales get a line: the sitemap plugin emits one file per locale, and a
+ * crawler that only ever finds the English one has no path to the Czech pages
+ * except by guessing.
+ */
+function robotsTxt(): Plugin {
+  return {
+    name: 'achordeon-robots-txt',
+    async postBuild({ outDir }) {
+      const sitemaps = i18n.locales.map((locale) => {
+        const prefix = locale === i18n.defaultLocale ? '' : `${locale}/`;
+        return `Sitemap: ${new URL(`${baseUrl}${prefix}sitemap.xml`, url).href}`;
+      });
+      await fs.writeFile(
+        path.join(outDir, 'robots.txt'),
+        ['User-agent: *', 'Allow: /', '', ...sitemaps, ''].join('\n'),
+        'utf8',
+      );
+    },
+  };
+}
+
 function achordeonLibs(): Plugin {
   return {
     name: 'achordeon-libs',
@@ -192,6 +222,7 @@ const config: Config = {
       },
     ],
     achordeonLibs,
+    robotsTxt,
   ],
 
   presets: [
@@ -211,6 +242,12 @@ const config: Config = {
   ],
 
   themeConfig: {
+    // The link preview: what Google, Slack, Discord and every chat client draw
+    // when someone pastes a link to this site. Without it the card is a grey
+    // rectangle with a URL in it, which is what a shared link looks like when
+    // nobody bothered. `tools/gen-brand-images.mjs` draws it; site-relative,
+    // because Docusaurus makes `og:image` absolute against `url` itself.
+    image: 'img/social-card.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
