@@ -8,11 +8,11 @@ maintains is worse than none.
 
 ## Search engines
 
-| Engine | Console                                                    | Verified by                                                     | Status                                       |
-| ------ | ---------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------- |
-| Google | [Search Console](https://search.google.com/search-console) | DNS `TXT google-site-verification=VKmdi…` (domain property)     | Verified                                     |
-| Seznam | [reporter.seznam.cz/wm](https://reporter.seznam.cz/wm)     | `<meta name="seznam-wmt">` in `docusaurus.config.ts` `headTags` | Tag **live** since 2026-08-10 — press verify |
-| Bing   | [bing.com/webmasters](https://www.bing.com/webmasters)     | Import from Google Search Console                               | **Not registered yet**                       |
+| Engine | Console                                                    | Verified by                                                     | Status                 |
+| ------ | ---------------------------------------------------------- | --------------------------------------------------------------- | ---------------------- |
+| Google | [Search Console](https://search.google.com/search-console) | DNS `TXT google-site-verification=VKmdi…` (domain property)     | Verified               |
+| Seznam | [reporter.seznam.cz/wm](https://reporter.seznam.cz/wm)     | `<meta name="seznam-wmt">` in `docusaurus.config.ts` `headTags` | Verified 2026-08-10    |
+| Bing   | [bing.com/webmasters](https://www.bing.com/webmasters)     | Import from Google Search Console                               | **Not registered yet** |
 
 A **domain property** in Google covers every variant at once — `http`, `https`,
 apex and `www`. One property is enough; do not add URL-prefix ones beside it.
@@ -20,6 +20,11 @@ apex and `www`. One property is enough; do not add URL-prefix ones beside it.
 Google verification means nothing to Seznam or Bing. Each engine is its own
 registration, and Seznam matters most for the `/cs/` half of the site — it holds
 roughly 15–20% of Czech search.
+
+Seznam Webmaster is a reporting tool, not a submission one: crawler visits,
+how many pages made it into the index, redirects and errors, plus an API. There
+is no sitemap upload and no "reindex this" button. It finds the sitemaps through
+`robots.txt`, which names all three, and hears about changes through IndexNow.
 
 ### Submitted to Google
 
@@ -38,9 +43,10 @@ roughly 15–20% of Czech search.
 
 ## Automated: IndexNow
 
-One POST announces changed URLs to **Bing, Seznam and Yandex** — they share
-submissions with each other. Google does not participate at all; the sitemaps
-stay the only thing that reaches it.
+One POST to the shared endpoint announces changed URLs to every participating
+engine — **Bing, Seznam.cz, Yandex, Naver, Yep and Amazon** — because a
+submission to any one of them is distributed to all. Google does not
+participate at all; the sitemaps stay the only thing that reaches it.
 
 - Key file: written at the site root by the `robotsTxt` plugin in
   `apps/docs/docusaurus.config.ts`, named and filled with `INDEXNOW_KEY`.
@@ -50,10 +56,14 @@ stay the only thing that reaches it.
   key is readable at `/<key>.txt`. Unset means no key file and no ping, so forks
   submit nothing.
 
-`INDEXNOW_KEY` is set and the pipeline is live. First real ping, 2026-08-10:
-32 URLs, `202 Accepted`, and the key file answers at the root — so the
-submission passes validation rather than being dropped. Every push announces
-itself from here on, with no console to visit.
+`INDEXNOW_KEY` is set and the pipeline is live. Every push announces itself from
+here on, with no console to visit.
+
+The response code is the health check, and it is worth knowing which is which:
+`202` means received with key validation still pending, `200` means the key file
+was fetched and accepted. The first deploy ping returned `202`; the next
+submission returned `200`, which is the proof that ownership is established.
+`403` would mean the key file is missing or its contents do not match.
 
 The engines still have to know the host exists: a submission for a site Bing or
 Seznam has never heard of buys nothing. Register first, then the pings do the
