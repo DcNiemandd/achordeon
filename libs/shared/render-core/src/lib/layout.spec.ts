@@ -13,6 +13,7 @@ const settings: GlobalSettings = {
   aspectRatio: 'A4',
   titleFont: 'body',
   padding: 0,
+  blockGap: DEFAULT_TUNING.spacing.interBlockGapFactor,
   contentX: 'left',
   contentY: 'top',
   chordColor: '#000000',
@@ -77,6 +78,54 @@ describe('layoutCore — assembly (§1, §5)', () => {
     // This song is wider than A4, so width is the binding axis: it grows by 16
     // and the ratio then carries the height along with it.
     expect(padded.box.width).toBeCloseTo(bare.box.width + 16);
+  });
+
+  // The one magnitude that crossed over from the author's tuning to the user's
+  // settings (§4.7, amended). What is asserted is the SEAM — that the setting
+  // reaches the gap at all, and that a dev override still beats it — not the
+  // arithmetic of stacking, which `layoutColumns` owns and already tests.
+  describe('block gap (the settings → tuning seam)', () => {
+    const twoBlocks = ast({
+      blocks: [
+        { lines: [{ text: 'aa', chords: [] }] },
+        { lines: [{ text: 'bb', chords: [] }] },
+      ],
+    });
+    const secondLyricY = (over: Partial<GlobalSettings>, config = UNCAPPED) =>
+      layoutCore(twoBlocks, { ...settings, ...over }, measure, {}, config)
+        .items.filter((i) => i.role === 'lyric')
+        .map((i) => i.y)[1];
+
+    it('moves the gap the renderer draws between blocks', () => {
+      const slot = derived.metrics.lyric.height;
+      const closed = secondLyricY({ blockGap: 0 }) as number;
+
+      expect(secondLyricY({ blockGap: 1 })).toBeCloseTo(closed + slot);
+      expect(secondLyricY({ blockGap: 0.5 })).toBeCloseTo(closed + slot / 2);
+    });
+
+    // Nothing in the app passes `config.tuning`; it is the seam a dev pins a
+    // magnitude with while judging a change of taste, and a stored setting that
+    // could overrule it would make the experiment lie.
+    it('yields to a dev tuning override', () => {
+      const pinned = {
+        ...UNCAPPED,
+        tuning: { ...UNCAPPED.tuning, spacing: { interBlockGapFactor: 0 } },
+      };
+      expect(secondLyricY({ blockGap: 3 }, pinned)).toBeCloseTo(
+        secondLyricY({ blockGap: 0 }) as number,
+      );
+    });
+
+    // A hand-written import, or a bag from an app that spells the key otherwise.
+    it("falls back to the author's constant for a value no form could produce", () => {
+      const sane = secondLyricY({}) as number;
+      expect(secondLyricY({ blockGap: NaN })).toBeCloseTo(sane);
+      expect(secondLyricY({ blockGap: -1 })).toBeCloseTo(sane);
+      expect(
+        secondLyricY({ blockGap: 'wide' as unknown as number }),
+      ).toBeCloseTo(sane);
+    });
   });
 
   it('does not pad a song with nothing in it', () => {

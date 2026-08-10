@@ -320,6 +320,19 @@ the fit (§4.1) — so spacing never drives a reflow.
   (≈ one lyric line slot) are constants the author of the renderer tunes to taste; users
   get "bigger text / more air" through scale, columns, and aspect ratio (§4.1), never a
   per-gap knob. Exact values are a visual-tuning detail, deliberately not grilled.
+  - **Amended: the inter-block gap is now a setting** (`blockGap`, Songbook + Song
+    scope). The rule above stands for every other magnitude, and the exception is
+    argued rather than assumed: the others change how the same page _looks_, while
+    this one changes how much page there is. On a song of B blocks it is worth B−1
+    lines, and under `scale: 'auto'` the space taken out comes back as text size —
+    so it is a lever on "one song, one page" (CONTEXT.md §1), which is the product,
+    and it belongs beside scale, columns and aspect ratio rather than under them.
+    Its default is unchanged, so nothing that was drawn before moves.
+  - The seam is `tuningFor` in `layout.ts`, and it is the only one: settings are laid
+    over `DEFAULT_TUNING` there, the layout passes go on reading `ctx.tuning`, and
+    `LayoutConfig.tuning` still wins over both so a dev's A/B is not overrulable by
+    stored data. Promoting another magnitude is a registry row plus a line there —
+    which is deliberately cheap, and deliberately not a reason to do it.
 
 ### 4.8 Label layout — the left gutter (`labelInline`)
 

@@ -37,6 +37,49 @@ function resolveAlign(
   };
 }
 
+/**
+ * The tuning this one render draws with — **the seam between the two registries**.
+ *
+ * `RenderTuning` is the renderer author's control surface and `SETTINGS` is the
+ * user's, and they are deliberately separate things (see `tuning.ts`). A handful
+ * of magnitudes belong to both: the author picks the number the app ships with,
+ * and the user is allowed to move it. This is where the second happens, and it is
+ * the ONLY place — every layout pass goes on reading `ctx.tuning`, so promoting a
+ * knob is a row in the registry and a line here, never a change to the geometry.
+ *
+ * Three layers, least specific first:
+ *
+ * 1. `DEFAULT_TUNING` — the author's constants (applied by `resolveTuning`).
+ * 2. the **settings** below — already cascaded Global → Songbook → Song by
+ *    `resolveSettings`, so by the time they arrive there is one value per key.
+ * 3. `config.tuning` — the dev's A/B override, and it wins. It exists precisely to
+ *    pin a magnitude while a change of taste is being judged, and an experiment
+ *    a stored setting could silently overrule would not be one. Nothing in the
+ *    app passes it; `RenderService` binds only the fonts.
+ */
+function tuningFor(
+  settings: GlobalSettings,
+  dev?: DeepPartial<RenderTuning>,
+): RenderTuning {
+  return resolveTuning({
+    ...dev,
+    spacing: { ...spacingFromSettings(settings), ...dev?.spacing },
+  });
+}
+
+/** The spacing magnitudes that are settings rather than constants (§4.7). */
+function spacingFromSettings(
+  settings: GlobalSettings,
+): DeepPartial<RenderTuning['spacing']> {
+  const blockGap = Number(settings.blockGap);
+  // A value the form could not have produced — a hand-written import, a bag from
+  // an app that spells this key differently — is not a reason to draw a broken
+  // page. Naming no field at all is how it falls back to the author's constant.
+  return Number.isFinite(blockGap) && blockGap >= 0
+    ? { interBlockGapFactor: blockGap }
+    : {};
+}
+
 /** Platform dependencies bound once (§5): the measurer, embedded fonts, tuning. */
 export interface LayoutConfig {
   tuning?: DeepPartial<RenderTuning>;
@@ -61,7 +104,7 @@ export function layoutCore(
   opts: RenderOpts = {},
   config: LayoutConfig = {},
 ): RenderPlan {
-  const tuning = resolveTuning(config.tuning);
+  const tuning = tuningFor(settings, config.tuning);
   const isDark = opts.dark ?? false;
   const ctx = createContext(
     settings,

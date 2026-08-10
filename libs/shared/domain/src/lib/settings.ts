@@ -52,6 +52,17 @@ export const SETTINGS = {
   }, // white border inside the render box, in em (× the base font size). Inset —
   // the aspect ratio stays user-owned. The songbook's print margin ADDS to this
   // rather than overriding it, so it is NOT a songbook scope. See PRD-RENDERING §4.11
+  blockGap: {
+    default: 0.8 as number,
+    scopes: ['songbook', 'song'],
+  }, // the air between blocks, in lyric lines (× the lyric slot) — the ONE spacing
+  // magnitude a user owns, against PRD-RENDERING §4.7's "never a per-gap knob".
+  // It earns the exception because it is not a matter of taste: on a song of B
+  // blocks it is worth B−1 lines of page, and under `scale: 'auto'` the space
+  // taken out comes back as bigger text. That makes it a lever on "one song, one
+  // page", which is the product (CONTEXT.md §1), where the rest of the spacing
+  // constants only change how the same page looks. Songbook scope so a book can
+  // be set to one density; the renderer's own default is the constant it was.
   contentX: {
     default: 'center' as 'left' | 'center' | 'right',
     scopes: ['song'],
