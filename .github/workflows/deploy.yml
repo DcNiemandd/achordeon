@@ -108,6 +108,11 @@ jobs:
           DOCS_BASE_URL: ${{ env.DOCS_BASE_URL }}
           APP_LINK: ${{ env.APP_LINK }}
           GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
+          # Writes `<key>.txt` at the site root, which is what proves to Bing,
+          # Seznam and Yandex that the pinger below owns this host. A repo
+          # variable, not a secret — the file is public by design. Unset means no
+          # file and no ping, so a fork submits nothing.
+          INDEXNOW_KEY: ${{ vars.INDEXNOW_KEY }}
 
       - name: Build Angular app
         run: pnpm exec nx build app --base-href=$APP_BASE_HREF
@@ -141,3 +146,17 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # After the deploy, never before it: a URL submitted while the old page is
+      # still being served buys a crawl of the old page. Reads the URLs out of
+      # the sitemaps that were just built, so the two cannot disagree.
+      #
+      # `continue-on-error`, because this is an announcement and not part of
+      # shipping. The site is live by this point; a rate limit or an outage at
+      # someone else's API must not paint the deploy red.
+      - name: Ping IndexNow (Bing, Seznam, Yandex)
+        continue-on-error: true
+        run: node tools/ping-indexnow.mjs dist/site
+        env:
+          INDEXNOW_KEY: ${{ vars.INDEXNOW_KEY }}
+          DOCS_URL: ${{ env.DOCS_URL }}

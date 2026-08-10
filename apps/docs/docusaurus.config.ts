@@ -42,6 +42,29 @@ const goatcounterUrl =
 
 const baseUrl = process.env.DOCS_BASE_URL || '/';
 
+/**
+ * The IndexNow key — how Bing, Seznam and Yandex are told a page changed instead
+ * of waiting to be crawled into finding out. Google ignores the protocol.
+ *
+ * Deliberately a repo **variable** and not a secret: the whole mechanism is that
+ * the key is readable at `https://<host>/<key>.txt`, which is what proves the
+ * pinger owns the host. Hiding it would be theatre, and a secret that has to be
+ * published is a secret nobody can rotate confidently.
+ *
+ * Unset means the feature is off, the way `GOATCOUNTER_URL` is: no key file, and
+ * `tools/ping-indexnow.mjs` exits without sending. That matters for forks, which
+ * would otherwise submit somebody else's host with a key they cannot serve.
+ */
+const indexNowKey = process.env.INDEXNOW_KEY || '';
+if (indexNowKey && !/^[A-Za-z0-9-]{8,128}$/.test(indexNowKey)) {
+  // Loud here rather than a 403 from an API nobody is watching: the key file and
+  // the ping are the only two places this value is used, and they are both
+  // fire-and-forget.
+  throw new Error(
+    'INDEXNOW_KEY must be 8-128 characters of A-Z, a-z, 0-9 or "-".',
+  );
+}
+
 // `docusaurus start` vs `docusaurus build` — the CLI sets NODE_ENV before it
 // evaluates this file, so the dev server can be told apart from a real build here.
 //
@@ -132,14 +155,21 @@ function robotsTxt(): Plugin {
         const prefix = locale === i18n.defaultLocale ? '' : `${locale}/`;
         return new URL(`${baseUrl}${prefix}sitemap.xml`, url).href;
       });
+      const sitemapIndexUrl = new URL(`${baseUrl}sitemap-index.xml`, url).href;
 
+      // The index first, then the files it points at. Every engine reads
+      // `robots.txt`, and this is the discovery path that needs nobody to submit
+      // anything by hand — the one that keeps working when a search console has
+      // a bad record stuck against a URL.
       await fs.writeFile(
         path.join(outDir, 'robots.txt'),
         [
           'User-agent: *',
           'Allow: /',
           '',
-          ...sitemapUrls.map((href) => `Sitemap: ${href}`),
+          ...[sitemapIndexUrl, ...sitemapUrls].map(
+            (href) => `Sitemap: ${href}`,
+          ),
           '',
         ].join('\n'),
         'utf8',
@@ -165,6 +195,19 @@ function robotsTxt(): Plugin {
         ].join('\n'),
         'utf8',
       );
+
+      // The IndexNow ownership proof: a file at the site root whose name is the
+      // key and whose only content is the key again. `tools/ping-indexnow.mjs`
+      // names it as `keyLocation`, and the receiving engine fetches it to check
+      // that whoever is submitting URLs for this host can also publish at it.
+      // No key configured, no file — and the pinger stays quiet to match.
+      if (indexNowKey) {
+        await fs.writeFile(
+          path.join(outDir, `${indexNowKey}.txt`),
+          indexNowKey,
+          'utf8',
+        );
+      }
     },
   };
 }
@@ -204,6 +247,23 @@ const config: Config = {
   baseUrl,
 
   headTags: [
+    // Proves this domain is ours to Seznam Webmaster (reporter.seznam.cz/wm),
+    // the way the `google-site-verification` TXT record does for Search Console.
+    // Seznam is its own engine with its own crawler, and Google's verification
+    // means nothing to it — which matters here, because the `/cs/` half of this
+    // site is written for the audience that searches on it.
+    //
+    // Hardcoded rather than an env var, unlike the deploy-target values above:
+    // the token belongs to the domain, not to where the build is going, and it
+    // is public by design — it only ever asserts ownership to whoever already
+    // holds the account.
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'seznam-wmt',
+        content: 'DGyYyzAwrYcno6KWdns7e4s4lF8CiYE3',
+      },
+    },
     // The vector favicon, beside the `.ico` above. Both come out of the app's
     // `tools/gen-app-icons.mjs`, which writes them into `static/img` as well as
     // into the app — one mark, two properties. `favicon` takes a single path, so
