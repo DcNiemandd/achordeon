@@ -30,6 +30,18 @@ const OUT = resolve(here, '../public/icons');
  */
 const DOCS_OUT = resolve(here, '../../docs/static/img');
 
+/**
+ * The same `.ico` again, at the site root.
+ *
+ * Not a duplicate for tidiness' sake: Google's favicon crawler is a separate
+ * agent from Googlebot, and it looks for `/favicon.ico` at the root of the
+ * domain as well as at whatever `<link rel="icon">` names. With the file only
+ * under `img/`, that root request 404s and search results render the site with
+ * a blank globe. Browsers make the same fallback request. Root is the only
+ * address that needs no markup to be found.
+ */
+const DOCS_ROOT_OUT = resolve(here, '../../docs/static');
+
 /** Brand red — `--brand` at its light-theme lightness (styles/_tokens.scss). */
 const BRAND = [0xc1, 0x35, 0x15];
 const INK = [0xff, 0xff, 0xff];
@@ -108,6 +120,9 @@ function main() {
   mkdirSync(DOCS_OUT, { recursive: true });
   writeFileSync(resolve(DOCS_OUT, 'favicon.ico'), faviconIco);
   writeFileSync(resolve(DOCS_OUT, 'favicon.svg'), faviconSvg);
+
+  mkdirSync(DOCS_ROOT_OUT, { recursive: true });
+  writeFileSync(resolve(DOCS_ROOT_OUT, 'favicon.ico'), faviconIco);
 }
 
 // --- SVG ---------------------------------------------------------------------
