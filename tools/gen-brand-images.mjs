@@ -149,10 +149,15 @@ async function main() {
   if (process.argv.includes('--screens')) {
     // A fresh context seeds the starter library by default (see the app's seed
     // logic), so these are the six songs a first-time visitor also sees.
+    // Dark, to sit beside the cards above rather than punch a white hole in the
+    // middle of them. `colorScheme` alone is enough and is the honest route: the
+    // app's default theme is 'system', which leaves the attribute off and lets
+    // the token sheet follow `prefers-color-scheme` — so this is the app in the
+    // state a dark-mode visitor actually gets, not one forced by a stamp.
     const page = await browser.newPage({
       viewport: { width: 1440, height: 810 },
       deviceScaleFactor: 2,
-      colorScheme: 'light',
+      colorScheme: 'dark',
     });
     const go = async (route) => {
       await page.goto(new URL(route, APP).href, { waitUntil: 'networkidle' });
