@@ -78,7 +78,7 @@ ready-made skill, get a file, import it. No retyping.
 working with no connection at all. Dark and light themes, English and Czech.
 
 <p align="center">
-  <img src="apps/docs/static/img/screenshot-songs.png" alt="The Achordeon song library with a rendered song preview beside the list" width="900" />
+  <img src="apps/docs/static/img/screenshot-songbook.png" alt="Building a songbook in Achordeon: the song library on the left, the ordered set on the right" width="900" />
 </p>
 
 ## Technical

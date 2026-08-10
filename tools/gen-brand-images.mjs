@@ -163,18 +163,21 @@ async function main() {
       await page.goto(new URL(route, APP).href, { waitUntil: 'networkidle' });
       await page.waitForTimeout(2000);
     };
-    const pick = () => page.getByText('Amazing Grace', { exact: true }).first();
-
+    // The two places the work actually happens: writing a song, and building a
+    // songbook out of the songs. A list of rows is what every app has; these two
+    // are what this one is.
     await go('songs');
-    await pick().click();
-    await page.waitForTimeout(1200);
-    await page.screenshot({ path: resolve(OUT, 'screenshot-songs.png') });
-    console.log('wrote screenshot-songs.png');
-
-    await pick().dblclick();
+    await page.getByText('Amazing Grace', { exact: true }).first().dblclick();
     await page.waitForTimeout(2500);
     await page.screenshot({ path: resolve(OUT, 'screenshot-editor.png') });
     console.log('wrote screenshot-editor.png');
+
+    await go('songbooks');
+    await page.getByText('Sunday Set', { exact: true }).first().dblclick();
+    await page.waitForTimeout(2500);
+    console.log('  songbook route:', page.url());
+    await page.screenshot({ path: resolve(OUT, 'screenshot-songbook.png') });
+    console.log('wrote screenshot-songbook.png');
     await page.close();
   }
 
