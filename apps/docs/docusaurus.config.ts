@@ -59,6 +59,22 @@ const i18n = {
   },
 } satisfies Config['i18n'];
 
+/**
+ * First visit, no locale in the URL: send a Czech browser to the Czech site.
+ *
+ * **It only ever bounces off the default locale**, and that guard is the whole
+ * subtlety. A URL that already names a locale is somebody's deliberate choice —
+ * a shared link, the locale dropdown, a search result — and bouncing off it
+ * overrides a decision that was already made.
+ *
+ * Googlebot is the case that made this a bug rather than a rudeness. It renders
+ * with `navigator.language` of en-US and a fresh profile every time, so `FLAG`
+ * never stops it: every Czech page redirected itself to its English twin under
+ * the crawler, and Search Console duly filed the whole `/cs/` tree as "page with
+ * redirect" — indexed nowhere. The Czech pages are reachable in their own right
+ * now, and `hreflang` (emitted on every page) is what tells Google the two are
+ * translations of each other.
+ */
 const localeRedirectScript = `(function () {
   try {
     var FLAG = 'achordeon-docs-locale-init';
@@ -71,6 +87,7 @@ const localeRedirectScript = `(function () {
     if (path.indexOf(BASE) !== 0) return;
     var seg = path.slice(BASE.length).split('/')[0];
     var current = SUPPORTED.indexOf(seg) >= 0 ? seg : DEFAULT;
+    if (current !== DEFAULT) return;
     var nav = (navigator.language || DEFAULT).slice(0, 2).toLowerCase();
     var target = SUPPORTED.indexOf(nav) >= 0 ? nav : DEFAULT;
     if (target === current) return;
