@@ -273,7 +273,12 @@ function write(name, bytes) {
  * parse cleanly and are shown precisely because they do not.
  */
 function checkExamples(text) {
-  const blocks = [...text.matchAll(/```achordeon\n([\s\S]*?)```/g)];
+  // Newlines normalised first. The template is checked out with CRLF on Windows,
+  // where `\n` after the fence never matches and every example silently vanishes
+  // — the check then fails as "no examples left" on a file that is full of them.
+  const blocks = [
+    ...text.replace(/\r\n/g, '\n').matchAll(/```achordeon\n([\s\S]*?)```/g),
+  ];
   if (blocks.length === 0) {
     console.error('gen-skill-zip: the grammar has no checkable examples left.');
     process.exit(1);
