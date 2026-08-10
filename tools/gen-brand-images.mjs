@@ -154,6 +154,12 @@ async function main() {
     // app's default theme is 'system', which leaves the attribute off and lets
     // the token sheet follow `prefers-color-scheme` — so this is the app in the
     // state a dark-mode visitor actually gets, not one forced by a stamp.
+    //
+    // The paper stays white, deliberately. `isSongDark` is
+    // `isSongDarkFollowingTheme && darkTheme` and the first of those is off by
+    // default (`UiStore`), so a dark app drawing a song on white paper is the
+    // app as shipped — and the sheet is meant to read as paper. Do not seed
+    // `achordeon.ui` to darken it.
     const page = await browser.newPage({
       viewport: { width: 1440, height: 810 },
       deviceScaleFactor: 2,
