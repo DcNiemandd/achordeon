@@ -111,13 +111,41 @@ function robotsTxt(): Plugin {
   return {
     name: 'achordeon-robots-txt',
     async postBuild({ outDir }) {
-      const sitemaps = i18n.locales.map((locale) => {
+      const sitemapUrls = i18n.locales.map((locale) => {
         const prefix = locale === i18n.defaultLocale ? '' : `${locale}/`;
-        return `Sitemap: ${new URL(`${baseUrl}${prefix}sitemap.xml`, url).href}`;
+        return new URL(`${baseUrl}${prefix}sitemap.xml`, url).href;
       });
+
       await fs.writeFile(
         path.join(outDir, 'robots.txt'),
-        ['User-agent: *', 'Allow: /', '', ...sitemaps, ''].join('\n'),
+        [
+          'User-agent: *',
+          'Allow: /',
+          '',
+          ...sitemapUrls.map((href) => `Sitemap: ${href}`),
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+
+      // One address for every language, beside the per-locale files.
+      //
+      // The sitemap plugin emits a sitemap per locale and nothing tying them
+      // together, so a search console has to be told about each one by hand and
+      // will have to be told again for every locale added after this. An index
+      // is a single submission that keeps working.
+      const entries = sitemapUrls
+        .map((href) => `  <sitemap><loc>${href}</loc></sitemap>`)
+        .join('\n');
+      await fs.writeFile(
+        path.join(outDir, 'sitemap-index.xml'),
+        [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+          entries,
+          '</sitemapindex>',
+          '',
+        ].join('\n'),
         'utf8',
       );
     },
