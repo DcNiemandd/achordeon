@@ -7,7 +7,9 @@ import {
   BODY_FONT,
   BUNDLED_CATALOG,
   BUNDLED_FONTS,
+  DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
+  isBodyCapable,
 } from '@achordeon/shared/render-core';
 import { ScreenShape } from '../layout';
 import { ASPECT_OPTION_GROUPS, MATCH_SCREEN } from './aspect-options';
@@ -248,6 +250,50 @@ describe('SettingsPanel', () => {
       expect(
         [...samples].map((el: Element) => el.getAttribute('data-testid')),
       ).toEqual(['sample-bodyFont', 'sample-titleFont']);
+    });
+  });
+
+  describe('a family short of a face', () => {
+    /** The first bundled family that cannot set a whole song on its own. */
+    const short = BUNDLED_FONTS.find((one) => !isBodyCapable(one));
+
+    function row(key: string): Element | null {
+      return fixture.nativeElement.querySelector(`[data-testid="${key}"]`);
+    }
+
+    function setBody(value: string): void {
+      fixture.componentRef.setInput('values', { bodyFont: value });
+      fixture.detectChanges();
+    }
+
+    it('says which face is borrowed, and from whom', () => {
+      mount();
+
+      setBody(short?.id ?? '');
+
+      const note = row('note-bodyFont');
+      expect(note).not.toBeNull();
+      // Named, not just flagged: "some faces are borrowed" is not actionable.
+      expect(note?.textContent).toContain(DEFAULT_TUNING.fontFamily);
+    });
+
+    it('offers the donor row only once something is borrowing', () => {
+      // A control for a face nothing needs is a control that does nothing.
+      mount();
+
+      expect(row('setting-italicFont')).toBeNull();
+
+      setBody(short?.id ?? '');
+
+      expect(row('setting-italicFont')).not.toBeNull();
+    });
+
+    it('says nothing for a family that draws all of its own', () => {
+      mount();
+
+      setBody(DEFAULT_BODY_FONT);
+
+      expect(row('note-bodyFont')).toBeNull();
     });
   });
 

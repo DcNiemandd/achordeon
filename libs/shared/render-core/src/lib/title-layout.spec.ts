@@ -12,6 +12,7 @@ const base: GlobalSettings = {
   titleLayout: 'stacked',
   aspectRatio: 'A4',
   bodyFont: 'roboto-mono',
+  italicFont: 'roboto-mono',
   titleFont: 'body',
   padding: 0,
   blockGap: DEFAULT_TUNING.spacing.interBlockGapFactor,

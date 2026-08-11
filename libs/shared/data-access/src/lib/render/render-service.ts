@@ -54,16 +54,25 @@ function familiesFor(settings: GlobalSettings, catalog: FontCatalog): FontId[] {
     {
       body: settings.bodyFont as FontId,
       title: settings.titleFont as FontId,
+      italic: settings.italicFont as FontId,
     },
     DEFAULT_TUNING,
   );
   // The default body font is asked for whether or not this song uses it: it is
   // the face the renderer falls back to when a choice resolves to nothing, and
   // it is precached, so asking costs nothing and not asking is a blank page.
+  //
+  // The donor only when something is actually borrowing from it — a song set in
+  // a family with all four faces should not be fetching a second one it will
+  // never draw a glyph of.
+  const isBorrowing =
+    Object.keys(fonts.bodyFaces).length + Object.keys(fonts.titleFaces).length >
+    0;
   return [
     DEFAULT_BODY_FONT,
     ...(fonts.body.id ? [fonts.body.id] : []),
     ...(fonts.title.id ? [fonts.title.id] : []),
+    ...(isBorrowing && fonts.donor.id ? [fonts.donor.id] : []),
   ];
 }
 

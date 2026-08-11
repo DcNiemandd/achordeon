@@ -15,6 +15,7 @@ import {
   type FontCatalog,
   type FontId,
 } from './font-catalog';
+import type { FaceVariant } from './fonts';
 import { liftInkForPaper } from './dark';
 
 /** String-independent line-pitch for one role (§4.7). `height` = ascent+descent. */
@@ -76,6 +77,7 @@ export function resolveStyles(
     {
       body: settings.bodyFont as FontId,
       title: settings.titleFont as FontId,
+      italic: settings.italicFont as FontId,
     },
     tuning,
   );
@@ -86,8 +88,14 @@ export function resolveStyles(
     const chordScale = role === 'chord' ? settings.chordSize : 1;
     const isTitleRole = role === 'title' || role === 'subtitle';
     const font = isTitleRole ? fonts.title : fonts.body;
+    const faces = isTitleRole ? fonts.titleFaces : fonts.bodyFaces;
+    // The role's OWN face may be one of the borrowed ones — a sub-label is
+    // italic by spec, so a body family with no italic never draws a sub-label in
+    // itself at all. Resolving it here rather than at draw time keeps `styles`
+    // the honest answer to "what is this role set in".
+    const own = faces[`${t.weight}-${t.style ?? 'normal'}` as FaceVariant];
     styles[role] = {
-      family: font.family,
+      family: (own ?? font).family,
       sizePx: tuning.baseSizePx * t.sizeFactor * chordScale,
       weight: t.weight,
       style: t.style,
@@ -110,7 +118,9 @@ export function resolveStyles(
         : role === 'chord'
           ? settings.chordColor
           : (t.color ?? tuning.textColor),
-      fallback: font.fallback,
+      fallback: (own ?? font).fallback,
+      // The rest of the gaps, for the faces a markdown run reaches for.
+      ...(Object.keys(faces).length > 0 ? { faces } : {}),
     };
   }
   return styles;

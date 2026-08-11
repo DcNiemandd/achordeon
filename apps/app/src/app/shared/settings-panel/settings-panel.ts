@@ -18,6 +18,7 @@ import {
   BODY_FONT,
   DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
+  isBodyCapable,
   resolveFonts,
   type FontCategory,
   type FontId,
@@ -30,6 +31,7 @@ import {
   isMatchScreen,
 } from './aspect-options';
 import {
+  borrowedNote,
   FONT_CATEGORY_LABELS,
   FONT_SAMPLE_TEXT,
   GROUPS,
@@ -358,6 +360,16 @@ interface Section {
                   </p>
                 }
 
+                @if (note(row); as note) {
+                  <!-- Not an error: the page is fine, it is just not entirely
+                       in the font that was picked. Says which face and whose,
+                       because "some faces are borrowed" is not actionable and
+                       the row that changes it is the next one down. -->
+                  <p class="note" [attr.data-testid]="'note-' + row.key">
+                    {{ note }}
+                  </p>
+                }
+
                 @if (sample(row); as sample) {
                   <!-- Under the control, in the face the control just chose.
                        Hidden from the accessibility tree, because it says nothing
@@ -598,6 +610,15 @@ interface Section {
       color: var(--danger);
     }
 
+    /* Muted, not red: nothing is wrong, something is merely being substituted.
+       Wraps, unlike the sample below it — this one is words, and a truncated
+       sentence about which face is missing tells nobody anything. */
+    .note {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
     /* Bigger than the label above it, because 12px of Caveat is a squiggle: the
        sample exists to be recognised, and a face is not recognisable at UI size.
        Clipped rather than wrapped — the row is 300px in the editor dialog, and a
@@ -643,9 +664,25 @@ export class SettingsPanel {
     GROUPS.map((group) => ({
       group,
       label: GROUP_LABELS[group],
-      rows: this.rows().filter((row) => row.ui.group === group),
+      rows: this.rows().filter(
+        (row) => row.ui.group === group && this.isDrawable(row),
+      ),
     })).filter((section) => section.rows.length > 0),
   );
+
+  /**
+   * Whether a row is worth showing at all, as opposed to whether the scope has
+   * it (`keysForScope`, which is the cascade's answer and stays in `rows`).
+   *
+   * One case: the donor. A font to borrow a face *from* is a question only a
+   * font that is missing one asks, and the row would otherwise sit there in
+   * front of every user changing nothing. Filtered here rather than in `rows`
+   * because the answer is read off the resolved fonts, which are read off the
+   * rows.
+   */
+  private isDrawable(row: Row): boolean {
+    return this.fontRole(row) !== 'italic' || this.borrowed().length > 0;
+  }
 
   protected helpLabel(row: Row): string {
     return $localize`:@@settings.about:About ${row.ui.label}:setting:`;
@@ -708,31 +745,62 @@ export class SettingsPanel {
     }),
   );
 
-  /**
-   * The body face the *title* row's "Same as song" is standing in for.
-   *
-   * Read off this panel's own body row rather than assumed, so changing the body
-   * font redraws the title sample too — which is the entire content of that
-   * option. Absent (a scope with no body row) it falls through to the renderer's
-   * own face, which is what such a scope would really draw with.
-   */
-  private readonly bodyFontId = computed<FontId | undefined>(() => {
-    const row = this.rows().find(
-      (one) => one.ui.control.kind === 'font' && one.ui.control.role === 'body',
-    );
+  /** This panel's own value for one of the three font rows, if it has that row. */
+  private fontValue(role: FontRole): FontId | undefined {
+    const row = this.rows().find((one) => this.fontRole(one) === role);
     return row ? String(row.value) : undefined;
-  });
+  }
+
+  /**
+   * The three faces this panel's values resolve to, in one call.
+   *
+   * The same call the renderer makes, so a sample cannot end up showing a face
+   * the page will not use — and the only way "Same as song" can redraw when the
+   * body font changes, since that option names no face of its own.
+   */
+  private readonly resolved = computed(() =>
+    resolveFonts(
+      this.fonts.catalog,
+      {
+        body: this.fontValue('body'),
+        title: this.fontValue('title'),
+        italic: this.fontValue('italic'),
+      },
+      DEFAULT_TUNING,
+    ),
+  );
+
+  /** The faces the chosen body family has not got, and so is borrowing. */
+  protected readonly borrowed = computed(() =>
+    Object.keys(this.resolved().bodyFaces),
+  );
+
+  /**
+   * The warning a borrowed face earns, or `null` while nothing is borrowed.
+   *
+   * On the body row, because that is where the gap is; the donor row is the fix
+   * and sits right under it.
+   */
+  protected note(row: Row): string | null {
+    if (this.fontRole(row) !== 'body' || this.borrowed().length === 0) {
+      return null;
+    }
+    return borrowedNote(this.borrowed(), this.resolved().donor.family);
+  }
 
   /**
    * What this row's sample line shows, or `null` on a row that is not a font.
-   *
-   * The catalog is asked, never copied: it is the same call the renderer makes,
-   * so the sample cannot end up showing a face the page will not use.
    */
   protected sample(row: Row): Sample | null {
     const role = this.fontRole(row);
     if (!role) return null;
-    const font = this.resolveFor(role, String(row.value));
+    const fonts = this.resolved();
+    const font =
+      role === 'title'
+        ? fonts.title
+        : role === 'italic'
+          ? fonts.donor
+          : fonts.body;
     return {
       // Says what it is rather than standing in for the title, and short enough
       // to survive a 300px dialog column without wrapping.
@@ -749,18 +817,6 @@ export class SettingsPanel {
     return row.ui.control.kind === 'font' ? row.ui.control.role : null;
   }
 
-  private resolveFor(role: FontRole, value: string) {
-    const catalog = this.fonts.catalog;
-    if (role === 'title') {
-      return resolveFonts(
-        catalog,
-        { body: this.bodyFontId(), title: value },
-        DEFAULT_TUNING,
-      ).title;
-    }
-    return resolveFonts(catalog, { body: value }, DEFAULT_TUNING).body;
-  }
-
   /**
    * The library, shelved by category, plus the one option that is not a family.
    *
@@ -771,6 +827,10 @@ export class SettingsPanel {
   private fontOptions(role: FontRole): readonly (Option | OptionGroup)[] {
     const shelves = new Map<FontCategory, Option[]>();
     for (const family of this.fonts.catalog.list()) {
+      // A donor has to have what the borrower lacks, so only a family with all
+      // four faces can lend. Body and title list everything: a family short of a
+      // face is still choosable, and borrows what it has not got.
+      if (role === 'italic' && !isBodyCapable(family)) continue;
       const shelf = shelves.get(family.category) ?? [];
       shelf.push({ value: family.id, label: family.label });
       shelves.set(family.category, shelf);

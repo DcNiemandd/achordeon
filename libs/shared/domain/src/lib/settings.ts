@@ -39,6 +39,20 @@ export const SETTINGS = {
   // so this is the one place the two are written out separately. `roboto-mono`
   // is a bundled row; a device that has lost it draws in tuning's face, which is
   // the same one.
+  italicFont: {
+    default: 'roboto-mono' as string,
+    scopes: ['songbook', 'song'],
+  }, // where a face `bodyFont` has not got is borrowed from — the DONOR
+  // (ADR-0017). A family with no italic cannot set a song on its own: a
+  // sub-label is italic by spec and a markdown `*run*` reaches for the body
+  // italic, and letting the browser synthesize one would slant the screen while
+  // the PDF, which has no synthesis, stayed upright.
+  //
+  // Named for the face this is almost always about, though it covers every gap.
+  // It exists because the borrow is *overridable* and not merely announced; the
+  // panel warns which face is borrowed either way, and hides this row while
+  // nothing is borrowing. The default is the family the app is set in — it has
+  // all four faces and is precached, so borrowing from it costs no fetch.
   titleFont: {
     default: 'body' as string,
     scopes: ['songbook', 'song'],

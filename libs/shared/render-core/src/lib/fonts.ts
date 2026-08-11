@@ -11,11 +11,12 @@
 // may instead rely on a CSS-loaded face — then the book comes back empty and
 // `emit(inlineFonts:false)` omits the `@font-face`.
 
-import type {
-  EmbeddedFont,
-  TextItem,
-  TextRole,
-  TextStyle,
+import {
+  faceOf,
+  type EmbeddedFont,
+  type TextItem,
+  type TextRole,
+  type TextStyle,
 } from './render-plan';
 
 /** The embeddable faces for one render. Family/weight/style must match `styles`. */
@@ -62,7 +63,9 @@ export function collectFaces(
  * must be embedded too or the PDF has no bytes to draw it with (§3, §4.10). The
  * override resolves against the item's role style, so `**bold**` in a lyric adds
  * the bold face of the lyric family, `*italic*` the italic, `***both***` the
- * bold-italic.
+ * bold-italic — or, where the family has not got that face, the same face of the
+ * family lending it (§4.10 donor). Asked through `faceOf`, so what is embedded is
+ * what `emit` will name.
  */
 export function collectItemFaces(
   items: readonly TextItem[],
@@ -72,10 +75,12 @@ export function collectItemFaces(
   for (const item of items) {
     if (!item.weight && !item.style) continue;
     const base = styles[item.role];
+    const weight = item.weight ?? base.weight;
+    const style = item.style ?? base.style ?? 'normal';
     const face: FontFaceKey = {
-      family: base.family,
-      weight: item.weight ?? base.weight,
-      style: item.style ?? base.style ?? 'normal',
+      family: faceOf(base, weight, style).family,
+      weight,
+      style,
     };
     if (!faces.some((f) => isSameFace(f, face))) faces.push(face);
   }

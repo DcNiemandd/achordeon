@@ -69,7 +69,7 @@ export type Control =
   | { kind: 'font'; role: FontRole };
 
 /** Which of a song's faces a `font` row picks. */
-export type FontRole = 'body' | 'title';
+export type FontRole = 'body' | 'title' | 'italic';
 
 /** Rows are grouped so the panel reads as sections, not a wall of inputs. */
 export type Group = 'page' | 'title' | 'fonts' | 'chords';
@@ -105,6 +105,20 @@ export interface Sample {
 
 /** The line every font row draws under its picker, in the face it just chose. */
 export const FONT_SAMPLE_TEXT = $localize`:@@titleFont.sample:Sample of font`;
+
+/** What to call one face when telling the user it had to be borrowed. */
+export const FACE_LABELS: Record<string, string> = {
+  'normal-normal': $localize`:@@face.regular:regular`,
+  'bold-normal': $localize`:@@face.bold:bold`,
+  'normal-italic': $localize`:@@face.italic:italic`,
+  'bold-italic': $localize`:@@face.boldItalic:bold italic`,
+};
+
+/** The warning a borrowed face earns: which ones, and whose they are. */
+export function borrowedNote(faces: readonly string[], donor: string): string {
+  const list = faces.map((face) => FACE_LABELS[face] ?? face).join(', ');
+  return $localize`:@@fonts.borrowed:This font has no ${list}:faces:. Taken from ${donor}:font: instead.`;
+}
 
 /**
  * The headings a font picker groups its families under.
@@ -249,6 +263,14 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
     help: $localize`:@@setting.bodyFont.help:The face the song itself is set in — lyrics, chords and labels. The title has its own, which can be told to follow this one.`,
     group: 'fonts',
     control: { kind: 'font', role: 'body' },
+  },
+  italicFont: {
+    label: $localize`:@@setting.italicFont:Borrowed from`,
+    help: $localize`:@@setting.italicFont.help:Where a face the song's own font has not got is taken from — usually italics. Without one, italic text would slant on screen and come out upright in a PDF.`,
+    group: 'fonts',
+    // Only drawn while something is actually being borrowed: a control for a
+    // face nothing needs is a control that does nothing.
+    control: { kind: 'font', role: 'italic' },
   },
   titleFont: {
     label: $localize`:@@setting.titleFont:Title`,

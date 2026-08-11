@@ -9,7 +9,12 @@
 // bytes (export/PNG, self-contained per §2); omitted, the SVG relies on a
 // CSS-loaded face + the generic fallback (screen).
 
-import type { RenderPlan, TextItem, EmbeddedFont } from './render-plan';
+import {
+  faceOf,
+  type RenderPlan,
+  type TextItem,
+  type EmbeddedFont,
+} from './render-plan';
 
 export interface EmitOpts {
   /** Base64-inline the embedded fonts as `@font-face` (export). Default false (screen). */
@@ -48,10 +53,12 @@ function familyAttr(family: string, fallback?: string): string {
 function emitItem(item: TextItem, plan: RenderPlan): string {
   const style = plan.styles[item.role];
   const size = style.sizePx * (item.sizeScale ?? 1);
-  // A markdown run overrides the role's weight/style; the family is unchanged, so
-  // the browser + the embedded `@font-face` pick the bold/italic face of it.
+  // A markdown run overrides the role's weight/style, which normally picks
+  // another face of the SAME family — unless the family has not got it, in which
+  // case `faceOf` names the family lending it (§4.10 donor).
   const weight = item.weight ?? style.weight;
   const fontStyle = item.style ?? style.style;
+  const face = faceOf(style, weight, fontStyle ?? 'normal');
   const attrs = [
     `x="${item.x}"`,
     `y="${item.y}"`,
@@ -64,7 +71,7 @@ function emitItem(item: TextItem, plan: RenderPlan): string {
     // Preserving is not a style choice here; the geometry was computed for the
     // untouched text, so the untouched text is what has to be drawn.
     `xml:space="preserve"`,
-    `font-family="${familyAttr(style.family, style.fallback)}"`,
+    `font-family="${familyAttr(face.family, face.fallback)}"`,
     `font-size="${size}"`,
     `font-weight="${weight}"`,
     `fill="${style.fill}"`,

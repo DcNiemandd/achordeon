@@ -210,6 +210,48 @@ export function findFont(
   return catalog.get(id);
 }
 
+/**
+ * The four faces a family needs to set a whole song.
+ *
+ * Italic is not optional down here: a sub-label is italic by spec (§4.8) and a
+ * markdown `*run*` in a lyric resolves to the body family's italic. A family
+ * missing one draws slanted on screen — the browser will synthesize an oblique —
+ * and upright in the PDF, which has no synthesis. That divergence is the one
+ * failure a document app cannot have, which is why a face is borrowed instead.
+ */
+export const BODY_FACES: readonly FaceVariant[] = [
+  'normal-normal',
+  'bold-normal',
+  'normal-italic',
+  'bold-italic',
+];
+
+/** The two a title block needs. Titles are never markdown-parsed (§4.10). */
+export const TITLE_FACES: readonly FaceVariant[] = [
+  'normal-normal',
+  'bold-normal',
+];
+
+/** The faces a family is short of, out of the ones a role will actually ask for. */
+export function missingFaces(
+  family: FontFamily | undefined,
+  needed: readonly FaceVariant[] = BODY_FACES,
+): FaceVariant[] {
+  // No row at all is the renderer's own face, which has every one of them.
+  if (!family) return [];
+  return needed.filter((variant) => !family.faces[variant]);
+}
+
+/** Whether a family can set a whole song on its own, borrowing nothing. */
+export function isBodyCapable(family: FontFamily): boolean {
+  return missingFaces(family, BODY_FACES).length === 0;
+}
+
+/** Whether it can set a title block. Two faces is the floor for being offered. */
+export function isTitleCapable(family: FontFamily): boolean {
+  return missingFaces(family, TITLE_FACES).length === 0;
+}
+
 export interface ResolvedFont {
   /**
    * The family actually drawn, or `null` when nothing in the catalog answered and
@@ -234,8 +276,44 @@ function fromTuning(tuning: RenderTuning): ResolvedFont {
   };
 }
 
+/** Which family really draws each face of a chosen one, the donor filling gaps. */
+export type FaceFamilies = Partial<Record<FaceVariant, ResolvedFont>>;
+
 /**
- * The two faces one render draws with.
+ * The faces `chosen` cannot draw itself, mapped to the family that will.
+ *
+ * Only the gaps are listed, so an empty map is the normal case and means "this
+ * family draws all of its own". A face the *donor* has not got either is left
+ * pointing at the donor: there is no third fallback, and something has to be
+ * named or the geometry describes nothing.
+ */
+function borrowedFaces(
+  chosen: ResolvedFont,
+  family: FontFamily | undefined,
+  donor: ResolvedFont,
+  needed: readonly FaceVariant[],
+): FaceFamilies {
+  const faces: FaceFamilies = {};
+  if (chosen.family === donor.family) return faces;
+  for (const variant of missingFaces(family, needed)) {
+    faces[variant] = donor;
+  }
+  return faces;
+}
+
+export interface ResolvedFonts {
+  body: ResolvedFont;
+  title: ResolvedFont;
+  /** The family lending the body its missing faces — `italicFont`, or the default. */
+  donor: ResolvedFont;
+  /** Gaps in the body family, by variant. Empty when it draws all of its own. */
+  bodyFaces: FaceFamilies;
+  /** Gaps in the title family. A title block only ever asks for two faces. */
+  titleFaces: FaceFamilies;
+}
+
+/**
+ * Every face one render draws with.
  *
  * `title` following `body` is the whole meaning of the `body` sentinel, and it is
  * why both are resolved in one call: reading `titleFont` without knowing what the
@@ -247,11 +325,26 @@ function fromTuning(tuning: RenderTuning): ResolvedFont {
  */
 export function resolveFonts(
   catalog: FontCatalog,
-  ids: { body?: FontId; title?: FontId },
+  ids: { body?: FontId; title?: FontId; italic?: FontId },
   tuning: RenderTuning,
-): { body: ResolvedFont; title: ResolvedFont } {
+): ResolvedFonts {
   const bodyFamily = findFont(catalog, ids.body);
   const body = bodyFamily ? toResolved(bodyFamily) : fromTuning(tuning);
   const titleFamily = findFont(catalog, ids.title);
-  return { body, title: titleFamily ? toResolved(titleFamily) : body };
+  const title = titleFamily ? toResolved(titleFamily) : body;
+
+  // The donor defaults to the family the app is set in: it has all four faces
+  // and is precached, so borrowing from it costs no fetch. A user who would
+  // rather borrow from somewhere else says so with `italicFont`.
+  const donorFamily =
+    findFont(catalog, ids.italic) ?? catalog.get(DEFAULT_BODY_FONT);
+  const donor = donorFamily ? toResolved(donorFamily) : fromTuning(tuning);
+
+  return {
+    body,
+    title,
+    donor,
+    bodyFaces: borrowedFaces(body, bodyFamily, donor, BODY_FACES),
+    titleFaces: borrowedFaces(title, titleFamily, donor, TITLE_FACES),
+  };
 }
