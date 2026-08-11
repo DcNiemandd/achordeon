@@ -325,6 +325,39 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('add-font-url')).toBeVisible();
   });
 
+  test('Esc closes the add-font dialog', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('add-font-dialog')).toHaveCount(0);
+  });
+
+  test('a picker opens the same dialog and keeps its own value', async ({
+    page,
+  }) => {
+    // "Add font…" is not an answer to "which font", so picking it must leave the
+    // setting exactly where it was.
+    await page.getByTestId('select-bodyFont').selectOption('@add-font');
+
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+    await expect(page.getByTestId('select-bodyFont')).toHaveValue(
+      'roboto-mono',
+    );
+  });
+
+  test('the donor row is disabled rather than absent', async ({ page }) => {
+    // Present at a fixed height whether or not it applies: a row that appeared
+    // when the font above it changed would move every control below it.
+    await expect(page.getByTestId('select-italicFont')).toBeDisabled();
+
+    await page.getByTestId('select-bodyFont').selectOption('oswald');
+
+    await expect(page.getByTestId('select-italicFont')).toBeEnabled();
+    await expect(page.getByTestId('note-bodyFont')).toBeVisible();
+  });
+
   test('a link that cannot be used says why, before anything is fetched', async ({
     page,
   }) => {

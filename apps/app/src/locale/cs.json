@@ -3,8 +3,7 @@
   "translations": {
     "actionBar.label": "Akce",
     "actionBar.rename": "Název",
-    "addFont.added": "Přidáno: {$fonts}.",
-    "addFont.close": "Hotovo",
+    "addFont.close": "Zrušit",
     "addFont.failed": "Písmo se nepodařilo přidat.",
     "addFont.fetch": "Stáhnout písmo",
     "addFont.fetching": "Stahuji…",

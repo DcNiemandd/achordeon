@@ -249,7 +249,7 @@ describe('SettingsPanel', () => {
       );
       expect(
         [...samples].map((el: Element) => el.getAttribute('data-testid')),
-      ).toEqual(['sample-bodyFont', 'sample-titleFont']);
+      ).toEqual(['sample-bodyFont', 'sample-italicFont', 'sample-titleFont']);
     });
   });
 
@@ -277,15 +277,17 @@ describe('SettingsPanel', () => {
       expect(note?.textContent).toContain(DEFAULT_TUNING.fontFamily);
     });
 
-    it('offers the donor row only once something is borrowing', () => {
-      // A control for a face nothing needs is a control that does nothing.
+    it('enables the donor row only once something is borrowing', () => {
+      // Disabled rather than absent: a row that came and went as the font above
+      // it changed would move every control below it, so choosing a font would
+      // make the panel jump under the pointer.
       mount();
 
-      expect(row('setting-italicFont')).toBeNull();
+      expect(picker('italicFont').disabled).toBe(true);
 
       setBody(short?.id ?? '');
 
-      expect(row('setting-italicFont')).not.toBeNull();
+      expect(picker('italicFont').disabled).toBe(false);
     });
 
     it('says nothing for a family that draws all of its own', () => {

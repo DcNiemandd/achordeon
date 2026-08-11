@@ -119,7 +119,11 @@ interface Section {
 
           <div class="grid">
             @for (row of section.rows; track row.key) {
-              <div class="row" [attr.data-testid]="'setting-' + row.key">
+              <div
+                class="row"
+                [class.is-disabled]="isDisabled(row)"
+                [attr.data-testid]="'setting-' + row.key"
+              >
                 <div class="head">
                   <label class="label" [attr.for]="row.key">{{
                     row.ui.label
@@ -263,6 +267,7 @@ interface Section {
                       class="control"
                       [id]="row.key"
                       [value]="row.value"
+                      [disabled]="isDisabled(row)"
                       [attr.data-testid]="'select-' + row.key"
                       (change)="setFromInput(row, $event)"
                     >
@@ -446,6 +451,14 @@ interface Section {
       flex-direction: column;
       gap: var(--space-1);
       min-inline-size: 0;
+    }
+
+    /* Still there, still the same height. A row that vanished when it had
+       nothing to decide would move every control below it — and the one row
+       this happens to is the donor, whose relevance changes with the font
+       picker directly above it. */
+    .row.is-disabled {
+      opacity: 0.5;
     }
 
     .head {
@@ -670,24 +683,22 @@ export class SettingsPanel {
     GROUPS.map((group) => ({
       group,
       label: GROUP_LABELS[group],
-      rows: this.rows().filter(
-        (row) => row.ui.group === group && this.isDrawable(row),
-      ),
+      rows: this.rows().filter((row) => row.ui.group === group),
     })).filter((section) => section.rows.length > 0),
   );
 
   /**
-   * Whether a row is worth showing at all, as opposed to whether the scope has
-   * it (`keysForScope`, which is the cascade's answer and stays in `rows`).
+   * A row that is present but has nothing to decide.
    *
    * One case: the donor. A font to borrow a face *from* is a question only a
-   * font that is missing one asks, and the row would otherwise sit there in
-   * front of every user changing nothing. Filtered here rather than in `rows`
-   * because the answer is read off the resolved fonts, which are read off the
-   * rows.
+   * font that is missing one asks — but **disabled, not removed**: a row that
+   * comes and goes as the body font changes moves every control under it, so
+   * choosing a font would make the panel jump under the pointer. Greyed out it
+   * also says something a missing row cannot, which is that borrowing is a thing
+   * that happens and this is where it would be set.
    */
-  private isDrawable(row: Row): boolean {
-    return this.fontRole(row) !== 'italic' || this.borrowed().length > 0;
+  protected isDisabled(row: Row): boolean {
+    return this.fontRole(row) === 'italic' && this.borrowed().length === 0;
   }
 
   protected helpLabel(row: Row): string {

@@ -3,8 +3,7 @@
   "translations": {
     "actionBar.label": "Actions",
     "actionBar.rename": "Name",
-    "addFont.added": "Added {$fonts}.",
-    "addFont.close": "Done",
+    "addFont.close": "Cancel",
     "addFont.failed": "That font could not be added.",
     "addFont.fetch": "Get the font",
     "addFont.fetching": "Getting…",

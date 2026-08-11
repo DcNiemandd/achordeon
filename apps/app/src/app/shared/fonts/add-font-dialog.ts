@@ -71,12 +71,6 @@ import { Button, Dialog, Field } from '../../primitives';
             {{ message }}
           </p>
         }
-
-        @if (done().length > 0) {
-          <p class="done" role="status" data-testid="add-font-done">
-            {{ doneLabel(done()) }}
-          </p>
-        }
       </div>
 
       <button
@@ -136,12 +130,6 @@ import { Button, Dialog, Field } from '../../primitives';
       font-size: var(--text-sm);
       color: var(--danger);
     }
-
-    .done {
-      margin: 0;
-      font-size: var(--text-sm);
-      color: var(--text-muted);
-    }
   `,
 })
 export class AddFontDialog {
@@ -156,7 +144,6 @@ export class AddFontDialog {
   protected readonly url = signal('');
   protected readonly error = signal<string | null>(null);
   protected readonly isBusy = signal(false);
-  protected readonly done = signal<FontFamily[]>([]);
 
   protected readonly title = $localize`:@@addFont.title:Add a font`;
   protected readonly lead = $localize`:@@addFont.lead:TrueType (.ttf) only, and one file is one style — add the bold as a second file. A style you do not add is borrowed from another font.`;
@@ -167,12 +154,7 @@ export class AddFontDialog {
   protected readonly linkHint = $localize`:@@addFont.linkHint:Paste the embed link Google Fonts gives you, or a direct .ttf address on jsDelivr or raw.githubusercontent.com.`;
   protected readonly fetchLabel = $localize`:@@addFont.fetch:Get the font`;
   protected readonly busyLabel = $localize`:@@addFont.fetching:Getting…`;
-  protected readonly closeLabel = $localize`:@@addFont.close:Done`;
-
-  protected doneLabel(families: readonly FontFamily[]): string {
-    const names = families.map((one) => one.label).join(', ');
-    return $localize`:@@addFont.added:Added ${names}:fonts:.`;
-  }
+  protected readonly closeLabel = $localize`:@@addFont.close:Cancel`;
 
   protected async fromFile(files: FileList | null): Promise<void> {
     const file = files?.[0];
@@ -192,16 +174,20 @@ export class AddFontDialog {
    * Every refusal downstream carries its own reason — "OpenType/CFF outlines",
    * "only .ttf files", "no font called Xyz" — and the reason is the whole value
    * of refusing at add-time, so it is shown rather than replaced with a generic.
+   *
+   * **Success closes it**, and the confirmation is the list behind: the font is
+   * on it, in its own letters. A dialog that stayed open with a line of text in
+   * it left the user to work out whether anything had happened, and the one
+   * thing that would have told them was already on screen behind the dialog.
    */
   private async run(add: () => Promise<FontFamily[]>): Promise<void> {
     this.isBusy.set(true);
     this.error.set(null);
     try {
       const families = await add();
-      this.done.set(families);
       this.added.emit(families);
+      this.closed.emit();
     } catch (error) {
-      this.done.set([]);
       this.error.set(
         error instanceof Error && error.message
           ? error.message
