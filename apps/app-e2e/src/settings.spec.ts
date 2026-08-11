@@ -237,7 +237,10 @@ test.describe('global render settings', () => {
     await expect(page.getByTestId('select-titleFont')).toBeVisible();
     await expect(page.getByTestId('input-titleFont')).toHaveCount(0);
 
-    await page.getByTestId('select-titleFont').selectOption('serif');
+    // A family id, not a role: with a library there are two serifs and "serif"
+    // stops being a name. It survives as a lookup alias for songs written
+    // before the library existed, but it is not offered.
+    await page.getByTestId('select-titleFont').selectOption('crimson-text');
     await expect(page.getByTestId('reset-titleFont')).toBeVisible();
   });
 
@@ -304,11 +307,34 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('settings-panel')).toBeVisible();
   });
 
-  test('the coming-soon settings are shown but disabled', async ({ page }) => {
-    // Present, so the shape of the app is honest — but not operable, so nothing
-    // pretends to work.
-    await expect(page.getByTestId('font-library')).toBeVisible();
-    await expect(page.getByTestId('font-library')).toBeDisabled();
+  test('the font library lists what this device can set a song in', async ({
+    page,
+  }) => {
+    // It was a disabled coming-soon stub until the library landed. The bundled
+    // families are what a fresh device has, and adding is reachable from here.
+    await expect(page.getByTestId('font-list')).toBeVisible();
+    await expect(page.getByTestId('font-roboto-mono')).toBeVisible();
+    await expect(page.getByTestId('font-add')).toBeEnabled();
+  });
+
+  test('adding a font offers a file and a link', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+    await expect(page.getByTestId('add-font-file')).toBeVisible();
+    await expect(page.getByTestId('add-font-url')).toBeVisible();
+  });
+
+  test('a link that cannot be used says why, before anything is fetched', async ({
+    page,
+  }) => {
+    // Refused at add-time, with the user watching — which is the whole reason
+    // acquiring a font is a moment rather than a reference (ADR-0016).
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-url').fill('https://example.com/Font.ttf');
+    await page.getByTestId('add-font-fetch').click();
+
+    await expect(page.getByTestId('add-font-error')).toBeVisible();
   });
 
   // Chord notation used to be one of the stubs above. It is a registry row now,
