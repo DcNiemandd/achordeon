@@ -25,7 +25,7 @@
       "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
-        "files": ["/fonts/RobotoMono-*.ttf", "/fonts/OFL.txt"]
+        "files": ["/fonts/RobotoMono-*.ttf", "/fonts/*.txt"]
       }
     },
     {
@@ -33,11 +33,7 @@
       "installMode": "lazy",
       "updateMode": "lazy",
       "resources": {
-        "files": [
-          "/fonts/Caveat-*.ttf",
-          "/fonts/CrimsonText-*.ttf",
-          "/fonts/Oswald-*.ttf"
-        ]
+        "files": ["/fonts/*.ttf", "!/fonts/RobotoMono-*.ttf"]
       }
     }
   ]

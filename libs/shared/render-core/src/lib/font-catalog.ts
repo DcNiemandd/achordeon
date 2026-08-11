@@ -131,7 +131,7 @@ export const BUNDLED_FONTS: readonly FontFamily[] = [
       'normal-italic': { kind: 'asset', path: 'fonts/RobotoMono-Italic.ttf' },
       'bold-italic': { kind: 'asset', path: 'fonts/RobotoMono-BoldItalic.ttf' },
     },
-    license: 'Apache-2.0',
+    license: 'OFL-1.1',
     notice: 'fonts/OFL.txt',
   },
   {
