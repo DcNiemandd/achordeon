@@ -1,6 +1,7 @@
 // FontLoader — Epic 7 ▸ subtask 8 (real font bytes, for N faces)
 // Spec: PRD-RENDERING §3 (jsPDF registration), §4.10 (embedded both ways,
-// bundled catalog), ADR-0002 (Safari will not fetch a font from inside an SVG).
+// bundled catalog), ADR-0002 (Safari will not fetch a font from inside an SVG),
+// ADR-0017 (the catalog is one keyed table).
 //
 // One fetch, three consumers. A face is loaded once as raw TTF bytes and then:
 //
@@ -18,45 +19,25 @@
 // families — and Epic 11 wants exactly the opposite: precache the body face,
 // fetch a title face on first use. So they live in `public/fonts` and are
 // fetched.
+//
+// **Where they live is the catalog's business, not this file's.** The paths used
+// to sit in a constant here, hand-synced with the family names in `render-core`;
+// a mismatch drew a font nobody loaded. This class now asks the catalog, so the
+// two cannot disagree — and a family the *user* installed is an ordinary row
+// rather than a second code path.
 
 import { Injectable, signal, type Signal } from '@angular/core';
-import type {
-  FaceVariant,
-  FontBook,
-  FontFaceKey,
-  FontResolver,
+import {
+  BUNDLED_CATALOG,
+  DEFAULT_BODY_FONT,
+  type FaceSource,
+  type FaceVariant,
+  type FontBook,
+  type FontCatalog,
+  type FontFaceKey,
+  type FontId,
+  type FontResolver,
 } from '@achordeon/shared/render-core';
-
-/** The bundled files, by the family name the render names (§4.10 catalog). Keyed
- * by `${weight}-${style}`. Only the body family carries italic faces — markdown
- * emphasis is a body-lyric thing; titles are never markdown-parsed. */
-const FONT_FILES: Record<string, Partial<Record<FaceVariant, string>>> = {
-  'Roboto Mono': {
-    'normal-normal': 'fonts/RobotoMono-Regular.ttf',
-    'bold-normal': 'fonts/RobotoMono-Bold.ttf',
-    'normal-italic': 'fonts/RobotoMono-Italic.ttf',
-    'bold-italic': 'fonts/RobotoMono-BoldItalic.ttf',
-  },
-  'Crimson Text': {
-    'normal-normal': 'fonts/CrimsonText-Regular.ttf',
-    'bold-normal': 'fonts/CrimsonText-Bold.ttf',
-  },
-  Oswald: {
-    'normal-normal': 'fonts/Oswald-Regular.ttf',
-    'bold-normal': 'fonts/Oswald-Bold.ttf',
-  },
-  Caveat: {
-    'normal-normal': 'fonts/Caveat-Regular.ttf',
-    'bold-normal': 'fonts/Caveat-Bold.ttf',
-  },
-};
-
-/**
- * The face the whole app is set in. Fetched at boot rather than on demand — it
- * is on the path of the very first render, and Epic 11 precaches it for the same
- * reason. Every other family waits until a song actually chooses it.
- */
-export const BODY_FAMILY = 'Roboto Mono';
 
 /** `weight` as CSS spells it for the `FontFace` constructor. */
 const CSS_WEIGHT = { normal: '400', bold: '700' } as const;
@@ -84,6 +65,12 @@ export class FontLoader {
   private readonly inFlight = new Map<string, Promise<void>>();
 
   /**
+   * The families this device has. Bundled-only until the font library installs
+   * its own; everything below reads rows, never a hardcoded path.
+   */
+  readonly catalog: FontCatalog = BUNDLED_CATALOG;
+
+  /**
    * Bumped whenever a face lands. `RenderService.layout` reads it, so every
    * render `computed` re-runs against the real face by construction — the same
    * trick the CSS-loaded face already needed, now with a second trigger.
@@ -92,7 +79,10 @@ export class FontLoader {
   readonly epoch: Signal<number> = this.loaded.asReadonly();
 
   constructor() {
-    void this.ensure([BODY_FAMILY]);
+    // The face the whole app is set in, fetched at boot rather than on demand —
+    // it is on the path of the very first render, and Epic 11 precaches it for
+    // the same reason. Every other family waits until a song chooses it.
+    void this.ensure([DEFAULT_BODY_FONT]);
   }
 
   /** Bytes for one face, or `undefined` if it has not (yet) been fetched. */
@@ -111,11 +101,17 @@ export class FontLoader {
    * Helvetica, whose WinAnsi encoding has no `ě ř ů`: the summary came out with
    * holes in every Czech title while the songs beside it were perfect.
    */
-  book(families: readonly string[]): FontBook {
+  book(ids: readonly FontId[]): FontBook {
     const faces: FontBook = [];
-    for (const family of new Set(families)) {
+    for (const id of new Set(ids)) {
+      const family = this.catalog.get(id);
+      if (!family) continue;
       for (const weight of ['normal', 'bold'] as const) {
-        const face: FontFaceKey = { family, weight, style: 'normal' };
+        const face: FontFaceKey = {
+          family: family.family,
+          weight,
+          style: 'normal',
+        };
         const base64 = this.lookup(face);
         if (base64) faces.push({ ...face, base64 });
       }
@@ -135,23 +131,26 @@ export class FontLoader {
    * at.
    */
   async ensure(
-    families: readonly string[],
+    ids: readonly FontId[],
     weights: readonly ('normal' | 'bold')[] = ['normal', 'bold'],
   ): Promise<void> {
     const jobs: Promise<void>[] = [];
-    for (const family of new Set(families)) {
-      const files = FONT_FILES[family];
-      if (!files) continue; // a family we bundle no bytes for — CSS fallback only
-      for (const [variant, url] of Object.entries(files) as [
+    for (const id of new Set(ids)) {
+      const family = this.catalog.get(id);
+      if (!family) continue; // an id this device has no row for — CSS fallback only
+      for (const [variant, source] of Object.entries(family.faces) as [
         FaceVariant,
-        string,
+        FaceSource,
       ][]) {
+        if (source.kind !== 'asset') continue;
         const [weight, style] = variant.split('-') as [
           'normal' | 'bold',
           'normal' | 'italic',
         ];
         if (!weights.includes(weight)) continue;
-        jobs.push(this.load({ family, weight, style }, url));
+        jobs.push(
+          this.load({ family: family.family, weight, style }, source.path),
+        );
       }
     }
     await Promise.all(jobs);

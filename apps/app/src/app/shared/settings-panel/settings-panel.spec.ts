@@ -4,9 +4,10 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { FontLoader } from '@achordeon/shared/data-access';
 import {
+  BODY_FONT,
+  BUNDLED_CATALOG,
+  BUNDLED_FONTS,
   DEFAULT_TUNING,
-  FONT_CHOICES,
-  resolveFontChoice,
 } from '@achordeon/shared/render-core';
 import { ScreenShape } from '../layout';
 import { ASPECT_OPTION_GROUPS, MATCH_SCREEN } from './aspect-options';
@@ -23,6 +24,8 @@ describe('SettingsPanel', () => {
 
   /** The real loader fetches; here we only care what it was asked for. */
   class FakeFonts {
+    /** The families a device has. Bundled-only, which is what a fresh one has. */
+    readonly catalog = BUNDLED_CATALOG;
     readonly asked: { families: readonly string[]; weights?: unknown }[] = [];
     ensure(families: readonly string[], weights?: unknown): Promise<void> {
       this.asked.push({ families, weights });
@@ -98,14 +101,23 @@ describe('SettingsPanel', () => {
     expect(headings).toEqual(ASPECT_OPTION_GROUPS.map((group) => group.label));
   });
 
-  it('leaves a flat list flat', () => {
-    // titleFont is a closed list of four; headings there would be noise.
+  it('keeps the option that is not a family out of the shelves', () => {
+    // "Same as song" is a sentinel, not a family (ADR-0017), so it must not end
+    // up filed under a category heading that would be lying about it.
     mount();
 
-    expect(picker('titleFont').querySelectorAll('optgroup')).toHaveLength(0);
+    const select = picker('titleFont');
+    expect(select.querySelectorAll('optgroup').length).toBeGreaterThan(0);
     expect(
-      picker('titleFont').querySelectorAll('option').length,
-    ).toBeGreaterThan(0);
+      [...select.querySelectorAll('optgroup option')].map((opt) =>
+        opt.getAttribute('value'),
+      ),
+    ).not.toContain(BODY_FONT);
+    expect(
+      [...select.querySelectorAll('option')].map((opt) =>
+        opt.getAttribute('value'),
+      ),
+    ).toContain(BODY_FONT);
   });
 
   describe('match this screen', () => {
@@ -166,18 +178,17 @@ describe('SettingsPanel', () => {
     }
 
     /**
-     * The face each choice is drawn in, asked of the catalog rather than named
-     * here — the same call `resolveFontChoice` makes for the page. A test that
-     * spelled "Caveat" out would pass while the sample showed a face the render
-     * had stopped using.
+     * The face each family is drawn in, read off the catalog rather than named
+     * here — the same row the page resolves against. A test that spelled
+     * "Caveat" out would pass while the sample showed a face the render had
+     * stopped using.
      */
-    it.each(FONT_CHOICES)('draws %s in the face it selects', (choice) => {
+    it.each(BUNDLED_FONTS)('draws $id in its own face', (family) => {
       mount();
 
-      chosen(choice);
+      chosen(family.id);
 
-      const family = resolveFontChoice(choice, DEFAULT_TUNING).family;
-      expect(sample('titleFont').style.fontFamily).toContain(family);
+      expect(sample('titleFont').style.fontFamily).toContain(family.family);
     });
 
     it('shows the song\'s own face for "same as song"', () => {
@@ -185,7 +196,19 @@ describe('SettingsPanel', () => {
       // cannot say what it looks like and only the letters can.
       mount();
 
-      chosen('body');
+      chosen(BODY_FONT);
+
+      expect(sample('titleFont').style.fontFamily).toContain(
+        DEFAULT_TUNING.fontFamily,
+      );
+    });
+
+    it('shows the body face for a family this device does not have', () => {
+      // A song from a sender who had a font this install lacks. The value stays
+      // in the record (ADR-0017); the page it draws is the default one.
+      mount();
+
+      chosen('custom:not-installed');
 
       expect(sample('titleFont').style.fontFamily).toContain(
         DEFAULT_TUNING.fontFamily,
@@ -198,13 +221,12 @@ describe('SettingsPanel', () => {
       // would quietly draw in the CSS fallback.
       mount();
 
-      chosen('script');
+      const script = BUNDLED_FONTS.find((one) => one.category === 'script');
+      chosen(script?.id ?? '');
 
       const fonts = TestBed.inject(FontLoader) as unknown as FakeFonts;
       const last = fonts.asked[fonts.asked.length - 1];
-      expect(last.families).toContain(
-        resolveFontChoice('script', DEFAULT_TUNING).family,
-      );
+      expect(last.families).toContain(script?.id);
       // One line at one weight — not a quarter-megabyte of bold nobody sees.
       expect(last.weights).toEqual(['normal']);
     });

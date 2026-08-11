@@ -14,6 +14,14 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { FontLoader } from '@achordeon/shared/data-access';
+import {
+  BODY_FONT,
+  DEFAULT_BODY_FONT,
+  DEFAULT_TUNING,
+  resolveFonts,
+  type FontCategory,
+  type FontId,
+} from '@achordeon/shared/render-core';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { ScreenShape } from '../layout';
 import {
@@ -22,10 +30,13 @@ import {
   isMatchScreen,
 } from './aspect-options';
 import {
+  FONT_CATEGORY_LABELS,
+  FONT_SAMPLE_TEXT,
   GROUPS,
   GROUP_LABELS,
   SETTING_UI,
   keysForScope,
+  type FontRole,
   type Group,
   type Option,
   type OptionGroup,
@@ -233,6 +244,25 @@ interface Section {
                         </select>
                       </div>
                     }
+                  }
+
+                  @case ('font') {
+                    <!-- A closed list like the one above, but its options come
+                         from the device's font library rather than from this
+                         file — installing a font has to add a row here without
+                         anyone editing a list. -->
+                    <select
+                      class="control"
+                      [id]="row.key"
+                      [value]="row.value"
+                      [attr.data-testid]="'select-' + row.key"
+                      (change)="setFromInput(row, $event)"
+                    >
+                      <ng-container
+                        [ngTemplateOutlet]="optionList"
+                        [ngTemplateOutletContext]="{ $implicit: row }"
+                      />
+                    </select>
                   }
 
                   @case ('color') {
@@ -671,21 +701,92 @@ export class SettingsPanel {
   }
 
   /** The families the visible samples are asking for, as the values change. */
-  private readonly sampleFaces = computed<string[]>(() =>
-    this.rows().flatMap((row) =>
-      row.ui.sample ? [row.ui.sample(String(row.value)).family] : [],
-    ),
+  private readonly sampleFaces = computed<FontId[]>(() =>
+    this.rows().flatMap((row) => {
+      const sample = this.sample(row);
+      return sample ? [sample.id] : [];
+    }),
   );
 
   /**
-   * What this row's sample line shows, or `null` on a row that has none.
+   * The body face the *title* row's "Same as song" is standing in for.
    *
-   * Recomputed from the value on every read, so picking `Handwritten` redraws the
-   * sample in Caveat with no second binding to keep in sync.
+   * Read off this panel's own body row rather than assumed, so changing the body
+   * font redraws the title sample too — which is the entire content of that
+   * option. Absent (a scope with no body row) it falls through to the renderer's
+   * own face, which is what such a scope would really draw with.
+   */
+  private readonly bodyFontId = computed<FontId | undefined>(() => {
+    const row = this.rows().find(
+      (one) => one.ui.control.kind === 'font' && one.ui.control.role === 'body',
+    );
+    return row ? String(row.value) : undefined;
+  });
+
+  /**
+   * What this row's sample line shows, or `null` on a row that is not a font.
+   *
+   * The catalog is asked, never copied: it is the same call the renderer makes,
+   * so the sample cannot end up showing a face the page will not use.
    */
   protected sample(row: Row): Sample | null {
-    return row.ui.sample?.(String(row.value)) ?? null;
+    const role = this.fontRole(row);
+    if (!role) return null;
+    const font = this.resolveFor(role, String(row.value));
+    return {
+      // Says what it is rather than standing in for the title, and short enough
+      // to survive a 300px dialog column without wrapping.
+      text: FONT_SAMPLE_TEXT,
+      // Never `null`: a value nothing in the catalog answers draws in the
+      // renderer's own face, which is the body family and already loaded.
+      id: font.id ?? DEFAULT_BODY_FONT,
+      // Quoted: most family names have a space in them.
+      stack: `'${font.family}', ${font.fallback}`,
+    };
   }
+
+  private fontRole(row: Row): FontRole | null {
+    return row.ui.control.kind === 'font' ? row.ui.control.role : null;
+  }
+
+  private resolveFor(role: FontRole, value: string) {
+    const catalog = this.fonts.catalog;
+    if (role === 'title') {
+      return resolveFonts(
+        catalog,
+        { body: this.bodyFontId(), title: value },
+        DEFAULT_TUNING,
+      ).title;
+    }
+    return resolveFonts(catalog, { body: value }, DEFAULT_TUNING).body;
+  }
+
+  /**
+   * The library, shelved by category, plus the one option that is not a family.
+   *
+   * `body` is a sentinel, not a font (ADR-0017), so it sits ungrouped at the top
+   * where a "no choice" answer belongs rather than under a heading it would be
+   * lying about.
+   */
+  private fontOptions(role: FontRole): readonly (Option | OptionGroup)[] {
+    const shelves = new Map<FontCategory, Option[]>();
+    for (const family of this.fonts.catalog.list()) {
+      const shelf = shelves.get(family.category) ?? [];
+      shelf.push({ value: family.id, label: family.label });
+      shelves.set(family.category, shelf);
+    }
+    const groups: (Option | OptionGroup)[] = [...shelves].map(
+      ([category, options]) => ({
+        label: FONT_CATEGORY_LABELS[category],
+        options,
+      }),
+    );
+    return role === 'title'
+      ? [{ value: BODY_FONT, label: this.sameAsSongLabel }, ...groups]
+      : groups;
+  }
+
+  protected readonly sameAsSongLabel = $localize`:@@titleFont.body:Same as song`;
 
   protected choices(row: Row): readonly Option[] {
     return row.ui.control.kind === 'choice' ? row.ui.control.options : [];
@@ -705,12 +806,19 @@ export class SettingsPanel {
    * left empty by the filter drops out rather than showing a bare heading.
    */
   protected optionGroups(row: Row): readonly OptionGroup[] {
-    if (row.ui.control.kind !== 'select') {
+    const role = this.fontRole(row);
+    const options =
+      role !== null
+        ? this.fontOptions(role)
+        : row.ui.control.kind === 'select'
+          ? row.ui.control.options
+          : null;
+    if (!options) {
       return [];
     }
 
     const groups: OptionGroup[] = [];
-    for (const entry of row.ui.control.options) {
+    for (const entry of options) {
       if ('options' in entry) {
         groups.push(entry);
         continue;

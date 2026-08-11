@@ -3,12 +3,14 @@
 
 import { Injectable, inject, signal, type Signal } from '@angular/core';
 import {
+  DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
   createCanvasMeasurer,
   createLayout,
   emit,
-  resolveFontChoice,
-  type FontChoiceName,
+  resolveFonts,
+  type FontCatalog,
+  type FontId,
   type Layout,
   type RenderOpts,
   type RenderPlan,
@@ -20,7 +22,7 @@ import {
   type GlobalSettings,
   type SongAst,
 } from '@achordeon/shared/domain';
-import { BODY_FAMILY, FontLoader } from './font-loader';
+import { FontLoader } from './font-loader';
 
 /**
  * AST + resolved settings → SVG (PRD-RENDERING §2). Screen, PNG and PDF all come
@@ -38,13 +40,21 @@ import { BODY_FAMILY, FontLoader } from './font-loader';
  * value and never re-runs it, and never parses settings out of content
  * (ADR-0001).
  */
-/** The families one render draws with: the body face, plus its title choice. */
-function familiesFor(settings: GlobalSettings): string[] {
-  const title = resolveFontChoice(
-    settings.titleFont as FontChoiceName,
+/**
+ * The families one render draws with, as catalog ids: the body face, plus its
+ * title choice where that is a family of its own.
+ *
+ * Asked of the catalog rather than derived from the setting, so an alias, an
+ * unknown id and the `body` sentinel all resolve exactly the way the geometry
+ * will resolve them — the two lists cannot drift.
+ */
+function familiesFor(settings: GlobalSettings, catalog: FontCatalog): FontId[] {
+  const fonts = resolveFonts(
+    catalog,
+    { title: settings.titleFont as FontId },
     DEFAULT_TUNING,
   );
-  return [BODY_FAMILY, title.family];
+  return [DEFAULT_BODY_FONT, ...(fonts.title.id ? [fonts.title.id] : [])];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -73,6 +83,7 @@ export class RenderService {
 
   private readonly layoutWith: Layout = createLayout(this.measurer, {
     fonts: this.fontLoader.resolver,
+    catalog: this.fontLoader.catalog,
   });
 
   /**
@@ -115,7 +126,7 @@ export class RenderService {
     // A title face is fetched on first use (Epic 11's precache split), so the
     // first render of a serif-titled song legitimately has no bytes for it. Ask
     // now, re-render when it lands — which the epoch above makes automatic.
-    void this.fontLoader.ensure(familiesFor(settings));
+    void this.fontLoader.ensure(familiesFor(settings, this.fontLoader.catalog));
     // The one place chords are named (see `respellChords`). Here rather than in
     // the parser so the editor keeps showing the source as written, and here
     // rather than in each caller so screen, PNG, PDF and the songbook exports
@@ -138,7 +149,9 @@ export class RenderService {
    * awaits this before it lays anything out.
    */
   async ensureFonts(settings: readonly GlobalSettings[]): Promise<void> {
-    await this.fontLoader.ensure(settings.flatMap(familiesFor));
+    await this.fontLoader.ensure(
+      settings.flatMap((one) => familiesFor(one, this.fontLoader.catalog)),
+    );
   }
 
   /**

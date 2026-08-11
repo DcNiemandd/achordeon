@@ -21,12 +21,14 @@ import {
   type Uuid,
 } from '@achordeon/shared/domain';
 import {
+  DEFAULT_BODY_FAMILY,
+  DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
   type RenderPlan,
   turnedSvg,
 } from '@achordeon/shared/render-core';
 import { ParserService } from '../parser/parser-service';
-import { BODY_FAMILY, FontLoader } from '../render/font-loader';
+import { FontLoader } from '../render/font-loader';
 import { RenderService } from '../render/render-service';
 import { SettingsStore } from '../stores/settings-store';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
@@ -280,7 +282,7 @@ export interface SongbookPreview extends SongbookPaper {
 
 /** The summary's face and ink in the preview: the body family, printed black. */
 const SUMMARY_PREVIEW_STYLE: SummarySvgStyle = {
-  fontFamily: BODY_FAMILY,
+  fontFamily: DEFAULT_BODY_FAMILY,
   color: '#1a1a1a',
 };
 
@@ -293,7 +295,7 @@ const SUMMARY_PREVIEW_STYLE: SummarySvgStyle = {
  * which is the PDF, has no dark form and never will.
  */
 const SUMMARY_PREVIEW_STYLE_DARK: SummarySvgStyle = {
-  fontFamily: BODY_FAMILY,
+  fontFamily: DEFAULT_BODY_FAMILY,
   color: DEFAULT_TUNING.dark.textColor,
 };
 
@@ -412,7 +414,7 @@ export class DownloadService {
     const doc = await createPdf(page);
     // The body face first, for the PDF's own text (the summary). Songs bring
     // their own faces; the summary is not a render and has none.
-    registerFonts(doc, this.fonts.book([BODY_FAMILY]));
+    registerFonts(doc, this.fonts.book([DEFAULT_BODY_FONT]));
     for (const one of rendered) registerFonts(doc, one.plan.fonts);
 
     // Laid out before anything is drawn, because a summary that lists page 7 has
@@ -875,7 +877,7 @@ export class DownloadService {
     // WinAnsi-encoded and has no `ě ř ů`, so a Czech title came out of the
     // summary with holes in it while the song two pages later was perfect.
     const setPen = (): void => {
-      doc.setFont(BODY_FAMILY, 'normal');
+      doc.setFont(DEFAULT_BODY_FAMILY, 'normal');
       doc.setFontSize(layout.metrics.fontSize);
     };
     setPen();
@@ -942,7 +944,7 @@ export class DownloadService {
     const x = isLeft ? margin : isRight ? page.width - margin : page.width / 2;
     const align = isLeft ? 'left' : isRight ? 'right' : 'center';
 
-    doc.setFont(BODY_FAMILY, 'normal');
+    doc.setFont(DEFAULT_BODY_FAMILY, 'normal');
     for (let sheet = frontMatter + 1; sheet <= total; sheet++) {
       doc.setPage(sheet);
       doc.setFontSize(9);
@@ -986,7 +988,7 @@ function previewMeasure(): MeasureText {
   const ctx = globalThis.document?.createElement('canvas').getContext('2d');
   if (!ctx) return () => 0;
   return (text, fontSize) => {
-    ctx.font = `${fontSize}px ${BODY_FAMILY}`;
+    ctx.font = `${fontSize}px ${DEFAULT_BODY_FAMILY}`;
     return ctx.measureText(text).width;
   };
 }
@@ -1001,7 +1003,7 @@ function previewMeasure(): MeasureText {
  */
 function measureWith(doc: jsPDF): MeasureText {
   return (text, fontSize) => {
-    doc.setFont(BODY_FAMILY, 'normal');
+    doc.setFont(DEFAULT_BODY_FAMILY, 'normal');
     doc.setFontSize(fontSize);
     return doc.getTextWidth(text);
   };
