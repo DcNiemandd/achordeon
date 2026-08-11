@@ -247,7 +247,7 @@ describe('SettingsPanel', () => {
       );
       expect(
         [...samples].map((el: Element) => el.getAttribute('data-testid')),
-      ).toEqual(['sample-titleFont']);
+      ).toEqual(['sample-bodyFont', 'sample-titleFont']);
     });
   });
 

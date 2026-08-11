@@ -72,13 +72,20 @@ export type Control =
 export type FontRole = 'body' | 'title';
 
 /** Rows are grouped so the panel reads as sections, not a wall of inputs. */
-export type Group = 'page' | 'title' | 'chords';
+export type Group = 'page' | 'title' | 'fonts' | 'chords';
 
-export const GROUPS: readonly Group[] = ['page', 'title', 'chords'];
+/**
+ * `fonts` is a section rather than a row apiece under whatever each face
+ * happens to style. The deciding reason is not taxonomy: adding a font to the
+ * device needs exactly one home, and fonts scattered across two sections leave
+ * it without one.
+ */
+export const GROUPS: readonly Group[] = ['page', 'title', 'fonts', 'chords'];
 
 export const GROUP_LABELS: Record<Group, string> = {
   page: $localize`:@@settingGroup.page:Page`,
   title: $localize`:@@settingGroup.title:Title`,
+  fonts: $localize`:@@settingGroup.fonts:Fonts`,
   chords: $localize`:@@settingGroup.chords:Chords`,
 };
 
@@ -237,10 +244,16 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
       ],
     },
   },
+  bodyFont: {
+    label: $localize`:@@setting.bodyFont:Song`,
+    help: $localize`:@@setting.bodyFont.help:The face the song itself is set in — lyrics, chords and labels. The title has its own, which can be told to follow this one.`,
+    group: 'fonts',
+    control: { kind: 'font', role: 'body' },
+  },
   titleFont: {
-    label: $localize`:@@setting.titleFont:Font`,
+    label: $localize`:@@setting.titleFont:Title`,
     help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,
-    group: 'title',
+    group: 'fonts',
     // A dropdown, not a segmented row: side-by-side buttons would overflow the
     // song-settings dialog, and the list grows with every font installed.
     //

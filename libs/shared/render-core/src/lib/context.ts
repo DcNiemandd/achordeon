@@ -73,7 +73,10 @@ export function resolveStyles(
   // the body" and can only be honoured by something that knows what that is.
   const fonts = resolveFonts(
     catalog,
-    { title: settings.titleFont as FontId },
+    {
+      body: settings.bodyFont as FontId,
+      title: settings.titleFont as FontId,
+    },
     tuning,
   );
   for (const role of roles) {

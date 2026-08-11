@@ -51,10 +51,20 @@ import { FontLoader } from './font-loader';
 function familiesFor(settings: GlobalSettings, catalog: FontCatalog): FontId[] {
   const fonts = resolveFonts(
     catalog,
-    { title: settings.titleFont as FontId },
+    {
+      body: settings.bodyFont as FontId,
+      title: settings.titleFont as FontId,
+    },
     DEFAULT_TUNING,
   );
-  return [DEFAULT_BODY_FONT, ...(fonts.title.id ? [fonts.title.id] : [])];
+  // The default body font is asked for whether or not this song uses it: it is
+  // the face the renderer falls back to when a choice resolves to nothing, and
+  // it is precached, so asking costs nothing and not asking is a blank page.
+  return [
+    DEFAULT_BODY_FONT,
+    ...(fonts.body.id ? [fonts.body.id] : []),
+    ...(fonts.title.id ? [fonts.title.id] : []),
+  ];
 }
 
 @Injectable({ providedIn: 'root' })

@@ -62,7 +62,12 @@ export interface RenderTuning {
   /** The base reference lyric size, in base units. All role sizes derive from it (§4.1). */
   baseSizePx: number;
 
-  /** The one bundled v1 family (§4.10). Bytes are injected via the FontBook seam. */
+  /**
+   * The face a song falls back to when nothing in the catalog answers its
+   * `bodyFont` (§4.10) — a family this device does not have, or a build with no
+   * catalog at all. The normal path resolves a catalog row instead; bytes are
+   * injected via the FontBook seam either way.
+   */
   fontFamily: string;
   /** CSS generic(s) appended after the family in the SVG `font-family` (§4.10 fallback). */
   fallbackStack: string;
