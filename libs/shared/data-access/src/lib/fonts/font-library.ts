@@ -25,7 +25,11 @@ import {
   type FontFamily,
   type FontId,
 } from '@achordeon/shared/render-core';
-import { ACHORDEON_DB } from '../stores/repositories';
+import {
+  ACHORDEON_DB,
+  SONGBOOK_REPOSITORY,
+  SONG_REPOSITORY,
+} from '../stores/repositories';
 import type { FontFaceRow } from '../persistence/db';
 
 /** Where a face's bytes came from, for the row and for what the export names. */
@@ -37,6 +41,8 @@ export interface FontOrigin {
 @Injectable({ providedIn: 'root' })
 export class FontLibrary {
   private readonly db = inject(ACHORDEON_DB);
+  private readonly songs = inject(SONG_REPOSITORY);
+  private readonly songbooks = inject(SONGBOOK_REPOSITORY);
 
   /** Every installed face, as rows. One read at boot, then kept in step by writes. */
   private readonly rows = signal<readonly FontFaceRow[]>([]);
@@ -129,6 +135,37 @@ export class FontLibrary {
     await this.db.fonts.where('familyId').equals(id).delete();
     await this.load();
   }
+
+  /**
+   * How many songs and songbooks name this family.
+   *
+   * Here rather than in a presenter because it is a question about the library —
+   * "what does deleting this cost?" — and every caller of `remove` owes the user
+   * the answer. It reads all records rather than an index: a font id is inside a
+   * settings bag, which IndexedDB cannot index, and this runs once behind a
+   * confirmation rather than on any hot path.
+   */
+  async countUsers(id: FontId): Promise<number> {
+    const [songs, songbooks] = await Promise.all([
+      this.songs.all(),
+      this.songbooks.all(),
+    ]);
+    const bags = [
+      ...songs.map((song) => song.settings),
+      ...songbooks.map((book) => book.settings),
+    ];
+    return bags.filter((bag) => namesFont(bag, id)).length;
+  }
+}
+
+/** The three settings that hold a font id (§4.10). */
+const FONT_KEYS = ['bodyFont', 'titleFont', 'italicFont'] as const;
+
+function namesFont(
+  bag: Record<string, unknown> | undefined,
+  id: FontId,
+): boolean {
+  return FONT_KEYS.some((key) => bag?.[key] === id);
 }
 
 /**

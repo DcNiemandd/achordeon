@@ -52,6 +52,22 @@ function cspMeta(source) {
   const connect = [
     "'self'",
     'https://www.googleapis.com',
+    // Where a font the user adds by link comes from (ADR-0016). Both reach the
+    // original TTFs of the Google Fonts catalogue and both answer with
+    // `Access-Control-Allow-Origin: *`, which is what makes the bytes readable
+    // from script at all — fonts have been CORS-restricted since the WOFF era,
+    // and `no-cors` returns an opaque response with nothing in it.
+    //
+    // `connect-src` and not `font-src`, and that is the whole shape of the
+    // feature: the fetch happens **once**, at add-time, and the bytes go into
+    // IndexedDB. Nothing is fetched at render time, ever, so `font-src` does not
+    // move — stored bytes reach the browser through `FontFace(family, buffer)`,
+    // which is not a fetch.
+    //
+    // Two named hosts rather than a wildcard: `*` would open exactly the
+    // exfiltration channel §7 names as the top real risk.
+    'https://cdn.jsdelivr.net',
+    'https://raw.githubusercontent.com',
     ...supabaseOrigins(),
   ];
   // The dev-server's reload socket. `ws:` rather than the two loopback origins it

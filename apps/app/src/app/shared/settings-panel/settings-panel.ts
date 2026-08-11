@@ -24,6 +24,7 @@ import {
   type FontId,
 } from '@achordeon/shared/render-core';
 import { Button, Icon, Tooltip } from '../../primitives';
+import { AddFontDialog } from '../fonts';
 import { ScreenShape } from '../layout';
 import {
   MATCH_SCREEN,
@@ -32,6 +33,7 @@ import {
 } from './aspect-options';
 import {
   borrowedNote,
+  ADD_FONT,
   FONT_CATEGORY_LABELS,
   FONT_SAMPLE_TEXT,
   GROUPS,
@@ -82,7 +84,7 @@ interface Section {
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Icon, Tooltip, NgTemplateOutlet],
+  imports: [AddFontDialog, Button, Icon, Tooltip, NgTemplateOutlet],
   template: `
     <!-- The option markup, written once for both selects below: a closed list and
          a collapsed picker differ in how they are worn, not in what they offer.
@@ -105,6 +107,10 @@ interface Section {
         }
       }
     </ng-template>
+
+    @if (isAddingFont()) {
+      <app-add-font-dialog (closed)="isAddingFont.set(false)" />
+    }
 
     <div class="panel" data-testid="settings-panel">
       @for (section of sections(); track section.group) {
@@ -841,12 +847,22 @@ export class SettingsPanel {
         options,
       }),
     );
+    // "Add font…" last, where a list ends rather than where it begins: it is not
+    // one of the answers, it is how there come to be more of them. One home,
+    // reachable identically from a song's settings and from the settings page —
+    // the alternative is a user who can see the list but not add to it wherever
+    // they happen to be standing.
+    const add: Option = { value: ADD_FONT, label: this.addFontLabel };
     return role === 'title'
-      ? [{ value: BODY_FONT, label: this.sameAsSongLabel }, ...groups]
-      : groups;
+      ? [{ value: BODY_FONT, label: this.sameAsSongLabel }, ...groups, add]
+      : [...groups, add];
   }
 
   protected readonly sameAsSongLabel = $localize`:@@titleFont.body:Same as song`;
+  protected readonly addFontLabel = $localize`:@@fonts.add:Add a font…`;
+
+  /** Open the dialog while the picker still shows the value it had. */
+  protected readonly isAddingFont = signal(false);
 
   protected choices(row: Row): readonly Option[] {
     return row.ui.control.kind === 'choice' ? row.ui.control.options : [];
@@ -980,6 +996,14 @@ export class SettingsPanel {
    */
   protected setFromInput(row: Row, event: Event): void {
     const raw = (event.target as HTMLInputElement).value;
+    if (raw === ADD_FONT) {
+      // Not a value. The select is put back to what it was showing, because the
+      // setting has not changed and will not unless a font arrives and is then
+      // chosen.
+      (event.target as HTMLSelectElement).value = String(row.value);
+      this.isAddingFont.set(true);
+      return;
+    }
     const problem = row.ui.validate?.(raw) ?? null;
     this.setError(row.key, problem);
     if (problem === null) {

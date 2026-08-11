@@ -1,0 +1,138 @@
+// Reading what someone pasted — ADR-0016 (two front-ends, one path)
+//
+// Pure, and separate from the fetching so that "is this a font I can get?" is a
+// question with a testable answer and no network.
+//
+// **Two front-ends.** A direct `.ttf` URL on an allow-listed host is used as it
+// stands. A Google Fonts embed URL — the block the site tells you to paste into
+// your `<head>` — is read for its **query string only**: the family names. The
+// CSS it points at is never requested, because `fonts.googleapis.com/css2`
+// answers by User-Agent (TrueType to curl, woff2 to a browser) and `User-Agent`
+// is a forbidden header name, so `fetch` silently drops any attempt to ask as
+// something else.
+//
+// **An allow-list, not a wildcard.** Reading a cross-origin response body from
+// script needs `Access-Control-Allow-Origin`, and hosts that were not built to
+// serve web fonts mostly do not send it — the failure arrives as an
+// unexplainable `TypeError`, per host, unpredictably. Both hosts below send `*`
+// and both reach the original TTFs of the Google Fonts catalogue.
+
+/** The hosts a font may be fetched from. Adding one is a redeploy, not a setting. */
+export const FONT_HOSTS: readonly string[] = [
+  'cdn.jsdelivr.net',
+  'raw.githubusercontent.com',
+];
+
+/** Why a pasted string cannot be used. The message is shown, so it says what is wrong. */
+export class FontUrlError extends Error {}
+
+/** What a pasted string turned out to be. */
+export type FontRequest =
+  /** One file, already at an address that can be fetched. */
+  | { readonly kind: 'file'; readonly url: string }
+  /** Family names, still to be resolved through the index. */
+  | { readonly kind: 'google'; readonly families: readonly string[] };
+
+/** One family's row in the generated index: its directory and its TTF files. */
+export interface FontIndexRow {
+  readonly d: string;
+  readonly f: readonly string[];
+}
+
+export type FontIndex = Readonly<Record<string, FontIndexRow>>;
+
+/**
+ * The key a family name is looked up by.
+ *
+ * `google/fonts` folders its families as lowercase runs of letters and digits —
+ * "Crimson Text" is `crimsontext`, not `crimson-text`. The generator uses the
+ * folder name as the key, so this has to agree with it exactly; it is
+ * deliberately **not** `slugify`, whose hyphens are what a *setting* id wants.
+ */
+export function familyKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** Read a pasted string, or say why it cannot be used. */
+export function readFontUrl(raw: string): FontRequest {
+  const text = raw.trim();
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new FontUrlError('that is not a link');
+  }
+  if (url.protocol !== 'https:') {
+    throw new FontUrlError('only https links');
+  }
+
+  if (url.hostname === 'fonts.googleapis.com') {
+    const families = googleFamilies(url);
+    if (families.length === 0) {
+      throw new FontUrlError('that link names no font');
+    }
+    return { kind: 'google', families };
+  }
+
+  if (!FONT_HOSTS.includes(url.hostname)) {
+    throw new FontUrlError(`only ${FONT_HOSTS.join(' and ')}`);
+  }
+  if (!url.pathname.toLowerCase().endsWith('.ttf')) {
+    throw new FontUrlError('only .ttf files');
+  }
+  return { kind: 'file', url: url.toString() };
+}
+
+/**
+ * The family names out of an embed URL's query string.
+ *
+ * `?family=Courier+Prime:ital,wght@0,400;1,400&family=Oswald:wght@200..700` —
+ * the axis spec after the colon is what the *website* would have asked for and
+ * has no bearing on which files exist, so it is dropped. Which faces come back
+ * is decided by what the repo actually ships (`filesFor`).
+ */
+function googleFamilies(url: URL): string[] {
+  const names = url.searchParams
+    .getAll('family')
+    .map((value) => value.split(':')[0].trim())
+    .filter((name) => name.length > 0);
+  return [...new Set(names)];
+}
+
+/** The four faces worth fetching, by the suffix a static file names them with. */
+const STATIC_FACES = ['-Regular', '-Bold', '-Italic', '-BoldItalic'];
+
+/**
+ * Which of a family's files to fetch.
+ *
+ * **Static files win.** A variable TTF registers with jsPDF as its default
+ * instance and nothing else — `addFont` reads `glyf` and ignores `gvar` — so a
+ * family that ships both would otherwise be installed as a bold that is not
+ * bold in the PDF while the screen, which *can* vary the axis, shows a real one.
+ * That is the divergence §4.10 forbids.
+ *
+ * Where a family ships **only** variable files, they are taken anyway: one
+ * usable face each is better than nothing, and the family then simply borrows
+ * what it has not got (ADR-0017's donor rule) with no special case here.
+ */
+export function filesFor(row: FontIndexRow): string[] {
+  const statics = row.f.filter((file) => !file.includes('['));
+  const wanted = statics.filter((file) =>
+    STATIC_FACES.some((face) => file.endsWith(`${face}.ttf`)),
+  );
+  if (wanted.length > 0) return wanted;
+  // A family whose statics are all named something else — "Light", "SemiBold".
+  // The regular is not identifiable from the name, so take the file the sfnt
+  // parse can identify, which is any of them, and let it say what it is.
+  if (statics.length > 0) return [statics[0]];
+  return row.f.filter((file) => file.includes('['));
+}
+
+/** jsDelivr's address for one file in `google/fonts`. */
+export function jsdelivrUrl(dir: string, file: string): string {
+  const path = `${dir}/${file}`
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return `https://cdn.jsdelivr.net/gh/google/fonts@main/${path}`;
+}
