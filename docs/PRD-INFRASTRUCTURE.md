@@ -291,6 +291,12 @@ copy wins). [decided]
   does nothing about. Spend effort here instead:
   - **CSP** via `<meta http-equiv>` (GitHub Pages can't set headers) + **SRI** on
     any third-party script; minimize third-party JS.
+  - **Font acquisition widens `connect-src` by exactly two hosts** —
+    `cdn.jsdelivr.net` and `raw.githubusercontent.com` — and nothing else
+    (ADR-0016). `font-src` does **not** move: an acquired font's bytes live in
+    IndexedDB and reach the browser through `FontFace(family, arrayBuffer)`, which
+    is not a fetch. A wildcard `connect-src` was rejected precisely because it
+    would open the exfiltration channel this section names as the top real risk.
   - **Song content renders to HTML and is user input** → never `innerHTML` /
     `bypassSecurityTrust*` it; rely on Angular escaping.
   - Shortest-lived sync tokens; prefer Flow B broker so the long-lived Google
@@ -304,6 +310,14 @@ copy wins). [decided]
 
 - **Export** — serialize selected Songs/Songbooks to the Snapshot JSON (content +
   settings metadata, per ADR-0001). Canonical round-trip; same shape Dexie emits.
+  - **Custom fonts are referenced, never embedded.** An Export names the fonts its
+    Songs use and, where the font was acquired from a URL, where to get it — a few
+    hundred bytes. Embedding the bytes would put 400 KB of base64 per font into a
+    file this section promises is "easily editable in a text editor of your
+    choice", and would make Achordeon a font redistribution channel. The bytes ride
+    the **Snapshot** instead (backup/sync — "this is the same person"), where the
+    whole-DB dump already carries every table for free. An uploaded font has no URL
+    and so cannot travel at all; the receiver is told which font is missing.
 - **Import** — accept Export JSON + (nice-to-have) Downloaded files with embedded
   metadata. Songs → replace / ignore / create-new (+ import-all-as-new with date
   prefix); Songbooks → always new.
