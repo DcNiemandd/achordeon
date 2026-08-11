@@ -26,10 +26,11 @@
 // two cannot disagree — and a family the *user* installed is an ordinary row
 // rather than a second code path.
 
-import { Injectable, signal, type Signal } from '@angular/core';
+import { Injectable, inject, signal, type Signal } from '@angular/core';
 import {
-  BUNDLED_CATALOG,
   DEFAULT_BODY_FONT,
+  fromBase64,
+  toBase64,
   type FaceSource,
   type FaceVariant,
   type FontBook,
@@ -38,6 +39,7 @@ import {
   type FontId,
   type FontResolver,
 } from '@achordeon/shared/render-core';
+import { FontLibrary } from '../fonts/font-library';
 
 /** `weight` as CSS spells it for the `FontFace` constructor. */
 const CSS_WEIGHT = { normal: '400', bold: '700' } as const;
@@ -46,29 +48,19 @@ function faceId(face: FontFaceKey): string {
   return `${face.family}|${face.weight}|${face.style}`;
 }
 
-/** Base64 of a byte buffer, chunked — `String.fromCharCode(...all)` blows the
- * call stack somewhere north of 100 KB, and every one of these is bigger. */
-function toBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const CHUNK = 0x8000;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
 @Injectable({ providedIn: 'root' })
 export class FontLoader {
   private readonly bytes = new Map<string, string>();
   /** One promise per face, so N renders asking at once cause one fetch. */
   private readonly inFlight = new Map<string, Promise<void>>();
 
+  private readonly library = inject(FontLibrary);
+
   /**
-   * The families this device has. Bundled-only until the font library installs
-   * its own; everything below reads rows, never a hardcoded path.
+   * The families this device has — bundled plus installed. Everything below
+   * reads rows, never a hardcoded path.
    */
-  readonly catalog: FontCatalog = BUNDLED_CATALOG;
+  readonly catalog: FontCatalog = this.library.catalog;
 
   /**
    * Bumped whenever a face lands. `RenderService.layout` reads it, so every
@@ -142,27 +134,48 @@ export class FontLoader {
         FaceVariant,
         FaceSource,
       ][]) {
-        if (source.kind !== 'asset') continue;
         const [weight, style] = variant.split('-') as [
           'normal' | 'bold',
           'normal' | 'italic',
         ];
         if (!weights.includes(weight)) continue;
         jobs.push(
-          this.load({ family: family.family, weight, style }, source.path),
+          this.load({ family: family.family, weight, style }, () =>
+            this.read(source),
+          ),
         );
       }
     }
     await Promise.all(jobs);
   }
 
-  private load(face: FontFaceKey, url: string): Promise<void> {
+  /**
+   * The bytes behind one face, wherever they live.
+   *
+   * The only thing in this class that cares which: a bundled face is a fetch of
+   * an asset the service worker has, an added one is a row in IndexedDB and is
+   * never fetched at all (ADR-0016 — a URL is acquired once, not referenced).
+   */
+  private async read(source: FaceSource): Promise<string> {
+    if (source.kind === 'asset') {
+      const response = await fetch(source.path);
+      if (!response.ok) {
+        throw new Error(`font ${source.path}: ${response.status}`);
+      }
+      return toBase64(await response.arrayBuffer());
+    }
+    const bytes = await this.library.faceBytes(source.key);
+    if (!bytes) throw new Error(`font ${source.key}: not stored`);
+    return bytes;
+  }
+
+  private load(face: FontFaceKey, read: () => Promise<string>): Promise<void> {
     const id = faceId(face);
     if (this.bytes.has(id)) return Promise.resolve();
     const running = this.inFlight.get(id);
     if (running) return running;
 
-    const job = this.fetchFace(face, url)
+    const job = this.fetchFace(face, read)
       .catch(() => {
         // A face that will not load is not a broken app: the SVG names a CSS
         // fallback after it, so the screen degrades to another serif. The PDF
@@ -175,12 +188,13 @@ export class FontLoader {
     return job;
   }
 
-  private async fetchFace(face: FontFaceKey, url: string): Promise<void> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`font ${url}: ${response.status}`);
-    const buffer = await response.arrayBuffer();
-    this.bytes.set(faceId(face), toBase64(buffer));
-    await this.register(face, buffer);
+  private async fetchFace(
+    face: FontFaceKey,
+    read: () => Promise<string>,
+  ): Promise<void> {
+    const base64 = await read();
+    this.bytes.set(faceId(face), base64);
+    await this.register(face, fromBase64(base64));
     this.loaded.update((n) => n + 1);
   }
 

@@ -1,5 +1,6 @@
 export * from './lib/shared-data-access/shared-data-access';
 export * from './lib/parser/parser-service';
+export * from './lib/fonts/font-library';
 export * from './lib/render/font-loader';
 export * from './lib/render/render-service';
 export * from './lib/providers';

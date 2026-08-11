@@ -41,8 +41,21 @@ export const BODY_FONT: FontId = 'body';
 /** The id of the family the app is set in until a song says otherwise. */
 export const DEFAULT_BODY_FONT: FontId = 'roboto-mono';
 
-/** How a picker groups its families. Not a value anything stores. */
-export type FontCategory = 'mono' | 'serif' | 'sans' | 'display' | 'script';
+/**
+ * How a picker groups its families. Not a value anything stores.
+ *
+ * `custom` is the shelf a font the user added lands on. Nothing in a font file
+ * says whether it is a serif, and asking someone to classify a font they have
+ * just installed is a question with no good answer — where they will look for it
+ * is "the ones I added".
+ */
+export type FontCategory =
+  | 'mono'
+  | 'serif'
+  | 'sans'
+  | 'display'
+  | 'script'
+  | 'custom';
 
 /** Where one face's bytes come from. The platform is what knows how to read it. */
 export type FaceSource =

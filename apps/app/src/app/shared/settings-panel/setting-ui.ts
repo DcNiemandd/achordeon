@@ -133,6 +133,7 @@ export const FONT_CATEGORY_LABELS: Record<FontCategory, string> = {
   sans: $localize`:@@fontCategory.sans:Sans-serif`,
   display: $localize`:@@fontCategory.display:Condensed & display`,
   script: $localize`:@@fontCategory.script:Handwritten`,
+  custom: $localize`:@@fontCategory.custom:Added by you`,
 };
 
 export interface SettingUi {

@@ -37,6 +37,34 @@ export type FontFaceKey = Pick<EmbeddedFont, 'family' | 'weight' | 'style'>;
  */
 export type FontResolver = (face: FontFaceKey) => string | undefined;
 
+/**
+ * Font bytes as base64 — the form all three consumers want.
+ *
+ * `emit` inlines it into a `data:` URL, jsPDF's VFS takes it as a string, and it
+ * is what the font library stores, so a face added by the user needs no encoding
+ * pass at all on the way to a render.
+ *
+ * Chunked, because `String.fromCharCode(...all)` blows the call stack somewhere
+ * north of 100 KB and every font is bigger than that.
+ */
+export function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/** Back to bytes — what `new FontFace(family, …)` and the sfnt parser take. */
+export function fromBase64(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
 function isSameFace(a: FontFaceKey, b: FontFaceKey): boolean {
   return a.family === b.family && a.weight === b.weight && a.style === b.style;
 }
