@@ -229,6 +229,7 @@
     "import.errorCancelAll": "Cancel the rest",
     "import.failedTitle": "That file could not be imported",
     "import.flagged": "Achordeon couldn't understand these songs: {$songs}. They will still import but you should check them afterwards.",
+    "import.fonts": "These songs use fonts this device does not have: {$fonts}. They will import and be shown in the default font until you add them in Settings.",
     "import.ignore": "Keep mine and skip them",
     "import.legend": "What should happen to those?",
     "import.more": "…and {$count} more.",
