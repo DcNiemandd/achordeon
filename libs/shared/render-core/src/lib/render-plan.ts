@@ -36,6 +36,37 @@ export interface TextStyle {
   fill: string;
   /** CSS generic appended after `family` for the SVG fallback (§4.10). */
   fallback?: string;
+  /**
+   * Where a face this family has not got comes from, by `${weight}-${style}`
+   * (§4.10's donor rule, ADR-0017).
+   *
+   * Absent — the normal case — means the family draws all of its own. Present,
+   * it names a **different family** for that one face, which is why it cannot be
+   * left to the browser: an unbundled italic gets synthesized on screen and
+   * simply does not exist in the PDF, and the two would disagree.
+   */
+  faces?: Partial<Record<string, { family: string; fallback?: string }>>;
+}
+
+/**
+ * The family and fallback a role really draws one face in — its own, or the
+ * donor's where it has none (§4.10).
+ *
+ * The one place that rule is applied. `emit`, the measurer and the font book all
+ * call it, so a run of `*italic*` is measured, drawn and embedded in the same
+ * face by construction.
+ */
+export function faceOf(
+  style: TextStyle,
+  weight: 'normal' | 'bold',
+  fontStyle: 'normal' | 'italic',
+): { family: string; fallback?: string } {
+  return (
+    style.faces?.[`${weight}-${fontStyle}`] ?? {
+      family: style.family,
+      fallback: style.fallback,
+    }
+  );
 }
 
 /** The font bytes, embedded both ways (SVG `@font-face` + jsPDF `addFont`). */

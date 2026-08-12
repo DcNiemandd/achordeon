@@ -55,15 +55,19 @@ file itself. See [your account & Google data](/account-data.mdx#google-drive).
 The renderer allows you to customize the output. There is global setting and scoped one.
 
 [`Songs`](songs/editing.mdx#renderer) scope. The controls are grouped into **Page**,
-**Title** and **Chords**:
+**Title**, **Fonts** and **Chords**:
 
 - _Page_: scale (custom text size, useful for maximizing the page space), columns (for
   really long songs), aspect ratio, padding (the white border around the song), block gap
   (the air between a verse and a chorus — closing it up is often what fits a long song on
   one page, because with scale on Auto the room you take out comes back as bigger text),
   and where a song that doesn't fill the page sits, horizontal and vertical
-- _Title_: position (on top of the page or sideways up the side), layout (the subtitle
-  stacked under the title or inline beside it), and the font the title and subtitle share
+- _Title_: position (on top of the page or sideways up the side) and layout (the subtitle
+  stacked under the title or inline beside it)
+- _Fonts_: the face the song itself is set in — lyrics, chords and labels — and the one
+  the title and subtitle share. The title can be told to follow the song, which is what
+  it does unless you say otherwise. Every choice is a font this device really carries,
+  so what you see is what a PDF prints
 - _Chords_: the same colour, size and notation a songbook can set, here for a single song
 
 A single song can override anything. A songbook only carries the shared few below.
@@ -78,7 +82,37 @@ The render settings exist to make the content fit one page.
 - chords color
 - chords size
 - chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**, but your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick, and English simply prints it as `B`, so a song that mixes the two spellings comes out in one language either way.
-- title font - the face the title and subtitle are set in: the song's own font, a serif, a condensed one or a handwritten one. Set it on a songbook and every song in it follows.
+- song font - the face the songs themselves are set in. Set it on a songbook and every song in it follows.
+- title font - the face the title and subtitle are set in: the song's own font, or any other. Set it on a songbook and every song in it follows.
+
+## Font library
+
+Settings ▸ Font library lists every font this device can set a song in — the ones
+Achordeon ships with, and any you add yourself.
+
+**Add a font** searches Google Fonts by name — pick a result and it is added — and also
+takes a `.ttf` file, or a link. The link can be the embed address Google
+Fonts hands you, or a direct `.ttf` address on jsDelivr or raw.githubusercontent.com.
+Whichever way, the font is **downloaded once and kept on the device**, so it works offline
+from then on and nothing is fetched while you are reading a song.
+
+Some things worth knowing:
+
+- **One file is one style.** Adding the regular does not add the bold — add that as a
+  second file. A style you never add is borrowed from another font, and Settings says
+  which one; you can change where it is borrowed from.
+- **A font stays on the device you added it to.** It travels in a [backup](#backup),
+  because that is your whole library. It does **not** travel in an
+  [export](/export-import.mdx): that file names the fonts your songs use so the person
+  opening it knows what to install, and never carries the font itself.
+- **Removing a font is safe.** Songs set in it go back to the default and come back to
+  it the moment you add it again.
+- **TrueType only.** `.otf` files are turned away, because half of them hold outlines a
+  PDF could not print — and a font that looked right on screen and came out wrong in
+  print is the one failure worth refusing up front.
+- **The four Achordeon ships with cover the Latin alphabets.** They are cut back to
+  those to keep the download small, so a song written in Russian or Greek prints empty
+  boxes. Add a font that has those letters and it will print them.
 
 ## Backup
 
@@ -103,9 +137,3 @@ Replace is for putting a machine back the way it was. If you are after songs fro
 :::note[Backup is not sync]
 Sync keeps one library the same on every device you sign in on, continuously, with no file involved. A backup is a copy you make and choose when to bring back. Sync will faithfully copy a deletion to your other devices. A backup is what still has the song afterwards.
 :::
-
-## Coming soon
-
-Shown in Settings but not yet working:
-
-- **Font library**: add your own fonts for titles and lyrics

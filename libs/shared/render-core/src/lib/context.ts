@@ -9,7 +9,13 @@ import type { GlobalSettings } from '@achordeon/shared/domain';
 import type { TextMeasurer, FontSpec } from './text-measurer';
 import type { TextRole, TextStyle } from './render-plan';
 import type { RenderTuning } from './tuning';
-import { resolveFontChoice, type FontChoiceName } from './font-catalog';
+import {
+  BUNDLED_CATALOG,
+  resolveFonts,
+  type FontCatalog,
+  type FontId,
+} from './font-catalog';
+import type { FaceVariant } from './fonts';
 import { liftInkForPaper } from './dark';
 
 /** String-independent line-pitch for one role (§4.7). `height` = ascent+descent. */
@@ -49,18 +55,30 @@ export function toFontSpec(style: TextStyle): FontSpec {
  * viewer option (`RenderOpts.dark`), so the same song resolves light for the
  * page it prints on and dark for the phone a performer is holding in a dark
  * room, with no stored value differing between the two. See `DarkTuning`.
+ *
+ * `catalog` is the device's font library (ADR-0017). It defaults to the bundled
+ * families so a caller with no platform — a test, a plain `layoutCore` — draws
+ * exactly what the app ships with.
  */
 export function resolveStyles(
   settings: GlobalSettings,
   tuning: RenderTuning,
   isDark = false,
+  catalog: FontCatalog = BUNDLED_CATALOG,
 ): Record<TextRole, TextStyle> {
   const roles = Object.keys(tuning.typography) as TextRole[];
   const styles = {} as Record<TextRole, TextStyle>;
   // Title and subtitle share one face, always — they are one title block (§4.5),
   // and letting them differ would be two decisions where the user made one.
-  const titleFont = resolveFontChoice(
-    settings.titleFont as FontChoiceName,
+  // Resolved together with the body, because `titleFont: 'body'` means "follow
+  // the body" and can only be honoured by something that knows what that is.
+  const fonts = resolveFonts(
+    catalog,
+    {
+      body: settings.bodyFont as FontId,
+      title: settings.titleFont as FontId,
+      italic: settings.italicFont as FontId,
+    },
     tuning,
   );
   for (const role of roles) {
@@ -69,11 +87,15 @@ export function resolveStyles(
     // and colour (chordColor). Every other role is fixed by tuning (§4.10).
     const chordScale = role === 'chord' ? settings.chordSize : 1;
     const isTitleRole = role === 'title' || role === 'subtitle';
-    const font = isTitleRole
-      ? titleFont
-      : { family: tuning.fontFamily, fallback: tuning.fallbackStack };
+    const font = isTitleRole ? fonts.title : fonts.body;
+    const faces = isTitleRole ? fonts.titleFaces : fonts.bodyFaces;
+    // The role's OWN face may be one of the borrowed ones — a sub-label is
+    // italic by spec, so a body family with no italic never draws a sub-label in
+    // itself at all. Resolving it here rather than at draw time keeps `styles`
+    // the honest answer to "what is this role set in".
+    const own = faces[`${t.weight}-${t.style ?? 'normal'}` as FaceVariant];
     styles[role] = {
-      family: font.family,
+      family: (own ?? font).family,
       sizePx: tuning.baseSizePx * t.sizeFactor * chordScale,
       weight: t.weight,
       style: t.style,
@@ -96,7 +118,9 @@ export function resolveStyles(
         : role === 'chord'
           ? settings.chordColor
           : (t.color ?? tuning.textColor),
-      fallback: font.fallback,
+      fallback: (own ?? font).fallback,
+      // The rest of the gaps, for the faces a markdown run reaches for.
+      ...(Object.keys(faces).length > 0 ? { faces } : {}),
     };
   }
   return styles;
@@ -124,8 +148,9 @@ export function createContext(
   tuning: RenderTuning,
   hideChords: boolean,
   isDark = false,
+  catalog: FontCatalog = BUNDLED_CATALOG,
 ): LayoutContext {
-  const styles = resolveStyles(settings, tuning, isDark);
+  const styles = resolveStyles(settings, tuning, isDark, catalog);
   return {
     measure,
     tuning,

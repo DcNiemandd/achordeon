@@ -55,10 +55,11 @@ Renderer vám umožňuje přizpůsobit výstup. Existuje globální nastavení a
 v rozsahu.
 
 Rozsah [`Písní`](songs/editing.mdx#renderer). Ovládací prvky jsou seskupené do
-**Strany**, **Nadpisu** a **Akordů**:
+**Strany**, **Nadpisu**, **Písem** a **Akordů**:
 
 - _Strana_: měřítko (vlastní velikost textu, užitečné pro maximální využití strany), sloupce (pro opravdu dlouhé písně), poměr stran, odsazení (bílý okraj kolem písně), mezera mezi bloky (prostor mezi slokou a refrénem — zmenšit ji je často to, co dlouhou píseň dostane na jednu stranu, protože s měřítkem na Auto se místo, které uberete, vrátí jako větší text) a kde sedí píseň, která stranu nevyplní, vodorovně i svisle
-- _Nadpis_: poloha (nahoře na straně, nebo bokem podél kraje), rozvržení (podnadpis pod nadpisem, nebo vedle něj) a font, který nadpis a podnadpis sdílejí
+- _Nadpis_: poloha (nahoře na straně, nebo bokem podél kraje) a rozvržení (podnadpis pod nadpisem, nebo vedle něj)
+- _Písma_: písmo, kterým je vysázená samotná píseň — text, akordy a popisky — a písmo, které sdílejí nadpis s podnadpisem. Nadpisu lze říct, ať následuje píseň, což dělá, dokud neurčíte jinak. Každá volba je písmo, které tohle zařízení opravdu má, takže co vidíte, to PDF vytiskne
 - _Akordy_: tatáž barva, velikost a notace, jaké může nastavit zpěvník, zde pro jednu píseň
 
 Jedna píseň může přepsat cokoli. Zpěvník nese jen těch pár sdílených níže.
@@ -73,7 +74,37 @@ Rozsah `Zpěvníků`:
 - barva akordů
 - velikost akordů
 - notace akordů: anglická (C, D, B) nebo německá (H pro B, B pro B♭). Mění to, jak se akordy **tisknou**, ale vaše píseň zůstane přesně tak, jak jste ji napsali, takže přepnutí zpět nic dalšího nezmění. `[H]` bylo vždy chápáno jako B, ať zvolíte cokoli, a anglická notace ho jen vytiskne jako `B`, takže píseň, která obě zápisy míchá, vyjde v jednom jazyce tak či tak.
-- font nadpisu: písmo, kterým se sází nadpis a podnadpis: vlastní font písně, patkové, zúžené nebo rukopisné. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
+- font písně: písmo, kterým se sázejí samotné písně. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
+- font nadpisu: písmo, kterým se sází nadpis a podnadpis: vlastní font písně, nebo kterékoli jiné. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
+
+## Knihovna písem
+
+Nastavení ▸ Knihovna písem vypisuje všechna písma, kterými na tomhle zařízení můžete
+psát písně — ta, která Achordeon přináší, i ta, která si přidáte sami.
+
+**Přidat písmo** hledá v Google Fonts podle názvu — vyberete výsledek a přidá se — a
+vezme i soubor `.ttf`, nebo odkaz. Odkazem může být vkládací adresa,
+kterou nabízí Google Fonts, nebo přímá adresa souboru `.ttf` na jsDelivr či
+raw.githubusercontent.com. Tak či tak se písmo **jednou stáhne a zůstane v zařízení**,
+takže od té chvíle funguje offline a při čtení písně se nic nestahuje.
+
+Co je dobré vědět:
+
+- **Jeden soubor je jeden řez.** Přidáním základního nepřidáte tučný — ten přidejte
+  jako druhý soubor. Řez, který nikdy nepřidáte, se půjčí z jiného písma a Nastavení
+  řekne z kterého; můžete změnit, odkud se půjčuje.
+- **Písmo zůstává v zařízení, do kterého jste ho přidali.** Cestuje v [záloze](#záloha),
+  protože ta je celá vaše knihovna. **Necestuje** v [exportu](/export-import.mdx) —
+  v něm se pošle jen název písma, aby ten, kdo soubor otevře, věděl, co si má
+  nainstalovat. Samotné písmo v exportu nikdy není.
+- **Odebrat písmo je bezpečné.** Písně, které ho používají, se vrátí k výchozímu písmu
+  a k tomuto se vrátí, jakmile ho přidáte znovu.
+- **Pouze TrueType.** Soubory `.otf` se odmítnou, protože polovina z nich nese obrysy,
+  které by PDF nevytisklo — a písmo, které vypadalo správně na obrazovce a špatně
+  vyšlo z tiskárny, je právě to selhání, které stojí za to odmítnout dopředu.
+- **Ta čtyři, která Achordeon přináší, pokrývají latinku.** Jsou na ni oříznutá, aby
+  bylo stahování malé, takže píseň psaná rusky nebo řecky vytiskne prázdné rámečky.
+  Přidejte písmo, které ta písmena má, a vytisknou se.
 
 ## Záloha
 
@@ -107,9 +138,3 @@ přihlášeni, a žádný soubor v tom nefiguruje. Záloha je kopie, kterou si u
 a sami zvolíte, kdy ji vrátíte zpět. Synchronizace poslušně přenese i smazání na
 vaše ostatní zařízení. Záloha je to, co tu píseň má potom pořád.
 :::
-
-## Již brzy
-
-Zobrazené v Nastavení, ale zatím nefunkční:
-
-- **Knihovna fontů**: přidejte si vlastní fonty pro nadpisy a texty

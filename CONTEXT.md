@@ -83,7 +83,7 @@ Settings that change how a Song is rendered to output. They cascade across three
 - **Songbook scope** — overrides applied to every Song performed within that Songbook (a per-book theme).
 - **Song scope** — overrides carried by the Song itself, wherever it appears.
 
-Which scopes a given setting may be overridden at is a configurable property of that setting, not a fixed rule — a setting may be overridable at the Song scope, the Songbook scope, or both. Illustrative assignment: scale, columns, title position, aspect ratio (Song); chord color, chord size, font (Songbook, and optionally Song too).
+Which scopes a given setting may be overridden at is a configurable property of that setting, not a fixed rule — a setting may be overridable at the Song scope, the Songbook scope, or both. Illustrative assignment: scale, columns, title position, aspect ratio (Song); chord color, chord size, body font (Songbook, and optionally Song too).
 
 - _columns_ — author-set count (future: smart auto-fit).
 - _block gap_ — the space between Blocks, measured in lyric lines. The one spacing magnitude the user owns: every other one is a constant the renderer's author tunes (PRD-RENDERING §4.7), because they change how a page looks, while this one changes how much page there is — closing it is worth a line per Block, and under _scale: auto_ that room returns as text size. Songbook + Song scope.
@@ -100,6 +100,30 @@ A landscape Song is simply one whose aspect ratio is wider than it is tall. Ther
 _Match this screen_ measures the physical screen (`window.screen`) in the orientation the device is currently held, and stores the **reduced exact ratio** it measured — never a "this device" token. The stored value therefore still means the device that was measured after it syncs elsewhere. Device presets carry the same kind of value (the reduced CSS-pixel screen fraction of that family), so a device row and _Match this screen_ agree on the device they both describe.
 
 _Match this screen, sideways_ is the same measurement with the two dimensions swapped: the shape this device would have if it were held the other way round. It saves the reader from having to physically turn the phone before tapping, and it is what makes a Song landscape in the first place.
+
+## Font
+
+A typeface a Song can be set in. A **Font** is what a user picks; a **Face** is one weight-and-slant of it (regular, bold, italic, bold-italic). The distinction matters because a Font is chosen once while its Faces are drawn independently — a Font that cannot supply a Face cannot be used where that Face is needed.
+
+Three Fonts are settable, and they are separate decisions:
+
+- _body font_ — the face the Song is set in: lyrics, chords, block labels and sub-labels. Songbook + Song scope.
+- _title font_ — the face the Title and Subtitle share. They are one title block, so they are never set apart. May be _same as song_, which follows the body font. Songbook + Song scope.
+- _donor font_ — where a Face comes from when the chosen Font has none of its own. Defaulted, shown as a warning naming the borrowed Face, and overridable.
+
+A Font that carries all four Faces can be used anywhere. One carrying only regular and bold can set a title — titles are never emphasised — and can set the body only by borrowing its italics from a donor.
+
+## Font library
+
+The Fonts available to choose from: the ones Achordeon ships, plus any Custom font on this device. It is therefore **device state, not Song state** — the same Song offers different choices on two machines, and a Song may name a Font the machine it arrives on has never heard of. That Song keeps the name it was given, renders in the default, and says so; installing the Font later restores it.
+
+## Custom font
+
+A Font the user adds themselves, by name, by file or by link. Adding one **takes a copy**: the font is kept on the device, so it works offline and it does not stop working when a link does. A Custom font is identified by its own family name, so the same font added on two devices is the same Font, and re-adding a deleted one brings its Songs back.
+
+Adding by name searches a published list of every family Achordeon knows how to fetch. That list is not the Font library: it is the same everywhere, it belongs to nobody, and a name on it is **only a name** — nothing there is drawn in its own face, because seeing a Font means having it.
+
+Custom fonts belong to the person, not to the Song — so they travel by Snapshot, the path that means "this is the same person". An Export names the Fonts a Song uses and, where it can, says where to get them; it never carries the font itself.
 
 ## Performance view
 

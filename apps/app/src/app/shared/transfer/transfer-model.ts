@@ -226,6 +226,15 @@ export interface ImportPreview {
    * One entry per song however many warnings it carries.
    */
   readonly flaggedSongs: readonly string[];
+  /**
+   * Fonts this file names that this device has not got, by id.
+   *
+   * Neither of the two warnings above: the key is known and the value is a font
+   * that lives on the sender's machine. An export names its fonts and never
+   * carries them (PRD-INFRASTRUCTURE.md §8), so this line is the only place the
+   * reader learns which one to install.
+   */
+  readonly missingFonts: readonly string[];
 }
 
 export interface ImportChoice {

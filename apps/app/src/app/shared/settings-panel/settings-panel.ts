@@ -14,7 +14,20 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { FontLoader } from '@achordeon/shared/data-access';
+import {
+  BODY_FACES,
+  BODY_FONT,
+  DEFAULT_BODY_FONT,
+  DEFAULT_TUNING,
+  TITLE_FACES,
+  isBodyCapable,
+  missingFaces,
+  resolveFonts,
+  type FontCategory,
+  type FontId,
+} from '@achordeon/shared/render-core';
 import { Button, Icon, Tooltip } from '../../primitives';
+import { AddFontDialog } from '../fonts';
 import { ScreenShape } from '../layout';
 import {
   MATCH_SCREEN,
@@ -22,10 +35,16 @@ import {
   isMatchScreen,
 } from './aspect-options';
 import {
+  borrowedNote,
+  ADD_FONT,
+  FONT_CATEGORY_LABELS,
+  FONT_SAMPLE_TEXT,
+  fontOptionLabel,
   GROUPS,
   GROUP_LABELS,
   SETTING_UI,
   keysForScope,
+  type FontRole,
   type Group,
   type Option,
   type OptionGroup,
@@ -69,7 +88,7 @@ interface Section {
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Icon, Tooltip, NgTemplateOutlet],
+  imports: [AddFontDialog, Button, Icon, Tooltip, NgTemplateOutlet],
   template: `
     <!-- The option markup, written once for both selects below: a closed list and
          a collapsed picker differ in how they are worn, not in what they offer.
@@ -93,6 +112,10 @@ interface Section {
       }
     </ng-template>
 
+    @if (isAddingFont()) {
+      <app-add-font-dialog (closed)="isAddingFont.set(false)" />
+    }
+
     <div class="panel" data-testid="settings-panel">
       @for (section of sections(); track section.group) {
         <section class="section">
@@ -100,7 +123,11 @@ interface Section {
 
           <div class="grid">
             @for (row of section.rows; track row.key) {
-              <div class="row" [attr.data-testid]="'setting-' + row.key">
+              <div
+                class="row"
+                [class.is-disabled]="isDisabled(row)"
+                [attr.data-testid]="'setting-' + row.key"
+              >
                 <div class="head">
                   <label class="label" [attr.for]="row.key">{{
                     row.ui.label
@@ -235,6 +262,26 @@ interface Section {
                     }
                   }
 
+                  @case ('font') {
+                    <!-- A closed list like the one above, but its options come
+                         from the device's font library rather than from this
+                         file — installing a font has to add a row here without
+                         anyone editing a list. -->
+                    <select
+                      class="control"
+                      [id]="row.key"
+                      [value]="row.value"
+                      [disabled]="isDisabled(row)"
+                      [attr.data-testid]="'select-' + row.key"
+                      (change)="setFromInput(row, $event)"
+                    >
+                      <ng-container
+                        [ngTemplateOutlet]="optionList"
+                        [ngTemplateOutletContext]="{ $implicit: row }"
+                      />
+                    </select>
+                  }
+
                   @case ('color') {
                     <input
                       class="control is-color"
@@ -328,6 +375,16 @@ interface Section {
                   </p>
                 }
 
+                @if (note(row); as note) {
+                  <!-- Not an error: the page is fine, it is just not entirely
+                       in the font that was picked. Says which face and whose,
+                       because "some faces are borrowed" is not actionable and
+                       the row that changes it is the next one down. -->
+                  <p class="note" [attr.data-testid]="'note-' + row.key">
+                    {{ note }}
+                  </p>
+                }
+
                 @if (sample(row); as sample) {
                   <!-- Under the control, in the face the control just chose.
                        Hidden from the accessibility tree, because it says nothing
@@ -398,6 +455,14 @@ interface Section {
       flex-direction: column;
       gap: var(--space-1);
       min-inline-size: 0;
+    }
+
+    /* Still there, still the same height. A row that vanished when it had
+       nothing to decide would move every control below it — and the one row
+       this happens to is the donor, whose relevance changes with the font
+       picker directly above it. */
+    .row.is-disabled {
+      opacity: 0.5;
     }
 
     .head {
@@ -568,6 +633,15 @@ interface Section {
       color: var(--danger);
     }
 
+    /* Muted, not red: nothing is wrong, something is merely being substituted.
+       Wraps, unlike the sample below it — this one is words, and a truncated
+       sentence about which face is missing tells nobody anything. */
+    .note {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+    }
+
     /* Bigger than the label above it, because 12px of Caveat is a squiggle: the
        sample exists to be recognised, and a face is not recognisable at UI size.
        Clipped rather than wrapped — the row is 300px in the editor dialog, and a
@@ -616,6 +690,20 @@ export class SettingsPanel {
       rows: this.rows().filter((row) => row.ui.group === group),
     })).filter((section) => section.rows.length > 0),
   );
+
+  /**
+   * A row that is present but has nothing to decide.
+   *
+   * One case: the donor. A font to borrow a face *from* is a question only a
+   * font that is missing one asks — but **disabled, not removed**: a row that
+   * comes and goes as the body font changes moves every control under it, so
+   * choosing a font would make the panel jump under the pointer. Greyed out it
+   * also says something a missing row cannot, which is that borrowing is a thing
+   * that happens and this is where it would be set.
+   */
+  protected isDisabled(row: Row): boolean {
+    return this.fontRole(row) === 'italic' && this.borrowed().length === 0;
+  }
 
   protected helpLabel(row: Row): string {
     return $localize`:@@settings.about:About ${row.ui.label}:setting:`;
@@ -671,21 +759,138 @@ export class SettingsPanel {
   }
 
   /** The families the visible samples are asking for, as the values change. */
-  private readonly sampleFaces = computed<string[]>(() =>
-    this.rows().flatMap((row) =>
-      row.ui.sample ? [row.ui.sample(String(row.value)).family] : [],
+  private readonly sampleFaces = computed<FontId[]>(() =>
+    this.rows().flatMap((row) => {
+      const sample = this.sample(row);
+      return sample ? [sample.id] : [];
+    }),
+  );
+
+  /** This panel's own value for one of the three font rows, if it has that row. */
+  private fontValue(role: FontRole): FontId | undefined {
+    const row = this.rows().find((one) => this.fontRole(one) === role);
+    return row ? String(row.value) : undefined;
+  }
+
+  /**
+   * The three faces this panel's values resolve to, in one call.
+   *
+   * The same call the renderer makes, so a sample cannot end up showing a face
+   * the page will not use — and the only way "Same as song" can redraw when the
+   * body font changes, since that option names no face of its own.
+   */
+  private readonly resolved = computed(() =>
+    resolveFonts(
+      this.fonts.catalog,
+      {
+        body: this.fontValue('body'),
+        title: this.fontValue('title'),
+        italic: this.fontValue('italic'),
+      },
+      DEFAULT_TUNING,
     ),
   );
 
+  /** The faces the chosen body family has not got, and so is borrowing. */
+  protected readonly borrowed = computed(() =>
+    Object.keys(this.resolved().bodyFaces),
+  );
+
   /**
-   * What this row's sample line shows, or `null` on a row that has none.
+   * The warning a borrowed face earns, or `null` while nothing is borrowed.
    *
-   * Recomputed from the value on every read, so picking `Handwritten` redraws the
-   * sample in Caveat with no second binding to keep in sync.
+   * On the body row, because that is where the gap is; the donor row is the fix
+   * and sits right under it.
+   */
+  protected note(row: Row): string | null {
+    if (this.fontRole(row) !== 'body' || this.borrowed().length === 0) {
+      return null;
+    }
+    return borrowedNote(this.borrowed(), this.resolved().donor.family);
+  }
+
+  /**
+   * What this row's sample line shows, or `null` on a row that is not a font.
    */
   protected sample(row: Row): Sample | null {
-    return row.ui.sample?.(String(row.value)) ?? null;
+    const role = this.fontRole(row);
+    if (!role) return null;
+    const fonts = this.resolved();
+    const font =
+      role === 'title'
+        ? fonts.title
+        : role === 'italic'
+          ? fonts.donor
+          : fonts.body;
+    return {
+      // Says what it is rather than standing in for the title, and short enough
+      // to survive a 300px dialog column without wrapping.
+      text: FONT_SAMPLE_TEXT,
+      // Never `null`: a value nothing in the catalog answers draws in the
+      // renderer's own face, which is the body family and already loaded.
+      id: font.id ?? DEFAULT_BODY_FONT,
+      // Quoted: most family names have a space in them.
+      stack: `'${font.family}', ${font.fallback}`,
+    };
   }
+
+  private fontRole(row: Row): FontRole | null {
+    return row.ui.control.kind === 'font' ? row.ui.control.role : null;
+  }
+
+  /**
+   * The library, shelved by category, plus the one option that is not a family.
+   *
+   * `body` is a sentinel, not a font (ADR-0017), so it sits ungrouped at the top
+   * where a "no choice" answer belongs rather than under a heading it would be
+   * lying about.
+   */
+  private fontOptions(role: FontRole): readonly (Option | OptionGroup)[] {
+    const shelves = new Map<FontCategory, Option[]>();
+    // What this role actually asks for. A title block is never markdown-parsed,
+    // so it wants two faces; a song wants four. Counting against the role rather
+    // than against four is what stops a perfectly good title font from being
+    // labelled as if something were wrong with it.
+    const needed = role === 'title' ? TITLE_FACES : BODY_FACES;
+    for (const family of this.fonts.catalog.list()) {
+      // A donor has to have what the borrower lacks, so only a family with all
+      // four faces can lend. Body and title list everything: a family short of a
+      // face is still choosable, and borrows what it has not got.
+      if (role === 'italic' && !isBodyCapable(family)) continue;
+      const shelf = shelves.get(family.category) ?? [];
+      const short = missingFaces(family, needed).length;
+      shelf.push({
+        value: family.id,
+        label: fontOptionLabel(
+          family.label,
+          needed.length - short,
+          needed.length,
+        ),
+      });
+      shelves.set(family.category, shelf);
+    }
+    const groups: (Option | OptionGroup)[] = [...shelves].map(
+      ([category, options]) => ({
+        label: FONT_CATEGORY_LABELS[category],
+        options,
+      }),
+    );
+    // "Add font…" last, where a list ends rather than where it begins: it is not
+    // one of the answers, it is how there come to be more of them. One home,
+    // reachable identically from a song's settings and from the settings page —
+    // the alternative is a user who can see the list but not add to it wherever
+    // they happen to be standing.
+    const add: Option = { value: ADD_FONT, label: this.addFontLabel };
+    return role === 'title'
+      ? [{ value: BODY_FONT, label: this.sameAsSongLabel }, ...groups, add]
+      : [...groups, add];
+  }
+
+  protected readonly sameAsSongLabel = $localize`:@@titleFont.body:Same as song`;
+  protected readonly addFontLabel = $localize`:@@fonts.add:Add a font…`;
+
+  /** Open the dialog while the picker still shows the value it had. */
+  protected readonly isAddingFont = signal(false);
 
   protected choices(row: Row): readonly Option[] {
     return row.ui.control.kind === 'choice' ? row.ui.control.options : [];
@@ -705,12 +910,19 @@ export class SettingsPanel {
    * left empty by the filter drops out rather than showing a bare heading.
    */
   protected optionGroups(row: Row): readonly OptionGroup[] {
-    if (row.ui.control.kind !== 'select') {
+    const role = this.fontRole(row);
+    const options =
+      role !== null
+        ? this.fontOptions(role)
+        : row.ui.control.kind === 'select'
+          ? row.ui.control.options
+          : null;
+    if (!options) {
       return [];
     }
 
     const groups: OptionGroup[] = [];
-    for (const entry of row.ui.control.options) {
+    for (const entry of options) {
       if ('options' in entry) {
         groups.push(entry);
         continue;
@@ -812,6 +1024,14 @@ export class SettingsPanel {
    */
   protected setFromInput(row: Row, event: Event): void {
     const raw = (event.target as HTMLInputElement).value;
+    if (raw === ADD_FONT) {
+      // Not a value. The select is put back to what it was showing, because the
+      // setting has not changed and will not unless a font arrives and is then
+      // chosen.
+      (event.target as HTMLSelectElement).value = String(row.value);
+      this.isAddingFont.set(true);
+      return;
+    }
     const problem = row.ui.validate?.(raw) ?? null;
     this.setError(row.key, problem);
     if (problem === null) {

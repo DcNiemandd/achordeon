@@ -21,12 +21,16 @@ import {
   type SnapshotEnvelope,
   type Song,
 } from '@achordeon/shared/domain';
+import { BODY_FONT, type FontCatalog } from '@achordeon/shared/render-core';
 import { BootGate } from '../persistence/boot-gate';
 import { ParserService } from '../parser/parser-service';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
 import { readTextFile } from './file-io';
 import { readEmbeddedSnapshot } from './embedded-metadata';
 import { normalise, type InboundEnvelope } from './normalise';
+
+/** The settings that hold a font id (PRD-RENDERING §4.10). */
+const FONT_KEYS = ['bodyFont', 'titleFont', 'italicFont'] as const;
 
 /** A file that could not be read as a library. */
 export class ImportError extends Error {
@@ -109,6 +113,39 @@ export class ImportService {
    * (175 KB of content) parses in ~28 ms, so the whole file is checked rather
    * than a capped sample or a lazy count.
    */
+  /**
+   * The fonts this file names that this device has not got.
+   *
+   * The existing `warn` channel means "this file carries settings this build
+   * does not know" and detects an unknown **key**. This is an unknown *value* on
+   * a key the build knows perfectly well, which nothing else catches — and it is
+   * the difference between a song arriving and a song arriving looking wrong.
+   *
+   * Font-specific rather than a general per-setting predicate on the registry.
+   * That was considered and is over-built for one case: the useful message is
+   * not "a setting has a value I don't recognise", it is the name of the font
+   * she is missing, and only this check can produce it.
+   *
+   * The ids are **not repaired** (ADR-0017). They render as the default and come
+   * back the moment the family is installed; rewriting them at the boundary
+   * would destroy the only evidence of what the sender's page looked like.
+   */
+  missingFonts(snapshot: SnapshotEnvelope, catalog: FontCatalog): string[] {
+    const bags = [
+      ...snapshot.data.songs.map((song) => song.settings),
+      ...snapshot.data.songbooks.map((book) => book.settings),
+    ];
+    const missing = new Set<string>();
+    for (const bag of bags) {
+      for (const key of FONT_KEYS) {
+        const id = bag?.[key];
+        if (typeof id !== 'string' || id === BODY_FONT) continue;
+        if (!catalog.get(id)) missing.add(id);
+      }
+    }
+    return [...missing];
+  }
+
   flagged(songs: readonly Song[]): string[] {
     const names: string[] = [];
     for (const song of songs) {

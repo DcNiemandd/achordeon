@@ -11,6 +11,7 @@ import type { RenderPlan, RenderOpts, TextItem } from './render-plan';
 import type { TextMeasurer } from './text-measurer';
 import { resolveTuning, type RenderTuning, type DeepPartial } from './tuning';
 import { EMPTY_FONT_BOOK, buildFontBook, type FontResolver } from './fonts';
+import { BUNDLED_CATALOG, type FontCatalog } from './font-catalog';
 import { createContext } from './context';
 import { layoutTitle } from './title-layout';
 import { layoutColumns } from './column-layout';
@@ -89,6 +90,13 @@ export interface LayoutConfig {
    * lookup rather than a fixed book (see `fonts.ts`).
    */
   fonts?: FontResolver;
+  /**
+   * The families a font setting may name (ADR-0017). Bound alongside `fonts` and
+   * for the same reason: which families exist is a fact about the device, not
+   * about the geometry. Omitted, the app's bundled set is what a song resolves
+   * against.
+   */
+  catalog?: FontCatalog;
 }
 
 /**
@@ -112,6 +120,7 @@ export function layoutCore(
     tuning,
     opts.hideChords ?? false,
     isDark,
+    config.catalog ?? BUNDLED_CATALOG,
   );
 
   const title = layoutTitle(ast, ctx, settings);

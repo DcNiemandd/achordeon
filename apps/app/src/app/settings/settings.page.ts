@@ -17,6 +17,7 @@ import { BUILD_DATE } from '../shared/build-info';
 import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { ShortcutsDialog } from '../shared/keyboard';
 import { ActionBar, BackNavigation, docsPageUrl } from '../shared/layout';
+import { FontList } from '../shared/fonts';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
 
@@ -47,6 +48,7 @@ const MIN_PASSWORD = 8;
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   imports: [
     ActionBar,
+    FontList,
     SettingsPanel,
     Button,
     Dialog,
@@ -656,35 +658,14 @@ const MIN_PASSWORD = 8;
           />
         </section>
 
-        <!-- Stubs for what is coming, shown so the shape of the app is honest but
-           marked and disabled so nothing pretends to work (#1). They are UI-only
-           placeholders — not wired to the settings cascade — because turning them
-           into live settings means embedding uploaded font bytes, its own piece of
-           work. (Chord notation used to sit here; it is a real registry row now,
-           and the render panel above draws it like any other setting.) -->
-        <section class="section is-coming">
-          <h2 class="heading">
-            {{ comingHeading }}
-            <span class="heading-note">{{ comingNote }}</span>
-          </h2>
-          <div class="group">
-            <div class="setting">
-              <div class="head">
-                <span class="label">{{ fontLibraryLabel }}</span>
-              </div>
-              <p class="hint">{{ fontLibraryHelp }}</p>
-              <div class="actions">
-                <button
-                  appButton
-                  variant="secondary"
-                  disabled
-                  data-testid="font-library"
-                >
-                  {{ fontLibraryButton }}
-                </button>
-              </div>
-            </div>
-          </div>
+        <!-- The library itself, and the only place it is listed in full: the
+             pickers above offer the same families, but deleting one and reading
+             what it is licensed under are page-sized questions, not row-sized
+             ones. Adding is reachable from both (§4.10). -->
+        <section class="section">
+          <h2 class="heading">{{ fontLibraryLabel }}</h2>
+          <p class="hint">{{ fontLibraryHelp }}</p>
+          <app-font-list />
         </section>
 
         <!-- Last, and deliberately so: the way out of the app. Everything above
@@ -2049,11 +2030,8 @@ export class SettingsPage {
   ];
 
   // --- Stub settings (#1) — placeholders, disabled, not wired ---------------
-  protected readonly comingHeading = $localize`:@@settings.coming:Coming soon`;
-  protected readonly comingNote = $localize`:@@settings.coming.note:These are not available yet.`;
   protected readonly fontLibraryLabel = $localize`:@@settings.fontLibrary:Font library`;
-  protected readonly fontLibraryHelp = $localize`:@@settings.fontLibrary.help:Add your own fonts to use in titles and lyrics.`;
-  protected readonly fontLibraryButton = $localize`:@@settings.fontLibrary.button:Manage fonts`;
+  protected readonly fontLibraryHelp = $localize`:@@settings.fontLibrary.help:The fonts this device can set a song in. A font you add stays on this device — an export names it, but never carries it.`;
 
   // --- Backup / restore (#11) -----------------------------------------------
   private readonly _pendingRestore = signal<PendingRestore | null>(null);

@@ -54,6 +54,17 @@ const NAMED_CONFLICTS = 5;
         </p>
       }
 
+      <!-- An export names its fonts and never carries them (§8), so this is the
+           only place the reader learns what to go and install. The ids are kept
+           exactly as written: installing the font later is what brings the
+           sender's page back (ADR-0017). -->
+      @if (preview().missingFonts.length > 0) {
+        <p class="note" data-testid="import-fonts">
+          <app-icon name="warning" class="note-icon" />
+          {{ missingFontsText() }}
+        </p>
+      }
+
       @if (preview().conflicts.length > 0) {
         <p class="summary" data-testid="import-conflicts">
           {{ conflictText() }}
@@ -263,6 +274,18 @@ export class ImportDialog {
   protected readonly flaggedText = computed(
     () =>
       $localize`:@@import.flagged:Achordeon couldn't understand these songs: ${this.preview().flaggedSongs.join(', ')}:songs:. They will still import but you should check them afterwards.`,
+  );
+
+  /**
+   * Which font, by name, because that is what can be acted on.
+   *
+   * The ids are shown as written rather than prettied up: an id is what the
+   * Fonts settings will call the family once it is installed, so it is also the
+   * thing to go looking for.
+   */
+  protected readonly missingFontsText = computed(
+    () =>
+      $localize`:@@import.fonts:These songs use fonts this device does not have: ${this.preview().missingFonts.join(', ')}:fonts:. They will import and be shown in the default font until you add them in Settings.`,
   );
 
   protected readonly moreText = computed(

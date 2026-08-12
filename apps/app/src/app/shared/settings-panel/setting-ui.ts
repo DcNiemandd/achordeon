@@ -3,10 +3,8 @@
 
 import { SETTINGS, SCOPES } from '@achordeon/shared/domain';
 import {
-  DEFAULT_TUNING,
-  resolveFontChoice,
   tryParseAspectRatio,
-  type FontChoiceName,
+  type FontCategory,
 } from '@achordeon/shared/render-core';
 import { ASPECT_OPTION_GROUPS } from './aspect-options';
 
@@ -59,16 +57,50 @@ export type Control =
       options: readonly (Option | OptionGroup)[];
       custom?: boolean;
     }
-  | { kind: 'choice'; options: readonly Option[] };
+  | { kind: 'choice'; options: readonly Option[] }
+  /**
+   * A family picked from the device's font library.
+   *
+   * The only control whose options this file does not hold: which families exist
+   * is a fact about the device (ADR-0017), so the panel asks the catalog and this
+   * row says which *role* is being picked for. A static list here would go stale
+   * the moment a user installs a font.
+   */
+  | { kind: 'font'; role: FontRole };
+
+/** Which of a song's faces a `font` row picks. */
+export type FontRole = 'body' | 'title' | 'italic';
+
+/**
+ * The one option in a font picker that is not a font.
+ *
+ * A sentinel rather than a button beside the control: the list is where a user
+ * goes when the font they want is not there, so that is where the way to get it
+ * belongs. Never stored — the panel intercepts it and re-shows the value the row
+ * already had.
+ *
+ * `@` because a font id is a slug or `custom:<slug>`, so no real one can begin
+ * with it. This was briefly a control character, on the same reasoning about what
+ * a slug cannot hold — but a NUL is not text, and the file stopped being a text
+ * file to git.
+ */
+export const ADD_FONT = '@add-font';
 
 /** Rows are grouped so the panel reads as sections, not a wall of inputs. */
-export type Group = 'page' | 'title' | 'chords';
+export type Group = 'page' | 'title' | 'fonts' | 'chords';
 
-export const GROUPS: readonly Group[] = ['page', 'title', 'chords'];
+/**
+ * `fonts` is a section rather than a row apiece under whatever each face
+ * happens to style. The deciding reason is not taxonomy: adding a font to the
+ * device needs exactly one home, and fonts scattered across two sections leave
+ * it without one.
+ */
+export const GROUPS: readonly Group[] = ['page', 'title', 'fonts', 'chords'];
 
 export const GROUP_LABELS: Record<Group, string> = {
   page: $localize`:@@settingGroup.page:Page`,
   title: $localize`:@@settingGroup.title:Title`,
+  fonts: $localize`:@@settingGroup.fonts:Fonts`,
   chords: $localize`:@@settingGroup.chords:Chords`,
 };
 
@@ -80,11 +112,66 @@ export const GROUP_LABELS: Record<Group, string> = {
  */
 export interface Sample {
   readonly text: string;
-  /** The family to fetch bytes for, spelled as the render catalog spells it. */
-  readonly family: string;
-  /** `family` plus its CSS fallbacks, for the style binding. */
+  /** The family to fetch bytes for, as a catalog id. */
+  readonly id: string;
+  /** The CSS family plus its fallbacks, for the style binding. */
   readonly stack: string;
 }
+
+/** The line every font row draws under its picker, in the face it just chose. */
+export const FONT_SAMPLE_TEXT = $localize`:@@titleFont.sample:Sample of font`;
+
+/** What to call one face when telling the user it had to be borrowed. */
+export const FACE_LABELS: Record<string, string> = {
+  'normal-normal': $localize`:@@face.regular:regular`,
+  'bold-normal': $localize`:@@face.bold:bold`,
+  'normal-italic': $localize`:@@face.italic:italic`,
+  'bold-italic': $localize`:@@face.boldItalic:bold italic`,
+};
+
+/** The warning a borrowed face earns: which ones, and whose they are. */
+export function borrowedNote(faces: readonly string[], donor: string): string {
+  const list = faces.map((face) => FACE_LABELS[face] ?? face).join(', ');
+  return $localize`:@@fonts.borrowed:This font has no ${list}:faces:. Taken from ${donor}:font: instead.`;
+}
+
+/**
+ * A family's name in a picker, and what it is short of **for this role**.
+ *
+ * Silent when the family has everything the role asks for, which is most of
+ * them: a suffix on every row would be noise to read past rather than a fact to
+ * notice. The counts are per role, not absolute — Oswald has two faces, which
+ * makes it short for a song and complete for a title, and one number cannot say
+ * both.
+ *
+ * Which faces get borrowed is left to `borrowedNote` under the picker. An
+ * `option` is one line of plain text with no room to name four faces, and the
+ * detail matters once a font is chosen rather than while scanning past it.
+ */
+export function fontOptionLabel(
+  label: string,
+  has: number,
+  needed: number,
+): string {
+  if (has >= needed) return label;
+  return $localize`:@@fonts.optionFaces:${label}:font: — ${has}:count: of ${needed}:total: styles`;
+}
+
+/**
+ * The headings a font picker groups its families under.
+ *
+ * The families themselves are *not* translated — they are proper names, and a
+ * user who went looking for Oswald is looking for the word "Oswald". What is
+ * translatable is the shelf it sits on.
+ */
+export const FONT_CATEGORY_LABELS: Record<FontCategory, string> = {
+  mono: $localize`:@@fontCategory.mono:Monospace`,
+  serif: $localize`:@@fontCategory.serif:Serif`,
+  sans: $localize`:@@fontCategory.sans:Sans-serif`,
+  display: $localize`:@@fontCategory.display:Condensed & display`,
+  script: $localize`:@@fontCategory.script:Handwritten`,
+  custom: $localize`:@@fontCategory.custom:Added by you`,
+};
 
 export interface SettingUi {
   readonly label: string;
@@ -105,14 +192,6 @@ export interface SettingUi {
    * the page, and the user would be the one to find out.
    */
   readonly validate?: (raw: string) => string | null;
-  /**
-   * The line to draw under this row's control, in the face its value selects —
-   * absent on every row whose value is not a font.
-   *
-   * A function of the value rather than a fixed string, because the whole point
-   * is that it changes with the choice.
-   */
-  readonly sample?: (value: string) => Sample;
 }
 
 /**
@@ -217,52 +296,37 @@ export const SETTING_UI: Record<SettingKey, SettingUi> = {
       ],
     },
   },
+  bodyFont: {
+    label: $localize`:@@setting.bodyFont:Song`,
+    help: $localize`:@@setting.bodyFont.help:The face the song itself is set in — lyrics, chords and labels. The title has its own, which can be told to follow this one.`,
+    group: 'fonts',
+    control: { kind: 'font', role: 'body' },
+  },
+  italicFont: {
+    label: $localize`:@@setting.italicFont:Borrowed from`,
+    help: $localize`:@@setting.italicFont.help:Where a face the song's own font has not got is taken from — usually italics. Without one, italic text would slant on screen and come out upright in a PDF.`,
+    group: 'fonts',
+    // Only drawn while something is actually being borrowed: a control for a
+    // face nothing needs is a control that does nothing.
+    control: { kind: 'font', role: 'italic' },
+  },
   titleFont: {
-    label: $localize`:@@setting.titleFont:Font`,
+    label: $localize`:@@setting.titleFont:Title`,
     help: $localize`:@@setting.titleFont.help:The face the title and subtitle are set in. They always share one — they are a single title block. Everything else stays in the song's own font.`,
-    group: 'title',
-    // A dropdown, not a segmented row: four side-by-side buttons would overflow
-    // the song-settings dialog. A closed list, so no free-text escape hatch — a
-    // typed family name is not something the renderer could honour, and every
-    // name here is a face the app really carries and can embed in a PDF.
+    group: 'fonts',
+    // A dropdown, not a segmented row: side-by-side buttons would overflow the
+    // song-settings dialog, and the list grows with every font installed.
     //
-    // The labels name the *look*, not the family: a user picking a title face is
-    // choosing between a serif and a handwritten one, and "Crimson Text" tells
-    // them nothing they can act on. The family behind each is the render's
-    // business (`resolveFontChoice`).
+    // The options name the *families*, grouped by category. They used to name
+    // the look instead — "Serif", "Handwritten" — which worked only while there
+    // was exactly one of each; with a library there are two serifs and "Serif"
+    // stops being a name. The look now lives in the `<optgroup>` heading, where
+    // it is a shelf rather than a claim about one face.
     //
-    // Which leaves the labels doing the one thing no label does well: describing
-    // letterforms. "Handwritten" is a promise, "Same as song" is not even that —
-    // it names no face at all. So the row also draws a sample in the chosen face
-    // (see `Sample`), and the label is free to stay a plain-language name.
-    sample: (value) => {
-      // The catalog is asked, never copied: it is the same call the renderer
-      // makes, so the sample cannot end up showing a face the page won't use.
-      // `DEFAULT_TUNING` because `body` means "the song's own font" and the
-      // panel is a form — it has no song, and every song's body face is this
-      // one until a tuning override exists to say otherwise.
-      const font = resolveFontChoice(value as FontChoiceName, DEFAULT_TUNING);
-      return {
-        // Says what it is rather than standing in for the title, and short
-        // enough to survive a 300px dialog column without wrapping.
-        text: $localize`:@@titleFont.sample:Sample of font`,
-        family: font.family,
-        // Quoted: two of the four families have a space in the name.
-        stack: `'${font.family}', ${font.fallback}`,
-      };
-    },
-    control: {
-      kind: 'select',
-      options: [
-        {
-          value: 'body',
-          label: $localize`:@@titleFont.body:Same as song`,
-        },
-        { value: 'serif', label: $localize`:@@titleFont.serif:Serif` },
-        { value: 'display', label: $localize`:@@titleFont.display:Condensed` },
-        { value: 'script', label: $localize`:@@titleFont.script:Handwritten` },
-      ],
-    },
+    // Which leaves a label doing the one thing no label does well: describing
+    // letterforms. So the row also draws a sample in the chosen face, and
+    // "Same as song" — which names no face at all — is the reason it must.
+    control: { kind: 'font', role: 'title' },
   },
   titlePosition: {
     label: $localize`:@@setting.titlePosition:Position`,

@@ -11,11 +11,12 @@
 // may instead rely on a CSS-loaded face — then the book comes back empty and
 // `emit(inlineFonts:false)` omits the `@font-face`.
 
-import type {
-  EmbeddedFont,
-  TextItem,
-  TextRole,
-  TextStyle,
+import {
+  faceOf,
+  type EmbeddedFont,
+  type TextItem,
+  type TextRole,
+  type TextStyle,
 } from './render-plan';
 
 /** The embeddable faces for one render. Family/weight/style must match `styles`. */
@@ -35,6 +36,34 @@ export type FontFaceKey = Pick<EmbeddedFont, 'family' | 'weight' | 'style'>;
  * quarter of a megabyte of script face it never draws with.
  */
 export type FontResolver = (face: FontFaceKey) => string | undefined;
+
+/**
+ * Font bytes as base64 — the form all three consumers want.
+ *
+ * `emit` inlines it into a `data:` URL, jsPDF's VFS takes it as a string, and it
+ * is what the font library stores, so a face added by the user needs no encoding
+ * pass at all on the way to a render.
+ *
+ * Chunked, because `String.fromCharCode(...all)` blows the call stack somewhere
+ * north of 100 KB and every font is bigger than that.
+ */
+export function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/** Back to bytes — what `new FontFace(family, …)` and the sfnt parser take. */
+export function fromBase64(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
 
 function isSameFace(a: FontFaceKey, b: FontFaceKey): boolean {
   return a.family === b.family && a.weight === b.weight && a.style === b.style;
@@ -62,7 +91,9 @@ export function collectFaces(
  * must be embedded too or the PDF has no bytes to draw it with (§3, §4.10). The
  * override resolves against the item's role style, so `**bold**` in a lyric adds
  * the bold face of the lyric family, `*italic*` the italic, `***both***` the
- * bold-italic.
+ * bold-italic — or, where the family has not got that face, the same face of the
+ * family lending it (§4.10 donor). Asked through `faceOf`, so what is embedded is
+ * what `emit` will name.
  */
 export function collectItemFaces(
   items: readonly TextItem[],
@@ -72,10 +103,12 @@ export function collectItemFaces(
   for (const item of items) {
     if (!item.weight && !item.style) continue;
     const base = styles[item.role];
+    const weight = item.weight ?? base.weight;
+    const style = item.style ?? base.style ?? 'normal';
     const face: FontFaceKey = {
-      family: base.family,
-      weight: item.weight ?? base.weight,
-      style: item.style ?? base.style ?? 'normal',
+      family: faceOf(base, weight, style).family,
+      weight,
+      style,
     };
     if (!faces.some((f) => isSameFace(f, face))) faces.push(face);
   }

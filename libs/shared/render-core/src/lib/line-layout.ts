@@ -10,7 +10,7 @@
 // row, the per-line chord row, and the base-unit vertical slot heights.
 
 import type { Line, ChordAnchor, Span } from '@achordeon/shared/domain';
-import type { TextItem } from './render-plan';
+import { faceOf, type TextItem, type TextStyle } from './render-plan';
 import type { FontSpec } from './text-measurer';
 import { toFontSpec, type LayoutContext } from './context';
 
@@ -83,16 +83,28 @@ function cutRuns(
   return out;
 }
 
-/** The base lyric font with a run's emphasis applied (a different embedded face). */
+/**
+ * The lyric font with a run's emphasis applied — a different embedded face, and
+ * where the family has not got that one, a different family (§4.10 donor).
+ *
+ * Asked of `faceOf`, the same call `emit` and the font book make, so the width
+ * this measures is the width of the face the page will really be drawn in.
+ */
 function runFont(
+  style: TextStyle,
   base: FontSpec,
   run: { bold: boolean; italic: boolean },
 ): FontSpec {
   if (!run.bold && !run.italic) return base;
+  const weight = run.bold ? 'bold' : base.weight;
+  const fontStyle = run.italic ? 'italic' : (base.style ?? 'normal');
+  const face = faceOf(style, weight, fontStyle);
   return {
     ...base,
-    weight: run.bold ? 'bold' : base.weight,
-    style: run.italic ? 'italic' : base.style,
+    family: face.family,
+    fallback: face.fallback,
+    weight,
+    style: fontStyle,
   };
 }
 
@@ -250,7 +262,10 @@ export function layoutLine(
       if (run.italic) item.style = 'italic';
       items.push(item);
     }
-    cursor += ctx.measure.measure(run.text, runFont(lyricFont, run)).width;
+    cursor += ctx.measure.measure(
+      run.text,
+      runFont(styles.lyric, lyricFont, run),
+    ).width;
   }
   emitFlowUpTo(Infinity); // anything written past the last character
   let width = Math.max(lineOrigin, cursor);
@@ -267,7 +282,7 @@ export function layoutLine(
           runX[r] +
           ctx.measure.measure(
             line.text.slice(run.start, at),
-            runFont(lyricFont, run),
+            runFont(styles.lyric, lyricFont, run),
           ).width
         );
       }

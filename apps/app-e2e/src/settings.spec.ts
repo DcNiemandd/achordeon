@@ -237,7 +237,10 @@ test.describe('global render settings', () => {
     await expect(page.getByTestId('select-titleFont')).toBeVisible();
     await expect(page.getByTestId('input-titleFont')).toHaveCount(0);
 
-    await page.getByTestId('select-titleFont').selectOption('serif');
+    // A family id, not a role: with a library there are two serifs and "serif"
+    // stops being a name. It survives as a lookup alias for songs written
+    // before the library existed, but it is not offered.
+    await page.getByTestId('select-titleFont').selectOption('crimson-text');
     await expect(page.getByTestId('reset-titleFont')).toBeVisible();
   });
 
@@ -304,11 +307,116 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('settings-panel')).toBeVisible();
   });
 
-  test('the coming-soon settings are shown but disabled', async ({ page }) => {
-    // Present, so the shape of the app is honest — but not operable, so nothing
-    // pretends to work.
-    await expect(page.getByTestId('font-library')).toBeVisible();
-    await expect(page.getByTestId('font-library')).toBeDisabled();
+  test('the font library lists what this device can set a song in', async ({
+    page,
+  }) => {
+    // It was a disabled coming-soon stub until the library landed. The bundled
+    // families are what a fresh device has, and adding is reachable from here.
+    await expect(page.getByTestId('font-list')).toBeVisible();
+    await expect(page.getByTestId('font-add')).toBeEnabled();
+
+    // Folded away on arrival: four rows that cannot be removed are not what
+    // this page is for, and unfolding is what fetches their previews.
+    await expect(page.getByTestId('font-roboto-mono')).toHaveCount(0);
+    await page.getByTestId('font-built-in').click();
+    await expect(page.getByTestId('font-roboto-mono')).toBeVisible();
+  });
+
+  test('adding a font offers a search, a file and a link', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+    await expect(page.getByTestId('add-font-search')).toBeVisible();
+    await expect(page.getByTestId('add-font-file')).toBeVisible();
+    await expect(page.getByTestId('add-font-url')).toBeVisible();
+  });
+
+  test('the whole catalogue is searchable from the dialog', async ({
+    page,
+  }) => {
+    // The index is an app asset, so this needs no network — which is the point
+    // of it being generated and committed rather than probed (ADR-0016).
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-search').fill('crimson');
+
+    // Named as the family prints, not as the repo folders it: the key in the
+    // index is `crimsontext`, and nobody searches for that. The row also says
+    // what adding it will give you, before a byte is fetched.
+    const row = page.getByTestId('add-font-result-crimsontext');
+    await expect(row).toContainText('Crimson Text');
+    await expect(row).toContainText('of 4 styles');
+  });
+
+  test('a search that matches nothing says so', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-search').fill('zzzznotafont');
+
+    await expect(page.getByTestId('add-font-no-results')).toBeVisible();
+    await expect(page.getByTestId('add-font-results')).toHaveCount(0);
+  });
+
+  test('Esc closes the add-font dialog', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('add-font-dialog')).toHaveCount(0);
+  });
+
+  test('Esc still closes after clicking something that cannot be focused', async ({
+    page,
+  }) => {
+    // Escape is bound on the dialog, so it only arrives if focus is inside one.
+    // A click on a heading or a line of text is a click on nothing focusable,
+    // and focus used to fall out to `body`.
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('dialog').getByRole('heading').click();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('add-font-dialog')).toHaveCount(0);
+    // **And the page is still here.** Asserting only that the dialog is gone
+    // passes either way: with focus on `body` the key reached the settings
+    // screen's own Escape instead, which left for the library and took the
+    // dialog with it. Staying put is what says the dialog consumed the key.
+    await expect(page).toHaveURL(/\/settings/);
+  });
+
+  test('a picker opens the same dialog and keeps its own value', async ({
+    page,
+  }) => {
+    // "Add font…" is not an answer to "which font", so picking it must leave the
+    // setting exactly where it was.
+    await page.getByTestId('select-bodyFont').selectOption('@add-font');
+
+    await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+    await expect(page.getByTestId('select-bodyFont')).toHaveValue(
+      'roboto-mono',
+    );
+  });
+
+  test('the donor row is disabled rather than absent', async ({ page }) => {
+    // Present at a fixed height whether or not it applies: a row that appeared
+    // when the font above it changed would move every control below it.
+    await expect(page.getByTestId('select-italicFont')).toBeDisabled();
+
+    await page.getByTestId('select-bodyFont').selectOption('oswald');
+
+    await expect(page.getByTestId('select-italicFont')).toBeEnabled();
+    await expect(page.getByTestId('note-bodyFont')).toBeVisible();
+  });
+
+  test('a link that cannot be used says why, before anything is fetched', async ({
+    page,
+  }) => {
+    // Refused at add-time, with the user watching — which is the whole reason
+    // acquiring a font is a moment rather than a reference (ADR-0016).
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-url').fill('https://example.com/Font.ttf');
+    await page.getByTestId('add-font-fetch').click();
+
+    await expect(page.getByTestId('add-font-error')).toBeVisible();
   });
 
   // Chord notation used to be one of the stubs above. It is a registry row now,

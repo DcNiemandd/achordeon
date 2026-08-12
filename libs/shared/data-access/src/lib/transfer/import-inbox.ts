@@ -23,6 +23,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { ImportChoices, ImportPlan } from '@achordeon/shared/domain';
 import { SongStore } from '../stores/song-store';
 import { SongbookStore } from '../stores/songbook-store';
+import { FontLibrary } from '../fonts/font-library';
 import { ImportError, ImportService } from './import-service';
 import { fromShareLink } from './share-link';
 
@@ -39,11 +40,23 @@ export interface InboxItem {
    * before anything is written, because import otherwise never looks at the
    * content and a song whose markup is wrong lands silently. */
   readonly flaggedSongs: readonly string[];
+  /**
+   * Fonts the file names that this device has not got, by id.
+   *
+   * A different kind of unknown from {@link hasUnknownSettings}: the key is one
+   * this build knows and the *value* is a font that lives on someone else's
+   * machine. Named, because "install Lora" is actionable and "some fonts are
+   * missing" is not — and because an export carries references, never bytes
+   * (PRD-INFRASTRUCTURE.md §8), so this is the only place the reader learns what
+   * to go and get.
+   */
+  readonly missingFonts: readonly string[];
 }
 
 @Injectable({ providedIn: 'root' })
 export class ImportInbox {
   private readonly importer = inject(ImportService);
+  private readonly fonts = inject(FontLibrary);
   private readonly songs = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
 
@@ -180,6 +193,10 @@ export class ImportInbox {
         plan,
         hasUnknownSettings: source.status === 'warn',
         flaggedSongs: this.importer.flagged(plan.songs),
+        missingFonts: this.importer.missingFonts(
+          source.snapshot,
+          this.fonts.catalog,
+        ),
       });
     } catch (error) {
       this._failure.set(

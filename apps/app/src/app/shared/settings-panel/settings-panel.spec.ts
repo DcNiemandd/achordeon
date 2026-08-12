@@ -4,9 +4,12 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { FontLoader } from '@achordeon/shared/data-access';
 import {
+  BODY_FONT,
+  BUNDLED_CATALOG,
+  BUNDLED_FONTS,
+  DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
-  FONT_CHOICES,
-  resolveFontChoice,
+  isBodyCapable,
 } from '@achordeon/shared/render-core';
 import { ScreenShape } from '../layout';
 import { ASPECT_OPTION_GROUPS, MATCH_SCREEN } from './aspect-options';
@@ -23,6 +26,8 @@ describe('SettingsPanel', () => {
 
   /** The real loader fetches; here we only care what it was asked for. */
   class FakeFonts {
+    /** The families a device has. Bundled-only, which is what a fresh one has. */
+    readonly catalog = BUNDLED_CATALOG;
     readonly asked: { families: readonly string[]; weights?: unknown }[] = [];
     ensure(families: readonly string[], weights?: unknown): Promise<void> {
       this.asked.push({ families, weights });
@@ -98,14 +103,23 @@ describe('SettingsPanel', () => {
     expect(headings).toEqual(ASPECT_OPTION_GROUPS.map((group) => group.label));
   });
 
-  it('leaves a flat list flat', () => {
-    // titleFont is a closed list of four; headings there would be noise.
+  it('keeps the option that is not a family out of the shelves', () => {
+    // "Same as song" is a sentinel, not a family (ADR-0017), so it must not end
+    // up filed under a category heading that would be lying about it.
     mount();
 
-    expect(picker('titleFont').querySelectorAll('optgroup')).toHaveLength(0);
+    const select = picker('titleFont');
+    expect(select.querySelectorAll('optgroup').length).toBeGreaterThan(0);
     expect(
-      picker('titleFont').querySelectorAll('option').length,
-    ).toBeGreaterThan(0);
+      [...select.querySelectorAll('optgroup option')].map((opt) =>
+        opt.getAttribute('value'),
+      ),
+    ).not.toContain(BODY_FONT);
+    expect(
+      [...select.querySelectorAll('option')].map((opt) =>
+        opt.getAttribute('value'),
+      ),
+    ).toContain(BODY_FONT);
   });
 
   describe('match this screen', () => {
@@ -166,18 +180,17 @@ describe('SettingsPanel', () => {
     }
 
     /**
-     * The face each choice is drawn in, asked of the catalog rather than named
-     * here — the same call `resolveFontChoice` makes for the page. A test that
-     * spelled "Caveat" out would pass while the sample showed a face the render
-     * had stopped using.
+     * The face each family is drawn in, read off the catalog rather than named
+     * here — the same row the page resolves against. A test that spelled
+     * "Caveat" out would pass while the sample showed a face the render had
+     * stopped using.
      */
-    it.each(FONT_CHOICES)('draws %s in the face it selects', (choice) => {
+    it.each(BUNDLED_FONTS)('draws $id in its own face', (family) => {
       mount();
 
-      chosen(choice);
+      chosen(family.id);
 
-      const family = resolveFontChoice(choice, DEFAULT_TUNING).family;
-      expect(sample('titleFont').style.fontFamily).toContain(family);
+      expect(sample('titleFont').style.fontFamily).toContain(family.family);
     });
 
     it('shows the song\'s own face for "same as song"', () => {
@@ -185,7 +198,19 @@ describe('SettingsPanel', () => {
       // cannot say what it looks like and only the letters can.
       mount();
 
-      chosen('body');
+      chosen(BODY_FONT);
+
+      expect(sample('titleFont').style.fontFamily).toContain(
+        DEFAULT_TUNING.fontFamily,
+      );
+    });
+
+    it('shows the body face for a family this device does not have', () => {
+      // A song from a sender who had a font this install lacks. The value stays
+      // in the record (ADR-0017); the page it draws is the default one.
+      mount();
+
+      chosen('custom:not-installed');
 
       expect(sample('titleFont').style.fontFamily).toContain(
         DEFAULT_TUNING.fontFamily,
@@ -198,13 +223,12 @@ describe('SettingsPanel', () => {
       // would quietly draw in the CSS fallback.
       mount();
 
-      chosen('script');
+      const script = BUNDLED_FONTS.find((one) => one.category === 'script');
+      chosen(script?.id ?? '');
 
       const fonts = TestBed.inject(FontLoader) as unknown as FakeFonts;
       const last = fonts.asked[fonts.asked.length - 1];
-      expect(last.families).toContain(
-        resolveFontChoice('script', DEFAULT_TUNING).family,
-      );
+      expect(last.families).toContain(script?.id);
       // One line at one weight — not a quarter-megabyte of bold nobody sees.
       expect(last.weights).toEqual(['normal']);
     });
@@ -225,7 +249,86 @@ describe('SettingsPanel', () => {
       );
       expect(
         [...samples].map((el: Element) => el.getAttribute('data-testid')),
-      ).toEqual(['sample-titleFont']);
+      ).toEqual(['sample-bodyFont', 'sample-italicFont', 'sample-titleFont']);
+    });
+  });
+
+  describe('what an option says about its faces', () => {
+    /** The first bundled family that cannot set a whole song on its own. */
+    const short = BUNDLED_FONTS.find((one) => !isBodyCapable(one));
+
+    function optionLabel(key: string, value: string): string {
+      const option = [...picker(key).querySelectorAll('option')].find(
+        (opt) => opt.getAttribute('value') === value,
+      );
+      expect(option).toBeDefined();
+      return option?.textContent?.trim() ?? '';
+    }
+
+    it('counts against what the role asks for, not against four', () => {
+      // The same family, in two pickers. It is short for a song and complete
+      // for a title, because a title block is never markdown-parsed and so only
+      // ever asks for regular and bold.
+      mount();
+
+      expect(optionLabel('bodyFont', short?.id ?? '')).toContain('2 of 4');
+      expect(optionLabel('titleFont', short?.id ?? '')).toBe(short?.label);
+    });
+
+    it('says nothing about a family that draws all of its own', () => {
+      // Silence is the common case. A suffix on every row is noise to read past
+      // rather than a fact to notice.
+      mount();
+
+      expect(optionLabel('bodyFont', DEFAULT_BODY_FONT)).toBe(
+        BUNDLED_FONTS.find((one) => one.id === DEFAULT_BODY_FONT)?.label,
+      );
+    });
+  });
+
+  describe('a family short of a face', () => {
+    /** The first bundled family that cannot set a whole song on its own. */
+    const short = BUNDLED_FONTS.find((one) => !isBodyCapable(one));
+
+    function row(key: string): Element | null {
+      return fixture.nativeElement.querySelector(`[data-testid="${key}"]`);
+    }
+
+    function setBody(value: string): void {
+      fixture.componentRef.setInput('values', { bodyFont: value });
+      fixture.detectChanges();
+    }
+
+    it('says which face is borrowed, and from whom', () => {
+      mount();
+
+      setBody(short?.id ?? '');
+
+      const note = row('note-bodyFont');
+      expect(note).not.toBeNull();
+      // Named, not just flagged: "some faces are borrowed" is not actionable.
+      expect(note?.textContent).toContain(DEFAULT_TUNING.fontFamily);
+    });
+
+    it('enables the donor row only once something is borrowing', () => {
+      // Disabled rather than absent: a row that came and went as the font above
+      // it changed would move every control below it, so choosing a font would
+      // make the panel jump under the pointer.
+      mount();
+
+      expect(picker('italicFont').disabled).toBe(true);
+
+      setBody(short?.id ?? '');
+
+      expect(picker('italicFont').disabled).toBe(false);
+    });
+
+    it('says nothing for a family that draws all of its own', () => {
+      mount();
+
+      setBody(DEFAULT_BODY_FONT);
+
+      expect(row('note-bodyFont')).toBeNull();
     });
   });
 

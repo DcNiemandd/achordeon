@@ -13,6 +13,7 @@ import { ACHORDEON_DB } from './stores/repositories';
 import { BootGate } from './persistence/boot-gate';
 import { bootstrap } from './persistence/gateway';
 import { applyFirstRun } from './persistence/guide-song';
+import { FontLibrary } from './fonts/font-library';
 import { ParserService } from './parser/parser-service';
 import { SettingsStore } from './stores/settings-store';
 import { AuthService } from './auth/auth-service';
@@ -61,9 +62,15 @@ export function provideAchordeonBoot(): EnvironmentProviders {
   return provideAppInitializer(async () => {
     const gate = inject(BootGate);
     const settings = inject(SettingsStore);
+    const fonts = inject(FontLibrary);
     const result = await bootstrap(inject(ACHORDEON_DB));
     gate.publish(result);
-    if (result.status !== 'refuse') await settings.load();
+    // The installed fonts are read in the same awaited step and for the same
+    // reason as the settings: a song set in a font this device has must not
+    // paint once in the fallback and then jump. One small read of one table.
+    if (result.status !== 'refuse') {
+      await Promise.all([settings.load(), fonts.load()]);
+    }
   });
 }
 

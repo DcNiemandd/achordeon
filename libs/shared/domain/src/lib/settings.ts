@@ -26,18 +26,50 @@ export const SETTINGS = {
     default: 'stacked' as 'stacked' | 'inline',
     scopes: ['song'],
   }, // 'stacked' | 'inline' subtitle vs title; orthogonal to titlePosition. See PRD-RENDERING §4.5
+  bodyFont: {
+    default: 'roboto-mono' as string,
+    scopes: ['songbook', 'song'],
+  }, // the face everything BUT the title block is set in — lyrics, chords,
+  // labels. Named for symmetry with `titleFont`, which is the setting it has to
+  // be read beside: `titleFont: 'body'` means "follow this one". Songbook scope
+  // so a book can be set in one face throughout. See PRD-RENDERING §4.10
+  //
+  // The default is the family the renderer's own tuning names, spelled here as
+  // its catalog id — the registry is pure domain and cannot import the catalog,
+  // so this is the one place the two are written out separately. `roboto-mono`
+  // is a bundled row; a device that has lost it draws in tuning's face, which is
+  // the same one.
+  italicFont: {
+    default: 'roboto-mono' as string,
+    scopes: ['songbook', 'song'],
+  }, // where a face `bodyFont` has not got is borrowed from — the DONOR
+  // (ADR-0017). A family with no italic cannot set a song on its own: a
+  // sub-label is italic by spec and a markdown `*run*` reaches for the body
+  // italic, and letting the browser synthesize one would slant the screen while
+  // the PDF, which has no synthesis, stayed upright.
+  //
+  // Named for the face this is almost always about, though it covers every gap.
+  // It exists because the borrow is *overridable* and not merely announced; the
+  // panel warns which face is borrowed either way, and hides this row while
+  // nothing is borrowing. The default is the family the app is set in — it has
+  // all four faces and is precached, so borrowing from it costs no fetch.
   titleFont: {
-    default: 'body' as 'body' | 'serif' | 'display' | 'script',
+    default: 'body' as string,
     scopes: ['songbook', 'song'],
   }, // the face for Title AND Subtitle together — one title block, one decision.
-  // 'body' = whatever the rest of the song is set in. Songbook scope so a book can
-  // impose one house style. See PRD-RENDERING §4.10
+  // 'body' = whatever the rest of the song is set in, i.e. `bodyFont`. Songbook
+  // scope so a book can impose one house style. See PRD-RENDERING §4.10
   //
   // Epic 7 swapped 'sans' for 'display' + 'script': every choice now carries
   // bundled bytes, and a plain sans was the one that looked least unlike the
   // body mono at title size while costing just as much to bundle. Not a schema
   // break (ADR-0007) — nothing about the record's *shape* moved, and a song
   // still holding 'sans' resolves to 'body', which is this setting's own default.
+  //
+  // The type is `string` and not a union, and that is deliberate (ADR-0017): a
+  // family the user installed exists on one device and not another, so the value
+  // space is open. The role names above survive as lookup aliases; an id this
+  // build's catalog does not know is preserved verbatim and drawn as the body.
   aspectRatio: {
     default: 'A4' as
       | 'A4'
@@ -93,10 +125,6 @@ export const SETTINGS = {
   // Song scope because a
   // German hymn among English songs is the normal case; songbook scope because a
   // book printed for one congregation should not be spelled two ways.
-  // font: {
-  //   default: 'serif' as string,
-  //   scopes: ['songbook', 'song'],
-  // },
 } satisfies Record<string, SettingDef>;
 
 type ValueOf<K extends keyof typeof SETTINGS> = (typeof SETTINGS)[K]['default'];

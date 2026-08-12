@@ -411,27 +411,53 @@ advance, so the lyrics around it do not move.
 
 ### 4.10 Fonts, chord colour & chord size
 
-- **Font selection is post-v1 for the body**; the `font` setting (registry
-  `scopes: ['songbook','song']`) stays as a future capability but is not user-selectable
-  in v1. (Scope note: the offline-PWA aspect is an afterthought, not a v1 driver — see
-  `PRD.md`/`CONTEXT.md`; font bundling is justified below by **export**, not PWA.)
+- **Body font selection was post-v1 and no longer is.** The setting is `bodyFont`
+  (registry `scopes: ['songbook','song']`), named for symmetry with `titleFont` and so
+  that `titleFont: 'body'` is a pointer with a referent. It sets **everything but the
+  title block** — lyrics, chords, block labels, sub-labels — because `'body'` already
+  means "whatever the rest of the song is set in", one song face, singular. A separate
+  chord face is a plausible later setting; the catalog is asked per role so that it stays
+  a new row rather than a re-plumb. (Scope note: the offline-PWA aspect is an
+  afterthought, not a v1 driver — see `PRD.md`/`CONTEXT.md`; font bundling is justified
+  below by **export**, not PWA.)
+- **A family declares its faces, and a short one borrows.** Four faces (regular, bold,
+  italic, bold-italic) make a family body-capable: `sublabel` is italic by §4.8 and
+  markdown emphasis resolves to the body family's italic. Two faces make it
+  title-capable — titles are never markdown-parsed. A family short of a face names a
+  **donor** (defaulting to the body family, already precached, so it costs no bytes) and
+  the settings panel warns which face is borrowed. Letting the browser synthesize an
+  oblique instead cannot work: the PDF has no synthesis, so the screen would slant and
+  the export would not. See ADR-0017.
 - **`titleFont` IS selectable** — the one exception, because a title in a different face
   is what makes a song sheet look like a song sheet rather than a printout. It sets
   **Title and Subtitle together**: they are one title block (§4.5), so letting them differ
   would be two decisions where the author made one. Everything else stays in the song's
   own font. Registry `scopes: ['songbook','song']` — a songbook can impose a house style.
 
-#### The font catalog — names now, bytes in Epic 7
+#### The font catalog
 
 `titleFont` names a **choice**, and `resolveFontChoice` (render-core) turns that name
 into the `family` + `fallback` stack that `measure` and `emit` both use. Those two must
 always name the identical stack, or the geometry describes a font the browser never draws
 with — the catalog exists so that agreement is made in one place.
 
-- **Today every choice resolves to a CSS generic** (`ui-serif`, `ui-sans-serif`). Zero
-  bundled weight, renders anywhere, and enough to make the setting real. It is explicitly
-  **interim**: a generic is whatever the _viewer's_ machine calls a serif, so two people
-  see different pages and an exported PDF can embed nothing.
+- ~~**Today every choice resolves to a CSS generic**~~ **(done — Epic 7.)** Every choice
+  now resolves to a bundled TTF. The interim generics are gone for the reason recorded
+  here: a generic is whatever the _viewer's_ machine calls a serif, so two people saw
+  different pages and an exported PDF could embed nothing.
+- **A choice is a family slug, not a role.** `'serif' | 'display' | 'script'` worked only
+  while there were three and each _was_ its category; with a library, two serifs exist and
+  `'serif'` becomes a lie. Choices are slugs (`crimson-text`), the retired role names
+  resolve as **aliases** to the families they already meant — no stored record changes,
+  no schema break under ADR-0007 — and `'body'` survives as `titleFont`'s one sentinel.
+  See ADR-0017.
+- **The catalog is injected, not a constant.** Which families exist is a function of the
+  device once the user can add their own, so the pure core declares the catalog's shape
+  and takes one as a parameter — the argument `fonts.ts` already makes for `FontResolver`
+  ("the platform therefore injects a lookup rather than a list"), one layer up. This also
+  collapses the hand-synced pair — family names in `render-core`, file paths in
+  `data-access` — into one keyed table, removing the mismatch that produces exactly the
+  silent failure this section keeps warning about.
 - **Epic 7 replaces the right-hand side with bundled TTFs.** Nothing above the catalog
   changes, because callers only ever name a choice. That epic already has to solve "where
   do the real font bytes come from" for the single body font (`FontBook` carries none
@@ -442,7 +468,17 @@ with — the catalog exists so that agreement is made in one place.
   adds ~100–300 KB to the bundle, which collides with the Epic 11 precache decision:
   precache the body font only, and fetch a title face on first use.
 
-#### Importing a font from a URL — dropped [decided]
+#### Importing a font from a URL — ~~dropped [decided]~~ superseded by ADR-0016
+
+> **Superseded.** The rejection below is kept because its reasoning is still correct
+> about the thing it evaluated: a URL held as a **reference**, fetched when a render
+> needs it. ADR-0016 reframes a URL as an **acquisition channel** — fetched once when
+> the user adds it, validated, and stored as bytes, after which it is byte-identical to
+> the uploaded `.ttf` this section already blessed. Under that reading the offline
+> objection dies outright, the PDF objection survives as an add-time validation that
+> refuses loudly instead of diverging silently, and the CSP objection survives as two
+> named hosts on `connect-src` (`font-src` does not move). A fourth objection this
+> section missed — CORS — is what forces the allow-list rather than "any URL".
 
 **Not built, and not deferred — rejected.** A user-supplied Google Fonts URL fails three
 ways at once, and the third is fatal:

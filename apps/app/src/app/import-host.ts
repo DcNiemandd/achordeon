@@ -63,6 +63,7 @@ export class ImportHost {
       conflicts: item.plan.conflicts.map((conflict) => ({ ...conflict })),
       hasUnknownSettings: item.hasUnknownSettings,
       flaggedSongs: item.flaggedSongs,
+      missingFonts: item.missingFonts,
     };
   });
 
