@@ -90,9 +90,10 @@ The render settings exist to make the content fit one page.
 Settings ▸ Font library lists every font this device can set a song in — the ones
 Achordeon ships with, and any you add yourself.
 
-**Add a font** takes a `.ttf` file, or a link. The link can be the embed address Google
+**Add a font** searches Google Fonts by name — pick a result and it is added — and also
+takes a `.ttf` file, or a link. The link can be the embed address Google
 Fonts hands you, or a direct `.ttf` address on jsDelivr or raw.githubusercontent.com.
-Either way the font is **downloaded once and kept on the device**, so it works offline
+Whichever way, the font is **downloaded once and kept on the device**, so it works offline
 from then on and nothing is fetched while you are reading a song.
 
 Some things worth knowing:
@@ -109,6 +110,9 @@ Some things worth knowing:
 - **TrueType only.** `.otf` files are turned away, because half of them hold outlines a
   PDF could not print — and a font that looked right on screen and came out wrong in
   print is the one failure worth refusing up front.
+- **The four Achordeon ships with cover the Latin alphabets.** They are cut back to
+  those to keep the download small, so a song written in Russian or Greek prints empty
+  boxes. Add a font that has those letters and it will print them.
 
 ## Backup
 

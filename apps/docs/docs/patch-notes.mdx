@@ -8,6 +8,41 @@ description: 'What changed in each version of Achordeon — new features, fixes 
 Achordeon updates itself in the background and tells you when a new version is
 waiting - this is the page that says what you would be reloading into.
 
+## 2026-08-12
+
+### Any font you like
+
+Achordeon comes with four faces and now takes as many more as you want. **Settings ▸
+Font library** is where they go in: search Google Fonts by name, hand it a `.ttf` file,
+or paste a link. The font is **downloaded once and kept on the device**, so it works
+offline and the PDF gets it as real text. One file is one style, and a style you never
+add is borrowed from another font - Settings says which, and lets you change it.
+[Font library](/settings.mdx#font-library)
+
+### New features
+
+- **A font says how many styles it has** - before you add it and after. Most families
+  on Google Fonts ship as one variable file, which prints at a single weight, so a font
+  advertised with nine of them installs as one.
+  [Font library](/settings.mdx#font-library)
+- **The pickers say what a family is short of** - "2 of 4 styles" where the song is
+  set, and nothing beside the same font in the title picker, which needs two.
+  [Rendering](/settings.mdx#rendering)
+
+### Changes
+
+- **Achordeon's own fonts are half the weight** - the built-in faces carried Cyrillic,
+  Greek and Vietnamese, more than half of what every install downloads before it can
+  show anything. They are cut back to the Latin alphabets, so a song written in Russian
+  or Greek prints empty boxes - add a font that has those letters and it will print
+  them. [Font library](/settings.mdx#font-library)
+
+### Bugfixes
+
+- **Escape closes a dialog you have clicked into** - clicking a heading or dragging
+  across a line of text is a click on nothing that can hold focus, and the key went to
+  the page behind instead.
+
 ## 2026-08-10
 
 ### New features

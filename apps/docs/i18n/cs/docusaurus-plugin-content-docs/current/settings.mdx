@@ -82,7 +82,8 @@ Rozsah `Zpěvníků`:
 Nastavení ▸ Knihovna písem vypisuje všechna písma, kterými tohle zařízení umí vysázet
 píseň — ta, která Achordeon přináší, i ta, která si přidáte sami.
 
-**Přidat písmo** vezme soubor `.ttf`, nebo odkaz. Odkazem může být vkládací adresa,
+**Přidat písmo** hledá v Google Fonts podle názvu — vyberete výsledek a přidá se — a
+vezme i soubor `.ttf`, nebo odkaz. Odkazem může být vkládací adresa,
 kterou nabízí Google Fonts, nebo přímá adresa souboru `.ttf` na jsDelivr či
 raw.githubusercontent.com. Tak či tak se písmo **jednou stáhne a zůstane v zařízení**,
 takže od té chvíle funguje offline a při čtení písně se nic nestahuje.
@@ -101,6 +102,9 @@ Co je dobré vědět:
 - **Pouze TrueType.** Soubory `.otf` se odmítnou, protože polovina z nich nese obrysy,
   které by PDF nevytisklo — a písmo, které vypadalo správně na obrazovce a špatně
   vyšlo z tiskárny, je právě to selhání, které stojí za to odmítnout dopředu.
+- **Ta čtyři, která Achordeon přináší, pokrývají latinku.** Jsou na ni oříznutá, aby
+  bylo stahování malé, takže píseň psaná rusky nebo řecky vytiskne prázdné rámečky.
+  Přidejte písmo, které ta písmena má, a vytisknou se.
 
 ## Záloha
 
