@@ -90,6 +90,16 @@ export interface FontFamily {
   /** SPDX-ish identifier, and the notice file that has to travel with the bytes. */
   readonly license: string;
   readonly notice?: string;
+  /**
+   * At least one face came from a variable file, which can only supply its
+   * default instance (ADR-0016).
+   *
+   * Its own flag rather than a line in `notice`, which names the licence file
+   * that ships with the bytes. This is a fact about the faces, and it is the
+   * reason a family the user chose for its nine weights installed as one — the
+   * picker and the list both owe them that sentence.
+   */
+  readonly isVariable?: boolean;
 }
 
 /**

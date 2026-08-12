@@ -9,6 +9,13 @@
 // nobody has scrolled to is a page of nothing but downloads. The fallback stack
 // covers the gap, `FontLoader`'s in-flight map makes a repeated ask free, and its
 // epoch signal redraws the row when the face lands.
+//
+// **The built-in families are folded away, and are not rendered while folded.**
+// They are four rows nothing can be done to, and expanded they buried the fonts
+// the user went and installed. Hiding them with CSS would have kept them under
+// the observer, so opening the page would still have spent ~440 KB on previews
+// of rows nobody had asked to see — so the disclosure's state is a signal, the
+// rows exist only while it is open, and the observer re-runs when it opens.
 
 import {
   ChangeDetectionStrategy,
@@ -24,6 +31,7 @@ import type { FontFamily } from '@achordeon/shared/render-core';
 import { FontLibrary, FontLoader } from '@achordeon/shared/data-access';
 import { Button, Dialog, Icon } from '../../primitives';
 import { AddFontDialog } from './add-font-dialog';
+import { familyFaceSummary } from './face-summary';
 
 /** A family awaiting the answer to "and what does deleting it cost?". */
 interface PendingRemoval {
@@ -36,40 +44,76 @@ interface PendingRemoval {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AddFontDialog, Button, Dialog, Icon],
   template: `
-    <ul class="list" data-testid="font-list">
-      @for (family of families(); track family.id) {
-        <li class="row" [attr.data-testid]="'font-' + family.id">
-          <div class="what">
-            <!-- The name drawn in the face it names. A label can only *say*
-                 what letters look like, which is the one thing a name cannot
-                 do. -->
-            <span
-              class="preview"
-              [style.font-family]="stack(family)"
-              [attr.data-font]="family.id"
-              >{{ family.label }}</span
-            >
-            <span class="meta">{{ faceSummary(family) }}</span>
-          </div>
+    <div class="library" data-testid="font-list">
+      <!-- A disclosure and not a tab set or a button: one section, shown or
+           not. This is the element that already means that, and it brings its
+           own keyboard and screen-reader behaviour.
 
-          @if (isCustom(family)) {
-            <button
-              appButton
-              type="button"
-              variant="ghost"
-              [isIconOnly]="true"
-              [attr.aria-label]="removeLabel(family)"
-              [attr.data-testid]="'remove-' + family.id"
-              (click)="ask(family)"
-            >
-              <app-icon name="delete" />
-            </button>
-          } @else {
-            <span class="badge">{{ bundledLabel }}</span>
+           First, and shut: shut it is one line, so it costs the fonts below it
+           nothing, and it holds the top of the list still. Underneath it the
+           added fonts grow downwards from a fixed point, which is also where
+           "Add a font…" leaves the newest one — rather than everything sliding
+           down past a section that never changes. -->
+      <details
+        #builtIn
+        class="built-in"
+        [open]="isBuiltInOpen()"
+        (toggle)="isBuiltInOpen.set(builtIn.open)"
+      >
+        <summary data-testid="font-built-in">{{ builtInSummary() }}</summary>
+
+        @if (isBuiltInOpen()) {
+          <ul class="list">
+            @for (family of bundled(); track family.id) {
+              <li class="row" [attr.data-testid]="'font-' + family.id">
+                <div class="what">
+                  <!-- The name drawn in the face it names. A label can only
+                       *say* what letters look like, which is the one thing a
+                       name cannot do. -->
+                  <span
+                    class="preview"
+                    [style.font-family]="stack(family)"
+                    [attr.data-font]="family.id"
+                    >{{ family.label }}</span
+                  >
+                  <span class="meta">{{ faceSummary(family) }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </details>
+
+      @if (custom().length > 0) {
+        <ul class="list">
+          @for (family of custom(); track family.id) {
+            <li class="row" [attr.data-testid]="'font-' + family.id">
+              <div class="what">
+                <span
+                  class="preview"
+                  [style.font-family]="stack(family)"
+                  [attr.data-font]="family.id"
+                  >{{ family.label }}</span
+                >
+                <span class="meta">{{ faceSummary(family) }}</span>
+              </div>
+
+              <button
+                appButton
+                type="button"
+                variant="ghost"
+                [isIconOnly]="true"
+                [attr.aria-label]="removeLabel(family)"
+                [attr.data-testid]="'remove-' + family.id"
+                (click)="ask(family)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </li>
           }
-        </li>
+        </ul>
       }
-    </ul>
+    </div>
 
     <button
       appButton
@@ -119,13 +163,24 @@ interface PendingRemoval {
     }
   `,
   styles: `
+    .library {
+      margin-block-end: var(--space-2);
+    }
+
     .list {
       display: flex;
       flex-direction: column;
       gap: var(--space-1);
-      margin: 0 0 var(--space-2);
+      margin: 0;
       padding: 0;
       list-style: none;
+    }
+
+    .built-in > summary {
+      padding: var(--space-1) 0;
+      font-size: var(--text-sm);
+      color: var(--text-faint);
+      cursor: pointer;
     }
 
     .row {
@@ -154,8 +209,7 @@ interface PendingRemoval {
       text-overflow: ellipsis;
     }
 
-    .meta,
-    .badge {
+    .meta {
       font-size: var(--text-xs);
       color: var(--text-faint);
     }
@@ -167,11 +221,27 @@ export class FontList {
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly families = computed(() => this.fonts.catalog.list());
+
+  /** The rows anything can be done to — they carry the delete button. */
+  protected readonly custom = computed(() =>
+    this.families().filter((family) => family.category === 'custom'),
+  );
+  /** Folded away above them, so the list has a fixed top edge. */
+  protected readonly bundled = computed(() =>
+    this.families().filter((family) => family.category !== 'custom'),
+  );
+
   protected readonly isAdding = signal(false);
+  /** Shut on arrival, and read by the observer effect — see the header. */
+  protected readonly isBuiltInOpen = signal(false);
   protected readonly pending = signal<PendingRemoval | null>(null);
 
+  protected readonly builtInSummary = computed(() => {
+    const count = this.bundled().length;
+    return $localize`:@@fonts.builtIn:${count}:count: fonts built into the app`;
+  });
+
   protected readonly addLabel = $localize`:@@fonts.add:Add a font…`;
-  protected readonly bundledLabel = $localize`:@@fonts.bundled:Built in`;
   protected readonly removeTitle = $localize`:@@fonts.removeTitle:Remove this font?`;
   protected readonly removeConfirmLabel = $localize`:@@fonts.removeConfirm:Remove`;
   protected readonly cancelLabel = $localize`:@@fonts.cancel:Cancel`;
@@ -183,10 +253,12 @@ export class FontList {
       this.fonts.ensure([id], ['normal']),
     );
     if (observer) {
-      // After render, and re-run when the library changes: the rows under watch
-      // are whatever is on screen now, not whatever was there at construction.
+      // After render, and re-run when the library changes or the built-in
+      // section opens: the rows under watch are whatever is on screen now, not
+      // whatever was there at construction.
       afterRenderEffect(() => {
         this.families();
+        this.isBuiltInOpen();
         const host = this.host.nativeElement as HTMLElement;
         host
           .querySelectorAll('[data-font]')
@@ -196,10 +268,6 @@ export class FontList {
     inject(DestroyRef).onDestroy(() => observer?.disconnect());
   }
 
-  protected isCustom(family: FontFamily): boolean {
-    return family.category === 'custom';
-  }
-
   protected stack(family: FontFamily): string {
     // Read so the row redraws when its face lands; the name itself is enough to
     // make the browser use whatever is registered under it by then.
@@ -207,9 +275,19 @@ export class FontList {
     return `'${family.family}', ${family.fallback}`;
   }
 
+  /**
+   * How many faces the family has, and — when that number is a surprise — why.
+   *
+   * A family the user picked off Google Fonts for its nine weights installs as
+   * one face when the repo ships it as a single variable file, because a
+   * variable file can only give its default instance to a PDF. The import was
+   * right and said nothing, which left the count looking like a failed download.
+   *
+   * Shared with the add dialog, which says the same sentence about the same
+   * family before it is installed.
+   */
   protected faceSummary(family: FontFamily): string {
-    const count = Object.keys(family.faces).length;
-    return $localize`:@@fonts.faces:${count}:count: of 4 styles`;
+    return familyFaceSummary(family);
   }
 
   protected removeLabel(family: FontFamily): string {

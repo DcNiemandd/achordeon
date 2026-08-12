@@ -313,8 +313,13 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     // It was a disabled coming-soon stub until the library landed. The bundled
     // families are what a fresh device has, and adding is reachable from here.
     await expect(page.getByTestId('font-list')).toBeVisible();
-    await expect(page.getByTestId('font-roboto-mono')).toBeVisible();
     await expect(page.getByTestId('font-add')).toBeEnabled();
+
+    // Folded away on arrival: four rows that cannot be removed are not what
+    // this page is for, and unfolding is what fetches their previews.
+    await expect(page.getByTestId('font-roboto-mono')).toHaveCount(0);
+    await page.getByTestId('font-built-in').click();
+    await expect(page.getByTestId('font-roboto-mono')).toBeVisible();
   });
 
   test('adding a font offers a file and a link', async ({ page }) => {

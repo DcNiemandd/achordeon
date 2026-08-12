@@ -194,6 +194,10 @@ function groupFamilies(rows: readonly FontFaceRow[]): FontFamily[] {
       fallback: 'system-ui, sans-serif',
       faces: faces as FontFamily['faces'],
       license: existing?.license ?? row.license ?? '',
+      // Sticky across faces: a family with one variable file and one static
+      // still has a face that could only be its file's default instance, and
+      // that is the thing the list has to be able to explain.
+      isVariable: existing?.isVariable === true || row.isVariable,
     });
   }
   return [...families.values()];
