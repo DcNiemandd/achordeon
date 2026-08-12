@@ -136,6 +136,28 @@ export function borrowedNote(faces: readonly string[], donor: string): string {
 }
 
 /**
+ * A family's name in a picker, and what it is short of **for this role**.
+ *
+ * Silent when the family has everything the role asks for, which is most of
+ * them: a suffix on every row would be noise to read past rather than a fact to
+ * notice. The counts are per role, not absolute — Oswald has two faces, which
+ * makes it short for a song and complete for a title, and one number cannot say
+ * both.
+ *
+ * Which faces get borrowed is left to `borrowedNote` under the picker. An
+ * `option` is one line of plain text with no room to name four faces, and the
+ * detail matters once a font is chosen rather than while scanning past it.
+ */
+export function fontOptionLabel(
+  label: string,
+  has: number,
+  needed: number,
+): string {
+  if (has >= needed) return label;
+  return $localize`:@@fonts.optionFaces:${label}:font: — ${has}:count: of ${needed}:total: styles`;
+}
+
+/**
  * The headings a font picker groups its families under.
  *
  * The families themselves are *not* translated — they are proper names, and a

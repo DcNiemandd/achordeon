@@ -15,10 +15,13 @@ import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
 import { FontLoader } from '@achordeon/shared/data-access';
 import {
+  BODY_FACES,
   BODY_FONT,
   DEFAULT_BODY_FONT,
   DEFAULT_TUNING,
+  TITLE_FACES,
   isBodyCapable,
+  missingFaces,
   resolveFonts,
   type FontCategory,
   type FontId,
@@ -36,6 +39,7 @@ import {
   ADD_FONT,
   FONT_CATEGORY_LABELS,
   FONT_SAMPLE_TEXT,
+  fontOptionLabel,
   GROUPS,
   GROUP_LABELS,
   SETTING_UI,
@@ -843,13 +847,26 @@ export class SettingsPanel {
    */
   private fontOptions(role: FontRole): readonly (Option | OptionGroup)[] {
     const shelves = new Map<FontCategory, Option[]>();
+    // What this role actually asks for. A title block is never markdown-parsed,
+    // so it wants two faces; a song wants four. Counting against the role rather
+    // than against four is what stops a perfectly good title font from being
+    // labelled as if something were wrong with it.
+    const needed = role === 'title' ? TITLE_FACES : BODY_FACES;
     for (const family of this.fonts.catalog.list()) {
       // A donor has to have what the borrower lacks, so only a family with all
       // four faces can lend. Body and title list everything: a family short of a
       // face is still choosable, and borrows what it has not got.
       if (role === 'italic' && !isBodyCapable(family)) continue;
       const shelf = shelves.get(family.category) ?? [];
-      shelf.push({ value: family.id, label: family.label });
+      const short = missingFaces(family, needed).length;
+      shelf.push({
+        value: family.id,
+        label: fontOptionLabel(
+          family.label,
+          needed.length - short,
+          needed.length,
+        ),
+      });
       shelves.set(family.category, shelf);
     }
     const groups: (Option | OptionGroup)[] = [...shelves].map(

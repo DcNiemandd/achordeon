@@ -218,6 +218,7 @@
     "fonts.cancel": "Zrušit",
     "fonts.faces": "{$count} ze 4 řezů",
     "fonts.facesVariable": "{$count} ze 4 řezů — toto písmo je jeden variabilní soubor a vytisknout lze jen jeho výchozí řez",
+    "fonts.optionFaces": "{$font} — {$count} ze {$total} řezů",
     "fonts.removeConfirm": "Odebrat",
     "fonts.removeNone": "Písmo {$font} nikde nepoužíváte. Kdykoli ho můžete přidat znovu.",
     "fonts.removeOne": "Odebrat písmo {$font}",

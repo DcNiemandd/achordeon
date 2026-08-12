@@ -253,6 +253,39 @@ describe('SettingsPanel', () => {
     });
   });
 
+  describe('what an option says about its faces', () => {
+    /** The first bundled family that cannot set a whole song on its own. */
+    const short = BUNDLED_FONTS.find((one) => !isBodyCapable(one));
+
+    function optionLabel(key: string, value: string): string {
+      const option = [...picker(key).querySelectorAll('option')].find(
+        (opt) => opt.getAttribute('value') === value,
+      );
+      expect(option).toBeDefined();
+      return option?.textContent?.trim() ?? '';
+    }
+
+    it('counts against what the role asks for, not against four', () => {
+      // The same family, in two pickers. It is short for a song and complete
+      // for a title, because a title block is never markdown-parsed and so only
+      // ever asks for regular and bold.
+      mount();
+
+      expect(optionLabel('bodyFont', short?.id ?? '')).toContain('2 of 4');
+      expect(optionLabel('titleFont', short?.id ?? '')).toBe(short?.label);
+    });
+
+    it('says nothing about a family that draws all of its own', () => {
+      // Silence is the common case. A suffix on every row is noise to read past
+      // rather than a fact to notice.
+      mount();
+
+      expect(optionLabel('bodyFont', DEFAULT_BODY_FONT)).toBe(
+        BUNDLED_FONTS.find((one) => one.id === DEFAULT_BODY_FONT)?.label,
+      );
+    });
+  });
+
   describe('a family short of a face', () => {
     /** The first bundled family that cannot set a whole song on its own. */
     const short = BUNDLED_FONTS.find((one) => !isBodyCapable(one));

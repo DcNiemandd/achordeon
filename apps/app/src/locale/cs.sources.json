@@ -216,6 +216,7 @@
   "fonts.cancel": "Cancel",
   "fonts.faces": "{$count} of 4 styles",
   "fonts.facesVariable": "{$count} of 4 styles — this font comes as one variable file, and only its default style can be printed",
+  "fonts.optionFaces": "{$font} — {$count} of {$total} styles",
   "fonts.removeConfirm": "Remove",
   "fonts.removeNone": "Nothing is set in {$font}. You can add it again at any time.",
   "fonts.removeOne": "Remove {$font}",
