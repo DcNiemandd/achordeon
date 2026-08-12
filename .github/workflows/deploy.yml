@@ -88,6 +88,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The whole history, because the sitemaps' `<lastmod>` is read out of
+          # git: Docusaurus asks when each page's source file was last committed.
+          # A shallow clone has one commit, so every page would be stamped with
+          # the day of the deploy — and a sitemap where everything changed today,
+          # every day, is a freshness signal that says nothing.
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
