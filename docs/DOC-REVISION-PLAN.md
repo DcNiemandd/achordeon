@@ -97,7 +97,15 @@ This file lists the concrete documentation changes to make, per file, plus the d
 
 ## Still genuinely open
 
-1. Local-network Audience over PWA without internet — research.
-2. Custom shortcuts — the config UI that rebinds them (TBD). The keymap itself
-   shipped: ADR-0015 and the `?` dialog.
-3. Theme colors — pending design.
+All three are on the v2 board now. This list is kept so the trail from the
+grilling session is unbroken; **[`V2-BOARD.md`](./V2-BOARD.md) is where they are
+worked**, and it is the front door for anything new.
+
+1. Local-network Audience over PWA without internet — research. → the parked
+   shelf, [V2-13].
+2. Custom shortcuts — the config UI that rebinds them. The keymap itself shipped:
+   ADR-0015 and the `?` dialog. → [V2-08], which also carries the two constraints
+   not to re-derive (presses match physical position; undo and redo are
+   CodeMirror's and are listed but not bound).
+3. Theme colors — pending design. → still pending, tracked on the shelf in
+   [V2-13] beside `PRD-UI-SHELL.md` §13's four one-look questions.
