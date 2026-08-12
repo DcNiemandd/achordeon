@@ -161,6 +161,11 @@ jobs:
       # `continue-on-error`, because this is an announcement and not part of
       # shipping. The site is live by this point; a rate limit or an outage at
       # someone else's API must not paint the deploy red.
+      #
+      # Which leaves no room for a red step to mean anything, so the script says
+      # it another way: a 403 or a 429 — the two answers that mean the
+      # submission was refused and someone here has to act — is written as a
+      # `::error::` annotation, and lands in the run summary.
       - name: Ping IndexNow (Bing, Seznam, Yandex)
         continue-on-error: true
         run: node tools/ping-indexnow.mjs dist/site

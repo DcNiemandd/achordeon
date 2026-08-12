@@ -15,6 +15,10 @@
 // key file (see `apps/docs/docusaurus.config.ts`), so there is nothing to prove
 // ownership with and this exits 0 without sending. A fork must not submit the
 // upstream host, and CI must not fail because a variable nobody set is unset.
+//
+// **A refusal is not silence.** A 403 or a 429 means the submission was read and
+// thrown away, which is the one outcome nothing downstream would ever notice —
+// see `REJECTIONS` below for how each is surfaced, and why the rest are not.
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -23,6 +27,36 @@ const ENDPOINT = 'https://api.indexnow.org/indexnow';
 
 /** IndexNow caps a single submission at 10 000 URLs. */
 const MAX_URLS = 10_000;
+
+/**
+ * The two rejections that are ours to fix, and what each one means.
+ *
+ * Everything else an API can answer with — a 5xx, a timeout, a connection
+ * refused — is somebody else having a bad day, and the workflow step is
+ * `continue-on-error` precisely so that cannot paint a finished deploy red.
+ * These two are the opposite: they say the submission was understood and
+ * refused, and nothing will land until someone here does something about it.
+ */
+const REJECTIONS = {
+  403: 'the key file is missing, or its contents do not match the key that was submitted. Check that `<key>.txt` is served at the site root, is exactly the key, and carries no trailing newline and no BOM.',
+  429: 'submitting too often. IndexNow asks for a submission only when content actually changed, and this deploy resubmits every URL on every push.',
+};
+
+/**
+ * Lift a message into the run summary, not just the log body.
+ *
+ * `::error::` is how GitHub Actions is told something is worth surfacing. It is
+ * the only lever left here: the step is `continue-on-error: true` on purpose, so
+ * a red step is not available as a signal, and a line in a deploy log is a thing
+ * nobody reads until they are already looking for it.
+ *
+ * Only inside Actions — anywhere else the marker is noise printed at a human.
+ */
+function annotateError(message) {
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    console.log(`::error::${message}`);
+  }
+}
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const isDryRun = process.argv.includes('--dry-run');
@@ -82,6 +116,17 @@ async function main() {
     );
     return;
   }
+
+  // A refusal, and a refusal is silent by default: nothing downstream notices
+  // that no engine was told anything. Named out loud, and annotated so it
+  // reaches the run summary rather than page four of a log.
+  const rejection = REJECTIONS[response.status];
+  if (rejection) {
+    const message = `ping-indexnow: ${response.status} for ${host} — ${rejection} No URL was accepted.`;
+    annotateError(message);
+    throw new Error(message);
+  }
+
   throw new Error(
     `ping-indexnow: ${response.status} ${response.statusText} — ${(
       await response.text()
