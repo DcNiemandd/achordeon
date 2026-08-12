@@ -270,6 +270,58 @@ function repairEmphasis(
   }
 }
 
+/** One matched pair of emphasis marker groups, and the text between them. */
+export interface EmphasisSpan {
+  /** Index of the first `*` of the OPENING group. */
+  start: number;
+  /** Index of the first `*` of the CLOSING group. */
+  end: number;
+  /** Asterisks in each group — 1 italic, 2 bold, 3 both. */
+  length: number;
+}
+
+/**
+ * A line's matched emphasis spans, **innermost first** — the pairs behind the
+ * marker map, which records only where each group is and how long it is.
+ *
+ * **Emphasis is a span, not a wrapper around a word.** Pressing Bold on
+ * `**Karneval karneval**` means "this is bold, stop that", so the toolbar has to
+ * be able to name the thing the markers made. Reading only the asterisks
+ * *adjacent* to whatever the button was about to wrap cannot do that: the run is
+ * invisible unless the range happens to sit against both groups, so the button
+ * wrapped a second pair around it and left the first one standing.
+ *
+ * A group closes the open one it matches in length, which is how
+ * {@link emphasisMarkers} paired them in the first place; a group that matches
+ * nothing simply never becomes a span, and the caller is left where it started.
+ * Closing order is innermost-first, so the first span containing a point is the
+ * tightest one around it — `*b*` in `**a *b* c**`, not the bold outside it.
+ *
+ * One recogniser: the spans the toolbar rewrites are the spans Phase 2 renders
+ * and the highlighter colours. `from` skips a label marker, exactly as it does
+ * for the markers themselves.
+ */
+export function emphasisSpans(s: string, from = 0): EmphasisSpan[] {
+  const markers = emphasisMarkers(s, from);
+  /** Groups still looking for the one that closes them, innermost last. */
+  const open: OpenEmphasis[] = [];
+  const spans: EmphasisSpan[] = [];
+
+  // An opener is recorded only once its closer is found, so the map is not in
+  // reading order — and reading order is the whole algorithm.
+  for (const at of [...markers.keys()].sort((a, b) => a - b)) {
+    const length = markers.get(at) as number;
+    const innermost = open[open.length - 1];
+    if (innermost === undefined || innermost.remaining !== length) {
+      open.push({ at, remaining: length });
+      continue;
+    }
+    open.pop();
+    spans.push({ start: innermost.at, end: at, length });
+  }
+  return spans;
+}
+
 /**
  * Split a bracket's inner content into chord tokens on spaces/commas. Multiple
  * tokens = multiple anchors at the same index (PARSER-GRAMMAR §Line model).

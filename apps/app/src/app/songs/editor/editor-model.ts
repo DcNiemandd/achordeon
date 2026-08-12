@@ -101,6 +101,10 @@ export interface InsertRequest {
    * word means "make this word bold", not "type `**` here and start over". Only
    * bites for a wrapping insert (`after` set) with no selection and a word under
    * the caret; on whitespace it falls back to the empty pair.
+   *
+   * A word is only the guess made where there is no markup yet. With
+   * `togglesEmphasis`, an emphasis span the caret is already inside is the better
+   * answer and takes precedence — see there.
    */
   readonly wrapsWord?: boolean;
   /**
@@ -115,6 +119,11 @@ export interface InsertRequest {
    * and how Italic inside a bold run used to quietly un-bold it — the two markers
    * are the same character, so "is it already wrapped in `*`" cannot tell them
    * apart. Only the run length can.
+   *
+   * The run it flips is the one around the **span** the range is about — the
+   * caret's enclosing span, or the span a selection was drawn around with its
+   * markers included. Reading only the asterisks touching the range missed both,
+   * and wrapped a second pair around a span that was already there.
    */
   readonly togglesEmphasis?: 'italic' | 'bold';
 }

@@ -34,6 +34,7 @@ import {
   ChordTheory,
   bracketAt,
   cycleChordAt,
+  emphasisSpans,
   findLabelDelimiter,
   transposeChordAt,
   type ChordNotation,
@@ -335,32 +336,49 @@ export class SongEditor {
 
     const after = request.after ?? '';
 
-    // Nothing selected, but the caret sits in a word and this insert wraps one:
-    // act on the whole word (Bold on a word means "make THIS word bold"). A no-op
-    // on whitespace, where `wordAt` returns null and we fall back to the pair.
     let start = from;
     let end = to;
-    let wrappedWord = false;
-    if (from === to && request.wrapsWord) {
+    // Whether the range was chosen FOR the user rather than by them, which is
+    // what decides where the caret ends up afterwards.
+    let derivedRange = false;
+
+    // An emphasis span the range is really about wins over everything else: the
+    // span is the thing the markers made, and both the caret sitting inside one
+    // and a selection drawn around one (markers and all) mean "this span". Either
+    // way the operation is on the span's TEXT — the markers are what gets
+    // rewritten, so they must not be inside the range being rewritten.
+    const span = request.togglesEmphasis
+      ? this.emphasisSpanFor(from, to)
+      : null;
+    if (span) {
+      start = span.from;
+      end = span.to;
+      derivedRange = from === to;
+    }
+
+    // Otherwise, nothing selected and the caret in a word: act on the whole word
+    // (Bold on a word means "make THIS word bold"). A no-op on whitespace, where
+    // `wordAt` returns null and we fall back to the empty pair.
+    if (!span && from === to && request.wrapsWord) {
       const word = view.state.wordAt(from);
       if (word) {
         start = word.from;
         end = word.to;
-        wrappedWord = true;
+        derivedRange = true;
       }
     }
 
     if (request.togglesEmphasis) {
-      this.flipEmphasis(request.togglesEmphasis, start, end, wrappedWord);
+      this.flipEmphasis(request.togglesEmphasis, start, end, derivedRange);
       return;
     }
 
     const selected = view.state.sliceDoc(start, end);
     const text = request.before + selected + after;
-    // A wrapped word keeps the caret on the character it was on — the word only
-    // shifted right by the opener. An empty pair uses `caretOffset` to land the
-    // caret where the next keystroke goes — between the brackets of `[]`.
-    const caret = wrappedWord
+    // A range we picked keeps the caret on the character it was on — the text
+    // only shifted right by the opener. An empty pair uses `caretOffset` to land
+    // the caret where the next keystroke goes — between the brackets of `[]`.
+    const caret = derivedRange
       ? from + request.before.length
       : start +
         (selected === '' && request.caretOffset !== undefined
@@ -386,6 +404,46 @@ export class SongEditor {
   }
 
   /**
+   * The TEXT of the emphasis span `[from, to]` is about, in document positions —
+   * or null when the range is not about one.
+   *
+   * Two ways a range means a span, and they are the two ways people press the
+   * button. A caret **inside** one: you are standing in bold text and want it to
+   * stop. A selection drawn **around** one, markers and all: you swept the phrase
+   * with the mouse, which takes the asterisks with it because they are part of the
+   * text. Both used to read as "no emphasis here" and wrap a second pair around
+   * the first — `****Karneval karneval**` from the caret, `****Karneval
+   * karneval****` from the selection.
+   *
+   * A selection that covers only PART of a span is left alone: picking a range out
+   * by hand is how you emphasise less than the whole of one.
+   */
+  private emphasisSpanFor(
+    from: number,
+    to: number,
+  ): { from: number; to: number } | null {
+    const view = this.view;
+    if (!view) {
+      return null;
+    }
+    const line = view.state.doc.lineAt(from);
+    if (to > line.to) {
+      return null; // a selection across lines is nobody's span
+    }
+    const start = from - line.from;
+    const end = to - line.from;
+    const spans = emphasisSpans(line.text, findLabelDelimiter(line.text) + 1);
+    const span =
+      from === to
+        ? // Innermost first, so this finds the tightest span around the caret.
+          spans.find((s) => s.start + s.length <= start && start <= s.end)
+        : spans.find((s) => s.start === start && s.end + s.length === end);
+    return span
+      ? { from: line.from + span.start + span.length, to: line.from + span.end }
+      : null;
+  }
+
+  /**
    * Flip one emphasis bit over `[start, end)` — the Bold and Italic buttons.
    *
    * The markers are a **run** of asterisks, not a pair: every pair in it is bold and
@@ -403,7 +461,7 @@ export class SongEditor {
     kind: 'italic' | 'bold',
     start: number,
     end: number,
-    wrappedWord: boolean,
+    derivedRange: boolean,
   ): void {
     const view = this.view;
     if (!view) {
@@ -441,7 +499,7 @@ export class SongEditor {
       selection:
         from !== to
           ? { anchor: innerStart, head: innerStart + inner.length }
-          : { anchor: wrappedWord ? from + shift : innerStart },
+          : { anchor: derivedRange ? from + shift : innerStart },
       scrollIntoView: true,
     });
     view.focus();

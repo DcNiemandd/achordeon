@@ -4,7 +4,12 @@
 // so these cases are the contract between what parses as a label and what colours
 // as one. The table below is PARSER-GRAMMAR's own.
 
-import { bracketAt, emphasisMarkers, findLabelDelimiter } from './chords';
+import {
+  bracketAt,
+  emphasisMarkers,
+  emphasisSpans,
+  findLabelDelimiter,
+} from './chords';
 
 describe('findLabelDelimiter', () => {
   it.each([
@@ -169,5 +174,45 @@ describe('emphasisMarkers', () => {
       [6, 1],
     ]);
     expect(printed('R*: *a', 4)).toEqual([4]);
+  });
+});
+
+describe('emphasisSpans', () => {
+  // The toolbar's view of the same markers: which pair encloses what. Bold and
+  // Italic rewrite a span, so a span the markers made has to be nameable — reading
+  // the asterisks next to a word cannot see one that starts a phrase away.
+
+  it('pairs the markers of a phrase', () => {
+    expect(emphasisSpans('**Karneval karneval**')).toEqual([
+      { start: 0, end: 19, length: 2 },
+    ]);
+  });
+
+  it('reports the innermost span first', () => {
+    // Closing order: the `*b*` closes before the bold it sits in, so a caret in
+    // `b` finds the italic and a caret in `a` finds the bold.
+    expect(emphasisSpans('**a *b* c**')).toEqual([
+      { start: 4, end: 6, length: 1 },
+      { start: 0, end: 9, length: 2 },
+    ]);
+  });
+
+  it('leaves the asterisks that only print out of it', () => {
+    expect(emphasisSpans('*ab')).toEqual([]); // matches nothing, so spans nothing
+    // The closer spends one and prints the other; the span is the pair, not the run.
+    expect(emphasisSpans('*asd**')).toEqual([{ start: 0, end: 4, length: 1 }]);
+  });
+
+  it('is blind to a bracket, like the markers it reads', () => {
+    // The `*` in the chord is text, so the two outside it are the pair.
+    expect(emphasisSpans('*a [Solo*] b*')).toEqual([
+      { start: 0, end: 12, length: 1 },
+    ]);
+  });
+
+  it('skips a label marker and still reports absolute indices', () => {
+    expect(emphasisSpans('R*: *a*', 3)).toEqual([
+      { start: 4, end: 6, length: 1 },
+    ]);
   });
 });
