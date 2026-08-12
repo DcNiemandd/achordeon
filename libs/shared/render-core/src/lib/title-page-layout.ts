@@ -1,4 +1,4 @@
-// Title-page layout — the front sheet of a songbook, in eleven shapes
+// Title-page layout — the front sheet of a songbook, in twenty-one shapes
 // Spec: PRD-RENDERING §4.1 (the render box), §5 (`RenderPlan`); board V2-05.
 //
 // A songbook's title page used to go through `layoutCore` as a song with no
