@@ -43,22 +43,22 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 
 ## Board
 
-| ID                                                   | Card                                  | Tag              |
-| ---------------------------------------------------- | ------------------------------------- | ---------------- |
-| [V2-01](#v2-01--test-health--promotion)              | Test health & promotion               | `[now]`          |
-| [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`      |
-| [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[now]`          |
-| [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`           |
-| [V2-05](#v2-05--title-pages-ten-of-them)             | Title pages, ten of them              | `[done]`         |
-| [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`      |
-| [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`           |
-| [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`           |
-| [V2-09](#v2-09--aspect-ratio-instrument-then-curate) | Aspect ratio: instrument, then curate | `[now]` + `[v2]` |
-| [V2-10](#v2-10--google-oauth-and-drive)              | Google OAuth and Drive                | `[v2]`           |
-| [V2-11](#v2-11--buying-premium)                      | Buying premium                        | `[v2]`           |
-| [V2-12](#v2-12--sharing-a-slot)                      | Sharing a slot                        | `[blocked]`      |
-| [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`      |
-| [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`           |
+| ID                                                   | Card                                  | Tag               |
+| ---------------------------------------------------- | ------------------------------------- | ----------------- |
+| [V2-01](#v2-01--test-health--promotion)              | Test health & promotion               | `[now]`           |
+| [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`       |
+| [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[done]`          |
+| [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`            |
+| [V2-05](#v2-05--title-pages-ten-of-them)             | Title pages, ten of them              | `[done]`          |
+| [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`       |
+| [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`            |
+| [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`            |
+| [V2-09](#v2-09--aspect-ratio-instrument-then-curate) | Aspect ratio: instrument, then curate | `[done]` + `[v2]` |
+| [V2-10](#v2-10--google-oauth-and-drive)              | Google OAuth and Drive                | `[v2]`            |
+| [V2-11](#v2-11--buying-premium)                      | Buying premium                        | `[v2]`            |
+| [V2-12](#v2-12--sharing-a-slot)                      | Sharing a slot                        | `[blocked]`       |
+| [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`       |
+| [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`            |
 
 ---
 
@@ -153,47 +153,53 @@ What is real is narrower and still worth fixing:
 
 ---
 
-## V2-03 · Document sync & the board `[now]`
+## V2-03 · Document sync & the board `[done]`
 
-The map has drifted from the build, and the map is what the next session opens
-first. Four jobs.
+The map had drifted from the build, and the map is what the next session opens
+first. Four jobs; three of them are finished and the fourth is a standing rule.
 
-**1. Tag the existing epics `[v1]`.** `achordeon-implementation.md` holds epics
-1–15, all 120 subtasks ticked. They are v1 by definition; say so on each.
+**1. Tag the existing epics `[v1]`. Done.** Every epic heading in
+`achordeon-implementation.md` carries it, and the file's own header says why once
+rather than per epic.
 
-**2. Add what landed outside it.** Everything after Epic 15 lives in `plans/` and
-in ADRs and was never folded back, so the file no longer reads as the whole build.
-Reconstructed from the git log and the ADRs — **numbering and naming are yours**:
+**2. Add what landed outside it. Done — `7058bff`.** Epics 16–28, written after
+the fact, with the file now saying so in as many words: _"Epics 1–15 were planned
+up front. Epics 16 and above were not — they are the work that came out of using
+the app once it existed."_ Every row this card listed has a home:
 
-| Work                                    | Evidence                                                     |
-| --------------------------------------- | ------------------------------------------------------------ |
-| Songbook print preview & print settings | `planSongbook`, paged preview, zoom, device/book-bound split |
-| Usage statistics & privacy              | GoatCounter beacon, opt-in, `privacy.mdx`, 90-day purge      |
-| Report a problem                        | Edge Function filing a GitHub issue + the client half        |
-| Backup: add or replace                  | One dialog for the file and the Drive copy                   |
-| Import from an AI                       | ADR-0014, published schema, share-as-link, `.achordeon`      |
-| Page zoom                               | ADR-0012                                                     |
-| Turn the page (rotation)                | ADR-0013                                                     |
-| Performance transpose                   | `transpose-stepper`, stage + audience                        |
-| Docs site: Czech, brand, promotion      | i18n, sitemaps, IndexNow, og images                          |
-| The font library (+ round two)          | ADR-0016/0017/0018, `plans/the-font-library*.md`             |
-| Search & list polish                    | Diacritics folding, entry search, list scroll memory         |
+| Work                                    | Landed as                                   |
+| --------------------------------------- | ------------------------------------------- |
+| Markup round two (inline chords)        | Epic 16                                     |
+| The starter library                     | Epic 17                                     |
+| Songbook print preview & print settings | Epic 18                                     |
+| Usage statistics & privacy              | Epic 19 — and now [V2-09]'s counter with it |
+| Search & list polish                    | Epic 20                                     |
+| Docs site: Czech, brand, promotion      | Epic 21                                     |
+| Backup: add or replace                  | Epic 22                                     |
+| Report a problem                        | Epic 23                                     |
+| Page zoom                               | Epic 24 (ADR-0012)                          |
+| Turn the page (rotation)                | Epic 25 (ADR-0013)                          |
+| Performance transpose                   | Epic 26                                     |
+| Import from an AI                       | Epic 27 (ADR-0014)                          |
+| The font library (+ round two)          | Epic 28 (ADR-0016/0017/0018)                |
 
-**3. Fix the stale rows.**
+**3. Fix the stale rows. Done.**
 
-- `PRD.md` shows **P1 as ⬜ open**. `achordeon-implementation.md` _is_ P1 and it is
-  complete — the backlog table and the mermaid graph both still say otherwise.
-- `PRD-EDITOR.md` is listed **_(planned)_** for work that shipped (highlight
-  grammar, insert buttons, markers — Epic 5, ADR-0010). Write it as a record of
-  what exists, or strike the row.
-- **`$bp-stack` is 680px, not 500.** Epic 6's landing note says 500; the source of
-  truth (`_breakpoints.scss`) says 680, and there is a third breakpoint the note
-  never mentions (`$bp-row-reorder: 1000px`).
-- `DOC-REVISION-PLAN.md` §Still genuinely open: rebinding is now [V2-08], theme
-  colours are still pending design, LAN Audience is in [V2-13].
+- `PRD.md` shows **P1 as ✅** in the backlog table and in the mermaid graph, with
+  a line under it saying P1 _is_ `achordeon-implementation.md`.
+- `PRD-EDITOR.md`'s row now reads **"never written, and not needed"**, and names
+  the three places its content actually lives (ADR-0010, `PARSER-GRAMMAR.md`,
+  Epic 5 + Epic 16) rather than promising a fourth copy.
+- **`$bp-stack` is 680px** in Epic 6's note, and the third breakpoint
+  (`$bp-row-reorder: 1000px`) is written down beside it.
+- `DOC-REVISION-PLAN.md` §Still genuinely open now points each of its three rows
+  at the card that owns it — [V2-13], [V2-08], [V2-14].
+- And one the card did not list: the two `:::danger` admonitions that promised
+  shortcut rebinding in the present tense say "planned" (`b00bad7`), which is
+  [V2-08]'s doc half.
 
-**4. Keep this board the front door.** New work gets a card before it gets a
-commit.
+**4. Keep this board the front door.** Not a job — the rule. New work gets a card
+before it gets a commit, which is how [V2-14] and this record both came to exist.
 
 ---
 
@@ -302,6 +308,10 @@ Placement alone — nothing but text on the page:
 | 20  | **Bookmark**  | A narrow strip of ink down the left edge, the book centred on the rest.                                                    |
 | 21  | **Footer**    | The author in a band across the foot — `banner` upside down, and it signs the book rather than announcing it.              |
 
+And one thing all twenty-one carry and each places its own way: the **made-with
+mark**. `Drawing.mark` is required, so it is part of a variant's composition
+rather than a line laid over it — [V2-06] has the three decisions in it.
+
 Two decisions inside that list, both open to being overruled:
 
 - **`plate` dropped the tracking.** Letter-spacing would need a `TextStyle` field
@@ -322,10 +332,11 @@ Two decisions inside that list, both open to being overruled:
 
 ---
 
-## V2-06 · What else a title page carries `[discuss]`
+## V2-06 · What else a title page carries `[discuss]` + one `[done]`
 
 Beyond title / subtitle / author. Each of these is a field somebody has to decide
-they want, so the whole card is for discussion.
+they want, so the card stays for discussion — except the last bullet, which was
+the only one that needed nobody's permission, and it is built.
 
 - **A cover image.** The one that changes the shape of the feature. ADR-0016 is the
   precedent and it points the way: a font is **acquired, not referenced** — bytes
@@ -345,8 +356,27 @@ they want, so the whole card is for discussion.
 - **A QR code** — to a shared link or an audience lobby. The QR generator already
   exists (Epic 9 draws one for `/audience/:pin`), but a QR is an image, so it waits
   on the same primitive as the cover.
-- **A made-with mark** — the app's own, small, in a corner. Free, and the only item
-  here that promotes the app rather than the book. See [V2-01]'s last bullet.
+- ~~**A made-with mark**~~ — **built, and on all twenty-one.** `achordeon.eu`, at
+  half body size. Three things were decided in building it:
+  - **The host, not the name and not "Made with Achordeon".** A printed sheet
+    cannot be clicked, so the only mark that does anything is one somebody can
+    type back in — which is also [V2-01]'s last bullet, the one about nothing
+    linking to the site.
+  - **It is part of each variant's design, not a line added after it.** The first
+    attempt put it in the bottom margin, the one strip of paper no layout was
+    using, and that is exactly what it looked like: a stray line under a finished
+    composition. So `Drawing.mark` is **required** — a variant does not compile
+    until it has said where its own mark goes. It is the imprint under the block
+    on `classic`, the credit against the author's baseline on `poster`, a third
+    turned column on `spine`, printed up the ribbon on `bookmark`, the small
+    print inside the box on `ticket`, a masthead line inside the band on
+    `banner`, the second signature inside it on `footer`, and the engraver's line
+    just inside the border on `framed` and `bookplate`. Where it joins a block it
+    is measured _with_ it, so the block is centred and sized around it rather
+    than having something appear beneath it.
+  - **No setting, and no variant gets a say in whether there is one.** Only in
+    where it goes. Its ink reverses wherever its variant stood it on ink, which
+    is the same rule `banner`'s title follows.
 
 ---
 
@@ -406,28 +436,47 @@ Two constraints already on record, and neither should be re-derived:
 
 ---
 
-## V2-09 · Aspect ratio: instrument, then curate `[now]` + `[v2]`
+## V2-09 · Aspect ratio: instrument, then curate `[done]` + `[v2]`
 
-`aspect-options.ts:123` carries the only `TODO` left in app source: too many ratios
-in the list to read, and no evidence about which ones earn their place. The fix is
-not to guess — it is to count first.
+The `TODO` that started this card is gone from `aspect-options.ts`, and what
+replaced it is a note saying what the numbers will be used for. Too many ratios
+in the list to read, and no evidence about which ones earn their place — the fix
+was never to guess.
 
-**v1, now — instrument it.** Record which aspect ratio a song is actually set to.
-GoatCounter counts paths, so an event is a synthetic path; the beacon is already
-built (`shared/layout/stats.ts`), fire-and-forget over a 1×1 GIF with no
-third-party script.
+**Instrumented — `Stats.countAspectRatio`.** What is counted is the **pick**, not
+the render: a song drawn a hundred times is one decision, and counting the drawing
+would say which song somebody likes rather than which shape they reach for. It
+goes out as a GoatCounter event (`e=1`, the name in `p`) over the beacon that was
+already there — fire-and-forget, a 1×1 GIF, no third-party script.
 
-**And one constraint that must not be skipped.** `privacy.mdx` is a contract the
-stats file is written to keep, and it has exactly two layers: the path and the
-referrer host **always** (facts the navigation itself supplied — nothing read off
-the device, which is why nothing is asked), and the screen size **on request**,
-because reading `screen` is reading the device. A song's aspect ratio is neither:
-it is a fact about the user's **content**. So it is a third category, and it needs
-its own line on the privacy page and, on the same reasoning that gates screen size,
-its own place behind the opt-in. Ship the page edit with the counter, not after.
+The event name carries two things, because the card asks two questions:
+
+```
+aspect/preset/9:16          a row off the list
+aspect/screen/131:284       "Match this screen"
+aspect/screen-sideways/…    its sideways twin
+aspect/custom/3:5           typed into the free-text field
+```
+
+So "which rows earn their place" and "is the free-text field used at all" are
+answered by the same counter, and a ratio typed by a phone is told apart from the
+identical ratio picked off the list — the first is evidence for **adding** a row,
+the second that the row is already right. It fires from `settings-panel.ts`,
+which is the only thing that ever knows which of the four it was: the host
+receives a patch and cannot tell a pick from a typed value.
+
+**The constraint was not skipped.** `privacy.mdx` had exactly two layers — the
+path and referrer host **always** (facts the navigation itself supplied), the
+screen size **on request**, because reading `screen` is reading the device. A
+song's aspect ratio is neither: it is a fact about the user's **content**. It
+ships as a third category, named on the privacy page in both languages, behind
+the same opt-in, and `stats.spec.ts` holds the line that matters — an aspect
+ratio while the switch is off sends **nothing at all**.
 
 **v2 — curate.** Once there are numbers: cut the list to what people use, keep
 "Match this screen", and decide whether the free-text field stays for the rest.
+The commented-out device block in `aspect-options.ts` is the material — restore
+it trimmed to what the counts justify, or drop it for good.
 
 ---
 
@@ -602,14 +651,16 @@ neutral greys, always — is probably what a custom colour forces.
 ## Suggested order
 
 1. **[V2-01]** — finish the e2e number, register Bing, unstick the sitemap. No
-   decisions in any of it.
-2. **[V2-03]** — sync the documents while the survey is still fresh.
+   decisions in any of it. **The only `[now]` card left.**
+2. ~~**[V2-03]**~~ — **done.** The epics are tagged, epics 16–28 are written down,
+   and the three stale rows are corrected.
 3. **[V2-02]'s warning half** — it needs no fork and closes the honest half of the
    notation complaint.
-4. **[V2-09]'s counter** — the sooner it is counting, the sooner v2 has evidence
-   instead of opinions. Same for [V2-07]'s question about whether people ever open
-   Settings.
-5. ~~**[V2-05]**~~ — **done.** Eleven title pages, one rectangle primitive, and a
-   title page that is laid out on the page instead of boxed like a song.
+4. ~~**[V2-09]'s counter**~~ — **done.** It is counting picks, behind the opt-in,
+   with the privacy page saying so. [V2-07]'s question — whether people ever open
+   Settings — is still unmeasured, and the same beacon would answer it.
+5. ~~**[V2-05]**~~ — **done.** Twenty-one title pages, one rectangle primitive, and
+   a title page that is laid out on the page instead of boxed like a song — plus
+   [V2-06]'s made-with mark on every one of them.
 6. **Answer two questions** — `NOTATION-PLAN.md` §3, and authored-vs-derived in
    [V2-12]. Both unblock real work and neither needs code to decide.

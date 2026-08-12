@@ -93,9 +93,11 @@ cheapest things on this page and the most visible.
   verbatim: somebody who never opens Settings never learns their library could be
   backed up at all. This is a UX gap with a doc admitting it, not a missing
   feature — the account needs a way of being found from where the user already is.
-- **Aspect-ratio presets are unreadable.** `shared/settings-panel/aspect-options.ts:123`
-  carries the only `TODO` left in app source: too many values in the list to read,
-  and no analysis of which ones are worth keeping.
+- **Aspect-ratio presets are unreadable.** Still true, but no longer unmeasured —
+  the `TODO` in `shared/settings-panel/aspect-options.ts` is now a counter
+  (`Stats.countAspectRatio`, behind the statistics opt-in), so which rows earn
+  their place is a question with evidence coming. Curating the list is [V2-09]'s
+  v2 half.
 
 ---
 
@@ -124,25 +126,23 @@ cases nothing has ever run them against a real service.
 
 ## 4. Documents that have drifted
 
-Not functionality, but the map is what the next session reads first.
+Not functionality, but the map is what the next session reads first. **Four of
+the five rows below are fixed — [V2-03]** — and they are struck rather than
+deleted so the survey still reads as what was found.
 
-- **`PRD-EDITOR.md` was never written.** `PRD.md`'s document map lists it as
-  _(planned)_ — highlight grammar, insert buttons, markers. All three are built
-  (Epic 5, ADR-0010). Either write it as a record of what shipped, or strike the
-  row; a planned doc for finished work misdirects.
-- **`PRD.md` still shows P1 as ⬜ open.** `achordeon-implementation.md` **is** P1,
-  and it is complete. The backlog tables and the mermaid graph both say otherwise.
-- **`achordeon-implementation.md` stops at Epic 15.** Everything since — page zoom
-  (ADR-0012), rotation (ADR-0013), the AI import boundary (ADR-0014), the font
-  library (ADR-0016/0017/0018) — is recorded in `plans/` and in ADRs but never
-  folded back into the epic list, so the file no longer reads as the whole build.
-- **`DOC-REVISION-PLAN.md` §Still genuinely open** carries three rows, two of
-  which are live: the shortcut-rebinding UI (§2 above) and **theme colours,
-  pending design**. The third (local-network Audience) belongs in the icebox below.
+- ~~**`PRD-EDITOR.md` was never written.**~~ Its row in `PRD.md` says so, and
+  names where its content actually lives instead of promising a fourth copy.
+- ~~**`PRD.md` still shows P1 as ⬜ open.**~~ ✅ in the table and in the graph.
+- ~~**`achordeon-implementation.md` stops at Epic 15.**~~ It runs to Epic 28, and
+  says in its header which epics were planned up front and which were written
+  after the fact.
+- ~~**`DOC-REVISION-PLAN.md` §Still genuinely open**~~ points its three rows at
+  [V2-13], [V2-08] and [V2-14].
 - **`PRD-UI-SHELL.md` §13** holds four open questions that each need one look
   rather than a debate: grey-ramp temperature against a warm brand, gold
   `--premium-glow` beside `hsl(11 80% 42%)`, whether 1200px is right on tablet
-  landscape, and a re-read of the Aria v22 changelog before any upgrade.
+  landscape, and a re-read of the Aria v22 changelog before any upgrade. Still
+  open, and the colour half of it is now [V2-14].
 
 ---
 
@@ -200,7 +200,7 @@ In rough order of value against effort:
 3. ~~Re-run the e2e suite~~ — **done**: 28 chromium failures, and CI does not run
    the suite at all. Triaging them (they cluster) and wiring e2e into CI is now
    [V2-01], the board's `[now]` card.
-4. **Reconcile `PRD.md` and `achordeon-implementation.md`** (§4). Half an hour,
-   and it is what the next session opens first.
+4. ~~Reconcile `PRD.md` and `achordeon-implementation.md`~~ (§4) — **done**, and
+   it took about the half hour it looked like. [V2-03].
 5. **Sharing a slot** (§1.1) — but answer the authored-vs-derived question before
    any code, because it decides whether there is a schema change and a UI at all.
