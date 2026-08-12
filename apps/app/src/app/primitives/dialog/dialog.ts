@@ -63,10 +63,19 @@ import { DialogStack } from './dialog-stack';
       ></div>
     }
 
+    <!-- The panel holds focus itself [trap]. Clicking a heading, the padding,
+         or dragging across a line of text lands on something unfocusable, and
+         the browser then puts focus on the nearest focusable ancestor — of
+         which there was none, so it went to the document body. Escape is bound
+         on this component's host, which the body is not inside, so the key went
+         nowhere and the dialog would not close until something in it was tabbed
+         to. The focus trap only *captures* on open; it does not take focus back
+         afterwards. -->
     <div
       class="panel"
       cdkTrapFocus
       [cdkTrapFocusAutoCapture]="true"
+      tabindex="-1"
       role="dialog"
       [attr.aria-modal]="isModal()"
       [attr.aria-label]="title()"

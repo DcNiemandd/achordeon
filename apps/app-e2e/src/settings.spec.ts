@@ -364,6 +364,25 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('add-font-dialog')).toHaveCount(0);
   });
 
+  test('Esc still closes after clicking something that cannot be focused', async ({
+    page,
+  }) => {
+    // Escape is bound on the dialog, so it only arrives if focus is inside one.
+    // A click on a heading or a line of text is a click on nothing focusable,
+    // and focus used to fall out to `body`.
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('dialog').getByRole('heading').click();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('add-font-dialog')).toHaveCount(0);
+    // **And the page is still here.** Asserting only that the dialog is gone
+    // passes either way: with focus on `body` the key reached the settings
+    // screen's own Escape instead, which left for the library and took the
+    // dialog with it. Staying put is what says the dialog consumed the key.
+    await expect(page).toHaveURL(/\/settings/);
+  });
+
   test('a picker opens the same dialog and keeps its own value', async ({
     page,
   }) => {
