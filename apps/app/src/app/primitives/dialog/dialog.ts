@@ -5,10 +5,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   inject,
   input,
   output,
+  viewChild,
 } from '@angular/core';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { Button } from '../button/button';
@@ -47,6 +49,9 @@ import { DialogStack } from './dialog-stack';
     '[class]': '"mode-" + mode() + " size-" + size()',
     // Esc closes from anywhere inside, including the scrim.
     '(keydown.escape)': 'onEscape($event)',
+    // What a modal's scrim does for a modal, for a dialog that has none — see
+    // `onDocumentClick`.
+    '(document:click)': 'onDocumentClick($event)',
   },
   template: `
     @if (isModal()) {
@@ -72,6 +77,7 @@ import { DialogStack } from './dialog-stack';
          to. The focus trap only *captures* on open; it does not take focus back
          afterwards. -->
     <div
+      #panel
       class="panel"
       cdkTrapFocus
       [cdkTrapFocusAutoCapture]="true"
@@ -201,11 +207,17 @@ import { DialogStack } from './dialog-stack';
   `,
 })
 export class Dialog {
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
+
   constructor() {
-    // Say that something is open, for as long as this is. What reads it is the
-    // keyboard layer, which has to know that the screen behind a dialog is not
-    // to be acted on — see `DialogStack`.
-    inject(DestroyRef).onDestroy(inject(DialogStack).claim());
+    // Say that something is open, for as long as this is. Two things read it:
+    // the keyboard layer, which has to know that the screen behind a dialog is
+    // not to be acted on, and the nav, which closes what is open when it is
+    // reached for — see `DialogStack`.
+    inject(DestroyRef).onDestroy(
+      inject(DialogStack).claim(() => this.closed.emit()),
+    );
   }
 
   readonly title = input.required<string>();
@@ -238,5 +250,37 @@ export class Dialog {
   protected onEscape(event: Event): void {
     event.stopPropagation();
     this.closed.emit();
+  }
+
+  /**
+   * A click on the container, outside the panel — **the unscrimmed dialog's
+   * click-away.**
+   *
+   * A modal has a scrim, and the scrim is both the dim and the target: clicking
+   * beside the panel closes it. `mode="container"` has neither, deliberately —
+   * the pane beside it is the whole point and must stay lit and alive — so the
+   * same gesture had nowhere to land, and the dialog sat there until it was
+   * dismissed by name.
+   *
+   * The rule is drawn at the **container**, not at the panel: a click anywhere
+   * on the pane the dialog is centred on closes it, and a click on the *other*
+   * pane does not. That is the distinction the mode exists for. The song
+   * editor's render settings and the songbook's print settings both hang over
+   * pane A while pane B shows what they are changing; clicking back into pane A
+   * says "done here", and clicking the preview says "let me look".
+   *
+   * Bubble phase, not capture, so a click that also *does* something does that
+   * thing first — the action bar's own settings toggle closes this dialog by its
+   * own hand, and if this ran first the toggle would find it shut and re-open
+   * it. `closed` twice is harmless; a dialog that will not close is not.
+   */
+  protected onDocumentClick(event: Event): void {
+    if (this.isModal()) return;
+    const target = event.target as Node | null;
+    if (!target || this.panel().nativeElement.contains(target)) return;
+    // The host is `inset: 0` over the container and lets pointers through, so
+    // the container is the parent it was placed in — the pane.
+    const container = this.host.nativeElement.parentElement;
+    if (container?.contains(target)) this.closed.emit();
   }
 }
