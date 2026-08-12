@@ -502,7 +502,7 @@ tagged for discussion **as a whole**: these are not intentions.
 | Rendering | A chord-collision / min-gap spacing setting                                 |
 | Notation  | Solfège spellings (`Cis`/`Des`/`As`/`Es`) — see [V2-02]                     |
 | Audience  | D9 — a viewer transposes their own copy                                     |
-| Audience  | Lobby host reload-resilience; Audience over LAN with no internet            |
+| Audience  | Audience over LAN with no internet                                          |
 | Audience  | Host-facing performance history — v1 analytics are developer-only           |
 | Fonts     | woff/woff2 support; a separate chord face                                   |
 | Security  | Optional passphrase encryption-at-rest                                      |

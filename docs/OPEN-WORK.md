@@ -163,7 +163,7 @@ is complete, not because anything is expected of them.
 | Rendering | Key-aware transpose spelling (v1 is direction-based, ADR-0008)          |
 | Rendering | A chord-collision / min-gap spacing setting                             |
 | Audience  | D9 — viewer transposes their own copy                                   |
-| Audience  | Lobby host reload-resilience; Audience over LAN with no internet        |
+| Audience  | Audience over LAN with no internet                                      |
 | Audience  | Host-facing performance history (v1 analytics are developer-only)       |
 | Fonts     | woff/woff2 support; a separate chord face                               |
 | Security  | Optional passphrase encryption-at-rest                                  |
