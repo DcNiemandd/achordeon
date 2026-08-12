@@ -8,6 +8,14 @@ same bytes are base64-inlined into the exported SVG.
     Oswald        Copyright 2016 The Oswald Project Authors       (https://github.com/googlefonts/OswaldFont)
     Caveat        Copyright 2014 The Caveat Project Authors       (https://github.com/googlefonts/caveat)
 
+These files are SUBSETS of the originals and are not interchangeable with them.
+Cyrillic, Greek and Vietnamese have been removed; what remains is Latin, Latin
+Extended-A and -B, the combining marks, and punctuation and symbols. The
+originals are at the addresses above. See apps/app/tools/subset-fonts.mjs, which
+performs the cut, and docs/adr/0018-bundled-faces-ship-subset.md, which says why.
+None of these four families declares a Reserved Font Name, so the subsets keep
+the families' own names, which the licence permits.
+
 -------------------------------------------------------------------------------
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
