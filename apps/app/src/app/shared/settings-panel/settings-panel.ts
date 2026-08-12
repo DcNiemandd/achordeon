@@ -28,7 +28,7 @@ import {
 } from '@achordeon/shared/render-core';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { AddFontDialog } from '../fonts';
-import { ScreenShape } from '../layout';
+import { ScreenShape, Stats, type AspectRatioSource } from '../layout';
 import {
   MATCH_SCREEN,
   MATCH_SCREEN_SIDEWAYS,
@@ -66,6 +66,21 @@ interface Section {
   readonly label: string;
   readonly rows: Row[];
 }
+
+/**
+ * Which of the aspect-ratio rows a pick came from, for the counter alone
+ * ({@link SettingsPanel.countShape}) — anything not listed is an ordinary
+ * preset.
+ *
+ * The two measuring rows are worth telling apart from a preset that happens to
+ * hold the same ratio: a shape a device volunteered is evidence for adding that
+ * device's row, where the same shape picked off the list says the row is already
+ * right (board [V2-09]).
+ */
+const SHAPE_SOURCE: Readonly<Record<string, AspectRatioSource>> = {
+  [MATCH_SCREEN]: 'screen',
+  [MATCH_SCREEN_SIDEWAYS]: 'screen-sideways',
+};
 
 /**
  * The render settings form — **one component, three homes**: the Settings page
@@ -753,6 +768,17 @@ export class SettingsPanel {
    */
   private readonly fonts = inject(FontLoader);
 
+  /**
+   * The third, and the only one that is written to rather than read from: the
+   * beacon, for the aspect ratio alone ({@link countShape}).
+   *
+   * Here rather than bubbled out with `changed`, because the host applies a
+   * *patch* and cannot tell a pick from a typed value once it is one — and that
+   * distinction is half of what the count is for. The panel is the only thing
+   * that ever knew it.
+   */
+  private readonly stats = inject(Stats);
+
   constructor() {
     // Regular only: a sample is one line of text at one weight.
     effect(() => void this.fonts.ensure(this.sampleFaces(), ['normal']));
@@ -1010,6 +1036,25 @@ export class SettingsPanel {
     // get out of an error you typed yourself.
     this.setError(row.key, null);
     this.set(row.key, value);
+    this.countShape(row, SHAPE_SOURCE[picked] ?? 'preset', value);
+  }
+
+  /**
+   * Count a page shape somebody just chose — board [V2-09], and `aspectRatio`
+   * only.
+   *
+   * A key check in a panel that is otherwise generic over the registry, which is
+   * the honest shape of it: this is not "settings are counted", it is one list
+   * that has grown past reading and one `TODO` asking which of its rows are
+   * worth keeping. When that is answered the call comes out again, and a generic
+   * hook would have quietly become "count every setting" in the meantime.
+   *
+   * After `set`, never instead of it: the beacon is fire-and-forget and may be
+   * turned off entirely, and nothing about storing a setting may depend on it.
+   */
+  private countShape(row: Row, source: AspectRatioSource, value: string): void {
+    if (row.key !== 'aspectRatio') return;
+    this.stats.countAspectRatio(source, value);
   }
 
   protected set(key: SettingKey, value: unknown): void {
@@ -1036,6 +1081,7 @@ export class SettingsPanel {
     this.setError(row.key, problem);
     if (problem === null) {
       this.set(row.key, raw);
+      this.countShape(row, 'custom', raw);
     }
   }
 

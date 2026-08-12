@@ -120,7 +120,14 @@ export const ASPECT_OPTION_GROUPS: readonly OptionGroup[] = [
       { value: '4:3', label: '4:3' },
     ],
   },
-  // TODO: analyze what values would be most useful to add, now there is too much not readable.
+  // The device rows below are commented out, not deleted, and they are waiting
+  // on evidence rather than on a decision: the list above is already at the edge
+  // of what anyone will read, and nothing said which of these shapes people
+  // actually reach for. Something does now — a pick is counted (board [V2-09],
+  // `Stats.countAspectRatio`), with the row it came from, so "which rows earn
+  // their place" and "is the free-text field used at all" are both questions the
+  // numbers answer. Curate from those, then either restore this block trimmed to
+  // what the counts justify or drop it for good.
   // {
   //   // Newest first, by brand — how the list is actually scanned. Ordering these
   //   // by ratio would interleave the brands, and the ratios are within 1% of one

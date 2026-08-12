@@ -42,14 +42,25 @@ takže není potřeba žádné svolení a neobjeví se žádná lišta.
 
 ## Rozšířené statistiky
 
-Vypnuté, dokud si to nezapnete. Přidá do výše uvedeného požadavku jedno pole, `s`,
-velikost vaší obrazovky, což je to, co nám řekne, zda se nastavení vykreslování
-používá na telefonech, nebo na počítačích. Stále žádná IP adresa, stále žádné ID
-návštěvníka.
+Vypnuté, dokud si to nezapnete. Na přepínači visí dvě věci a ani jedna z nich
+nepřidává IP adresu ani ID návštěvníka:
 
-Je oddělené z jednoho důvodu: všechno výše je něco, co nám prohlížeč řekl v aktu
-žádosti o stránku, zatímco velikost obrazovky se musí přečíst z vašeho zařízení,
-a čtení vašeho zařízení je ta část, která potřebuje vaše slovo.
+- **Velikost vaší obrazovky.** Jedno pole navíc ve výše uvedeném požadavku, `s`,
+  což je to, co nám řekne, zda se nastavení vykreslování používá na telefonech,
+  nebo na počítačích
+- **Jaký tvar strany si zvolíte.** Když písni nastavíte poměr stran, počítá se
+  samotná ta hodnota, jako `aspect/preset/9:16` — tvar a to, jak jste se k němu
+  dostali: řádkem ze seznamu, volbou „Podle této obrazovky“, nebo tím, že jste
+  jej napsali. A proč: nabídka tvarů je dlouhá a my nemáme tušení, které z nich
+  kdo používá, takže počítání voleb je to, co nám řekne, které řádky nechat
+  a které zahodit. Nikdy ne, o kterou píseň šlo, nikdy ne, kolik písní máte,
+  a nikdy ani slovo z toho, co jste napsali
+
+Jsou oddělené od všeho výše, každá z jiného důvodu: velikost obrazovky se musí
+přečíst z vašeho zařízení a čtení vašeho zařízení potřebuje vaše slovo — zatímco
+tvar strany není ani navigace, ani zařízení, ale volba, kterou jste udělali ve
+své vlastní knihovně, a co jste udělali vy, je vaše a můžete si to nechat pro
+sebe.
 
 <StatsToggle />
 

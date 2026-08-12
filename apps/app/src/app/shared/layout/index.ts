@@ -50,6 +50,7 @@ export {
 } from './transpose';
 export { SplitPane } from './split-pane';
 export { Stats } from './stats';
+export type { AspectRatioSource } from './stats';
 export { ThemeApplier } from './theme-applier';
 export { WarnUnsynced } from './warn-unsynced';
 export { UiStore } from './ui-store';
