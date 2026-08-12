@@ -4,7 +4,7 @@ import type {
   TitlePageVariant,
 } from '@achordeon/shared/domain';
 import { createFakeMeasurer } from './fake-measurer';
-import { layoutTitlePageCore } from './title-page-layout';
+import { MADE_WITH_MARK, layoutTitlePageCore } from './title-page-layout';
 import { DEFAULT_TUNING } from './tuning';
 import { A4_RATIO } from './aspect';
 import type { RenderPlan } from './render-plan';
@@ -74,6 +74,17 @@ const layout = (
     {},
     {},
   );
+
+/**
+ * The book's own items — the plan without the made-with mark every variant now
+ * carries. Assertions about a *variant* are written against these, so the mark
+ * is tested once, below, instead of once per variant.
+ */
+const bookItems = (plan: RenderPlan) =>
+  plan.items.filter((item) => item.text !== MADE_WITH_MARK);
+
+const markOf = (plan: RenderPlan) =>
+  plan.items.find((item) => item.text === MADE_WITH_MARK);
 
 /** The page every assertion below is written against (see `pageFor`). */
 const SHORT = DEFAULT_TUNING.minBoxEm * DEFAULT_TUNING.baseSizePx;
@@ -178,9 +189,9 @@ describe('layoutTitlePageCore — what each variant is', () => {
     }
   });
 
-  it('minimal prints the title and nothing else', () => {
+  it('minimal prints the title and nothing else of the book', () => {
     const plan = layout('minimal');
-    expect(plan.items).toHaveLength(1);
+    expect(bookItems(plan)).toHaveLength(1);
     expect(plan.items[0].sizeScale).toBeLessThan(1);
   });
 
@@ -245,7 +256,7 @@ describe('layoutTitlePageCore — what each variant is', () => {
     const [box] = plan.shapes ?? [];
     expect(box.rx).toBeGreaterThan(0);
     expect(plan.items.map((it) => it.text)).toContain('12 songs');
-    for (const item of plan.items) {
+    for (const item of bookItems(plan)) {
       expect(item.x).toBeGreaterThanOrEqual(box.x);
       expect(item.y).toBeGreaterThan(box.y);
       expect(item.y).toBeLessThan(box.y + box.height);
@@ -254,20 +265,22 @@ describe('layoutTitlePageCore — what each variant is', () => {
 
   it('ticket says nothing about the size of a book it was not told', () => {
     const plan = layout('ticket', { title: 'Songs' });
-    expect(plan.items).toHaveLength(1);
+    expect(bookItems(plan)).toHaveLength(1);
   });
 
   it('baseline stands the block on the bottom-left corner', () => {
     const plan = layout('baseline');
-    const last = plan.items[plan.items.length - 1];
-    expect(new Set(plan.items.map((it) => it.x)).size).toBe(1);
+    const items = bookItems(plan);
+    const last = items[items.length - 1];
+    expect(new Set(items.map((it) => it.x)).size).toBe(1);
     expect(last.y).toBeGreaterThan(plan.box.height * 0.8);
   });
 
   it('corner puts the two marks on opposite ones', () => {
     const plan = layout('corner');
-    const title = plan.items[0];
-    const author = plan.items[plan.items.length - 1];
+    const items = bookItems(plan);
+    const title = items[0];
+    const author = items[items.length - 1];
     expect(title.y).toBeLessThan(plan.box.height / 2);
     expect(author.y).toBeGreaterThan(plan.box.height / 2);
     expect(author.x).toBeGreaterThan(title.x);
@@ -275,8 +288,9 @@ describe('layoutTitlePageCore — what each variant is', () => {
 
   it('column sets the author against the right edge on the title line', () => {
     const plan = layout('column');
-    const title = plan.items[0];
-    const author = plan.items[plan.items.length - 1];
+    const items = bookItems(plan);
+    const title = items[0];
+    const author = items[items.length - 1];
     expect(author.y).toBe(title.y);
     expect(author.x).toBeGreaterThan(plan.box.width / 2);
   });
@@ -329,19 +343,96 @@ describe('layoutTitlePageCore — what each variant is', () => {
     const [strip] = plan.shapes ?? [];
     expect(strip.x).toBe(0);
     expect(strip.height).toBe(plan.box.height);
-    for (const item of plan.items) {
+    for (const item of bookItems(plan)) {
       expect(item.x).toBeGreaterThan(strip.width);
     }
   });
 
   it('footer signs the book in a band at the foot', () => {
     const plan = layout('footer');
+    const items = bookItems(plan);
     const [band] = plan.shapes ?? [];
-    const signed = plan.items[plan.items.length - 1];
+    const signed = items[items.length - 1];
     expect(band.y + band.height).toBeCloseTo(plan.box.height, 6);
     expect(signed.text).toBe('M. M.');
     expect(signed.fill).toBe('#ffffff');
-    expect(plan.items[0].y).toBeLessThan(band.y);
+    expect(items[0].y).toBeLessThan(band.y);
+  });
+});
+
+describe('layoutTitlePageCore — the made-with mark', () => {
+  it.each(ALL)('is on the sheet whatever the variant is (%s)', (variant) => {
+    expect(markOf(layout(variant))).toBeDefined();
+  });
+
+  it('is set smaller than the body it shares a role with', () => {
+    expect(markOf(layout('classic'))?.sizeScale).toBeLessThan(1);
+  });
+
+  it('takes the alignment of the block it belongs to', () => {
+    // `classic` is a left-aligned block centred on the sheet, so its imprint
+    // hangs off the same left edge — the mark is part of the composition, which
+    // is the whole difference from a line dropped into the margin.
+    const classic = layout('classic');
+    expect(markOf(classic)?.x).toBe(classic.items[0].x);
+    expect(markOf(classic)?.y).toBeGreaterThan(
+      classic.items[classic.items.length - 2].y,
+    );
+
+    // `centered` centres it, like every other line it sets.
+    const centered = layout('centered');
+    const mark = markOf(centered);
+    const width = measure.measure(MADE_WITH_MARK, {
+      family: 'x',
+      sizePx: centered.styles.lyric.sizePx * (mark?.sizeScale ?? 1),
+      weight: 'normal',
+    }).width;
+    expect((mark?.x ?? 0) + width / 2).toBeCloseTo(centered.box.width / 2, 6);
+  });
+
+  it('turns with the variants that are read sideways', () => {
+    expect(markOf(layout('spine'))?.rotate).toBe(-90);
+    expect(markOf(layout('bookmark'))?.rotate).toBe(-90);
+  });
+
+  it('is reversed out wherever its variant stood it on ink', () => {
+    // Each of these puts the mark inside a fill of its own — the band, the
+    // ribbon, the half sheet — so it is the paper's colour, like the title.
+    for (const variant of ['banner', 'footer', 'half', 'bookmark'] as const) {
+      expect(markOf(layout(variant))?.fill).toBe('#ffffff');
+    }
+    // And is plain ink wherever it is on paper.
+    expect(markOf(layout('classic'))?.fill).toBeUndefined();
+    expect(markOf(layout('framed'))?.fill).toBeUndefined();
+  });
+
+  it('reverses against the dark page, like every other reversed line', () => {
+    const dark = layoutTitlePageCore(book, 'footer', settings, measure, {
+      dark: true,
+    });
+    expect(markOf(dark)?.fill).toBe(DEFAULT_TUNING.dark.paper);
+  });
+
+  it('sits inside the frame that a framed page draws', () => {
+    const plan = layout('framed');
+    const [frame] = plan.shapes ?? [];
+    const mark = markOf(plan);
+    expect(mark?.y).toBeGreaterThan(frame.y);
+    expect(mark?.y).toBeLessThan(frame.y + frame.height);
+    // Below the book, which is centred — it signs the plate rather than joining it.
+    for (const item of bookItems(plan)) {
+      expect(item.y).toBeLessThan(mark?.y ?? 0);
+    }
+  });
+
+  it('is inside the band a banner draws, not under it', () => {
+    const plan = layout('banner');
+    const [band] = plan.shapes ?? [];
+    const mark = markOf(plan);
+    expect(mark?.y).toBeGreaterThan(band.y);
+    expect(mark?.y).toBeLessThan(band.y + band.height);
+    // Above the title: a masthead line over the name.
+    expect(mark?.y).toBeLessThan(plan.items[0].y);
   });
 });
 

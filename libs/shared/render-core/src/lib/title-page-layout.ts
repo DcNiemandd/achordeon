@@ -22,6 +22,14 @@
 // a song under `scale: 'auto'` — so a title page and the first song after it are
 // set at the same size. Nothing here reads a per-song setting other than the
 // aspect ratio and the padding: the book owns this sheet, not any song in it.
+//
+// One thing every variant carries: the made-with mark. It is part of each
+// variant's own drawing rather than something added afterwards — a line dropped
+// into the margin under a finished composition is not a mark, it is an
+// intrusion, and it looked like one. So `Drawing.mark` is **required**: a
+// twenty-second variant does not compile until it has decided where its own
+// mark goes, which is the only way "small, in a corner" can mean something
+// different on a poster and on a spine.
 
 import type {
   GlobalSettings,
@@ -97,10 +105,28 @@ const TITLE_PAGE = {
   bookplateGapEm: 0.4,
   /** How much of the width `column` gives the title before the author's edge. */
   columnTitleRatio: 0.62,
+  /** The made-with mark's size, as a multiple of the body role's. */
+  markScale: 0.5,
+  /** The air a mark keeps from an edge it is set against — the inside of a
+   * frame, for the two variants that sign one. */
+  markGapEm: 0.5,
 } as const;
 
 /** The paper a light render is drawn against — see {@link paperInk}. */
 const LIGHT_PAPER = '#ffffff';
+
+/**
+ * What the made-with mark says.
+ *
+ * The host, not the app's name, and not "Made with Achordeon" either: a printed
+ * sheet cannot be clicked, so the only mark that does anything is one somebody
+ * can type back in. It is also the shortest form, which matters at half size.
+ *
+ * Not localized, and it is the one string here that never will be — a hostname
+ * reads the same in every language, and `Achordeon` is the display spelling
+ * everywhere anyway.
+ */
+export const MADE_WITH_MARK = 'achordeon.eu';
 
 /** The sheet, and the rectangle a variant is allowed to draw in. */
 interface Page {
@@ -133,10 +159,12 @@ interface Line {
   readonly fill?: string;
 }
 
-/** What a variant hands back: text, and the rectangles under it. */
+/** What a variant hands back: text, the rectangles under it, and its mark. */
 interface Drawing {
   readonly items: TextItem[];
   readonly shapes: ShapeItem[];
+  /** The made-with mark, placed by this variant — see the file header. */
+  readonly mark: TextItem;
 }
 
 /** The ink a variant draws its rules and frames in: the title's own. */
@@ -299,6 +327,68 @@ function bookLines(
   return lines;
 }
 
+/**
+ * The made-with mark, measured — a line like any other, which is the point.
+ *
+ * It is measured in the body role at {@link TITLE_PAGE.markScale}, so wherever a
+ * variant decides to put it, it is a line it can stack, centre and align exactly
+ * as it does the book's own. `gapBefore` is the air it wants when it is the last
+ * line of a block; `fill` is for the variants that stand it on ink.
+ */
+function markLine(ctx: LayoutContext, gapBefore = 0, fill?: string): Line {
+  return lineOf(
+    ctx,
+    MADE_WITH_MARK,
+    'lyric',
+    TITLE_PAGE.markScale,
+    gapBefore,
+    fill,
+  );
+}
+
+/**
+ * Stack a block whose last line is the mark, and hand the two back apart.
+ *
+ * The commonest answer by far, because it is the one that makes the mark part of
+ * the composition rather than a thing beside it: the block is measured, centred
+ * and aligned *including* the mark, so a variant that centres its book on the
+ * page centres the book-and-its-imprint, and the sheet stays balanced.
+ */
+function stackWithMark(
+  lines: readonly Line[],
+  mark: Line,
+  left: number,
+  right: number,
+  top: number,
+  align: 'left' | 'center' | 'right',
+): { items: TextItem[]; mark: TextItem } {
+  const placed = placeLines([...lines, mark], left, right, top, align);
+  return { items: placed.slice(0, -1), mark: placed[placed.length - 1] };
+}
+
+/** One line placed on its own — the mark, where it is not part of a block. */
+function loneMark(
+  mark: Line,
+  left: number,
+  right: number,
+  top: number,
+  align: 'left' | 'center' | 'right',
+): TextItem {
+  return placeLines([mark], left, right, top, align)[0];
+}
+
+/**
+ * The top edge at which `line` shares `anchor`'s baseline.
+ *
+ * Two lines of different sizes hung from one top edge sit visibly askew; a
+ * credit set against a name is one row read across, so it sits on the row's
+ * line. Same reasoning as `column`'s author, and the mark needs it wherever it
+ * shares a row with something bigger.
+ */
+function baselineTop(anchor: Line, anchorTop: number, line: Line): number {
+  return anchorTop + anchor.ascent - line.ascent;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The variants. Each is a pure function of the page, the styles and the book.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,11 +405,15 @@ function classic(
   content: TitlePageContent,
 ): Drawing {
   const lines = bookLines(ctx, content, page);
-  const blockW = widestOf(lines);
+  // The mark is the imprint under the block, on the block's own left edge —
+  // where a publisher's name goes on a title page, and the reason `classic` can
+  // carry it without looking added to.
+  const mark = markLine(ctx, TITLE_PAGE.blockGapEm * page.base);
+  const blockW = Math.max(widestOf(lines), mark.width);
   const left = (page.width - blockW) / 2;
-  const top = (page.height - stackHeight(lines)) / 2;
+  const top = (page.height - stackHeight([...lines, mark])) / 2;
   return {
-    items: placeLines(lines, left, left + blockW, top, 'left'),
+    ...stackWithMark(lines, mark, left, left + blockW, top, 'left'),
     shapes: [],
   };
 }
@@ -331,17 +425,35 @@ function centered(
   content: TitlePageContent,
 ): Drawing {
   const lines = bookLines(ctx, content, page);
-  const top = (page.height - stackHeight(lines)) / 2;
+  const mark = markLine(ctx, TITLE_PAGE.blockGapEm * page.base);
+  const top = (page.height - stackHeight([...lines, mark])) / 2;
   return {
-    items: placeLines(lines, page.left, page.right, top, 'center'),
+    ...stackWithMark(lines, mark, page.left, page.right, top, 'center'),
     shapes: [],
   };
 }
 
+/** The book centred as one block, for the variants that frame it. */
+function centredBook(
+  page: Page,
+  ctx: LayoutContext,
+  content: TitlePageContent,
+): TextItem[] {
+  const lines = bookLines(ctx, content, page);
+  return placeLines(
+    lines,
+    page.left,
+    page.right,
+    (page.height - stackHeight(lines)) / 2,
+    'center',
+  );
+}
+
 /**
  * `minimal` — the title alone, at body size, in the top-left corner. Nothing
- * else is printed, including an author the book has: the variant is the claim
- * that a front sheet can be one word in a corner.
+ * else of the book's is printed, including an author it has: the variant is the
+ * claim that a front sheet can be one word in a corner. (The made-with mark is
+ * not the book's and is added to every variant — {@link madeWithMark}.)
  */
 function minimal(
   page: Page,
@@ -357,8 +469,19 @@ function minimal(
     scaleToWidth(ctx, content.title, 'title', page.innerW, small),
   );
   const line = lineOf(ctx, content.title, 'title', scale);
+  const mark = markLine(ctx);
   return {
     items: placeLines([line], page.left, page.right, page.top, 'left'),
+    // The other end of the one axis this variant has. The title holds the top of
+    // the left margin; the mark holds the bottom of it, and the emptiness
+    // between them is what the variant is for.
+    mark: loneMark(
+      mark,
+      page.left,
+      page.right,
+      page.bottom - mark.height,
+      'left',
+    ),
     shapes: [],
   };
 }
@@ -394,8 +517,20 @@ function poster(
   }
   const top = page.top + page.innerH * TITLE_PAGE.posterTopRatio;
   const items = placeLines(head, page.left, page.right, top, 'left');
+
+  // The credit line at the foot: the author on the left, the mark against the
+  // right edge, both on one baseline. A poster's small print is a row, not a
+  // stack — and the author is measured against the room the mark leaves, so the
+  // two share the line rather than fight over it.
+  const mark = markLine(ctx);
+  const gap = TITLE_PAGE.blockGapEm * page.base;
   if (content.author) {
-    const author = fitted(ctx, content.author, 'lyric', page.innerW);
+    const author = fitted(
+      ctx,
+      content.author,
+      'lyric',
+      Math.max(0, page.innerW - mark.width - gap),
+    );
     items.push(
       ...placeLines(
         [author],
@@ -405,8 +540,29 @@ function poster(
         'left',
       ),
     );
+    return {
+      items,
+      mark: loneMark(
+        mark,
+        page.left,
+        page.right,
+        baselineTop(author, page.bottom - author.height, mark),
+        'right',
+      ),
+      shapes: [],
+    };
   }
-  return { items, shapes: [] };
+  return {
+    items,
+    mark: loneMark(
+      mark,
+      page.left,
+      page.right,
+      page.bottom - mark.height,
+      'right',
+    ),
+    shapes: [],
+  };
 }
 
 /**
@@ -440,8 +596,17 @@ function stacked(
       ),
     );
   }
+  // The mark closes the foot block, flush left with everything else — and it is
+  // measured into `footH` before the words are sized, so the type shrinks to
+  // leave room for it instead of the mark being squeezed in afterwards.
+  const mark = markLine(
+    ctx,
+    foot.length > 0
+      ? TITLE_PAGE.lineGapEm * page.base
+      : TITLE_PAGE.blockGapEm * page.base,
+  );
   const footH =
-    foot.length > 0 ? stackHeight(foot) + TITLE_PAGE.blockGapEm * page.base : 0;
+    stackHeight([...foot, mark]) + TITLE_PAGE.blockGapEm * page.base;
 
   // The scale is whichever runs out first: the width the longest word needs, or
   // the height all of them together are allowed.
@@ -456,18 +621,16 @@ function stacked(
 
   const lines = words.map((word) => lineOf(ctx, word, 'title', scale));
   const items = placeLines(lines, page.left, page.right, page.top, 'left');
-  if (foot.length > 0) {
-    items.push(
-      ...placeLines(
-        foot,
-        page.left,
-        page.right,
-        page.bottom - stackHeight(foot),
-        'left',
-      ),
-    );
-  }
-  return { items, shapes: [] };
+  const placed = stackWithMark(
+    foot,
+    mark,
+    page.left,
+    page.right,
+    page.bottom - stackHeight([...foot, mark]),
+    'left',
+  );
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes: [] };
 }
 
 /**
@@ -498,19 +661,23 @@ function plate(
     page.top + page.innerH * TITLE_PAGE.plateTopRatio,
     'center',
   );
-  if (content.author) {
-    const author = fitted(ctx, content.author, 'lyric', page.innerW);
-    items.push(
-      ...placeLines(
-        [author],
-        page.left,
-        page.right,
-        page.bottom - author.height,
-        'center',
-      ),
-    );
-  }
-  return { items, shapes: [] };
+
+  // The foot of a hymnal's plate is one small centred block, so the mark joins
+  // the author there rather than starting a second one.
+  const foot: Line[] = content.author
+    ? [fitted(ctx, content.author, 'lyric', page.innerW)]
+    : [];
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const placed = stackWithMark(
+    foot,
+    mark,
+    page.left,
+    page.right,
+    page.bottom - stackHeight([...foot, mark]),
+    'center',
+  );
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes: [] };
 }
 
 /**
@@ -540,17 +707,24 @@ function spine(
     ...(title.scale !== 1 ? { sizeScale: title.scale } : {}),
   });
 
+  let column = page.left + title.height;
   if (content.subtitle) {
     const sub = fitted(ctx, content.subtitle, 'subtitle', page.innerH);
     items.push({
       text: sub.text,
-      x: page.left + title.height + sub.ascent,
+      x: column + sub.ascent,
       y: page.bottom,
       role: 'subtitle',
       rotate: -90,
       ...(sub.scale !== 1 ? { sizeScale: sub.scale } : {}),
     });
+    column += sub.height;
   }
+
+  // The mark takes the turn too, in the next column in from the title and
+  // standing on the same foot. A single upright line reading the other way would
+  // be the one thing on the sheet that made you turn your head back.
+  const mark = markLine(ctx);
 
   if (content.author) {
     const author = fitted(ctx, content.author, 'lyric', page.innerW);
@@ -564,7 +738,19 @@ function spine(
       ),
     );
   }
-  return { items, shapes: [] };
+
+  return {
+    items,
+    mark: {
+      text: mark.text,
+      x: column + mark.ascent,
+      y: page.bottom,
+      role: 'lyric',
+      rotate: -90,
+      sizeScale: mark.scale,
+    },
+    shapes: [],
+  };
 }
 
 /**
@@ -607,19 +793,46 @@ function rule(
       ...placeLines([sub], page.left, page.right, ruleY + ruleH, 'center'),
     );
   }
-  if (content.author) {
-    const author = fitted(ctx, content.author, 'lyric', page.innerW);
-    items.push(
-      ...placeLines(
-        [author],
-        page.left,
-        page.right,
-        page.bottom - author.height,
-        'center',
-      ),
-    );
-  }
-  return { items, shapes };
+  // The author and the mark close the page as one centred foot, under the ruled
+  // block rather than beside it.
+  const foot: Line[] = content.author
+    ? [fitted(ctx, content.author, 'lyric', page.innerW)]
+    : [];
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const placed = stackWithMark(
+    foot,
+    mark,
+    page.left,
+    page.right,
+    page.bottom - stackHeight([...foot, mark]),
+    'center',
+  );
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes };
+}
+
+/**
+ * The mark set just inside a frame's bottom edge, centred on it.
+ *
+ * Where an engraver signs a plate, and the one place a framed page can take it:
+ * inside the block would break the frame's own emptiness, outside it would look
+ * like something that missed the frame.
+ */
+function markInFrame(
+  page: Page,
+  ctx: LayoutContext,
+  inset: number,
+  stroke: number,
+): TextItem {
+  const mark = markLine(ctx);
+  const foot = page.height - inset - stroke - TITLE_PAGE.markGapEm * page.base;
+  return loneMark(
+    mark,
+    inset,
+    page.width - inset,
+    foot - mark.height,
+    'center',
+  );
 }
 
 /** `framed` — a thin border inset from the page edge, the block centred inside. */
@@ -640,7 +853,11 @@ function framed(
       strokeWidth: stroke,
     },
   ];
-  return { ...centered(page, ctx, content), shapes };
+  return {
+    items: centredBook(page, ctx, content),
+    mark: markInFrame(page, ctx, inset, stroke),
+    shapes,
+  };
 }
 
 /**
@@ -658,16 +875,16 @@ function banner(
   isDark: boolean,
 ): Drawing {
   const pad = TITLE_PAGE.bannerPadEm * page.base;
-  const title = fitted(
-    ctx,
-    content.title,
-    'title',
-    page.innerW,
-    0,
-    paperInk(ctx, isDark),
-  );
+  const paper = paperInk(ctx, isDark);
+  const title = fitted(ctx, content.title, 'title', page.innerW, 0, paper);
+  // The mark rides *in* the band, above the title and reversed out of it like
+  // everything else printed there — a masthead line over the name, which is what
+  // a band across the top of a sheet is asking for. The band grows by that line
+  // rather than the line being fitted into the padding, so the air above and
+  // below the title stays the air the variant chose.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base, paper);
   const bandY = page.height * TITLE_PAGE.bannerTopRatio;
-  const bandH = title.height + pad * 2;
+  const bandH = mark.height + mark.gapBefore + title.height + pad * 2;
   const shapes: ShapeItem[] = [
     {
       x: 0,
@@ -678,11 +895,12 @@ function banner(
     },
   ];
 
+  const markItem = loneMark(mark, page.left, page.right, bandY + pad, 'center');
   const items = placeLines(
     [title],
     page.left,
     page.right,
-    bandY + pad,
+    bandY + pad + mark.height + mark.gapBefore,
     'center',
   );
 
@@ -712,7 +930,7 @@ function banner(
       ),
     );
   }
-  return { items, shapes };
+  return { items, mark: markItem, shapes };
 }
 
 /**
@@ -741,8 +959,13 @@ function ticket(
     );
   }
 
-  const boxW = Math.min(page.innerW, widestOf(lines) + pad * 2);
-  const boxH = stackHeight(lines) + pad * 2;
+  // A ticket's small print is on the ticket. Inside the box, last, which also
+  // means the box is measured around it and cannot end up too short for it.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const boxed = [...lines, mark];
+
+  const boxW = Math.min(page.innerW, widestOf(boxed) + pad * 2);
+  const boxH = stackHeight(boxed) + pad * 2;
   const boxX = (page.width - boxW) / 2;
   const boxY = (page.height - boxH) / 2;
 
@@ -758,7 +981,7 @@ function ticket(
     },
   ];
   return {
-    items: placeLines(lines, boxX, boxX + boxW, boxY + pad, 'center'),
+    ...stackWithMark(lines, mark, boxX, boxX + boxW, boxY + pad, 'center'),
     shapes,
   };
 }
@@ -774,12 +997,17 @@ function baseline(
   content: TitlePageContent,
 ): Drawing {
   const lines = bookLines(ctx, content, page);
+  // The last line of the block that stands on the corner, so the book still
+  // stands on the corner — the emptiness above is the design, and a mark
+  // anywhere else on this sheet would be a second thing in it.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
   return {
-    items: placeLines(
+    ...stackWithMark(
       lines,
+      mark,
       page.left,
       page.right,
-      page.bottom - stackHeight(lines),
+      page.bottom - stackHeight([...lines, mark]),
       'left',
     ),
     shapes: [],
@@ -808,6 +1036,7 @@ function corner(
     );
   }
   const items = placeLines(head, page.left, page.right, page.top, 'left');
+  const mark = markLine(ctx);
   if (content.author) {
     const author = fitted(ctx, content.author, 'lyric', page.innerW);
     items.push(
@@ -820,7 +1049,20 @@ function corner(
       ),
     );
   }
-  return { items, shapes: [] };
+  return {
+    items,
+    // The third corner, and the one the variant left free: title top-left,
+    // author bottom-right, mark bottom-left. It closes the left margin the title
+    // opened, and the diagonal between the two big things stays empty.
+    mark: loneMark(
+      mark,
+      page.left,
+      page.right,
+      page.bottom - mark.height,
+      'left',
+    ),
+    shapes: [],
+  };
 }
 
 /**
@@ -855,8 +1097,20 @@ function column(
       ),
     );
   }
-  const top = (page.height - stackHeight(head)) / 2;
-  const items = placeLines(head, page.left, page.right, top, 'left');
+  // The strapline under the masthead: the mark closes the title's column, on the
+  // same left edge and inside the same ratio the title is held to, so the
+  // author's column opposite is untouched.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const top = (page.height - stackHeight([...head, mark])) / 2;
+  const placed = stackWithMark(
+    head,
+    mark,
+    page.left,
+    page.left + page.innerW * TITLE_PAGE.columnTitleRatio,
+    top,
+    'left',
+  );
+  const items = placed.items;
   if (content.author) {
     const author = fitted(
       ctx,
@@ -873,12 +1127,12 @@ function column(
         [author],
         page.left,
         page.right,
-        top + head[0].ascent - author.ascent,
+        baselineTop(head[0], top, author),
         'right',
       ),
     );
   }
-  return { items, shapes: [] };
+  return { items, mark: placed.mark, shapes: [] };
 }
 
 /**
@@ -931,19 +1185,22 @@ function marquee(
       ...placeLines([sub], page.left, page.right, top + barred + gap, 'center'),
     );
   }
-  if (content.author) {
-    const author = fitted(ctx, content.author, 'lyric', page.innerW);
-    items.push(
-      ...placeLines(
-        [author],
-        page.left,
-        page.right,
-        page.bottom - author.height,
-        'center',
-      ),
-    );
-  }
-  return { items, shapes };
+  // Same foot as `rule`, for the same reason: the bill is the thing between the
+  // bars, and what is under it is the small print.
+  const foot: Line[] = content.author
+    ? [fitted(ctx, content.author, 'lyric', page.innerW)]
+    : [];
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const placed = stackWithMark(
+    foot,
+    mark,
+    page.left,
+    page.right,
+    page.bottom - stackHeight([...foot, mark]),
+    'center',
+  );
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes };
 }
 
 /**
@@ -963,7 +1220,11 @@ function gate(
   const outer = page.right - ruleW - gateGap;
 
   const lines = bookLines(ctx, content, page, Math.max(0, outer - inner));
-  const height = stackHeight(lines);
+  // Between the uprights, with them: the mark is inside the doorway, and the
+  // uprights are measured to the block that now includes it, so the gate still
+  // runs the height of what is standing in it and no further.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base);
+  const height = stackHeight([...lines, mark]);
   const top = (page.height - height) / 2;
 
   const uprights: ShapeItem[] = [page.left, page.right - ruleW].map((x) => ({
@@ -975,7 +1236,7 @@ function gate(
   }));
 
   return {
-    items: placeLines(lines, inner, outer, top, 'center'),
+    ...stackWithMark(lines, mark, inner, outer, top, 'center'),
     shapes: uprights,
   };
 }
@@ -1000,7 +1261,12 @@ function bookplate(
     stroke: ruleInk(ctx),
     strokeWidth: stroke,
   }));
-  return { ...centered(page, ctx, content), shapes };
+  return {
+    items: centredBook(page, ctx, content),
+    // Inside the inner frame, where the plate's maker signs it.
+    mark: markInFrame(page, ctx, inner, stroke),
+    shapes,
+  };
 }
 
 /**
@@ -1051,9 +1317,19 @@ function tag(
     );
   }
 
+  // The mark closes the block under the tag, in normal ink like the rest of it —
+  // the box belongs to the title alone, which is the whole difference between
+  // this variant and `banner`.
+  const mark = markLine(
+    ctx,
+    below.length > 0
+      ? TITLE_PAGE.lineGapEm * page.base
+      : TITLE_PAGE.blockGapEm * page.base,
+  );
+  const stacked = [...below, mark];
+
   const boxH = title.height + padY * 2;
-  const total =
-    boxH + stackHeight(below) + (below.length > 0 ? below[0].gapBefore : 0);
+  const total = boxH + stackHeight(stacked) + stacked[0].gapBefore;
   const top = (page.height - total) / 2;
 
   const shapes: ShapeItem[] = [
@@ -1073,12 +1349,16 @@ function tag(
     top + padY,
     'center',
   );
-  if (below.length > 0) {
-    items.push(
-      ...placeLines(below, page.left, page.right, top + boxH, 'center'),
-    );
-  }
-  return { items, shapes };
+  const placed = stackWithMark(
+    below,
+    mark,
+    page.left,
+    page.right,
+    top + boxH,
+    'center',
+  );
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes };
 }
 
 /**
@@ -1094,17 +1374,23 @@ function half(
 ): Drawing {
   const pad = TITLE_PAGE.bannerPadEm * page.base;
   const bandH = page.height * TITLE_PAGE.halfRatio;
-  const title = fitted(
-    ctx,
-    content.title,
-    'title',
-    page.innerW,
-    0,
-    paperInk(ctx, isDark),
-  );
+  const paper = paperInk(ctx, isDark);
+  const title = fitted(ctx, content.title, 'title', page.innerW, 0, paper);
   const shapes: ShapeItem[] = [
     { x: 0, y: 0, width: page.width, height: bandH, fill: ruleInk(ctx) },
   ];
+
+  // Reversed, at the head of the ink, on the same left edge the title sits on.
+  // The fill is half the sheet and its top is the only part of it standing
+  // empty; anything printed on the white below would be a third thing on a page
+  // that is deliberately made of two.
+  const mark = loneMark(
+    markLine(ctx, 0, paper),
+    page.left,
+    page.right,
+    page.top,
+    'left',
+  );
 
   // Sat on the fill's own edge rather than centred in it: the title belongs to
   // the block of ink, and the empty half below is what it is being read against.
@@ -1142,7 +1428,7 @@ function half(
       ),
     );
   }
-  return { items, shapes };
+  return { items, mark, shapes };
 }
 
 /**
@@ -1153,6 +1439,7 @@ function bookmark(
   page: Page,
   ctx: LayoutContext,
   content: TitlePageContent,
+  isDark: boolean,
 ): Drawing {
   const strip = page.width * TITLE_PAGE.bookmarkRatio;
   const left = strip + page.margin;
@@ -1160,6 +1447,12 @@ function bookmark(
     { x: 0, y: 0, width: strip, height: page.height, fill: ruleInk(ctx) },
   ];
   const lines = bookLines(ctx, content, page, Math.max(0, page.right - left));
+
+  // Printed up the ribbon, reversed out of it — the strip is already a shape
+  // with nothing on it, and a name down a spine is what ribbons carry. Centred
+  // in the strip's width the way `spine` centres in its column: for `rotate:
+  // -90` the anchor is the foot of the string, so `y` is where it ends.
+  const mark = markLine(ctx, 0, paperInk(ctx, isDark));
   return {
     items: placeLines(
       lines,
@@ -1168,6 +1461,15 @@ function bookmark(
       (page.height - stackHeight(lines)) / 2,
       'center',
     ),
+    mark: {
+      text: mark.text,
+      x: (strip - mark.height) / 2 + mark.ascent,
+      y: (page.height + mark.width) / 2,
+      role: 'lyric',
+      rotate: -90,
+      sizeScale: mark.scale,
+      ...(mark.fill ? { fill: mark.fill } : {}),
+    },
     shapes,
   };
 }
@@ -1184,16 +1486,14 @@ function footer(
   isDark: boolean,
 ): Drawing {
   const pad = TITLE_PAGE.bannerPadEm * page.base;
+  const paper = paperInk(ctx, isDark);
   const signature = content.author ?? content.title;
-  const signed = fitted(
-    ctx,
-    signature,
-    'lyric',
-    page.innerW,
-    0,
-    paperInk(ctx, isDark),
-  );
-  const bandH = signed.height + pad * 2;
+  const signed = fitted(ctx, signature, 'lyric', page.innerW, 0, paper);
+  // Under the signature, inside the band: the book signs itself and then we do,
+  // smaller. Both reversed, because both are on the ink — and the band grows to
+  // hold the second line rather than the line being pushed into the padding.
+  const mark = markLine(ctx, TITLE_PAGE.lineGapEm * page.base, paper);
+  const bandH = stackHeight([signed, mark]) + pad * 2;
   const bandY = page.height - bandH;
   const shapes: ShapeItem[] = [
     { x: 0, y: bandY, width: page.width, height: bandH, fill: ruleInk(ctx) },
@@ -1219,10 +1519,16 @@ function footer(
     (bandY - stackHeight(head)) / 2,
     'center',
   );
-  items.push(
-    ...placeLines([signed], page.left, page.right, bandY + pad, 'center'),
+  const placed = stackWithMark(
+    [signed],
+    mark,
+    page.left,
+    page.right,
+    bandY + pad,
+    'center',
   );
-  return { items, shapes };
+  items.push(...placed.items);
+  return { items, mark: placed.mark, shapes };
 }
 
 /**
@@ -1277,7 +1583,7 @@ function draw(
     case 'half':
       return half(page, ctx, content, isDark);
     case 'bookmark':
-      return bookmark(page, ctx, content);
+      return bookmark(page, ctx, content, isDark);
     case 'footer':
       return footer(page, ctx, content, isDark);
     case 'classic':
@@ -1342,17 +1648,21 @@ export function layoutTitlePageCore(
     config.catalog ?? BUNDLED_CATALOG,
   );
   const page = pageFor(settings, tuning);
-  const { items, shapes } = draw(variant, page, ctx, content, isDark);
+  const { items, shapes, mark } = draw(variant, page, ctx, content, isDark);
+  // The variant decided where its mark goes; what it does not get a say in is
+  // whether there is one. Last in `items`, and before the font book is built,
+  // which is what subsets its letters into the PDF.
+  const printed = [...items, mark];
 
   return {
     box: { width: page.width, height: page.height },
     fit: 1,
     origin: { x: 0, y: 0 },
-    items,
+    items: printed,
     ...(shapes.length > 0 ? { shapes } : {}),
     styles: ctx.styles,
     fonts: config.fonts
-      ? buildFontBook(ctx.styles, config.fonts, items)
+      ? buildFontBook(ctx.styles, config.fonts, printed)
       : EMPTY_FONT_BOOK,
     ...(isDark ? { paper: tuning.dark.paper } : {}),
   };
