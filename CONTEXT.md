@@ -119,7 +119,9 @@ The Fonts available to choose from: the ones Achordeon ships, plus any Custom fo
 
 ## Custom font
 
-A Font the user adds themselves, by file or by link. Adding one **takes a copy**: the font is kept on the device, so it works offline and it does not stop working when a link does. A Custom font is identified by its own family name, so the same font added on two devices is the same Font, and re-adding a deleted one brings its Songs back.
+A Font the user adds themselves, by name, by file or by link. Adding one **takes a copy**: the font is kept on the device, so it works offline and it does not stop working when a link does. A Custom font is identified by its own family name, so the same font added on two devices is the same Font, and re-adding a deleted one brings its Songs back.
+
+Adding by name searches a published list of every family Achordeon knows how to fetch. That list is not the Font library: it is the same everywhere, it belongs to nobody, and a name on it is **only a name** — nothing there is drawn in its own face, because seeing a Font means having it.
 
 Custom fonts belong to the person, not to the Song — so they travel by Snapshot, the path that means "this is the same person". An Export names the Fonts a Song uses and, where it can, says where to get them; it never carries the font itself.
 

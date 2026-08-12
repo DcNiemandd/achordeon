@@ -128,6 +128,100 @@ export function filesFor(row: FontIndexRow): string[] {
   return row.f.filter((file) => file.includes('['));
 }
 
+/** One family the index offers, as a search result can show it. */
+export interface FontCandidate {
+  /** Its key in the index — what `addFamily` is called with. */
+  readonly key: string;
+  /** The family's own name, spaced out of the file name it ships under. */
+  readonly label: string;
+  /**
+   * How many faces adding it would install. One file is one face, so this is
+   * exactly `filesFor(row).length` — the count the library will show afterwards,
+   * said before rather than after.
+   */
+  readonly faces: number;
+  /**
+   * Its faces come from variable files, which give their default instance only.
+   *
+   * The reason a family offering nine weights on the Google Fonts site installs
+   * as one: jsPDF's `addFont` reads `glyf` and ignores `gvar`. Known here from
+   * the file name alone — a variable file carries its axes in brackets — so the
+   * surprise can be headed off before any bytes are fetched.
+   */
+  readonly isVariable: boolean;
+}
+
+/**
+ * A family's name, read back out of a file name.
+ *
+ * The index is keyed by the repo's folder convention — `crimsontext`, lowercase
+ * and run together — which cannot be turned back into "Crimson Text" by any
+ * amount of splitting. The **file** name can: `CrimsonText-Bold.ttf` still has
+ * its capitals, and the same is true of every family in the repo, because
+ * `google/fonts` names its files after the family.
+ *
+ * Derived here rather than written into the index by the generator. It would be
+ * the same derivation either way — the trees API has no display names to offer
+ * — so doing it at generation time would only commit 27 kB of JSON to say what
+ * the file names already say.
+ */
+export function displayName(row: FontIndexRow, key: string): string {
+  const stem = (row.f[0] ?? '')
+    // `Lora[wght].ttf`, `CrimsonText-Bold.ttf`, `static/Lora-Regular.ttf` — the
+    // family is whatever comes before the axes, the style, or the extension.
+    .replace(/^.*\//, '')
+    .replace(/[[-].*$/, '')
+    .replace(/\.ttf$/i, '')
+    .replace(/_/g, ' ');
+  if (!stem) return key;
+  return (
+    stem
+      // `CrimsonText` → `Crimson Text`, and `NotoSansJP` → `Noto Sans JP`: a
+      // capital after a lowercase starts a word, and so does the last capital
+      // of a run that is followed by a lowercase.
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .trim()
+  );
+}
+
+/**
+ * The families whose name contains what was typed.
+ *
+ * Matched against the **key**, which is what `familyKey` reduces both sides to,
+ * so "crimson text", "CrimsonText" and "crimson  text" are one query. Prefixes
+ * sort first: someone typing "rob" wants Roboto before Fira Sans Roboto-ish
+ * near-misses, and the list is capped because nobody reads the four hundredth
+ * family whose name contains "sans".
+ */
+export function searchFamilies(
+  index: FontIndex,
+  query: string,
+  limit: number,
+): FontCandidate[] {
+  const needle = familyKey(query);
+  if (!needle) return [];
+
+  const prefix: FontCandidate[] = [];
+  const rest: FontCandidate[] = [];
+  for (const [key, row] of Object.entries(index)) {
+    const at = key.indexOf(needle);
+    if (at < 0) continue;
+    const files = filesFor(row);
+    const candidate = {
+      key,
+      label: displayName(row, key),
+      faces: files.length,
+      isVariable: files.some((file) => file.includes('[')),
+    };
+    (at === 0 ? prefix : rest).push(candidate);
+  }
+
+  const byLabel = (a: FontCandidate, b: FontCandidate) =>
+    a.label.localeCompare(b.label);
+  return [...prefix.sort(byLabel), ...rest.sort(byLabel)].slice(0, limit);
+}
+
 /** jsDelivr's address for one file in `google/fonts`. */
 export function jsdelivrUrl(dir: string, file: string): string {
   const path = `${dir}/${file}`

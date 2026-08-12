@@ -13,6 +13,8 @@ import {
   filesFor,
   jsdelivrUrl,
   readFontUrl,
+  searchFamilies,
+  type FontCandidate,
   type FontIndex,
 } from './font-url';
 
@@ -24,10 +26,28 @@ export class FontFetcher {
   private readonly library = inject(FontLibrary);
 
   /**
-   * The 188 KB of family names, fetched at most once and only ever because
-   * someone pasted a Google Fonts link. It is on no render's path.
+   * The 231 KB of family names, fetched at most once a session.
+   *
+   * It used to be pulled only when someone pasted a Google Fonts link. Searching
+   * the catalogue makes it the primary path, so it is now loaded when the add
+   * dialog opens — still on no render's path, and still one fetch.
    */
   private index?: Promise<FontIndex>;
+
+  /** Warm the index, so the first keystroke has something to search. */
+  async open(): Promise<void> {
+    await this.load();
+  }
+
+  /**
+   * The families whose name contains what was typed.
+   *
+   * Empty until the index has arrived, which is a state the caller can see
+   * coming: it asked for it on open.
+   */
+  async search(query: string, limit = 20): Promise<FontCandidate[]> {
+    return searchFamilies(await this.load(), query, limit);
+  }
 
   /**
    * Add every family a pasted link names, and answer with what arrived.
@@ -41,16 +61,28 @@ export class FontFetcher {
       return [await this.addFile(request.url)];
     }
 
-    const index = await this.load();
     const added: FontFamily[] = [];
     for (const name of request.families) {
-      const row = index[familyKey(name)];
-      if (!row) {
-        throw new FontUrlError(`no font called ${name}`);
-      }
-      for (const file of filesFor(row)) {
-        added.push(await this.addFile(jsdelivrUrl(row.d, file)));
-      }
+      added.push(...(await this.addFamily(familyKey(name), name)));
+    }
+    return added;
+  }
+
+  /**
+   * Add one family by its index key — what a search result is picked with.
+   *
+   * The same path a pasted link takes, deliberately: which files a family is
+   * worth fetching is one decision (`filesFor`), and a second way in would be a
+   * second answer to it.
+   */
+  async addFamily(key: string, name = key): Promise<FontFamily[]> {
+    const row = (await this.load())[key];
+    if (!row) {
+      throw new FontUrlError(`no font called ${name}`);
+    }
+    const added: FontFamily[] = [];
+    for (const file of filesFor(row)) {
+      added.push(await this.addFile(jsdelivrUrl(row.d, file)));
     }
     return added;
   }

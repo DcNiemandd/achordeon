@@ -322,12 +322,37 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
     await expect(page.getByTestId('font-roboto-mono')).toBeVisible();
   });
 
-  test('adding a font offers a file and a link', async ({ page }) => {
+  test('adding a font offers a search, a file and a link', async ({ page }) => {
     await page.getByTestId('font-add').click();
 
     await expect(page.getByTestId('add-font-dialog')).toBeVisible();
+    await expect(page.getByTestId('add-font-search')).toBeVisible();
     await expect(page.getByTestId('add-font-file')).toBeVisible();
     await expect(page.getByTestId('add-font-url')).toBeVisible();
+  });
+
+  test('the whole catalogue is searchable from the dialog', async ({
+    page,
+  }) => {
+    // The index is an app asset, so this needs no network — which is the point
+    // of it being generated and committed rather than probed (ADR-0016).
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-search').fill('crimson');
+
+    // Named as the family prints, not as the repo folders it: the key in the
+    // index is `crimsontext`, and nobody searches for that. The row also says
+    // what adding it will give you, before a byte is fetched.
+    const row = page.getByTestId('add-font-result-crimsontext');
+    await expect(row).toContainText('Crimson Text');
+    await expect(row).toContainText('of 4 styles');
+  });
+
+  test('a search that matches nothing says so', async ({ page }) => {
+    await page.getByTestId('font-add').click();
+    await page.getByTestId('add-font-search').fill('zzzznotafont');
+
+    await expect(page.getByTestId('add-font-no-results')).toBeVisible();
+    await expect(page.getByTestId('add-font-results')).toHaveCount(0);
   });
 
   test('Esc closes the add-font dialog', async ({ page }) => {

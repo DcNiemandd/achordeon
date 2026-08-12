@@ -1,9 +1,11 @@
 import {
   FontUrlError,
+  displayName,
   familyKey,
   filesFor,
   jsdelivrUrl,
   readFontUrl,
+  searchFamilies,
 } from './font-url';
 
 describe('readFontUrl', () => {
@@ -88,6 +90,85 @@ describe('the index key', () => {
     // `ofl/crimsontext`, not `crimson-text`. Both spellings exist in this
     // codebase and they must not be confused for one another.
     expect(familyKey('Crimson Text')).toBe('crimsontext');
+  });
+});
+
+describe('the name a search result shows', () => {
+  // The index key cannot supply it — `crimsontext` has lost its capitals for
+  // good — so it is read back out of the file name, which has not.
+  it.each([
+    ['a two-word family', ['CrimsonText-Bold.ttf'], 'Crimson Text'],
+    ['a variable file', ['RobotoMono-Italic[wght].ttf'], 'Roboto Mono'],
+    ['one word', ['Caveat[wght].ttf'], 'Caveat'],
+    ['a nested static', ['static/Lora-Regular.ttf'], 'Lora'],
+    [
+      'three words',
+      ['BitcountPropSingle[CRSV,wght].ttf'],
+      'Bitcount Prop Single',
+    ],
+    // A run of capitals is one word until the last of them, which starts the
+    // next: `NotoSansJP` is three words and `EBGaramond` is two.
+    ['a trailing initialism', ['NotoSansJP[wght].ttf'], 'Noto Sans JP'],
+    ['a leading initialism', ['EBGaramond[wght].ttf'], 'EB Garamond'],
+    ['an underscore', ['PT_Sans-Web-Regular.ttf'], 'PT Sans'],
+  ])('spaces out %s', (_case, files, expected) => {
+    expect(displayName({ d: 'ofl/x', f: files }, 'x')).toBe(expected);
+  });
+
+  it('falls back to the key for a family with no files', () => {
+    expect(displayName({ d: 'ofl/x', f: [] }, 'somefamily')).toBe('somefamily');
+  });
+});
+
+describe('searching the catalogue', () => {
+  const index = {
+    crimsontext: { d: 'ofl/crimsontext', f: ['CrimsonText-Bold.ttf'] },
+    crimsonpro: { d: 'ofl/crimsonpro', f: ['CrimsonPro[wght].ttf'] },
+    notocrimson: { d: 'ofl/notocrimson', f: ['NotoCrimson[wght].ttf'] },
+    oswald: { d: 'ofl/oswald', f: ['Oswald[wght].ttf'] },
+  };
+
+  it('matches however the name is typed', () => {
+    // Both sides go through `familyKey`, so spacing and case are not a query.
+    for (const query of ['Crimson Text', 'crimsontext', 'CRIMSON  text']) {
+      expect(searchFamilies(index, query, 10).map((one) => one.key)).toEqual([
+        'crimsontext',
+      ]);
+    }
+  });
+
+  it('puts what the name starts with above what merely contains it', () => {
+    expect(
+      searchFamilies(index, 'crimson', 10).map((one) => one.label),
+    ).toEqual(['Crimson Pro', 'Crimson Text', 'Noto Crimson']);
+  });
+
+  it('says how many faces adding it would install', () => {
+    // The same count the library will show once it is in, said before the
+    // click: one file is one face, and `filesFor` decides which files.
+    expect(searchFamilies(index, 'crimsontext', 10)[0]).toEqual({
+      key: 'crimsontext',
+      label: 'Crimson Text',
+      faces: 1,
+      isVariable: false,
+    });
+  });
+
+  it('marks a family that only ships variable files', () => {
+    // Why a family offering nine weights installs as one face — known from the
+    // brackets in the file name, so it can be said before anything is fetched.
+    expect(searchFamilies(index, 'crimsonpro', 10)[0]).toMatchObject({
+      faces: 1,
+      isVariable: true,
+    });
+  });
+
+  it('caps the list', () => {
+    expect(searchFamilies(index, 'o', 2)).toHaveLength(2);
+  });
+
+  it('answers an empty query with nothing rather than everything', () => {
+    expect(searchFamilies(index, '   ', 10)).toEqual([]);
   });
 });
 
