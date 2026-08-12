@@ -13,6 +13,7 @@ import {
   faceOf,
   type RenderPlan,
   type TextItem,
+  type ShapeItem,
   type EmbeddedFont,
 } from './render-plan';
 
@@ -74,7 +75,9 @@ function emitItem(item: TextItem, plan: RenderPlan): string {
     `font-family="${familyAttr(face.family, face.fallback)}"`,
     `font-size="${size}"`,
     `font-weight="${weight}"`,
-    `fill="${style.fill}"`,
+    // The item's own ink where it has one — reversed-out text over a filled
+    // band, which the role cannot know about (see `TextItem.fill`).
+    `fill="${item.fill ?? style.fill}"`,
   ];
   if (fontStyle && fontStyle !== 'normal')
     attrs.push(`font-style="${fontStyle}"`);
@@ -82,6 +85,27 @@ function emitItem(item: TextItem, plan: RenderPlan): string {
   if (item.rotate)
     attrs.push(`transform="rotate(${item.rotate} ${item.x} ${item.y})"`);
   return `<text ${attrs.join(' ')}>${escapeXml(item.text)}</text>`;
+}
+
+/**
+ * One rectangle. `fill="none"` is written explicitly rather than left out,
+ * because SVG's default fill is black — an unfilled frame would come out as a
+ * solid block, and it would come out that way in the PDF too.
+ */
+function emitShape(shape: ShapeItem): string {
+  const attrs = [
+    `x="${shape.x}"`,
+    `y="${shape.y}"`,
+    `width="${shape.width}"`,
+    `height="${shape.height}"`,
+  ];
+  if (shape.rx) attrs.push(`rx="${shape.rx}"`);
+  attrs.push(`fill="${shape.fill ?? 'none'}"`);
+  if (shape.stroke) {
+    attrs.push(`stroke="${shape.stroke}"`);
+    attrs.push(`stroke-width="${shape.strokeWidth ?? 1}"`);
+  }
+  return `<rect ${attrs.join(' ')}/>`;
 }
 
 /**
@@ -99,7 +123,11 @@ export function emit(plan: RenderPlan, opts: EmitOpts = {}): string {
   const paper = plan.paper
     ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${plan.paper}"/>`
     : '';
-  const body = plan.items.map((it) => emitItem(it, plan)).join('');
+  // Shapes first, and inside the `<g>`: they are content, so the fit moves them
+  // with the text they sit under. (The `paper` above is the box, not content,
+  // which is exactly why it is outside.)
+  const shapes = (plan.shapes ?? []).map(emitShape).join('');
+  const body = shapes + plan.items.map((it) => emitItem(it, plan)).join('');
   const group = `<g transform="translate(${plan.origin.x} ${plan.origin.y}) scale(${plan.fit})">${body}</g>`;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" ` +
