@@ -138,6 +138,10 @@ export type CaretLineKind = 'title' | 'subtitle' | 'content';
  */
 export interface CaretContext {
   readonly lineKind: CaretLineKind;
-  /** The caret sits between an unclosed `[` and its `]` — brackets do not nest. */
+  /**
+   * The caret sits inside a chord bracket — past the `[` and no further than the
+   * `]` that closes it. An unterminated `[` is literal text, not a bracket
+   * (PARSER-GRAMMAR §Phase 2), so this is false on the rest of such a line.
+   */
   readonly isInsideChord: boolean;
 }

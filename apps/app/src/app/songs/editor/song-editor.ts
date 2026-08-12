@@ -32,6 +32,7 @@ import { syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import {
   ChordTheory,
+  bracketAt,
   cycleChordAt,
   findLabelDelimiter,
   transposeChordAt,
@@ -119,29 +120,6 @@ function removeTabStop(view: EditorView): boolean {
     view.dispatch(changes, { userEvent: 'delete.dedent' });
   }
   return true;
-}
-
-/**
- * Is `column` inside an open `[…]` on this line?
- *
- * Walks to the caret tracking whether a bracket is open, skipping escaped
- * characters exactly as the parser does — `\[` is a literal bracket and opens
- * nothing (PARSER-GRAMMAR §Escapes). Brackets do not nest, so an already-open one
- * is enough to know a second `[` would be a mistake.
- */
-function isInsideBracket(text: string, column: number): boolean {
-  let isOpen = false;
-  for (let i = 0; i < column && i < text.length; i++) {
-    const char = text[i];
-    if (char === '\\') {
-      i++; // whatever follows is literal, including a bracket
-    } else if (char === '[') {
-      isOpen = true;
-    } else if (char === ']') {
-      isOpen = false;
-    }
-  }
-  return isOpen;
 }
 
 /**
@@ -250,7 +228,7 @@ export class SongEditor {
         : 'content';
     this._caret.set({
       lineKind,
-      isInsideChord: isInsideBracket(line.text, head - line.from),
+      isInsideChord: bracketAt(line.text, head - line.from) !== null,
     });
   }
 
