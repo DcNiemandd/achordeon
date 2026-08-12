@@ -78,11 +78,10 @@ solfège accidentals `Cis`/`Des`/`As`/`Es`, German transpose output).
 These are shipped surfaces that say "soon" or say nothing at all. They are the
 cheapest things on this page and the most visible.
 
-- **Three of four title-page variants.** `songbook-print-fields.ts:216` — only
-  `classic` has `isReady: true`; `centered`, `banner` and `minimal` carry the
-  "(soon)" suffix and a `disabled` option. `TitlePageVariant` is declared in both
-  `shared/domain` and `download-service.ts`, so the type is ready and only the
-  drawing is missing.
+- ~~**Three of four title-page variants.**~~ **Built — see [V2-05].** There are
+  twenty-one now and every one of them draws; the "(soon)" suffix and the
+  `disabled` option are gone. The two duplicate declarations of `TitlePageVariant` are one
+  again (`shared/domain`, re-exported by `download-service.ts`).
 - **Rebinding a keyboard shortcut.** Two `:::danger` admonitions promise it —
   `apps/docs/docs/songs/editing.mdx:64` ("Let the shortcuts be rebound in
   settings") and the TODO list at `settings.mdx:8`. Epic 15's closing note and
@@ -196,7 +195,8 @@ In rough order of value against effort:
 
 1. **The German `B`** (§1.2). It is the only thing on this page that makes the app
    quietly wrong, the fork has a recommendation, and §7's work is mostly deletion.
-2. **The three title-page variants** (§2). Type declared, one drawing each.
+2. ~~The three title-page variants~~ — **done**: eleven of them, plus the
+   rectangle primitive the shaped ones needed. [V2-05].
 3. ~~Re-run the e2e suite~~ — **done**: 28 chromium failures, and CI does not run
    the suite at all. Triaging them (they cluster) and wiring e2e into CI is now
    [V2-01], the board's `[now]` card.

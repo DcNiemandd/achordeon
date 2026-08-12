@@ -13,6 +13,7 @@ This is what happens about it. Verified against the code on 2026-08-12, `main` a
 | ----------- | ----------------------------------------------------------------------- |
 | `[now]`     | Max priority. Nothing waits on a decision.                              |
 | `[v1]`      | Shipped. Listed so the board is the whole map, not only the future.     |
+| `[done]`    | Built since the board was written. Still here for the same reason.      |
 | `[v2]`      | Accepted for v2. The shape is agreed; the work is not started.          |
 | `[blocked]` | A named question gates it. Answer first, build after.                   |
 | `[discuss]` | Parked. On the board so it is not lost, **not** because it is intended. |
@@ -48,7 +49,7 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 | [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`      |
 | [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[now]`          |
 | [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`           |
-| [V2-05](#v2-05--title-pages-ten-of-them)             | Title pages, ten of them              | `[v2]`           |
+| [V2-05](#v2-05--title-pages-ten-of-them)             | Title pages, ten of them              | `[done]`         |
 | [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`      |
 | [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`           |
 | [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`           |
@@ -57,6 +58,7 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 | [V2-11](#v2-11--buying-premium)                      | Buying premium                        | `[v2]`           |
 | [V2-12](#v2-12--sharing-a-slot)                      | Sharing a slot                        | `[blocked]`      |
 | [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`      |
+| [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`           |
 
 ---
 
@@ -229,56 +231,94 @@ Seed list, from what this survey happened to walk past:
 
 ---
 
-## V2-05 · Title pages, ten of them `[v2]`
+## V2-05 · Title pages, ten of them `[done]`
 
-Today there is one. `titlePageAst` (`libs/shared/domain/src/lib/title-page.ts`) is
-nine lines: title, subtitle, and the author as a one-line block, handed to the
-normal renderer with `align: 'center'`. Three more variants are named in
-`songbook-print-fields.ts` and carry "(soon)" with `isReady: false`.
+**Twenty-one of them, and all twenty-one draw.** The "(soon)" suffix and the
+disabled `<option>` are gone from `songbook-print-fields.ts`, because a choice
+that cannot be chosen is worse than one that is not offered.
 
-**The finding that shapes this card: `RenderPlan.items` is text and nothing else.**
-No rule, no rectangle, no image — `paper` is a flat ground fill and that is the
-whole of the non-text surface. So the variants split cleanly by cost, and the
-split does not match the three that were stubbed: `centered` and `minimal` are
-nearly free, **`banner` needs a new primitive**.
+### What it took, and the one thing that had to change
 
-### Free today — text placement only
+The card's finding held: **`RenderPlan.items` was text and nothing else**, and
+`paper` was the whole of the non-text surface. Two additions were enough.
 
-| #   | Variant      | What it is                                                                                                                                                     |
-| --- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Classic**  | Shipped. Title, subtitle, author, centred.                                                                                                                     |
-| 2   | **Centered** | Stubbed. The block optically centred in the page rather than sitting in its upper part.                                                                        |
-| 3   | **Minimal**  | Stubbed. Title alone, small, hugging one corner. Nothing else printed.                                                                                         |
-| 4   | **Poster**   | Title set as large as the width allows, author small in a corner. The gig-poster look.                                                                         |
-| 5   | **Stacked**  | Title broken one word per line, flush left, filling the height.                                                                                                |
-| 6   | **Plate**    | Small centred title high on the page, author low — the hymnal. Wants letter-spacing, which `TextStyle` has no field for; either add one or drop the tracking.  |
-| 7   | **Spine**    | Title rotated up the left edge, author bottom-right. **`TextItem.rotate: -90` already exists** for the title spine (§4.5), so this is placement, not plumbing. |
+- **`ShapeItem` — a rectangle, and only a rectangle.** A rule is a thin filled
+  one, a frame a stroked one, a band a wide one, a ticket a rounded one, so four
+  looks cost one thing to carry. It rides in `RenderPlan.shapes`, **absent** for
+  every song rather than empty, and it is emitted inside the fit `<g>` so it
+  scales with the text it sits under. The PDF came free: the exporter is
+  `svg2pdf` over the emitted SVG, so a `<rect>` travels without a second drawing
+  path to keep in step — the failure the font work kept running into cannot
+  happen here.
+- **`TextItem.fill`** — one item's ink, overriding its role's. `banner` needs it:
+  a title reversed out of a band has to be the colour of the paper the band
+  covered, and the role cannot know a band was drawn there.
 
-### Needs one new primitive — a stroked or filled rectangle
+**The larger change is not a primitive at all — it is which way the geometry
+runs.** `layoutCore` measures the content and grows a box around it; a title page
+starts from the **page** and places fields on it (`layoutTitlePageCore`,
+`libs/shared/render-core/src/lib/title-page-layout.ts`). That inversion is what
+makes "the frame sits inside the page edge" or "the title is as wide as the
+paper" expressible at all — under the old shape every variant had to be sayable
+as "a title block above some content", which is exactly why three of the four
+declared ones never landed. The page's short axis is `tuning.minBoxEm`, the same
+floor a song gets, so the front sheet and the first song are set at one size. A
+title too wide for its margins is shrunk where it is measured, never letting the
+page lose the shape the book asked for.
 
-| #   | Variant    | What it needs                                                                                                          |
-| --- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 8   | **Rule**   | A horizontal line under the title. One `line` item.                                                                    |
-| 9   | **Framed** | A thin border inset from the page edge, block centred inside. One stroked rect.                                        |
-| 10  | **Banner** | Stubbed. Title reversed out of a filled band across the upper third. Fill + a light `fill` override on the title role. |
-| 11  | **Ticket** | The block inside a small rounded box, with the song count under it.                                                    |
+`titlePageAst` is now `titlePageContent` — the same job (the book's fields, in
+the shape the renderer takes) for a renderer that no longer wants a `SongAst`.
 
-One addition to `RenderPlan` covers all four: a non-text item with a rect, a fill
-and/or a stroke. It has to travel through `emit` (SVG) **and** the jsPDF path
-together, or the screen and the PDF disagree — which is the failure the font work
-kept running into.
+### The twenty-one
 
-### Structural rather than decorative
+Placement alone — nothing but text on the page:
 
-| #   | Variant            | What it is                                                                                                                                                                                                            |
-| --- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 12  | **Contents-first** | Title at the top and the summary beneath it on the same sheet. Saves a page on a short book. Touches pagination and the front-matter offset (front matter is unnumbered; the first song is page 1), not the renderer. |
-| 13  | **Cover image**    | See [V2-06]. Its own card because the picture is the hard part, not the layout.                                                                                                                                       |
-| 14  | **None**           | The variant list and the "title page" checkbox currently answer the same question twice.                                                                                                                              |
+| #   | Variant      | What it is                                                                                                                      |
+| --- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Classic**  | The shipped page: the three fields left-aligned as one block, block centred.                                                    |
+| 2   | **Centered** | The same fields, every line centred on its own.                                                                                 |
+| 3   | **Plate**    | Small centred title high on the page, author at the foot — the hymnal.                                                          |
+| 4   | **Minimal**  | The title alone, at body size, in the top-left corner. Nothing else printed.                                                    |
+| 5   | **Poster**   | The title as large as the width allows, author small at the foot.                                                               |
+| 6   | **Stacked**  | One word to a line, flush left, sized to fill the height. One scale for all.                                                    |
+| 7   | **Spine**    | The title read up the left edge (`rotate: -90`), author bottom-right.                                                           |
+| 8   | **Baseline** | The whole book stood on the bottom-left corner, the sheet above it empty.                                                       |
+| 9   | **Corner**   | Title top-left, author bottom-right, the diagonal between them left alone.                                                      |
+| 10  | **Column**   | Title on the left, author against the right edge — sharing a baseline, not a top edge, because the two are one row read across. |
 
-**Suggested cut:** ship 1–7 plus 14 on today's renderer, then take the rectangle
-primitive once and get 8–11 together. That is eleven variants for one piece of
-plumbing.
+…and with rectangles:
+
+| #   | Variant       | What it is                                                                                                                 |
+| --- | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 11  | **Rule**      | A line under the title, subtitle below it.                                                                                 |
+| 12  | **Marquee**   | A rule above the title and below it, both full width. The theatre bill.                                                    |
+| 13  | **Gate**      | An upright at each margin, the height of the block and no further.                                                         |
+| 14  | **Framed**    | A thin stroked border inset from the page edge, the block centred inside.                                                  |
+| 15  | **Bookplate** | Two frames, one just inside the other. The ex-libris plate.                                                                |
+| 16  | **Ticket**    | The book in a small rounded box, with the song count under it.                                                             |
+| 17  | **Tag**       | A filled box drawn tight around the title, reversed out — where `banner` runs off both edges, this one stops at the words. |
+| 18  | **Banner**    | The title reversed out of a filled band that bleeds edge to edge.                                                          |
+| 19  | **Half**      | The top half of the sheet filled solid, the title standing on its edge.                                                    |
+| 20  | **Bookmark**  | A narrow strip of ink down the left edge, the book centred on the rest.                                                    |
+| 21  | **Footer**    | The author in a band across the foot — `banner` upside down, and it signs the book rather than announcing it.              |
+
+Two decisions inside that list, both open to being overruled:
+
+- **`plate` dropped the tracking.** Letter-spacing would need a `TextStyle` field
+  _and_ `svg2pdf` to honour it, and a screen and a PDF that disagree is the one
+  outcome worth avoiding more than a plain plate.
+- **The song count is worded by the caller**, not the renderer
+  (`TitlePageContent.countLabel`). The renderer is geometry and has no locale; a
+  named placeholder lets Czech dodge a plural rule the message cannot express —
+  "písní: 12" reads at any count where "12 písní" is wrong at 1 and at 2.
+
+### Not built, and why
+
+| Variant            | Why not                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Contents-first** | Title and summary on one sheet. Pagination and the front-matter offset, not the renderer — a different piece of work, and it should be its own card if it is wanted.                                                                                         |
+| **Cover image**    | [V2-06]. The picture is the hard part, and it is still a question rather than a task.                                                                                                                                                                        |
+| **None**           | It would make the "title page" checkbox and the style list answer the same question twice, so one of the two has to go — and removing the checkbox reaches the record, the sync mapping, the transfer model and an e2e id. **A decision, not an oversight.** |
 
 ---
 
@@ -508,7 +548,54 @@ tagged for discussion **as a whole**: these are not intentions.
 | Security  | Optional passphrase encryption-at-rest                                      |
 | Import    | Re-import of downloaded PDFs — PNG already carries its `tEXt` metadata      |
 | Toolchain | Angular 22 — gated on `@ngrx/signals@22` (no release, peers `^21` strictly) |
-| Design    | Theme colours, still pending; `PRD-UI-SHELL` §13's four one-look questions  |
+| Design    | `PRD-UI-SHELL` §13's four one-look questions — the colour itself is [V2-14] |
+
+---
+
+## V2-14 · A theme colour of your own `[v2]`
+
+The app is one red. `--brand-h: 11`, `--brand-s: 80%`, `--brand-l: 42%` in
+`_tokens.scss`, and every hover, active, subtle and focus ring is computed from
+those three channels — which is the whole reason this is a card and not a
+research project. **The palette is already a function of one colour; nothing
+reads a literal hex.** What is missing is a way for the user to move it and a
+place to keep it.
+
+`DOC-REVISION-PLAN.md` has carried "theme colours, pending design" since the
+first grilling session, and it is the last of that file's three open rows still
+without a home. This is the home.
+
+What it needs, in order:
+
+- **A stored value.** A setting, so it cascades and syncs like the rest — but the
+  app's own chrome is not a render setting, and the distinction matters: nothing
+  here may reach `RenderTuning`. The theme is the desk, the render is the paper
+  (`PRD-UI-SHELL.md` §6), and a brand colour that leaked into a chord sheet would
+  print somebody's taste onto every page they hand out.
+- **Three channels, not a hex.** Storing `h`/`s`/`l` separately is what lets the
+  dark theme keep lifting lightness alone (`--brand-l: 55%` in dark, 3.8:1 →
+  5.7:1). A hex would flatten that and every custom colour would fail contrast on
+  one of the two themes.
+- **A contrast floor.** `--brand-on: #fff` is 5.6:1 on today's red and would be
+  1.9:1 on a yellow. Either the floor lifts the chosen lightness the way
+  `liftInkForPaper` already lifts a chord colour against a dark page — the
+  precedent exists, in `dark.ts` — or the on-colour flips between white and
+  near-black at a measured threshold. **This is the one part that is real work**;
+  the rest is a picker and a token.
+- **What the picker offers.** A free hue wheel, or a short list of picked hues?
+  A list keeps every option contrast-checked in advance and reads as design
+  rather than as a settings screen; a wheel is what people expect. Worth deciding
+  before building either.
+- **The two neighbours it must not muddy.** `--premium` is gold (`hsl(45 90% 45%)`)
+  and `--danger` sits at 358° — deliberately close to the brand's 11° so it reads
+  as the same family. A user-chosen hue near either weakens a signal that has to
+  survive being glanced at: danger stops looking like danger at h≈358, and gold
+  stops looking like gold at h≈45. Whether the picker refuses those bands, warns,
+  or simply allows them is a decision this card owes.
+
+`PRD-UI-SHELL.md` §13's grey-ramp question (a warm tint beside a warm brand) is
+the same question asked once per possible brand, so answering it generically —
+neutral greys, always — is probably what a custom colour forces.
 
 ---
 
@@ -522,6 +609,7 @@ tagged for discussion **as a whole**: these are not intentions.
 4. **[V2-09]'s counter** — the sooner it is counting, the sooner v2 has evidence
    instead of opinions. Same for [V2-07]'s question about whether people ever open
    Settings.
-5. **[V2-05]** — the largest visible win, and 1–7 need no new plumbing.
+5. ~~**[V2-05]**~~ — **done.** Eleven title pages, one rectangle primitive, and a
+   title page that is laid out on the page instead of boxed like a song.
 6. **Answer two questions** — `NOTATION-PLAN.md` §3, and authored-vs-derived in
    [V2-12]. Both unblock real work and neither needs code to decide.

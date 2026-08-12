@@ -107,5 +107,7 @@ worked**, and it is the front door for anything new.
    ADR-0015 and the `?` dialog. → [V2-08], which also carries the two constraints
    not to re-derive (presses match physical position; undo and redo are
    CodeMirror's and are listed but not bound).
-3. Theme colors — pending design. → still pending, tracked on the shelf in
-   [V2-13] beside `PRD-UI-SHELL.md` §13's four one-look questions.
+3. Theme colors — pending design. → now a card of its own, [V2-14]: the palette
+   is already computed from three brand channels, so what is open is the picker,
+   the contrast floor, and how close a chosen hue may sit to gold and to danger.
+   `PRD-UI-SHELL.md` §13's four one-look questions stay on the shelf in [V2-13].
