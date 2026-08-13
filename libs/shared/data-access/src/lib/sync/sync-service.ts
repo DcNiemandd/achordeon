@@ -19,7 +19,11 @@ import { AuthService } from '../auth/auth-service';
 import { BootGate, SchemaTooNewError } from '../persistence/boot-gate';
 import { snapshotFromDb, writeSnapshotToDb } from '../persistence/gateway';
 import type { RestoreMode } from '../transfer/backup-service';
-import { ACHORDEON_DB } from '../stores/repositories';
+import {
+  ACHORDEON_DB,
+  SONG_REPOSITORY,
+  SONGBOOK_REPOSITORY,
+} from '../stores/repositories';
 import { SongStore } from '../stores/song-store';
 import { SongbookStore } from '../stores/songbook-store';
 import { SettingsStore } from '../stores/settings-store';
@@ -41,6 +45,8 @@ export class SyncService {
   private readonly driveBackend = inject(DriveSyncBackend);
   private readonly auth = inject(AuthService);
   private readonly db = inject(ACHORDEON_DB);
+  private readonly songRepo = inject(SONG_REPOSITORY);
+  private readonly songbookRepo = inject(SONGBOOK_REPOSITORY);
   private readonly songs = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly settings = inject(SettingsStore);
@@ -90,6 +96,16 @@ export class SyncService {
     // cloud only when some *other* edit happened to trigger a cycle — and the
     // "unsynced" flag stayed stale in the meantime, since nothing recounted.
     this.settings.onSaved(() => this.pushSoon());
+
+    // A song/songbook write is not a push on its own — that stays on the coarse
+    // boundaries (focus/blur/nav, ADR-0004) so a rename does not spam the network.
+    // But it MUST recount "unsynced" the instant it lands, or the flag lies until
+    // the next cycle: the Settings status would read "synced" over a fresh rename,
+    // and the leave-the-page warning would let that rename be stranded in silence.
+    // The repository is the one choke point every edit AND every import passes.
+    const recount = () => void this.recomputeUnsynced();
+    this.songRepo.onSaved(recount);
+    this.songbookRepo.onSaved(recount);
 
     if (typeof window !== 'undefined') {
       // The handoff moment: the other device opening is when a pull matters.

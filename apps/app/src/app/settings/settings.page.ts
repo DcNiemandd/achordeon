@@ -295,10 +295,28 @@ const MIN_PASSWORD = 8;
                       {{ autoSyncReq }}
                     </p>
                   }
-                  @if (presenter.hasUnsynced()) {
-                    <p class="requirement" data-testid="unsynced">
-                      {{ unsyncedText }}
-                    </p>
+                  <!-- The sync status the app never used to show: honest the
+                       moment a save lands (the repo now recounts on every write),
+                       so this is where a user checks "did my last edit go up?".
+                       Only meaningful while sync is actually running. -->
+                  @if (presenter.canAutoSync() && presenter.autoSync()) {
+                    @if (presenter.syncStatus() === 'syncing') {
+                      <p class="requirement" data-testid="sync-status">
+                        {{ syncingText }}
+                      </p>
+                    } @else if (presenter.syncStatus() === 'error') {
+                      <p class="requirement" data-testid="sync-status">
+                        {{ syncFailedText }}
+                      </p>
+                    } @else if (presenter.hasUnsynced()) {
+                      <p class="requirement" data-testid="unsynced">
+                        {{ unsyncedText }}
+                      </p>
+                    } @else {
+                      <p class="requirement" data-testid="synced">
+                        {{ syncedText }}
+                      </p>
+                    }
                   }
                 </div>
               }
@@ -1980,6 +1998,9 @@ export class SettingsPage {
   protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
+  protected readonly syncingText = $localize`:@@settings.sync.syncing:Syncing your changes…`;
+  protected readonly syncFailedText = $localize`:@@settings.sync.failed:Sync did not go through — it will try again.`;
+  protected readonly syncedText = $localize`:@@settings.sync.synced:All your changes are on the cloud.`;
   protected readonly driveHelp = $localize`:@@settings.drive.help:Your backup, kept in your own Google Drive instead of a file you hold. The first upload asks Google for Drive permission. Uploading merges with the Drive copy, so it never drops another device's work; downloading asks whether to add to your library or replace it.`;
   protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
   protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
