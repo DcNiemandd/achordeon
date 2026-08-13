@@ -10,10 +10,16 @@
 // that is exactly the accumulation this script exists to avoid.
 //
 // usage:
-//   assemble-manifest.mjs <fragmentDir> [--order <orderFile>] [--songbook <name>] -o <manifest.json>
+//   assemble-manifest.mjs <fragmentDir> [--order <orderFile>] [--only <namesFile>]
+//                         [--songbook <name>] -o <manifest.json>
 //
 //   <fragmentDir>   directory the workers wrote their *.song.json files into
 //   --order <file>  newline-separated NAMEs giving songs[] order (default: sorted)
+//   --only <file>   newline-separated NAMEs to include, ignoring every other
+//                   fragment in the dir. This is how one WAVE of a longer run is
+//                   built on its own: build-import gives every song in a manifest a
+//                   fresh id, so restating already-built songs each wave would churn
+//                   their ids and defeat the incremental merge that keeps them.
 //   --songbook <n>  wrap the songs in a songbook of this name (omit for none)
 //   --songbook-settings <json>
 //                   songbook-scope settings, e.g. '{"notation":"german"}'. Book
@@ -25,10 +31,11 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
-let fragDir, orderFile, songbook, bookSettings, out;
+let fragDir, orderFile, onlyFile, songbook, bookSettings, out;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--order') orderFile = args[++i];
+  else if (a === '--only') onlyFile = args[++i];
   else if (a === '--songbook') songbook = args[++i];
   else if (a === '--songbook-settings') bookSettings = args[++i];
   else if (a === '-o') out = args[++i];
@@ -41,10 +48,20 @@ for (let i = 0; i < args.length; i++) {
 
 if (!fragDir || !out) {
   console.error(
-    'usage: assemble-manifest.mjs <fragmentDir> [--order <orderFile>] [--songbook <name>] -o <manifest.json>',
+    'usage: assemble-manifest.mjs <fragmentDir> [--order <orderFile>] [--only <namesFile>] [--songbook <name>] -o <manifest.json>',
   );
   process.exit(1);
 }
+
+/** Newline-separated names, blanks dropped — the shape of both list files. */
+function readNames(file) {
+  return readFileSync(file, 'utf8')
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const only = onlyFile ? new Set(readNames(onlyFile)) : null;
 
 const frags = readdirSync(fragDir)
   .filter((f) => f.endsWith('.song.json'))
@@ -61,28 +78,31 @@ const frags = readdirSync(fragDir)
       song.contentFile = resolve(fragDir, song.contentFile);
     return song;
   })
-  .filter(Boolean);
+  .filter(Boolean)
+  .filter((s) => !only || only.has(s.name));
 
 if (frags.length === 0) {
-  console.error(`ERROR: no valid *.song.json fragments in ${fragDir}`);
+  console.error(
+    only
+      ? `ERROR: none of the names in ${onlyFile} have a fragment in ${fragDir}`
+      : `ERROR: no valid *.song.json fragments in ${fragDir}`,
+  );
   process.exit(1);
 }
 
 const byName = new Map(frags.map((s) => [s.name, s]));
 
-const order = orderFile
-  ? readFileSync(orderFile, 'utf8')
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-  : [...byName.keys()].sort();
+const order = orderFile ? readNames(orderFile) : [...byName.keys()].sort();
 
 const songs = [];
 const seen = new Set();
 for (const name of order) {
   const s = byName.get(name);
   if (!s) {
-    console.error(`WARN: order lists "${name}" but no fragment was found`);
+    // Under --only the order file is the whole run's, so most of its names are
+    // meant to be absent from this wave. Warning per song would bury the real ones.
+    if (!only)
+      console.error(`WARN: order lists "${name}" but no fragment was found`);
     continue;
   }
   songs.push(s);
