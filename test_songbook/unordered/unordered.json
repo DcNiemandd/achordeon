@@ -1,0 +1,274 @@
+{
+  "app": "https://achordeon.eu/app/",
+  "schemaVersion": 1,
+  "deviceId": "achordeon-skill",
+  "updatedAt": 1786609269875,
+  "data": {
+    "songs": [
+      {
+        "id": "b6bf7ead-9be8-4e98-b747-ce1cf2712578",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Andělé - Wanastowi vjecy",
+        "content": "* Andělé\n** Wanastowi vjecy\n\n[B]Co tě to hn[C#m]ed po ránu na[E]padá, [B]nohy, ruce - [C#m]komu je chceš [E]dát\n[B]Je to v krvi[C#m], co tvou hlavu [E]přepad[B]á, chtěla[C#m]s padnout do hrobu a [E]spát\n\nREF.:\n[D]Poranění [A]andělé jdou d[G]o polí, s[D]těhovaví [A]lidi ulít[G]aj\n[D]Panenku b[A]odni - jí to [G]nebolí, s[D]vět je mami [A]dokonalej kra[G]j\n\nPo ránu princezna je ospalá, na nebi nemusí se bát\nV ulicích doba zlá ji spoutala, polykač nálezů a ztrát\n\nREF.: Poranění...\n\nSólo kytara:\nCo tě to zas po ránu napadá, za zrcadlem nezkoušej si lhát\n\nMiluju tě, chci tě - to ti přísahám, na kolenou lásce pomož vstát\n\nPoranění andělé jdou do polí, stěhovaví lidi ulítaj\nPanenku bodni - jí to nebolí, svět je mami dokonalej kraj\nSvět je mami dokonalej kraj, svět je mami dokonalej kraj,\nSvět je mami dokonalej kraj...\n",
+        "favorite": false,
+        "settings": {},
+        "cache": {
+          "title": "Andělé",
+          "subtitle": "Wanastowi vjecy"
+        }
+      },
+      {
+        "id": "143080bc-1c76-4072-94a3-b63d64efdfa7",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Báječná ženská - Michal Tučný",
+        "content": "* Báječná ženská\n** W. Nelson / W. Jennings / Z. Ryt\n\nZAČÁTEK\n\n1.: Tenhle [G]příběh je pravda, ať visím, jestli vám budu [C]lhát,\njá jsem [D7]potkal jednu dívku a do dnešního dne ji mám [G]rád,\nnikdy neměla zlost, když jsem hluboko do kapsy [C]měl,\nvždycky [D7]měla pochopení a já se s ní nikdy hádat [G]nemusel.\n\nR.: Když si [G]báječnou ženskou [G7]vezme báječnej [C]chlap,\ntak mají [D7]báječnej život plnej báječnejch dní bez [G]útrap,\ncelej den jen tak sedí a [G7]popíjejí Chatoneaux d'[C]Pappe,\nkdyž si [D7]báječnou ženskou vezme báječnej [G]chlap.\n\n2.: Nikdy jsem neslyšel\\: kam jdeš, kdy přijdeš a kde jsi byl,\na já nikdy nezapomněl, abych svoje sliby vyplnil,\na když vzpomínala, tak jen na to hezký, co nám život dal,\nnedala mi příležitost, na co bych si taky stěžoval.\nR.\n\n3.: Tenhle příběh je pravda a sním svůj klobouk, jestli jsem vám lhal,\nže jsem potkal jednu dívku a tu dívku jsem si za ženu vzal,\nzní to jako pohádka z příběhu královny Máb,\nže si báječnou ženskou vzal jeden báječnej chlap.\nR.\nR.\n\nKONEC\n2x REFRÉN + OPAKOVAT POSLEDNÍ ŘÁDEK\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Báječná ženská",
+          "subtitle": "W. Nelson / W. Jennings / Z. Ryt"
+        }
+      },
+      {
+        "id": "d380008c-b045-430f-8c09-58e352e16fd4",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Básnířka - Jaromír Nohavica",
+        "content": "* Básnířka (z filmu Rok Ďábla)\n** Jaromír Nohavica\n\n1.: [G]Mladičká [D]básnířka s [C]korálky [D]nad kotní[G]ky, [D C D]\n[G]bouchala [D]na dvíř[C]ka paláce [D]poeti[Em]ky, [Em]\n[C]s někým se [C]vyspa[G]la, někomu [C]neda[G]la, láska jako [D]hobby,\n[G]tak o tom [D]napsala [C]sonet na [D]čtyři do[G]by. [D C D]\n\n2.: Své srdce skloňovala podle vzoru Ferlinghetti,\nve vzduchu nechávala viset vždy jen půlku věty,\nplná tragiky, plná mystiky, plná splínu,\npak jí to otiskli v jednom magazínu.\n\n3.: Bývala viděna v malém baru u rozhlasu,\nod sebe kolena a cizí ruka kolem pasu,\ntrochu se napila, trochu se opila na účet redaktora\na týden nato byla hvězdou Mikrofóra.\n\n4.: Pod paží nosila rozepsané rukopisy,\nráno se budila vedle záchodové mísy,\nživotem potřísněná, múzou políbená, plná zázraků\na pak ji vyhodili z gymplu i z baráku.\n\n5.: Šly řeči v okolí, že měla něco s esenbáky,\nať bylo cokoli, přestala věřit na zázraky,\ncítila u srdce, jak po ní přešla železná bota,\ntak o tom napsala sonet ze života.\n\n6.: Pak jednou v pondělí přišla na koncert na koleje\na hlasem pokorným prosila o text Darmoděje,\nkterého ho vzala, pak se dala tichounce do pláče.\n\n[G]a její [D]slzy kapa[C]ly na její [D]mrkvá[G]če, [D C D]\na její slzy kapaly na její mrkváče,\na její slzy kapaly na její mrkváče,\n[G]a její [D]slzy kapa[C]ly na její [D]mrkvá[G]če, [D C D]\n[G]\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Básnířka (z filmu Rok Ďábla)",
+          "subtitle": "Jaromír Nohavica"
+        }
+      },
+      {
+        "id": "0db87d5f-0b1c-426a-9d4b-338fb13de649",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Cesta - Kryštof",
+        "content": "* Cesta\n** Kryštof\n\nIntro:: [C G Am F G]\n\nTou [C]cestou\nTím směrem prý bych se [G]dávno měl dát\nKdyž [Dm]sněží, jde to stěží, ale sněhy pak tají\nKus [Fmaj7]něhy ti za nehty s [G]líbí a dají\n\nVíc síly\nse prát, na dně víc dávat než brát.\nA i když se vleče a je schůdná jen v kleče\nDonutí přestat se zbytečně ptát\n\nR:: Jestli se [C]blížím k cíli\nKolik [G]zbývá víry, kam [Am]zvou\nSvodidla, co po tmě mi [F]lžou? [G]\n\nZda couvám zpátky\nA plýtvám řádky, co řvou\nŽe už mi doma neotevřou\n\nNebo jít s proudem\nNa lusknutí prstu se začít hned smát,\nMít svůj chodník slávy a před sebou davy\nA přes zkroucená záda být součástí stáda\n\nAle zpívat\nA hrát, kotníky líbat, a stát\nNa křídlech všech slavíků, a vlastně už ze zvyku\nPřestat se zbytečně ptát\n\nR:: (2x)\n",
+        "favorite": false,
+        "settings": {},
+        "cache": {
+          "title": "Cesta",
+          "subtitle": "Kryštof"
+        }
+      },
+      {
+        "id": "0e5c464e-8766-496c-84ac-afc90697bbe8",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Chameleon - Brichta (Breaking the Law - Judas Priest)",
+        "content": "* Chameleon\n\n[Am]Sedí se svou lahví Whisky\n[C]pěknej [G]balík [Am]má\nbiftek čína steaky řízky\nprostě jen si užívá\n[F]Bezpohlavní croupier\n[C]vyžral koryt pár\n[F]vystřídal už křesel i žen\n[E]svý barvy mění já ho znám\n\n[Am]Chameleon chameleon\n\nNakopává správný zadky\ntrhne co se dá\nlíže boty seká patky\nchytře práskne a jde dál\nTakovej makovej\npřijde a hned pryč\nuctivost a kejvání\nje jeho tajnej klíč\n\n[Am]Chameleon chameleon [(Bm A)]\nTáhni pryč dokud se dá [Dm F C]\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Chameleon",
+          "subtitle": ""
+        }
+      },
+      {
+        "id": "38a535d4-f7f4-47c3-96f2-4a5324069850",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Chtěl jsem mít - Turbo",
+        "content": "* Chtěl jsem mít\n** Turbo\n\n[C]Chtěl jsem mít to, co chlapi mívaj[Am]\nza [C]sebe, když zpátky se dívaj [Am]\na [F]když můžou říct, dobře [G]jsem [Am]žil[C]\n\nJá jsem však předčasně teď soudě\nvalem dal rodný svý hroudě\ndo světa jsem šel, tam kam mě táh' kytary tón.\n\nR:: A [C]tak - chtěl jsem\njednou [G]mít [Am]krásnej [G]bílej [F]dům [G]\ns [C]krásnou dívkou [G]žít a s [Am]ní\nspous[G]tu [F]dětí [G]mít. [Am]\n\nČas však mi jak tu pěnu z píva,\nmládí vzal a teď už mě zbývá,\ndál světem se hnát a pro lidi hrát- ó -ó -ó.\n\nR:: Krásnej dům už mám, zůstal jsem v něm sám,\njá a mých šest strun, téměř prázdnej dům.\n\nR:: A tak - chtěl jsem jednou mít krásnej bílej dům,\ns krásnou dívkou žít a s ní spoustu dětí mít.\n\nR:: Krásnej dům už mám, zůstal jsem v něm sám,\njá a mých šest strun, téměř prázdnej dům.\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Chtěl jsem mít",
+          "subtitle": "Turbo"
+        }
+      },
+      {
+        "id": "f692095e-7843-4bd5-9158-dd4666a91013",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Co ti dám - Vladimír Mišík",
+        "content": "* Co ti dám\n** Vladimír Mišík\n\n[G]Co ti dám [D]lásko pod [Em]strome[C]ček\n[G]kazetu z [D]Aljašky s [Em]nahrávkou vlčích smeček\n[G]anglické pasti[D]lky po [Em]kterých voní duch i [C]dech\n[G]a hrací náušnici a [D]ptáka který [Em]tence\n[C]zazpívá v kleci pro milence,\n[G D]i [Em]jó hó [C]hó, [G]i [D]jó [Em]hó hó [1×]\n\nNa nebe tapetu a na podlahu mech\nkrátce\\: život na slušných základech\na ne tu existenci na hromádce\nmých nezbytných a tak zbytečných věcí\na v rámu okna zasklený vlastní dech, i jó hó hó, i jó hó hó [1×]\n\nA sbírku kořenek na šafrán a na mátu\npět švestek, pádlo, moře na plakátu\nsvé nohy, ruce, hlavu, oči, svoji tvář\nsvá rána, dny a noci, trhací kalendář\na hrací náušnici a toho ptáka v kleci, i jó hó hó, i jó hó hó [2×]\n\nSÓLO:\nA v rámu okna zasklený vlastní dech\nkrátce\\: život na slušných základech\nmých nezbytných a tak zbytečných věcí\nnebo jen vlastní dech a k tomu prázdný rám\njó to ti pod stromeček dám, i jó hó hó, i jó hó hó [4×]\n\nOpakovat\n\nSÓLO: konec\n",
+        "favorite": false,
+        "settings": {},
+        "cache": {
+          "title": "Co ti dám",
+          "subtitle": "Vladimír Mišík"
+        }
+      },
+      {
+        "id": "275329f9-a1b0-40f5-919e-51ea327b8de5",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Colorado - Kabát",
+        "content": "* Colorado\n** Kabát\n\n1.: Táta [G]vždycky říkal\\: hochu, žádný [C]strachy,\njseš kovboj v [G]Coloradu, můžeš krávy [D]pást,\njá radši [G]utratil jsem psa a všechny [C]prachy,\ndo srdce [G]Evropy já [D]vodjel v [G]klidu krást.\n\n2.: [Všichni]Narvaný kapsy, prsteny, řetězy zlatý\ntam kolem krku místní Indiáni maj',\na ty, co nemakaj', tak jsou nejvíc bohatý,\nmusím se pohnout, dokaváď tam rozdávaj'.\n\nR:: Z Billa na [G]Nováka změním si svý [C]jméno,\na až tu [G]malou zemi celou rozkradem, [D]rozkradem!,\ntak se [G]vrátím ve svý rodný [Em]Colo[C]rado,\no tý [G]zlatý žíle [D]řeknu doma [G]všem.\n\n3.: Tam kradou všichni, co blízko vokolo bydlej',\nšerif se na ně jenom hezky usmívá,\nkdyby se nesmál, tak ho okamžitě zmydlej',\nházej' mu kosti za to, že se nedívá.\n\n4.: Místo krav tam, nelžu vám, prej pasou holky,\na když jim nezaplatíš, vyrazej' ti dech,\nale s IQ to tam nebude tak horký,\nmísto na koních tam jezděj' v medvědech.\nR::\n\nR:: + a o tý [G]zlatý žíle [D]řeknu [G]doma všem ...\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Colorado",
+          "subtitle": "Kabát"
+        }
+      },
+      {
+        "id": "b2d9b3fd-1caa-4b5a-8812-0ac0cbb3d732",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Dávno - Olympic",
+        "content": "* Dávno\n** Olympic\n\nPředehra:\n[Em C D]\n[Em C D] → dál sloka\nPředehra končí.\n\n1.: [Em]To všechno, co se mělo [C]stát, [D]bylo,\n[Bm]nic není staršího než [C]včerejší den, [D]\n[Em]a všechno, co jsem včera [C]zvlád [D]silou,\n[Bm]je dneska úsměvný [C]a vzdálený jen,\nspousta [Am]příběhů, [Bm]lásek, [Em]jmen.\n\n2.: Ta chvíle, kdy jsem prvně vlál nocí\nnad dívčí nahotou a rokenrol zněl,\nta doba, kdy jak slunce hřál pocit,\nže všechno moh bych mít, jen kdybych chtěl,\nto už dávno je bohužel.\n\nR.: [G]Dávn[D]o, [Am]dávn[Em]o,\n[C]to slovo [G]má slzu [D]pod usmáním,\n[G]dávn[D]o, [Am]dávn[Em]o,\n[C]zní ve mě [G]vlídně a [D]bez ustán[B]í.\n\nR.:\n\nSólo:\n\n3.: [Záseky]Když začne všechno kolem jít líně\na závrať z dávných výher už je ta tam\na mizí chuť i důvod být v mlýně,\nna všechno si říkáš\\: Vždyť tohle já znám,\ntohle já za sebou mám.\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Dávno",
+          "subtitle": "Olympic"
+        }
+      },
+      {
+        "id": "f852f81f-59bf-4934-9fbe-414b3f21d311",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Dech mrtvé milenky - Argema (Fernet)",
+        "content": "* Dech mrtvé milenky\n** Fernet\n\n[G]Hrozny jsou pro špačky\na [C]chmel pro malý školačky\nkdyž [G]člověk chce bejt na sračky\ntak [D]hořkou slinu má.\n[G]Nezná co je břichabol\nkdo [C]pije hořkej alkohol\nje [G]zdravě zlitej až na mol\n[D]a sladce usí[G]ná.\n\nRef.:: [G]Sá[F]zej to tam [C]poznáš jak se lítá\n[G]fernet je sladkej po dvou [D]promilích\n[G]kr[F]ídla už ti [C]rostou, drak tě vítá\n[G]hořkej je pouze život [D]střízlivých[G]\n\nJednou svět pochopí\nať perník nebo konopí\nProč lejt do sebe dětskej čaj\nznám ještě tenčí led\nMáš-li chuť nahlížet\ndo tajů stavu bez tíže\nvem si tyhle kapky\npoznáš jak se točí svět\n\nRef.:: Sázej ...\n\nTá tá rata tá .......\n\nRef.:: Sázej ...\n/několikrát do zítra\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Dech mrtvé milenky",
+          "subtitle": "Fernet"
+        }
+      },
+      {
+        "id": "0b6db376-b7d5-4b90-bb92-8cb7b250ba2f",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Dřív než zaplatíš - Brutus",
+        "content": "* Dřív než zaplatíš\n** Brutus\n\n[C G Am F C G C G]\nÚú pa pa pa.....\n\n[C]V sále už se [G]svítí je tu [Am]hodně těch co [F]znám\n[C]Tady si nikdo [G]nepřipadá [C]sám [G]\n[C]Když už není [G]zbytí slabší [Am]venku zkouší [F]trám\n[C]Doneste sem [G]pití žízeň [F]mám\n\nRef.:: Ještě [C]dřív než zaplat[G]íš koupit [Am]pivo si tu [F]smíš\nPusť ho [C]do sebe a ne[G]chej taky [C]nás [G]\nMávej [C]ruce nad hla[G]vou hlavu v [Am]bedně ukryj [F]svou\ntouhou [C]dlouhou [G]ou [F]ou [G]ou [C]\n\nBigbít co se valí z oken pilně zavřených\nJe tu uvnitř trápí uši mý\nKyslík tady není má svý místo určený\nVzduch je tvrdý víc než jsme zpocený\n\nRef.:: Ještě dřív....\n\nÚú pa pa pa....\n\nNemůžem se pohnout těla hraním zlámaný\nCo to stojí každý dobře ví\nKapela je suchá vy jste pitím zesláblí\nOdnesou nás všechny kam bůh ví\n\nRef.:: Ještě dřív .....\n\ndlouhou ou ou ou [3×]\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Dřív než zaplatíš",
+          "subtitle": "Brutus"
+        }
+      },
+      {
+        "id": "a83fa619-b2c9-4020-b489-37a76dc5cb1c",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Exploze snů - Kern",
+        "content": "* Exploze snů\n** Kern\n\n[Am]Když vládne noc, to nejsem já\nkdo se z mých [G]očí na svět dívá [Am]najednou\nKdyž vládne noc, neúprosná\nvlny které [G]leží v hlubinách se ve [E]mě [Am]povznesou\n\n[Dm]Odvahu mám a [Bb]čelo drzejší\na [F]strach pod botou [C]rozdrtím\n[Dm]na nárožích svůj [Bb]osud vyzývám\na [F]on se bojí [C]ukrývá\n\nTo nejsem já, říkám s výstrahou\na dokud se mě nedotýkáš nic nehrozí\nRozbušek pár ve mně číhá dál\njak panter před skokem svým než dojde k explozím\n\nR::\nExploze snů mě na prach rozmetá\na jen ta noc jí odolá\nExploze snů ta tiše vyčkává\nje blízko její chvíle zlá\n\nKdyž vládne noc v temných zákoutích\npřicházím já, sílu v pěsti zavírám\nNemusím se prát nevím kam jít\na marně hledám soupeře a neumím to vzdát\n\nR::\nR::\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Exploze snů",
+          "subtitle": "Kern"
+        }
+      },
+      {
+        "id": "0ca10cf0-0a95-42bb-9dd0-9eea38bc8b85",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Frankey Dlouhán - Nedvědi",
+        "content": "* Frankey Dlouhán\n** Nedvědi\n\n[C]Kolik je smutného [F]když mraky černé [C]jdou\nlidem nad [G]hlavou [F]smutnou dála[C]vou\njá slyšel příběh, který [F]velkou pravdu [C]měl\nza čas [G]odletěl, [F]každý zapo[C]mněl\n\nR:: měl kapsu [G7]prázdnou Frankey Dlouhán\npo státech [F]toulal se jen [C]sám\na že byl [F]veselej tak [C]každej měl ho [G]rád\n[G7]tam ruce [F]k dílu mlčky přiloží\na [Em7]zase jede [Am]dál a [Dm7]každej,\nkdo s ním [G]chvilku byl, [F]tak dlouho [G]se pak [C]smál\n\nTam, kde byl pláč,\ntam Frankey hezkou píseň měl\nslzy neměl rád, chtěl se jenom smát\na když pak večer ranče tiše usínaj\nFrankův zpěv jde dál nocí s písní dál\n\nR:......\n\nTak Frankyho vám jednou našli přestal žít,\njeho srdce spí tiše smutně spí\nBůhví a za co tenhle smíšek konec měl\nfarář píseň pěl umíráček zněl\n\nR:......\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Frankey Dlouhán",
+          "subtitle": "Nedvědi"
+        }
+      },
+      {
+        "id": "34f86921-cb9a-4f68-a532-b6c0898de979",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Hlupák váhá - Katapult",
+        "content": "* Hlupák váhá\n** Katapult\n\n[Am]Když ti tvoje záda [G]štěstí uká[D]že\n[F]náladu [G]máš mizernou[Am]\nTěžko se ti hledá trocha kuráže\nzůstaneš stát jako sloup.\n\nKdyž máš kamaráda a on tě podrazí\nnáladu máš mizernou\nTehdy jeho zrada v srdci zamrazí\nzůstaneš stát jako sloup.\n\nRef.:: [F]Hlupák [G]váhá, [Am]svět kupředu uhání\nHlupák váhá, ztrácí život v čekání\nHlupák váhá, ale život utíká\nHlupák váhá. [E]\n\nKdyž máš kamaráda ....\n\nRef.:: Hlupák váhá ....\n",
+        "favorite": false,
+        "settings": {},
+        "cache": {
+          "title": "Hlupák váhá",
+          "subtitle": "Katapult"
+        }
+      },
+      {
+        "id": "18c98558-fc68-454f-8730-4edba364ecd1",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "[DRAFT] Hrobař - Premier",
+        "content": "* Hrobař\n** Premier\n\n1.: V ml[C]adí jsem se učil hrobařem,\n[Am]jezdit s hlínou, jezdit s trakařem,\n[F]kopat hroby byl můj i[G]deál.\n\n2.: Jezdit s hlínou, jezdit s vozíkem,\ns černou rakví, s bílým pomníkem,\ntoho bych se nikdy nenadál.\n3. = 1.\n4. = 2.\n\n5.: Že do módy přijde kremace,\nčerný hrobař bude bez práce,\ntoho bych se nikdy nenadál.\n\n6.: Kolem projel vůz milionáře,\nzáblesk světel pad' mi do tváře,\nmarně skřípěj' kola brzdící.\n\n7.: Stoupám vzhůru, stoupám ke hvězdám,\ntam se s černou rakví neshledám,\nsbohem, bílé město zářící.\n\n8.: Sbohem, moje město,\nvzpomínat budu přesto,\njak jsem poznal tvůj smích a tvůj pláč.\n9. Na na na ...\n",
+        "favorite": false,
+        "settings": {
+          "columns": 1
+        },
+        "cache": {
+          "title": "Hrobař",
+          "subtitle": "Premier"
+        }
+      }
+    ],
+    "songbooks": [
+      {
+        "id": "9b451206-a200-4da4-a042-91f5f7cc8a1d",
+        "createdAt": 1786609269875,
+        "updatedAt": 1786609269875,
+        "deletedAt": null,
+        "name": "unordered",
+        "title": "unordered",
+        "subtitle": "",
+        "author": "",
+        "settings": {
+          "notation": "german"
+        },
+        "entries": [
+          "b6bf7ead-9be8-4e98-b747-ce1cf2712578",
+          "143080bc-1c76-4072-94a3-b63d64efdfa7",
+          "d380008c-b045-430f-8c09-58e352e16fd4",
+          "0db87d5f-0b1c-426a-9d4b-338fb13de649",
+          "0e5c464e-8766-496c-84ac-afc90697bbe8",
+          "38a535d4-f7f4-47c3-96f2-4a5324069850",
+          "f692095e-7843-4bd5-9158-dd4666a91013",
+          "275329f9-a1b0-40f5-919e-51ea327b8de5",
+          "b2d9b3fd-1caa-4b5a-8812-0ac0cbb3d732",
+          "f852f81f-59bf-4934-9fbe-414b3f21d311",
+          "0b6db376-b7d5-4b90-bb92-8cb7b250ba2f",
+          "a83fa619-b2c9-4020-b489-37a76dc5cb1c",
+          "0ca10cf0-0a95-42bb-9dd0-9eea38bc8b85",
+          "34f86921-cb9a-4f68-a532-b6c0898de979",
+          "18c98558-fc68-454f-8730-4edba364ecd1"
+        ]
+      }
+    ]
+  }
+}
