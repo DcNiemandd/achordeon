@@ -173,17 +173,23 @@ is complete, not because anything is expected of them.
 
 ## 6. Outside the app
 
-- **Promotion** (`PROMOTION.md`): **Bing is not registered**, and the standalone
-  `https://achordeon.eu/sitemap.xml` has been a dead record in Google Search
+- **Promotion** (`PROMOTION.md`): ~~Bing is not registered~~ — **it is, and it
+  has been audited since** (2026-08-12): sitemaps in, IndexNow validating end to
+  end, every technical check passing, and still nothing indexed, because Bing's
+  own inspection says _discovered but not crawled_. The standalone
+  `https://achordeon.eu/sitemap.xml` is still a dead record in Google Search
   Console since 2026-07-28 — never fetched once, with two fallbacks already
-  written down. Seven outreach rows are unticked, and the doc's own verdict is
-  that one real inbound link is worth more than any further technical tuning.
-- **Test health — re-run 2026-08-12, and both doc claims hold.** Unit:
-  **275/275 pass** across 27 suites, no debt. Chromium e2e: **210 pass, 28 fail**
-  of 238 (`transfer` 11, `songs` 6, `songbooks` 5, `settings` 3, `shell` 2,
-  `editor` 1) — so round two's "~30 pre-existing failures" was right, and Epic 12's
-  two `shell.spec.ts` fullscreen tests are still among them. Two findings behind
-  it: **CI never runs e2e at all** (`deploy.yml` is lint + test + build), and only
+  written down. Six outreach rows are unticked, and the doc's own verdict, now
+  confirmed by two consoles, is that one real inbound link is worth more than any
+  further technical tuning.
+- **Test health.** Unit, re-run 2026-08-13 across the whole workspace:
+  **1240/1240 pass** over 91 suites and 6 projects, no debt. (This row first said
+  275/27, which was the app project alone; the app is 292 today.) Chromium e2e,
+  measured 2026-08-12 and **not re-run since**: **210 pass, 28 fail** of 238
+  (`transfer` 11, `songs` 6, `songbooks` 5, `settings` 3, `shell` 2, `editor` 1) —
+  so round two's "~30 pre-existing failures" was right, and Epic 12's two
+  `shell.spec.ts` fullscreen tests are still among them. Two findings behind it:
+  **CI never runs e2e at all** (`deploy.yml` is lint + test + build), and only
   chromium is installed locally, so firefox and webkit report as failures without
   ever launching. Tracked as `V2-BOARD.md` [V2-01].
 

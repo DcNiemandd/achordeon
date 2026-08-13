@@ -4,8 +4,11 @@ The work board. Every card is a candidate, not a commitment: **`[discuss]` cards
 are here to be argued about, and most of them will not be built.**
 
 Companion to [`OPEN-WORK.md`](./OPEN-WORK.md), which surveyed what was missing.
-This is what happens about it. Verified against the code on 2026-08-12, `main` at
-`c496918`.
+This is what happens about it. Written against the code on 2026-08-12, `main` at
+`c496918`; **re-checked against it on 2026-08-13**, which is where the `[done]`
+tags and the struck bullets below come from. Three cards have closed since it was
+written — [V2-03], [V2-05], [V2-09]'s counter — plus one bullet each of [V2-01]
+and [V2-06].
 
 ## Tags
 
@@ -49,7 +52,7 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 | [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`       |
 | [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[done]`          |
 | [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`            |
-| [V2-05](#v2-05--title-pages-ten-of-them)             | Title pages, ten of them              | `[done]`          |
+| [V2-05](#v2-05--title-pages-twenty-one-of-them)      | Title pages, twenty-one of them       | `[done]`          |
 | [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`       |
 | [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`            |
 | [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`            |
@@ -66,12 +69,19 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 
 The one card with nothing to decide. Two halves, both from `OPEN-WORK.md` §6.
 
-**Test health — measured on this commit, and the debt is real.**
+**Test health — and the debt is real, but it is all in one place.**
 
-| Suite                     | Result                                           |
-| ------------------------- | ------------------------------------------------ |
-| `nx run-many -t test`     | **275 passed / 275**, 27 suites. No debt at all. |
-| `nx e2e app-e2e` chromium | **210 passed, 28 failed** of 238.                |
+| Suite                     | Result                                                     |
+| ------------------------- | ---------------------------------------------------------- |
+| `nx run-many -t test`     | **1240 passed / 1240**, 91 suites, 6 projects (2026-08-13) |
+| `nx e2e app-e2e` chromium | **210 passed, 28 failed** of 238 (at `c496918`)            |
+
+The unit row read "275 / 27 suites" when this card was written, which was the
+**app project alone** rather than what the command in the left column actually
+runs. Re-measured across the workspace: app 292, `shared-domain` 327,
+`shared-render-core` 287, `shared-data-access` 311, and two smaller projects. Still
+no debt at all — the whole of it is the e2e row, which has **not** been re-run
+since the board was written, so treat that number as the snapshot it is.
 
 So round two's "~30 pre-existing Chromium failures" was accurate and **still is**,
 and Epic 12's two `shell.spec.ts` fullscreen tests are among them (`audience-fullscreen`
@@ -93,18 +103,28 @@ webkit` fixes the local picture; whether CI should run all three, or chromium on
 
 **Promotion** (`PROMOTION.md`), in the order the doc itself argues for:
 
-- **Bing is not registered.** It is one import from Google Search Console, and
-  IndexNow is already pinging Bing on every deploy — those submissions are landing
-  for a host Bing has never heard of.
+- ~~**Bing is not registered.**~~ **Done — and audited (`65a5fed`).** It is
+  registered, the sitemaps are in, IndexNow validates end to end (`200`, not
+  `202`, not `403`), and every technical check passes. `site:achordeon.eu` still
+  returns zero pages, and Bing's own URL Inspection says why: _discovered but not
+  crawled_, since 2026-08-10. Not a defect to find — an unscheduled crawl, which
+  is the third bullet's problem wearing a different console.
+- ~~**A rejected IndexNow ping is silent.**~~ **Done (`e3dcd05`)** — a `403` or a
+  `429` now prints a `::error::` naming what it means and exits non-zero. The
+  other half of that note is still open: the pinger resubmits all 32 URLs on
+  every push because it has no memory of the last deploy.
 - **`https://achordeon.eu/sitemap.xml` is a dead record in GSC** since 2026-07-28 —
   never fetched once, while the `/cs/` twin and the index are fine. Two fallbacks
   are already written down: delete the standalone entry so the index is the only
   claim on the URL, and failing that, emit the English sitemap under a filename GSC
-  has no history against.
-- **Nothing links to the site**, which the doc names as the whole problem: one real
-  inbound link beats any further technical tuning. Seven unticked rows —
-  alternativeto.net, awesome-list PRs, r/guitar + r/opensource + r/selfhosted, Czech
-  guitar forums, Show HN, Product Hunt.
+  has no history against. (Every URL now carries a `<lastmod>` from its own git
+  history — `e0ed67e` — which is the field a crawler actually acts on, but it
+  cannot help a sitemap that is never fetched.)
+- **Nothing links to the site**, which the doc names as the whole problem, and
+  which two consoles have now independently confirmed: one real inbound link beats
+  any further technical tuning. Six unticked rows — alternativeto.net,
+  awesome-list PRs, r/guitar + r/opensource + r/selfhosted, Czech guitar forums,
+  Show HN, Product Hunt.
 
 ---
 
@@ -237,11 +257,11 @@ Seed list, from what this survey happened to walk past:
 
 ---
 
-## V2-05 · Title pages, ten of them `[done]`
+## V2-05 · Title pages, twenty-one of them `[done]`
 
-**Twenty-one of them, and all twenty-one draw.** The "(soon)" suffix and the
-disabled `<option>` are gone from `songbook-print-fields.ts`, because a choice
-that cannot be chosen is worse than one that is not offered.
+**The card asked for ten. All twenty-one of them draw.** The "(soon)" suffix and
+the disabled `<option>` are gone from `songbook-print-fields.ts`, because a
+choice that cannot be chosen is worse than one that is not offered.
 
 ### What it took, and the one thing that had to change
 
@@ -410,7 +430,10 @@ Options, roughly cheapest first:
 7. **A tour.** For discussion at best — expensive, and the app is four modules.
 
 **Suggested pairing: 1 + 3**, and 4 if the numbers say people accumulate songs
-without ever opening Settings. Which is a thing [V2-09]'s instrument could answer.
+without ever opening Settings. [V2-09] has since built the instrument that would
+answer it — `Stats` counts events now, not only visits — but it counts one thing,
+the page shape, so this would still need an event of its own and a line on the
+privacy page to go with it.
 
 ---
 
@@ -650,8 +673,11 @@ neutral greys, always — is probably what a custom colour forces.
 
 ## Suggested order
 
-1. **[V2-01]** — finish the e2e number, register Bing, unstick the sitemap. No
-   decisions in any of it. **The only `[now]` card left.**
+1. **[V2-01]** — **the only `[now]` card left**, and two of its four items are
+   done: Bing is registered and audited, and a refused IndexNow ping is loud.
+   What remains has no decisions in it either — triage the 28 chromium failures
+   (they cluster), wire e2e into CI, unstick the GSC sitemap record, and get one
+   real inbound link, which is what both consoles now say is the whole problem.
 2. ~~**[V2-03]**~~ — **done.** The epics are tagged, epics 16–28 are written down,
    and the three stale rows are corrected.
 3. **[V2-02]'s warning half** — it needs no fork and closes the honest half of the

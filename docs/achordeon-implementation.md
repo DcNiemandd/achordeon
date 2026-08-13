@@ -31,9 +31,16 @@ first. Everything here is tagged `[v1]`: it all shipped. What is still open live
 in [`OPEN-WORK.md`](./OPEN-WORK.md), and what happens about it in
 [`V2-BOARD.md`](./V2-BOARD.md).
 
+**The file stops at Epic 28, and on purpose.** Work built after the board was
+opened gets a card there before it gets a commit, and the card is where it is
+recorded — the twenty-one title pages and the made-with mark under [V2-05] and
+[V2-06], the aspect-ratio counter under [V2-09]. Restating them here would make
+the board and this file two places to keep one fact true, which is the trap
+`PRD.md` already refuses for `PRD-EDITOR.md`.
+
 ## How to read it
 
-- **What to bucreild** — the end-to-end behaviour of the slice, layer-agnostic.
+- **What to build** — the end-to-end behaviour of the slice, layer-agnostic.
 - **Subtasks** — the smaller pieces to turn into issue checkboxes.
 - **Depends on** — which epics should land first.
 
@@ -639,7 +646,8 @@ Corrections from actually printing a songbook and moving songs around:
 - **Print options persist** (`PrintOptionsStore`, localStorage): the songbook
   download dialog opens on the last-used paper. It also grew a title-page style
   **stub** (only `classic` renders; the rest say "(soon)" and are disabled) and
-  **left** page-number positions. The song download dialog is now two columns —
+  **left** page-number positions. _(The stub is gone: twenty-one styles draw, and
+  the board's [V2-05] is the record of it.)_ The song download dialog is now two columns —
   the format's description, then its own Download button.
 - **Whole-database backup lands its UI** (`BackupService`, over Epic 4's
   `dexie-export-import` blob). Settings can save the entire library to a file and

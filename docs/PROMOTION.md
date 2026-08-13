@@ -160,10 +160,15 @@ One latent flaw found while checking, not currently doing harm: the deploy
 **resubmits all 32 URLs on every push**, changed or not, because the pinger reads
 its list out of the sitemaps rather than out of a diff. The IndexNow FAQ asks for
 submissions only when content changed and answers `429` past an undisclosed
-threshold. No `429` has been seen, so this is a risk rather than a fault — but the
-workflow step is `continue-on-error: true`, so a `403` or a `429` would be silent.
-Whoever fixes it should make the pinger diff against the previous deploy and fail
-loudly on a rejection.
+threshold. No `429` has been seen, so this is a risk rather than a fault.
+
+**Half of that is fixed** (`e3dcd05`). The step is still `continue-on-error: true`
+— an announcement should not fail a deploy — but a refusal is no longer silence:
+`ping-indexnow.mjs` prints a `::error::` annotation naming what a `403` or a `429`
+means and sets a non-zero exit code, so a rejected submission is visible in the
+run instead of scrolling past as a number nobody reads. **Still open: the diff.**
+The pinger has no memory of the previous deploy, so it cannot yet submit only what
+changed.
 
 ## Automated: IndexNow
 
@@ -202,6 +207,7 @@ Everything here is generated, so it cannot drift from the deploy target:
 | `robots.txt` (sitemap index + both locales) | `robotsTxt` plugin, `docusaurus.config.ts`         |
 | `sitemap-index.xml`                         | same plugin                                        |
 | `sitemap.xml`, `cs/sitemap.xml`             | Docusaurus sitemap plugin, one per locale          |
+| `<lastmod>` on every URL                    | `sitemap: { lastmod: 'date' }` + the git edit time |
 | `og:image` link-preview card                | `themeConfig.image` → `tools/gen-brand-images.mjs` |
 | Per-page `description`                      | frontmatter on every `.mdx`, English and Czech     |
 | `hreflang` en / cs / x-default              | Docusaurus i18n, automatic                         |
@@ -236,7 +242,7 @@ composition, all of which currently outrank the site for "achordeon".
 
 Untouched, roughly in order of effort to value:
 
-- [ ] GitHub repo topics and description — _done 2026-08-10_
+- [x] GitHub repo topics and description — _done 2026-08-10_
 - [ ] alternativeto.net entry
 - [ ] awesome-list PRs (music, self-hosted)
 - [ ] r/guitar, r/opensource, r/selfhosted
