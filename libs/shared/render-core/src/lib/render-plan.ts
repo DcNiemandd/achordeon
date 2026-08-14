@@ -26,6 +26,43 @@ export interface TextItem {
   // the SAME family. Absent = the role's style.
   weight?: 'normal' | 'bold';
   style?: 'normal' | 'italic';
+  /**
+   * Ink for this one item, replacing the role's own `fill`.
+   *
+   * Absent — the normal case — and the role decides, which is what keeps a song
+   * one document rather than a page of independently coloured strings. Present,
+   * it is a **placement** decision rather than a styling one: a title reversed
+   * out of a filled band has to be the colour of the paper the band covered, and
+   * the only thing that knows a band was drawn there is the pass that drew it.
+   */
+  fill?: string;
+}
+
+/**
+ * A rectangle — the whole of the non-text surface a plan can draw (§5).
+ *
+ * Deliberately one shape and not a primitive set: a rule is a thin filled
+ * rectangle, a frame is a stroked one, a band is a wide one and a ticket is a
+ * rounded one, so four title-page looks cost one thing to carry through `emit`
+ * **and** the PDF. Coordinates are base units in the same space as `TextItem`,
+ * so the one fit transform moves both together.
+ *
+ * A shape with neither `fill` nor `stroke` draws nothing; that is not an error,
+ * it is a variant that decided against its rule.
+ */
+export interface ShapeItem {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Corner radius, base units. Absent = square corners. */
+  rx?: number;
+  /** Absent = not filled (the paper shows through). */
+  fill?: string;
+  /** Absent = not stroked. */
+  stroke?: string;
+  /** Stroke thickness, base units. Ignored without `stroke`. */
+  strokeWidth?: number;
 }
 
 export interface TextStyle {
@@ -83,6 +120,14 @@ export interface RenderPlan {
   fit: number; // uniform content→box scale (§4.1)
   origin: { x: number; y: number }; // top-left of scaled content in the box (hugs top-left)
   items: TextItem[]; // EVERYTHING to draw, base units
+  /**
+   * Rectangles drawn **under** the text, base units, in order.
+   *
+   * Absent for every song — a chord sheet is text and nothing else, and that is
+   * still the rule (§5). A songbook's title page is the exception the primitive
+   * exists for: a rule, a frame, a band, a ticket.
+   */
+  shapes?: ShapeItem[];
   styles: Record<TextRole, TextStyle>; // resolved per-role style
   fonts: EmbeddedFont[]; // the bytes, embedded both ways
   /**

@@ -89,6 +89,11 @@ focus wrap-around, not visual wrapping** — the rows come from CSS `flex-wrap`.
   Overlay (`cdkConnectedOverlay`, which Aria's own popup patterns build on), virtual
   scroll for the paged infinite explorer (PRD-INFRA §3/§4), focus trap, live
   announcer, text-field autosize.
+  - **What happened, since this argued for a future:** the CDK is in, for overlay,
+    focus trap and portals — `menu`, `tooltip` and `dialog` all sit on it. Drag &
+    drop is **not** one of them: reordering shipped hand-rolled in Epic 14 (`[v1]`),
+    so `cdkDropList` never arrived, and the `FUTURE` flag this bullet cites is gone
+    from the docs because the feature is there.
 - **It's in character.** This project hand-rolls its parser and its renderer, and
   PRD-INFRA §2 says "from-scratch is the default where it earns control." A styled
   component library was the odd one out.

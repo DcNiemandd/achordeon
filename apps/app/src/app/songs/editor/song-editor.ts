@@ -32,7 +32,9 @@ import { syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import {
   ChordTheory,
+  bracketAt,
   cycleChordAt,
+  emphasisSpans,
   findLabelDelimiter,
   transposeChordAt,
   type ChordNotation,
@@ -40,6 +42,7 @@ import {
 import {
   achordeonHighlight,
   achordeonHighlightStyle,
+  findNotationSpans,
   findVerbatimSpans,
 } from '@achordeon/shared/editor-core';
 import type {
@@ -122,29 +125,6 @@ function removeTabStop(view: EditorView): boolean {
 }
 
 /**
- * Is `column` inside an open `[…]` on this line?
- *
- * Walks to the caret tracking whether a bracket is open, skipping escaped
- * characters exactly as the parser does — `\[` is a literal bracket and opens
- * nothing (PARSER-GRAMMAR §Escapes). Brackets do not nest, so an already-open one
- * is enough to know a second `[` would be a mistake.
- */
-function isInsideBracket(text: string, column: number): boolean {
-  let isOpen = false;
-  for (let i = 0; i < column && i < text.length; i++) {
-    const char = text[i];
-    if (char === '\\') {
-      i++; // whatever follows is literal, including a bracket
-    } else if (char === '[') {
-      isOpen = true;
-    } else if (char === ']') {
-      isOpen = false;
-    }
-  }
-  return isOpen;
-}
-
-/**
  * **The only file in the app that knows CodeMirror exists** (ADR-0010).
  *
  * Everything crosses this boundary as a string, an `EditorMarker`, or an
@@ -218,6 +198,21 @@ export class SongEditor {
   readonly verbatimHint = input(
     $localize`:@@editor.verbatimHint:Not a chord Achordeon recognises. It prints exactly as written and transpose leaves it alone.`,
   );
+  /**
+   * What a chord spelled in the other notation says when you hover it — see
+   * `notationMarkers`. One message per direction, chosen by the song's `notation`:
+   * the two say opposite things (an `H` is the German name, a `B` the English
+   * one), and the second is the trap worth naming — a typed `B` stays B natural,
+   * so copying a German page back in reads it a semitone up (NOTATION-PLAN §5).
+   * A fact about what will print, not a complaint: the spelling is legal, it just
+   * disagrees with the setting.
+   */
+  readonly notationHintEnglish = input(
+    $localize`:@@editor.notationHintEnglish:This is a German note name (H) in a song set to English notation. It prints as B, so the page and what you typed will differ.`,
+  );
+  readonly notationHintGerman = input(
+    $localize`:@@editor.notationHintGerman:This is an English note name (B) in a song set to German notation, where a typed B stays B natural. The page and what you typed will differ.`,
+  );
 
   /** Fired on every settled edit. Debouncing is the caller's business — parse
    * and autosave want different delays from the same keystroke. */
@@ -250,7 +245,7 @@ export class SongEditor {
         : 'content';
     this._caret.set({
       lineKind,
-      isInsideChord: isInsideBracket(line.text, head - line.from),
+      isInsideChord: bracketAt(line.text, head - line.from) !== null,
     });
   }
 
@@ -261,7 +256,13 @@ export class SongEditor {
     // Two inputs, two reconciliations, deliberately separate: markers arrive on
     // every reparse and must not touch the document.
     effect(() => this.syncDoc(this.content()));
-    effect(() => this.syncMarkers(this.markers()));
+    // `notation()` too: a foreign-spelling underline (`notationMarkers`) depends
+    // on the setting, so toggling English/German has to re-push diagnostics even
+    // when the parser's markers have not moved.
+    effect(() => {
+      this.notation();
+      this.syncMarkers(this.markers());
+    });
   }
 
   /** Insert at the cursor, wrapping the selection if there is one (subtask 5). */
@@ -357,32 +358,49 @@ export class SongEditor {
 
     const after = request.after ?? '';
 
-    // Nothing selected, but the caret sits in a word and this insert wraps one:
-    // act on the whole word (Bold on a word means "make THIS word bold"). A no-op
-    // on whitespace, where `wordAt` returns null and we fall back to the pair.
     let start = from;
     let end = to;
-    let wrappedWord = false;
-    if (from === to && request.wrapsWord) {
+    // Whether the range was chosen FOR the user rather than by them, which is
+    // what decides where the caret ends up afterwards.
+    let derivedRange = false;
+
+    // An emphasis span the range is really about wins over everything else: the
+    // span is the thing the markers made, and both the caret sitting inside one
+    // and a selection drawn around one (markers and all) mean "this span". Either
+    // way the operation is on the span's TEXT — the markers are what gets
+    // rewritten, so they must not be inside the range being rewritten.
+    const span = request.togglesEmphasis
+      ? this.emphasisSpanFor(from, to)
+      : null;
+    if (span) {
+      start = span.from;
+      end = span.to;
+      derivedRange = from === to;
+    }
+
+    // Otherwise, nothing selected and the caret in a word: act on the whole word
+    // (Bold on a word means "make THIS word bold"). A no-op on whitespace, where
+    // `wordAt` returns null and we fall back to the empty pair.
+    if (!span && from === to && request.wrapsWord) {
       const word = view.state.wordAt(from);
       if (word) {
         start = word.from;
         end = word.to;
-        wrappedWord = true;
+        derivedRange = true;
       }
     }
 
     if (request.togglesEmphasis) {
-      this.flipEmphasis(request.togglesEmphasis, start, end, wrappedWord);
+      this.flipEmphasis(request.togglesEmphasis, start, end, derivedRange);
       return;
     }
 
     const selected = view.state.sliceDoc(start, end);
     const text = request.before + selected + after;
-    // A wrapped word keeps the caret on the character it was on — the word only
-    // shifted right by the opener. An empty pair uses `caretOffset` to land the
-    // caret where the next keystroke goes — between the brackets of `[]`.
-    const caret = wrappedWord
+    // A range we picked keeps the caret on the character it was on — the text
+    // only shifted right by the opener. An empty pair uses `caretOffset` to land
+    // the caret where the next keystroke goes — between the brackets of `[]`.
+    const caret = derivedRange
       ? from + request.before.length
       : start +
         (selected === '' && request.caretOffset !== undefined
@@ -408,6 +426,46 @@ export class SongEditor {
   }
 
   /**
+   * The TEXT of the emphasis span `[from, to]` is about, in document positions —
+   * or null when the range is not about one.
+   *
+   * Two ways a range means a span, and they are the two ways people press the
+   * button. A caret **inside** one: you are standing in bold text and want it to
+   * stop. A selection drawn **around** one, markers and all: you swept the phrase
+   * with the mouse, which takes the asterisks with it because they are part of the
+   * text. Both used to read as "no emphasis here" and wrap a second pair around
+   * the first — `****Karneval karneval**` from the caret, `****Karneval
+   * karneval****` from the selection.
+   *
+   * A selection that covers only PART of a span is left alone: picking a range out
+   * by hand is how you emphasise less than the whole of one.
+   */
+  private emphasisSpanFor(
+    from: number,
+    to: number,
+  ): { from: number; to: number } | null {
+    const view = this.view;
+    if (!view) {
+      return null;
+    }
+    const line = view.state.doc.lineAt(from);
+    if (to > line.to) {
+      return null; // a selection across lines is nobody's span
+    }
+    const start = from - line.from;
+    const end = to - line.from;
+    const spans = emphasisSpans(line.text, findLabelDelimiter(line.text) + 1);
+    const span =
+      from === to
+        ? // Innermost first, so this finds the tightest span around the caret.
+          spans.find((s) => s.start + s.length <= start && start <= s.end)
+        : spans.find((s) => s.start === start && s.end + s.length === end);
+    return span
+      ? { from: line.from + span.start + span.length, to: line.from + span.end }
+      : null;
+  }
+
+  /**
    * Flip one emphasis bit over `[start, end)` — the Bold and Italic buttons.
    *
    * The markers are a **run** of asterisks, not a pair: every pair in it is bold and
@@ -425,7 +483,7 @@ export class SongEditor {
     kind: 'italic' | 'bold',
     start: number,
     end: number,
-    wrappedWord: boolean,
+    derivedRange: boolean,
   ): void {
     const view = this.view;
     if (!view) {
@@ -463,7 +521,7 @@ export class SongEditor {
       selection:
         from !== to
           ? { anchor: innerStart, head: innerStart + inner.length }
-          : { anchor: wrappedWord ? from + shift : innerStart },
+          : { anchor: derivedRange ? from + shift : innerStart },
       scrollIntoView: true,
     });
     view.focus();
@@ -863,6 +921,40 @@ export class SongEditor {
     );
   }
 
+  /**
+   * Chords spelled in the notation this song is not set to, as `warning`
+   * underlines — a German `H` in an English song, or an English `B` in a German
+   * one (NOTATION-PLAN §5).
+   *
+   * Louder than `verbatimMarkers` on purpose: a verbatim bracket prints what you
+   * typed, but a foreign spelling prints as its *other* name, so source and page
+   * quietly disagree. Computed the same local, un-parsed way (ADR-0010) from the
+   * live doc, the injected `theory`, and this song's resolved `notation` — the
+   * same value the preview spells with, so the two panes never contradict each
+   * other about which alphabet the song is in.
+   */
+  private notationMarkers(): EditorMarker[] {
+    const view = this.view;
+    if (!view) {
+      return [];
+    }
+    const notation = this.notation();
+    const message =
+      notation === 'german'
+        ? this.notationHintGerman()
+        : this.notationHintEnglish();
+    return findNotationSpans(
+      view.state.doc.toString(),
+      notation,
+      this.theory,
+    ).map((span) => ({
+      line: span.line,
+      range: span.range,
+      message,
+      severity: 'warning' as const,
+    }));
+  }
+
   /** `EditorMarker` (line + range) → CodeMirror's absolute document offsets. */
   private diagnostics(): Diagnostic[] {
     const view = this.view;
@@ -871,7 +963,11 @@ export class SongEditor {
     }
     const doc = view.state.doc;
     const out: Diagnostic[] = [];
-    for (const marker of [...this.markers(), ...this.verbatimMarkers()]) {
+    for (const marker of [
+      ...this.markers(),
+      ...this.verbatimMarkers(),
+      ...this.notationMarkers(),
+    ]) {
       // A marker can outlive the text it describes by one reparse — the doc has
       // already changed, the AST has not caught up. Drop it rather than throw:
       // CodeMirror rejects an out-of-range diagnostic outright.

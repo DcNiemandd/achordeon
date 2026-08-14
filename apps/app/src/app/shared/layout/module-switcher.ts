@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Icon } from '../../primitives';
+import { DialogStack, Icon } from '../../primitives';
 import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
 
 /**
@@ -55,7 +55,7 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
       [attr.aria-label]="triggerLabel()"
       [attr.aria-expanded]="isOpen()"
       aria-haspopup="true"
-      (click)="isOpen.set(!isOpen())"
+      (click)="openNav()"
     >
       <app-icon
         class="hamburger-glyph"
@@ -183,6 +183,7 @@ import { ALL_NAV_ITEMS, NAV_ITEMS } from './nav-items';
 })
 export class ModuleSwitcher {
   private readonly router = inject(Router);
+  private readonly dialogs = inject(DialogStack);
 
   protected readonly allItems = ALL_NAV_ITEMS;
   protected readonly isOpen = signal(false);
@@ -190,6 +191,19 @@ export class ModuleSwitcher {
 
   protected close(): void {
     this.isOpen.set(false);
+  }
+
+  /**
+   * The nav, and nothing behind it.
+   *
+   * This is the rail's job on a phone, so it does the rail's other job too:
+   * anything open is dismissed on the way (see `DialogStack.dismissAll`).
+   * Reaching for the nav is leaving, and a settings panel should not be left
+   * hanging over the screen being left.
+   */
+  protected openNav(): void {
+    this.dialogs.dismissAll();
+    this.isOpen.set(!this.isOpen());
   }
 
   /** Opens upward: the trigger lives in the bottom bar. */

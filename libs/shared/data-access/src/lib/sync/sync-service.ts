@@ -19,7 +19,12 @@ import { AuthService } from '../auth/auth-service';
 import { BootGate, SchemaTooNewError } from '../persistence/boot-gate';
 import { snapshotFromDb, writeSnapshotToDb } from '../persistence/gateway';
 import type { RestoreMode } from '../transfer/backup-service';
-import { ACHORDEON_DB } from '../stores/repositories';
+import {
+  ACHORDEON_DB,
+  SONG_REPOSITORY,
+  SONGBOOK_REPOSITORY,
+} from '../stores/repositories';
+import { LibraryOwnership } from '../stores/library-ownership';
 import { SongStore } from '../stores/song-store';
 import { SongbookStore } from '../stores/songbook-store';
 import { SettingsStore } from '../stores/settings-store';
@@ -41,9 +46,12 @@ export class SyncService {
   private readonly driveBackend = inject(DriveSyncBackend);
   private readonly auth = inject(AuthService);
   private readonly db = inject(ACHORDEON_DB);
+  private readonly songRepo = inject(SONG_REPOSITORY);
+  private readonly songbookRepo = inject(SONGBOOK_REPOSITORY);
   private readonly songs = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly settings = inject(SettingsStore);
+  private readonly ownership = inject(LibraryOwnership);
   /** Where "this app is older than the data it was handed" is latched (ADR-0007). */
   private readonly boot = inject(BootGate);
 
@@ -62,9 +70,16 @@ export class SyncService {
    * device). */
   readonly hasUnsynced = this._hasUnsynced.asReadonly();
 
-  /** Automatic Supabase sync is live right now — signed in, paid, toggle on. */
+  /** Automatic Supabase sync is live right now — signed in, paid, toggle on, and
+   * the local library is this account's to sync. A library owned by a different
+   * account (or unclaimed by this session) is never pushed — which is what keeps
+   * one account's rows from landing on another's `owner` (RLS 42501). */
   readonly isActive = computed(
-    () => this.auth.isSignedIn() && this.auth.isPro() && this._autoSync(),
+    () =>
+      this.auth.isSignedIn() &&
+      this.auth.isPro() &&
+      this._autoSync() &&
+      this.ownership.isVisible(),
   );
 
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -90,6 +105,16 @@ export class SyncService {
     // cloud only when some *other* edit happened to trigger a cycle — and the
     // "unsynced" flag stayed stale in the meantime, since nothing recounted.
     this.settings.onSaved(() => this.pushSoon());
+
+    // A song/songbook write is not a push on its own — that stays on the coarse
+    // boundaries (focus/blur/nav, ADR-0004) so a rename does not spam the network.
+    // But it MUST recount "unsynced" the instant it lands, or the flag lies until
+    // the next cycle: the Settings status would read "synced" over a fresh rename,
+    // and the leave-the-page warning would let that rename be stranded in silence.
+    // The repository is the one choke point every edit AND every import passes.
+    const recount = () => void this.recomputeUnsynced();
+    this.songRepo.onSaved(recount);
+    this.songbookRepo.onSaved(recount);
 
     if (typeof window !== 'undefined') {
       // The handoff moment: the other device opening is when a pull matters.
@@ -221,6 +246,53 @@ export class SyncService {
     await this.reflectInStores(data);
     await this.recomputeUnsynced();
     return true;
+  }
+
+  // --- Device takeover ------------------------------------------------------
+
+  /**
+   * "This device is mine now." Replace a library owned by another account with the
+   * signed-in one's: drop this device's local rows, claim the device, then pull the
+   * account's own library down fresh.
+   *
+   * Only the local copy is cleared — the other account's data is untouched in the
+   * cloud, and signing back in as them on a device that still owns their library
+   * brings it back. The watermark is reset to 0 so the pull is a full one (every
+   * remote row, not "since some past sync"), the mirror image of turning sync on.
+   */
+  /**
+   * Whether this device's local library holds rows that never reached the cloud —
+   * asked of the database directly, NOT of `hasUnsynced`, because that flag is
+   * gated on sync being active and a foreign library's sync is deliberately off.
+   * The takeover confirm reads it to warn that adopting discards the *other*
+   * account's unsynced work, which the clear-and-pull cannot get back.
+   */
+  async hasUnsyncedRows(): Promise<boolean> {
+    const watermark = await this.readWatermark();
+    const local = await snapshotFromDb(this.db);
+    return hasRows(changedSince(local.data, watermark));
+  }
+
+  async adoptDevice(): Promise<void> {
+    const uid = this.auth.user()?.id;
+    if (!uid) return;
+    await this.db.transaction(
+      'rw',
+      this.db.user,
+      this.db.songs,
+      this.db.songbooks,
+      async () => {
+        await Promise.all([
+          this.db.user.clear(),
+          this.db.songs.clear(),
+          this.db.songbooks.clear(),
+        ]);
+      },
+    );
+    await this.ownership.claimFor(uid);
+    await this.writeWatermark(0);
+    await Promise.all([this.songs.refresh(), this.songbooks.refresh()]);
+    await this.syncNow();
   }
 
   // --- Toggle ---------------------------------------------------------------

@@ -8,7 +8,7 @@ import {
   inject,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { Icon, Tooltip } from '../../primitives';
+import { DialogStack, Icon, Tooltip } from '../../primitives';
 import { KeyboardLayout, ariaKeyShortcuts, withKeyHint } from '../keyboard';
 import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
 
@@ -30,6 +30,14 @@ import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, RouterLinkActive, Icon, Tooltip],
   template: `
+    <!-- Following a rail link closes whatever is open (DialogStack.dismissAll).
+         A modeless dialog dismisses itself when its own pane is clicked, but the
+         rail is outside every pane and cannot be seen from in there — and going
+         to another module with a settings panel still hanging over the screen
+         you are leaving is the one outcome to avoid. On each link rather than on
+         the nav, because the nav is not focusable: a handler there would be a
+         mouse-only rule, where a link is activated by Enter and dispatches this
+         same click. -->
     <nav
       class="rail"
       data-testid="rail"
@@ -47,6 +55,7 @@ import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
               [attr.aria-label]="item.label"
               [appTooltip]="item.tooltip"
               [attr.aria-keyshortcuts]="item.keyHint"
+              (click)="dialogs.dismissAll()"
             >
               <app-icon [name]="item.icon" />
             </a>
@@ -65,6 +74,7 @@ import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
             [attr.aria-label]="end.label"
             [appTooltip]="end.tooltip"
             [attr.aria-keyshortcuts]="end.keyHint"
+            (click)="dialogs.dismissAll()"
           >
             <app-icon [name]="end.icon" />
           </a>
@@ -136,6 +146,9 @@ import { NAV_ITEMS, NAV_SETTINGS, type NavItem } from './nav-items';
 })
 export class Rail {
   private readonly layout = inject(KeyboardLayout);
+
+  /** Protected, not private: the template calls it — see the nav's comment. */
+  protected readonly dialogs = inject(DialogStack);
 
   /**
    * The nav items, each carrying the chord that reaches it — `g` then the

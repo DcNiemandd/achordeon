@@ -18,6 +18,7 @@ import {
 } from '@ngrx/signals/entities';
 import type { Song, Uuid } from '@achordeon/shared/domain';
 import type { Cursor, SortDir, SortKey } from '../persistence/paging';
+import { LibraryOwnership } from './library-ownership';
 import { PAGE_LIMIT, SONG_REPOSITORY } from './repositories';
 
 /**
@@ -53,11 +54,23 @@ export const SongStore = signalStore(
   // Soft-delete filter (§3): tombstoned rows stay in the entity map so sync still
   // carries the delete, but lists bind to `live` and never show them. A row
   // soft-deleted mid-session drops out here without a refetch.
-  withComputed((store) => ({
-    live: computed(() => store.entities().filter((s) => s.deletedAt === null)),
-  })),
+  //
+  // Ownership gate on top of it: a library this session does not own (signed out,
+  // or signed in as another account) is hidden wholesale — `live` goes empty and
+  // every list that binds to it clears, without touching a stored row.
+  withComputed((store) => {
+    const ownership = inject(LibraryOwnership);
+    return {
+      live: computed(() =>
+        ownership.isVisible()
+          ? store.entities().filter((s) => s.deletedAt === null)
+          : [],
+      ),
+    };
+  }),
   withMethods((store) => {
     const repo = inject(SONG_REPOSITORY);
+    const ownership = inject(LibraryOwnership);
 
     /**
      * Fetches are stamped, and one that resolves after a newer one started is
@@ -240,6 +253,11 @@ export const SongStore = signalStore(
        * the same knowledge in a presenter, one layer too high.
        */
       async lastChanged(): Promise<Song | undefined> {
+        // Ownership gate, same as `live`: a hidden library has no song to land on.
+        // This reads past the window straight from the repo, so the `live` filter
+        // does not cover it — without this a foreign library's newest song is what
+        // `/songs` auto-selects.
+        if (!ownership.isVisible()) return undefined;
         const page = await repo.page({
           limit: 1,
           sort: 'changed',
@@ -262,6 +280,11 @@ export const SongStore = signalStore(
         dir?: SortDir;
         favoritesFirst?: boolean;
       }): Promise<Song[]> {
+        // Ownership gate, same as `live`: the virtual All songs book reads the
+        // whole library past the window, so the `live` filter never touches it. A
+        // library this session does not own must come back empty here too, or the
+        // one list that bypasses `live` leaks every foreign song.
+        if (!ownership.isVisible()) return [];
         const page = await repo.page({
           limit: Number.MAX_SAFE_INTEGER,
           sort: order?.sort ?? 'name',

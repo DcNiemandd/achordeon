@@ -47,13 +47,23 @@ fingerprint, so no permission is needed and no bar appears.
 
 ## Extra statistics
 
-Off unless you turn it on. It adds one field to the request above, `s`, your
-screen size, which is what tells us whether the render settings are being used
-on phones or on desktops. Still no ip address, still no visitor id.
+Off unless you turn it on. Two things ride on the switch, and neither of them
+adds an ip address or a visitor id:
 
-It is separate for one reason: everything above is something the browser told us
-in the act of asking for a page, while the screen size has to be read off your
-device, and reading your device is the part that needs your say-so.
+- **Your screen size.** One more field on the request above, `s`, which is what
+  tells us whether the render settings are being used on phones or on desktops
+- **Which page shape you pick.** When you set a song's aspect ratio, that one
+  value is counted on its own, as `aspect/preset/9:16` — the shape, and how you
+  arrived at it: a row from the list, "Match this screen", or one you typed. It
+  is why: the picker offers a long list of shapes and we have no idea which of
+  them anybody uses, so counting the picks is what tells us which rows to keep
+  and which to drop. Never which song it was, never how many songs you have, and
+  never a word of what you wrote
+
+They are separate from everything above for one reason each: the screen size has
+to be read off your device, and reading your device needs your say-so — while
+the page shape is neither the navigation nor the device, but a choice you made
+inside your own library, and something you made is yours to keep to yourself.
 
 <StatsToggle />
 

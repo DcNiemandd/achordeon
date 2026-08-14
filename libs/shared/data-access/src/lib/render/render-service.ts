@@ -7,6 +7,7 @@ import {
   DEFAULT_TUNING,
   createCanvasMeasurer,
   createLayout,
+  createTitlePageLayout,
   emit,
   resolveFonts,
   type FontCatalog,
@@ -14,6 +15,7 @@ import {
   type Layout,
   type RenderOpts,
   type RenderPlan,
+  type TitlePageLayout,
 } from '@achordeon/shared/render-core';
 import {
   ChordTheory,
@@ -21,6 +23,8 @@ import {
   type ChordNotation,
   type GlobalSettings,
   type SongAst,
+  type TitlePageContent,
+  type TitlePageVariant,
 } from '@achordeon/shared/domain';
 import { FontLoader } from './font-loader';
 
@@ -105,6 +109,12 @@ export class RenderService {
     catalog: this.fontLoader.catalog,
   });
 
+  /** The same platform binding for the other geometry pass — see `layoutTitlePage`. */
+  private readonly titlePageWith: TitlePageLayout = createTitlePageLayout(
+    this.measurer,
+    { fonts: this.fontLoader.resolver, catalog: this.fontLoader.catalog },
+  );
+
   /**
    * Flips once the page's web fonts have settled.
    *
@@ -158,6 +168,27 @@ export class RenderService {
       settings,
       opts,
     );
+  }
+
+  /**
+   * A songbook's title page, in the layout the book chose.
+   *
+   * A second entry point rather than an option on `layout`, because a title page
+   * is not a song and does not pretend to be one: it has no content, no columns
+   * and no `SongAst`, and it is placed on the page rather than measured and
+   * boxed (see `layoutTitlePageCore`). Nothing is respelled here for the same
+   * reason — there are no chords on a title page.
+   */
+  layoutTitlePage(
+    content: TitlePageContent,
+    variant: TitlePageVariant,
+    settings: GlobalSettings,
+    opts?: RenderOpts,
+  ): RenderPlan {
+    this.fontEpoch();
+    this.fontLoader.epoch();
+    void this.fontLoader.ensure(familiesFor(settings, this.fontLoader.catalog));
+    return this.titlePageWith(content, variant, settings, opts);
   }
 
   /**

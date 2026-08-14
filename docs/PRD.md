@@ -11,23 +11,28 @@ Repo-root `docs/` — **not** the published Docusaurus site (`apps/docs/docs`).
 
 ## Document map
 
-| Doc                                                | Role                                                                                                                                                                                                                                                                                                          |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../CONTEXT.md`](../CONTEXT.md)                   | **Glossary** — ubiquitous language, source of truth for terms. Glossary only, no implementation.                                                                                                                                                                                                              |
-| [`PRD-INFRASTRUCTURE.md`](./PRD-INFRASTRUCTURE.md) | Backend/infra PRD — services, state, persistence, sync, Drive, security, export/import/download, Audience, router, i18n, parser summary (§12).                                                                                                                                                                |
-| [`PARSER-GRAMMAR.md`](./PARSER-GRAMMAR.md)         | Parser grammar spec — Phase 1/2 rules, chord sub-grammar, escapes, warnings, reparse.                                                                                                                                                                                                                         |
-| [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)     | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                                                                                                                                                                                   |
-| [`PRD-RENDERING.md`](./PRD-RENDERING.md)           | Rendering/visual layer — render pipeline + output seam, geometry requirements (scale-to-fit, columns, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts), `RenderPlan` + `layout` signature, songbook page chrome. Requirements settled; implementation under P1. |
-| [`PRD-UI-SHELL.md`](./PRD-UI-SHELL.md)             | **Temporary UI** — component library (`@angular/aria` + CDK, headless), the presenter seam, rail/split desktop + hamburger/tabs mobile layout, brand token layer + theming, UI-state placement (route / search param / store / localStorage), the costed Angular 22 upgrade, swap checklist.                  |
-| `PRD-EDITOR.md` _(planned)_                        | Editor + authoring — chosen editor, highlight grammar, insert buttons, markers.                                                                                                                                                                                                                               |
-| [`adr/`](./adr/)                                   | Architecture Decision Records (0001–0010).                                                                                                                                                                                                                                                                    |
-| [`../research/`](../research/)                     | Background research (sync backends; trust model & monetization).                                                                                                                                                                                                                                              |
+| Doc                                                 | Role                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`../CONTEXT.md`](../CONTEXT.md)                    | **Glossary** — ubiquitous language, source of truth for terms. Glossary only, no implementation.                                                                                                                                                                                                                                                                                                                |
+| [`PRD-INFRASTRUCTURE.md`](./PRD-INFRASTRUCTURE.md)  | Backend/infra PRD — services, state, persistence, sync, Drive, security, export/import/download, Audience, router, i18n, parser summary (§12).                                                                                                                                                                                                                                                                  |
+| [`PARSER-GRAMMAR.md`](./PARSER-GRAMMAR.md)          | Parser grammar spec — Phase 1/2 rules, chord sub-grammar, escapes, warnings, reparse.                                                                                                                                                                                                                                                                                                                           |
+| [`PRD-DOMAIN-MODEL.md`](./PRD-DOMAIN-MODEL.md)      | `shared/domain` shapes — base record, Song (+ parser cache), Songbook + entries, settings registry/cascade.                                                                                                                                                                                                                                                                                                     |
+| [`PRD-RENDERING.md`](./PRD-RENDERING.md)            | Rendering/visual layer — render pipeline + output seam, geometry requirements (scale-to-fit, columns, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts), `RenderPlan` + `layout` signature, songbook page chrome. Requirements settled; implemented under P1.                                                                                                      |
+| [`PRD-UI-SHELL.md`](./PRD-UI-SHELL.md)              | **Temporary UI** — component library (`@angular/aria` + CDK, headless), the presenter seam, rail/split desktop + hamburger/tabs mobile layout, brand token layer + theming, UI-state placement (route / search param / store / localStorage), the costed Angular 22 upgrade, swap checklist.                                                                                                                    |
+| `PRD-EDITOR.md` — **never written, and not needed** | Editor + authoring. It was planned before D1; all of it shipped in Epic 5 and is recorded where it was decided: the editor choice and its seam in ADR-0010, the highlight grammar and markers in `PARSER-GRAMMAR.md`, the insert buttons and what the build corrected in `achordeon-implementation.md` Epic 5 (and Epic 16 for the second markup pass). Writing it now would be a fourth copy of settled facts. |
+| [`adr/`](./adr/)                                    | Architecture Decision Records (0001–0018).                                                                                                                                                                                                                                                                                                                                                                      |
+| [`../research/`](../research/)                      | Background research (sync backends; trust model & monetization).                                                                                                                                                                                                                                                                                                                                                |
 
 **ADRs:** 0001 content-vs-settings · 0002 SVG render target · 0003 Audience over
 Presence · 0004 handoff-not-concurrent sync · 0005 pure two-phase parser · 0006
 data-driven settings cascade · 0007 schema versioning & migration · 0008 chord-theory
 port · 0009 add-method auth linking & Drive-on-Google · 0010 CodeMirror 6 editor,
-loosely coupled.
+loosely coupled · 0011 durable rev-versioned lobby state (supersedes ADR-0003's
+"no database for lobby state") · 0012 page zoom is ours, not the browser's · 0013
+rotation is derived, not authored · 0014 the import boundary normalises
+hand-written envelopes · 0015 keyboard shortcuts avoid the browser's key space ·
+0016 a font is acquired, not referenced · 0017 font identity is a family slug ·
+0018 bundled faces ship subset.
 
 ---
 
@@ -70,7 +75,7 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 
 | ID  | Task                                                                                                                                                                                                                      | Status | Target doc                               | Depends on   |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------- | ------------ |
-| D1  | **Editor choice** — CodeMirror 6, behind a loose-coupling seam; **song scope**                                                                                                                                            | ✅     | ADR-0010 (+ `PRD-EDITOR.md` planned)     | R2           |
+| D1  | **Editor choice** — CodeMirror 6, behind a loose-coupling seam; **song scope**                                                                                                                                            | ✅     | ADR-0010 (no separate `PRD-EDITOR.md`)   | R2           |
 | D2  | **Transpose spelling** — chroma + fixed direction tables; `ChordTheory` port; key-aware future                                                                                                                            | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0008         | R2, R4       |
 | D3  | **Rendering PRD** (**shared** scope) — SVG layout, columns, scale-to-fit, aspect ratio, title region, `labelInline` gutter, chord x-positioning, vertical rhythm, fonts, `RenderPlan`, songbook chrome                    | ✅     | [`PRD-RENDERING.md`](./PRD-RENDERING.md) | R2, ADR-0002 |
 | D4  | **Settings cascade** — Global→Songbook→Song, most-specific-wins, data-driven registry                                                                                                                                     | ✅     | `PRD-DOMAIN-MODEL.md` + ADR-0006         | R1, R4       |
@@ -84,9 +89,15 @@ floor, each cut into _layers_ (Nx `type`: feature / ui / data-access / domain / 
 
 ### Then — build
 
-| ID  | Task                                                                           | Status | Target   | Depends on             |
-| --- | ------------------------------------------------------------------------------ | ------ | -------- | ---------------------- |
-| P1  | **Implementation plan** — tracer-bullet vertical slices (skill: `prd-to-plan`) | ⬜     | `plans/` | R1, R2, D3 (UI slices) |
+| ID  | Task                                                                           | Status | Target                                                         | Depends on             |
+| --- | ------------------------------------------------------------------------------ | ------ | -------------------------------------------------------------- | ---------------------- |
+| P1  | **Implementation plan** — tracer-bullet vertical slices (skill: `prd-to-plan`) | ✅     | [`achordeon-implementation.md`](./achordeon-implementation.md) | R1, R2, D3 (UI slices) |
+
+**P1 is done, and it is `achordeon-implementation.md`** — not a folder under
+`plans/`, which is where the later stand-alone assignments live. Epics 1–15 were
+the planned build and every subtask is ticked; epics 16+ are what shipped after
+and were written back into the same file. What is still open is surveyed in
+[`OPEN-WORK.md`](./OPEN-WORK.md) and boarded in [`V2-BOARD.md`](./V2-BOARD.md).
 
 ---
 
@@ -111,8 +122,11 @@ above; the rest are feature notes, not grills.)
 
 ### Rendering / output
 
-- [ ] **Vector PDF straight from SVG** (e.g. svg2pdf.js) + user-chosen raster-vs-vector
-      pipeline. v1 PDF is raster (PNG embedded). (§8)
+- [x] ~~**Vector PDF straight from SVG** + user-chosen raster-vs-vector pipeline~~ —
+      **shipped in Epic 7**, and the choice went away with it: every PDF is vector
+      (svg2pdf + jsPDF, selectable text, embedded faces), so there is no raster
+      pipeline left to pick between. An e2e reads the file's bytes for `/FontFile2`,
+      text operators and no image XObject. (§8)
 - [ ] **Scrolling / multi-page for over-long songs** — v1 model is one-song-one-page. (`CONTEXT.md`)
 - [ ] **Columns smart auto-fit** — v1 columns are author-set. (`CONTEXT.md`)
 - [ ] **Key-aware transpose spelling** — v1 is direction-based (up→sharps, down→flats).
@@ -120,7 +134,11 @@ above; the rest are feature notes, not grills.)
 
 ### Audience
 
-- [ ] **Lobby host reload-resilience** — v1 drops the lobby on host reload → re-host. (§9)
+- [x] ~~**Lobby host reload-resilience** — v1 drops the lobby on host reload → re-host~~ —
+      **shipped: ADR-0011.** The lobby is a durable `public.lobbies` row with a
+      server-owned `rev`, so a host reload no longer ends it; the revision stays
+      monotonic across the reload and the host resumes on the row. Presence and
+      Broadcast are now delivery optimisations over that truth. (§9)
 - [ ] **Audience over local network** (LAN PWA, no internet) — open question; Bluetooth/
       hotspot not feasible. (`CONTEXT.md`)
 - [ ] **D9 Audience local transpose** — viewer transposes own copy (tracked as backlog row). (D9)
@@ -132,8 +150,10 @@ above; the rest are feature notes, not grills.)
 
 - [ ] **Optional passphrase encryption-at-rest** — opt-in; breaks the visible-JSON backup,
       doesn't stop live XSS. (§7)
-- [ ] **Re-import of Downloaded files** (embedded metadata) — nice-to-have, may be dropped
-      if costly. (`CONTEXT.md`)
+- [ ] **Re-import of downloaded PDFs** — narrowed, because the PNG half shipped: a
+      `tEXt` chunk carries the Export JSON, so a downloaded picture is also the song.
+      A PDF would mean parsing object streams to recover something already available
+      two other ways, so it was deliberately not built. (`CONTEXT.md`, Epic 7)
 
 ---
 
@@ -168,7 +188,7 @@ graph TD
   D10 --> P1
   D10 -.-> D11[D11 Angular 22 upgrade 🔮]
 
-  R1 --> P1[P1 Implementation plan ⬜]
+  R1 --> P1[P1 Implementation plan ✅]
   R2 --> P1
   D1 --> P1
   D2 --> P1
@@ -185,14 +205,16 @@ graph TD
 - **D3 (Rendering PRD) is settled** — pipeline + output seam, the full geometry
   requirements, `RenderPlan` + `layout` signature, and songbook page chrome are
   recorded in `PRD-RENDERING.md` (some §4 magnitudes flagged tunable). It built on
-  the parser AST + ADR-0002 and **D4 (settings cascade)**. Remaining rendering work is
-  implementation under **P1**, gated by the §3 svg2pdf spike (the one open guardrail).
+  the parser AST + ADR-0002 and **D4 (settings cascade)**. The §3 svg2pdf guardrail
+  cleared — the spike proved it could, and Epic 7's byte-reading e2e proves the
+  production path still does.
 - **D5–D8** are independent of the parser/render line and **all settled for v1** (D5 PWA
   SW update, D6 auth linking, D8 lobby analytics). **D7 (MoR webhook) is post-v1** — v1
   premium activation is a manual dashboard flip (§5) and premium is free during testing.
-  **No open v1 design grills remain** → P1 is unblocked.
-- **P1 (implementation plan)** waits on the core design — at minimum R1 + R2, plus D3
-  before vertical slices touch the visual layer.
+  **No open v1 design grills remain** → P1 was unblocked.
+- **P1 (implementation plan) is done and built.** It waited on the core design — at
+  minimum R1 + R2, plus D3 before vertical slices touched the visual layer — and
+  then ran to completion as `achordeon-implementation.md`.
 
 ## Grilling backlog — by scope
 
@@ -237,8 +259,10 @@ implementation slices. Grill a feature only when a **hard design question** surf
   - ✅ **D1** Editor choice → **CodeMirror 6**, behind a loose-coupling seam (ADR-0010).
     Monaco lost once author-familiarity proved false; CM6 wins on offline-PWA bundle,
     Angular-21 integration (no worker plumbing), and touch-readiness.
-  - ⬜ **PRD-EDITOR.md** (after D1) — highlight grammar (CM6 stream parser), insert
-    buttons, editor markers.
+  - ✅ **PRD-EDITOR.md — dropped, not owed.** Highlight grammar (CM6 stream parser),
+    insert buttons and editor markers all shipped in Epic 5, and each already has a
+    home: the grammar and the markers in `PARSER-GRAMMAR.md`, the seam in ADR-0010,
+    the buttons and the corrections the build forced in `achordeon-implementation.md`.
   - Song explorer UX → already specified (CONTEXT + R1) → **P1**, not a grill.
 
 - **`audience` scope — open:**
@@ -248,15 +272,20 @@ implementation slices. Grill a feature only when a **hard design question** surf
     account delete, **not** delete; song-title fields kept (low re-identification risk).
     `PRD-INFRASTRUCTURE.md` §9.
   - 🔮 **D9** Audience local transpose (future; scope questions unresolved).
-  - Core audience (lobby/PIN/QR/sync/hide-chords) → specified (ADR-0003 + R1) → **P1**.
+  - Core audience (lobby/PIN/QR/sync/hide-chords) → specified (ADR-0003 + R1) → built in
+    Epic 9. **ADR-0011 then superseded ADR-0003's "no database for lobby state"**: the
+    lobby is a durable rev-versioned row and Realtime is a delivery optimisation over it.
+    The rest of ADR-0003 (a channel per PIN, Presence for the count, the PIN format) stands.
 
 - **`songbooks` · `stage` · `settings` scopes — no open grills.** Behaviour is pinned in
   `CONTEXT.md` + R1 + the domain/rendering docs (songbook download chrome landed in
-  `PRD-RENDERING.md` §6; the settings _model_ is D4/R4 — only the settings _GUI_ remains,
-  and that's a **P1** UI slice). Grill only if a hard question appears while building.
+  `PRD-RENDERING.md` §6; the settings _model_ is D4/R4, and the settings _GUI_ shipped as
+  the **P1** UI slice it was called). Grill only if a hard question appears while building.
 
-- **build:** ⬜ **P1** implementation plan (`prd-to-plan`, tracer-bullet slices) — **all
-  v1-relevant grills are now closed** (D7 is post-v1), so P1 is ready to start.
+- **build:** ✅ **P1** implementation plan (`prd-to-plan`, tracer-bullet slices) — every
+  v1-relevant grill closed (D7 is post-v1), P1 ran, and
+  [`achordeon-implementation.md`](./achordeon-implementation.md) is the record.
+  New work goes through [`V2-BOARD.md`](./V2-BOARD.md) now.
 
 ## How to use this file
 

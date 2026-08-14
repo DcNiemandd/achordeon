@@ -4,7 +4,12 @@
 // so these cases are the contract between what parses as a label and what colours
 // as one. The table below is PARSER-GRAMMAR's own.
 
-import { emphasisMarkers, findLabelDelimiter } from './chords';
+import {
+  bracketAt,
+  emphasisMarkers,
+  emphasisSpans,
+  findLabelDelimiter,
+} from './chords';
 
 describe('findLabelDelimiter', () => {
   it.each([
@@ -35,6 +40,52 @@ describe('findLabelDelimiter', () => {
 
   it('takes the FIRST qualifying run, not the last', () => {
     expect(findLabelDelimiter('a: b: c')).toBe(1);
+  });
+});
+
+describe('bracketAt', () => {
+  // Also the editor's caret guard: the toolbar greys out bold/italic where this
+  // finds a bracket, and enables ♯/♭ there. Same walk as Phase 2's, so a button's
+  // enabled state and what the button then does can never disagree.
+
+  it.each([
+    // [caret index, why]
+    [1, 'just past the opening bracket'],
+    [2, 'mid-chord'],
+    [3, 'on the closing bracket'],
+  ])('[Am] at %i is inside the chord (%s)', (index) => {
+    expect(bracketAt('[Am] la', index)).toEqual({
+      start: 0,
+      end: 3,
+      inline: false,
+    });
+  });
+
+  it.each([
+    ['[Am] la', 0, 'on the opening bracket, not yet in'],
+    ['[Am] la', 4, 'past the closing bracket'],
+    ['\\[Am] la', 3, 'an escaped `[` opens nothing (§Escapes)'],
+    ['[[Am]] la', 1, 'between the two `[` of an inline group'],
+  ])('%s at %i is inside none (%s)', (line, index) => {
+    expect(bracketAt(line, index)).toBeNull();
+  });
+
+  it('reads an inline group as one bracket', () => {
+    expect(bracketAt('[[Am]] la', 3)).toEqual({
+      start: 0,
+      end: 4,
+      inline: true,
+    });
+  });
+
+  it.each([
+    // An unterminated `[` is literal text, not a bracket — the same reading Phase
+    // 2 takes when it emits a bare `[`. The repeat sign is why anyone writes one.
+    [1, 'right after the stray `['],
+    [6, 'mid-line'],
+    [28, 'end of line'],
+  ])('an unclosed `[` is inside none, at %i (%s)', (index) => {
+    expect(bracketAt('[||\\: Em G Em G Em A G G :||', index)).toBeNull();
   });
 });
 
@@ -123,5 +174,45 @@ describe('emphasisMarkers', () => {
       [6, 1],
     ]);
     expect(printed('R*: *a', 4)).toEqual([4]);
+  });
+});
+
+describe('emphasisSpans', () => {
+  // The toolbar's view of the same markers: which pair encloses what. Bold and
+  // Italic rewrite a span, so a span the markers made has to be nameable — reading
+  // the asterisks next to a word cannot see one that starts a phrase away.
+
+  it('pairs the markers of a phrase', () => {
+    expect(emphasisSpans('**Karneval karneval**')).toEqual([
+      { start: 0, end: 19, length: 2 },
+    ]);
+  });
+
+  it('reports the innermost span first', () => {
+    // Closing order: the `*b*` closes before the bold it sits in, so a caret in
+    // `b` finds the italic and a caret in `a` finds the bold.
+    expect(emphasisSpans('**a *b* c**')).toEqual([
+      { start: 4, end: 6, length: 1 },
+      { start: 0, end: 9, length: 2 },
+    ]);
+  });
+
+  it('leaves the asterisks that only print out of it', () => {
+    expect(emphasisSpans('*ab')).toEqual([]); // matches nothing, so spans nothing
+    // The closer spends one and prints the other; the span is the pair, not the run.
+    expect(emphasisSpans('*asd**')).toEqual([{ start: 0, end: 4, length: 1 }]);
+  });
+
+  it('is blind to a bracket, like the markers it reads', () => {
+    // The `*` in the chord is text, so the two outside it are the pair.
+    expect(emphasisSpans('*a [Solo*] b*')).toEqual([
+      { start: 0, end: 12, length: 1 },
+    ]);
+  });
+
+  it('skips a label marker and still reports absolute indices', () => {
+    expect(emphasisSpans('R*: *a*', 3)).toEqual([
+      { start: 4, end: 6, length: 1 },
+    ]);
   });
 });

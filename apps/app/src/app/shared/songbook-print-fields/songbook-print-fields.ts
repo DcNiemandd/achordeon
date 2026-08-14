@@ -29,13 +29,19 @@ import type {
   TitlePageVariant,
 } from '@achordeon/shared/domain';
 
-/** A title-page layout the control offers. Only `classic` renders today; the rest
- * are named so the choice is real and land later, marked so the user is not
- * misled into thinking a stub already works. */
+/**
+ * A title-page layout the control offers.
+ *
+ * Every one of them draws (`layoutTitlePageCore`), so there is no "(soon)" and
+ * no disabled row left: the list used to carry three stubs, and a choice that
+ * cannot be chosen is worse than one that is not offered. They are ordered by
+ * how far each departs from the shipped page rather than alphabetically — the
+ * quiet ones first, the ones that put a shape on the paper last, so the eye
+ * scanning down the list is walking a scale.
+ */
 interface VariantOption {
   readonly value: TitlePageVariant;
   readonly label: string;
-  readonly isReady: boolean;
 }
 
 @Component({
@@ -56,14 +62,24 @@ interface VariantOption {
       @if (print().hasTitlePage) {
         <label class="row">
           <span class="name">{{ variantLabel }}</span>
+          <!-- The selection is on the OPTIONS, not on the select, and that is
+               the fix for a real bug rather than a style preference: this is the
+               one picker here whose options come from a repeater, and a value
+               binding on the select is applied in the same update pass that
+               later creates those options. It therefore ran against an empty
+               select, which resets the value to the empty string — so the
+               control always opened on the first entry however the book was set.
+               It went unseen while every option but the first was disabled. -->
           <select
             class="control"
-            [value]="print().titlePageVariant"
             data-testid="pdf-title-variant"
             (change)="patch({ titlePageVariant: variant($event) })"
           >
             @for (option of variants; track option.value) {
-              <option [value]="option.value" [disabled]="!option.isReady">
+              <option
+                [value]="option.value"
+                [selected]="option.value === print().titlePageVariant"
+              >
                 {{ option.label }}
               </option>
             }
@@ -212,27 +228,90 @@ export class SongbookPrintFields {
   protected readonly topRightLabel = $localize`:@@songbookDownload.topRight:Top right`;
   protected readonly beforeSongTitleLabel = $localize`:@@songbookDownload.beforeSongTitle:Before the song title`;
 
-  private readonly soon = $localize`:@@songbookDownload.soon:(soon)`;
   protected readonly variants: readonly VariantOption[] = [
     {
       value: 'classic',
       label: $localize`:@@songbookDownload.variant.classic:Classic`,
-      isReady: true,
     },
     {
       value: 'centered',
-      label: `${$localize`:@@songbookDownload.variant.centered:Centered`} ${this.soon}`,
-      isReady: false,
+      label: $localize`:@@songbookDownload.variant.centered:Centered`,
     },
     {
-      value: 'banner',
-      label: `${$localize`:@@songbookDownload.variant.banner:Banner`} ${this.soon}`,
-      isReady: false,
+      value: 'plate',
+      label: $localize`:@@songbookDownload.variant.plate:Plate`,
     },
     {
       value: 'minimal',
-      label: `${$localize`:@@songbookDownload.variant.minimal:Minimal`} ${this.soon}`,
-      isReady: false,
+      label: $localize`:@@songbookDownload.variant.minimal:Minimal`,
+    },
+    {
+      value: 'poster',
+      label: $localize`:@@songbookDownload.variant.poster:Poster`,
+    },
+    {
+      value: 'stacked',
+      label: $localize`:@@songbookDownload.variant.stacked:Stacked`,
+    },
+    {
+      value: 'spine',
+      label: $localize`:@@songbookDownload.variant.spine:Spine`,
+    },
+    {
+      value: 'baseline',
+      label: $localize`:@@songbookDownload.variant.baseline:Baseline`,
+    },
+    {
+      value: 'corner',
+      label: $localize`:@@songbookDownload.variant.corner:Corner`,
+    },
+    {
+      value: 'column',
+      label: $localize`:@@songbookDownload.variant.column:Column`,
+    },
+    {
+      value: 'rule',
+      label: $localize`:@@songbookDownload.variant.rule:Rule`,
+    },
+    {
+      value: 'framed',
+      label: $localize`:@@songbookDownload.variant.framed:Framed`,
+    },
+    {
+      value: 'banner',
+      label: $localize`:@@songbookDownload.variant.banner:Banner`,
+    },
+    {
+      value: 'ticket',
+      label: $localize`:@@songbookDownload.variant.ticket:Ticket`,
+    },
+    {
+      value: 'marquee',
+      label: $localize`:@@songbookDownload.variant.marquee:Marquee`,
+    },
+    {
+      value: 'gate',
+      label: $localize`:@@songbookDownload.variant.gate:Gate`,
+    },
+    {
+      value: 'bookplate',
+      label: $localize`:@@songbookDownload.variant.bookplate:Bookplate`,
+    },
+    {
+      value: 'tag',
+      label: $localize`:@@songbookDownload.variant.tag:Tag`,
+    },
+    {
+      value: 'half',
+      label: $localize`:@@songbookDownload.variant.half:Half`,
+    },
+    {
+      value: 'bookmark',
+      label: $localize`:@@songbookDownload.variant.bookmark:Bookmark`,
+    },
+    {
+      value: 'footer',
+      label: $localize`:@@songbookDownload.variant.footer:Footer`,
     },
   ];
 }

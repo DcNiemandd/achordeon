@@ -14,7 +14,7 @@ i want you to implement the work even thought i told you not to before. I want y
 # Plan: Achordeon implementation
 
 > Source PRDs: `CONTEXT.md`, `docs/PRD-INFRASTRUCTURE.md`, `docs/PRD-DOMAIN-MODEL.md`,
-> `docs/PRD-RENDERING.md`, `docs/PARSER-GRAMMAR.md`, ADRs 0001–0010, and the
+> `docs/PRD-RENDERING.md`, `docs/PARSER-GRAMMAR.md`, ADRs 0001–0018, and the
 > Docusaurus PRD pages under `apps/docs/docs`.
 
 This is a backlog of **epics** (one GitHub issue each) with **subtasks**
@@ -24,9 +24,23 @@ signatures. Structure is **hybrid**: epics 1–4 are the shared foundation
 feature depends on); epics 5–10 are vertical feature slices that each cut from
 store → service → UI; epics 11–12 are cross-cutting shell and settings.
 
+**Epics 1–15 were planned up front. Epics 16 and above were not** — they are the
+work that came out of using the app once it existed, written down after the fact
+so this file reads as the whole build rather than as the part somebody thought of
+first. Everything here is tagged `[v1]`: it all shipped. What is still open lives
+in [`OPEN-WORK.md`](./OPEN-WORK.md), and what happens about it in
+[`V2-BOARD.md`](./V2-BOARD.md).
+
+**The file stops at Epic 28, and on purpose.** Work built after the board was
+opened gets a card there before it gets a commit, and the card is where it is
+recorded — the twenty-one title pages and the made-with mark under [V2-05] and
+[V2-06], the aspect-ratio counter under [V2-09]. Restating them here would make
+the board and this file two places to keep one fact true, which is the trap
+`PRD.md` already refuses for `PRD-EDITOR.md`.
+
 ## How to read it
 
-- **What to bucreild** — the end-to-end behaviour of the slice, layer-agnostic.
+- **What to build** — the end-to-end behaviour of the slice, layer-agnostic.
 - **Subtasks** — the smaller pieces to turn into issue checkboxes.
 - **Depends on** — which epics should land first.
 
@@ -92,7 +106,7 @@ emit(SVG)`; geometry via injected `measureText` port; fonts embedded both ways
 
 # Foundation (shared — front-loaded)
 
-## Epic 1: Workspace scaffold & domain model
+## Epic 1: Workspace scaffold & domain model `[v1]`
 
 **Depends on**: nothing (first).
 
@@ -123,7 +137,7 @@ functions, fully unit-tested.
 
 ---
 
-## Epic 2: Music theory & parser
+## Epic 2: Music theory & parser `[v1]`
 
 **User stories**: write a song; insert/validate chords; transpose up/down.
 **Depends on**: Epic 1.
@@ -154,7 +168,7 @@ quarantined behind one adapter.
 
 ---
 
-## Epic 3: SVG renderer
+## Epic 3: SVG renderer `[v1]`
 
 **User stories**: see the rendered song; one song, one page.
 **Depends on**: Epic 2 (consumes the AST), Epic 1 (resolved settings).
@@ -188,7 +202,7 @@ so it can render offscreen in a loop for batch export.
 
 ---
 
-## Epic 4: Persistence & stores
+## Epic 4: Persistence & stores `[v1]`
 
 **User stories**: my library persists offline; lists scroll smoothly.
 **Depends on**: Epic 1.
@@ -220,7 +234,7 @@ migration gateway.
 
 # Feature slices (vertical)
 
-## Epic 5: Songs module & editor
+## Epic 5: Songs module & editor `[v1]`
 
 **User stories**: list/search/sort/favorite songs; create, rename, duplicate,
 delete (with in-use warning); edit a song with live preview, insert-syntax
@@ -305,7 +319,7 @@ every other, and the editor's whole bar is reachable from the keys.
 
 ---
 
-## Epic 6: Songbooks module
+## Epic 6: Songbooks module `[v1]`
 
 **User stories**: group songs into an ordered songbook; add/remove/reorder
 entries; the virtual "All songs" book; songbook-scoped chord styling.
@@ -388,13 +402,19 @@ Corrections the build forced, recorded so they aren't re-litigated:
   same number twice. Text and not an X, because the bar already spends an X on
   "back to songbooks".
 - **The builder never becomes a tab switcher**, and that needed a second
-  breakpoint: `$bp-stack: 500px` beside `$bp-compact: 1200px`. They ask
+  breakpoint: `$bp-stack: 680px` beside `$bp-compact: 1200px`. They ask
   different questions — "is the shell compact" versus "can two lists sit beside
   each other" — so `<app-split-pane>` takes a `narrow` input: `switch` (one pane
   plus the shell's switcher, right where the panes are alternatives: write, then
   look) or `stack` (both panes, one above the other, right where they are a
   **pair**). A transfer list that hides its destination behind a tab is one you
   cannot transfer across, and Epic 14 could not drag across it either.
+- **A third breakpoint followed, for a third question**: `$bp-row-reorder: 1000px`.
+  It asks whether a reorderable row is wide enough to also carry the per-row move
+  buttons below, and it is not a media query — the list turns them off through its
+  capability set, so `Viewport` reads the value back off `:root` like the other
+  two. All three live in `_breakpoints.scss` and reach TS as `--bp-*`; there is
+  still exactly one declaration of each.
 - **All songs drops its library pane below the stack breakpoint.** That pane
   exists to pick songs to add, and the virtual book takes none; on a phone it is
   half the screen spent on a pane whose every button is off. The entry list is
@@ -447,7 +467,7 @@ page. `<app-title-page>`, the plain-text stand-in, is deleted.
 
 ---
 
-## Epic 7: Export, import & download
+## Epic 7: Export, import & download `[v1]`
 
 **User stories**: export/import JSON to move data between machines; download songs
 as PNG/PDF/ZIP and a songbook as a PDF.
@@ -626,7 +646,8 @@ Corrections from actually printing a songbook and moving songs around:
 - **Print options persist** (`PrintOptionsStore`, localStorage): the songbook
   download dialog opens on the last-used paper. It also grew a title-page style
   **stub** (only `classic` renders; the rest say "(soon)" and are disabled) and
-  **left** page-number positions. The song download dialog is now two columns —
+  **left** page-number positions. _(The stub is gone: twenty-one styles draw, and
+  the board's [V2-05] is the record of it.)_ The song download dialog is now two columns —
   the format's description, then its own Download button.
 - **Whole-database backup lands its UI** (`BackupService`, over Epic 4's
   `dexie-export-import` blob). Settings can save the entire library to a file and
@@ -669,7 +690,7 @@ Corrections from actually printing a songbook and moving songs around:
 
 ---
 
-## Epic 8: Stage (performing)
+## Epic 8: Stage (performing) `[v1]`
 
 **User stories**: perform a selected songbook one song at a time with prev/next,
 summary, swipe, and fullscreen.
@@ -868,7 +889,7 @@ built rather than ticked over.
 
 ---
 
-## Epic 9: Audience & lobby
+## Epic 9: Audience & lobby `[v1]`
 
 **User stories**: host a lobby (PIN/QR) so viewers follow the selected song;
 join an audience without an account; hide chords locally.
@@ -934,7 +955,7 @@ Corrections the build forced, recorded so they aren't re-litigated:
 
 ---
 
-## Epic 10: Auth & cloud sync
+## Epic 10: Auth & cloud sync `[v1]`
 
 **User stories**: log in for cross-device sync; manual Google Drive backup (all
 logged-in users); automatic Supabase sync (premium); link sign-in methods.
@@ -1003,7 +1024,7 @@ flip it in the dashboard for now.
 
 ---
 
-## Epic 14: Drag & drop
+## Epic 14: Drag & drop `[v1]`
 
 **User stories**: drag songs from the library into a songbook and drop them
 where they go; drag a songbook entry to reorder it.
@@ -1087,7 +1108,7 @@ a screen-reader user nothing the buttons do not already do, better.
 
 # Cross-cutting & shell
 
-## Epic 13: UI shell core (temporary UI)
+## Epic 13: UI shell core (temporary UI) `[v1]`
 
 **User stories**: navigate between modules; work in two resizable panes on desktop
 and switch between them on mobile; use the app in dark or light.
@@ -1224,7 +1245,7 @@ answers the name sort, not "which changed last".
 
 ---
 
-## Epic 11: App shell, PWA, i18n & security
+## Epic 11: App shell, PWA, i18n & security `[v1]`
 
 **User stories**: install the app and use it offline; switch language; update
 safely; stay protected.
@@ -1364,7 +1385,7 @@ false`). Angular ships the stylesheet as `media="print"` plus an inline
 
 ---
 
-## Epic 12: Settings module
+## Epic 12: Settings module `[v1]`
 
 **User stories**: manage login/sync; choose theme and language; adjust global
 render defaults.
@@ -1565,7 +1586,7 @@ branch head; left alone so the fix is reviewable on its own.
 
 ---
 
-## Epic 15: Keyboard shortcuts
+## Epic 15: Keyboard shortcuts `[v1]`
 
 **User stories**: write a song without reaching for the pointer — make one, move
 through the library, open the editor, mark up the content, get out again; find
@@ -1614,7 +1635,480 @@ here binds to — and a Czech QWERTZ swaps exactly the two letters they use.
 
 ---
 
+# After the plan (epics 16+)
+
+Everything below shipped and none of it was in the original backlog. It is
+written as a **record of what exists**, not as work to do: the subtasks are ticked
+because they are descriptions of built behaviour. Each one names the ADR or the
+plan that already holds its reasoning, so nothing here re-derives a decision.
+
+---
+
+## Epic 16: Markup round two — inline chords and sub-labels `[v1]`
+
+**User stories**: put a chord inside the line rather than above it; label a verse
+line without starting a new block; write an instrumental line that is chords and
+nothing else.
+**Depends on**: Epics 2, 3, 5 (parser, renderer, editor).
+
+### What to build
+
+The second pass over the grammar, driven by real songs that the first pass could
+only spell awkwardly. `PARSER-GRAMMAR.md` carries the rules; the renderer and the
+editor's insert buttons follow them.
+
+### Subtasks
+
+- [x] A **doubled bracket** `[[…]]` is an inline chord group: it renders in the
+      line, in the flow of the words, rather than as an anchor above them.
+- [x] A **label inside a block** is a sub-label on its own line (`Line.label`),
+      not the start of a new block. It renders at the line's own start, in the
+      flow.
+- [x] The renderer draws a chord **in** the line when the line carries no lyrics,
+      so an instrumental row is not a row of anchors over nothing.
+- [x] Transpose reaches inside an inline group. It moved the above-line anchors
+      and left the inline ones alone, which is a song that transposes halfway.
+- [x] The editor's chord button **cycles** bracket → inline → plain, so the three
+      spellings are one control rather than three.
+- [x] A stray `*` is text, not italic to the end of the line; an escaped
+      character takes the emphasis in force around it; bold and italic flip one
+      bit of the asterisk run rather than wrapping a second time.
+- [x] Bracketed text that is **not** a chord is explained where the user meets it,
+      because it renders literally and that surprises people.
+
+---
+
+## Epic 17: The starter library `[v1]`
+
+**User stories**: open the app for the first time and have something to look at;
+learn the markup from a song rather than from a manual.
+**Depends on**: Epics 4, 5, 11 (persistence, the editor, i18n).
+
+### What to build
+
+What a fresh database contains. An empty library is a screen with nothing on it
+and no way to learn what the app is for, so the first boot seeds one.
+
+### Subtasks
+
+- [x] A fresh database gets the whole starter set: a fixed set of songs, a
+      songbook and a favourite, plus the **guide song** — a tour of every piece of
+      syntax, written in the language the app booted in.
+- [x] The guide song's derived fields are computed, not hand-written. The fixed
+      English songs can carry hand-written caches; a localized song's title is
+      whatever the catalog says, so it has to be parsed on the way in.
+- [x] A test parses the tutorial cleanly in **every shipped language**, because a
+      translated string that breaks the grammar would ship as a broken first song.
+- [x] Seeding is skippable (`?empty`) and remembers that it ran, so the e2e suite
+      and a repeat visit do not get the set again.
+- [x] A **refused** boot does not seed. The schema is newer than this build
+      (ADR-0007) and the shell is about to demand an update; writing rows behind
+      that is the one thing a refusal exists to prevent.
+- [x] A new song opens on a skeleton rather than on an empty file.
+
+---
+
+## Epic 18: Songbook print preview & print settings `[v1]`
+
+**User stories**: see the book as it will print, page by page, before spending
+paper; set what the book prints once and have it travel with the book.
+**Depends on**: Epics 6, 7 (the builder and the songbook PDF).
+
+### What to build
+
+Epic 7 could produce the PDF but could only show it by making one. This is the
+same pagination drawn on screen, plus the split between what belongs to the
+**book** and what belongs to the **device printing it**.
+
+### Subtasks
+
+- [x] Extract the page sequence into a **pure `planSongbook`**, so the preview and
+      the PDF cannot disagree about what is on page four.
+- [x] Assemble the book as on-screen preview pages, and draw each one as the
+      reader reaches it rather than all of them at once.
+- [x] The preview lives in `/songbooks` pane B: paged, zoomable, one page per
+      swipe rather than one per threshold, and it keeps its place when the paper
+      turns over. The bar sits below the page and the zoom is worn as a magnifier.
+- [x] A preview page fits the desk the way a single song already does, with the
+      folio scaling with the page.
+- [x] **Book-bound print settings on the songbook record** — title page, contents,
+      page numbers and where they sit. Nullable with no default, so "never said"
+      and "chose the standard" stay different facts, and additive under ADR-0007.
+- [x] **Device-bound print settings stay local** — paper size and margin belong to
+      the printer in the room, not to the hymnal.
+- [x] One shared print control, mounted in both the settings dialog and the
+      download dialog, so the two cannot drift.
+- [x] Song numbering on the page and in the contents, with the number able to pick
+      a side so it is never printed twice.
+- [x] The contents is set in two columns; the number control is named **Contents
+      numbering**, after what it numbers.
+- [x] All songs gets a settings dialog of its own, and its print order moved into
+      it (Epic 7's fifth pass put it in the download dialog).
+- [x] A song's own render can be previewed from its row, with an edit round-trip
+      back to where you came from.
+
+**Landed alongside:** the songbook edit view regrouped into library / transfer /
+book, a large A4-shaped dialog size for the preview, and a preview glyph (a
+magnifier over a sheet) shared by every surface that offers one.
+
+---
+
+## Epic 19: Usage statistics & privacy `[v1]`
+
+**User stories**: as the developer, know which screens are used; as a user, know
+exactly what is counted and be able to say no.
+**Depends on**: Epic 11 (the CSP and the generated index), Epic 12 (the switch).
+
+### What to build
+
+A route counter that can be described in full on one page, and the page that
+describes it. `apps/docs/docs/privacy.mdx` is the contract the code is written to
+keep — the page is not documentation of the code, it is the thing the code obeys.
+
+### Subtasks
+
+- [x] Count routes in **both webs** (the app and the docs site) through
+      GoatCounter, with **no third-party script**: the endpoint answers a plain GET
+      with a 1×1 GIF, so an `Image` is the whole transport and `script-src` is
+      untouched.
+- [x] **Two layers, and the split is the point.** The path and the referrer host
+      always, because the navigation itself supplied them and nothing is read off
+      the device. The screen size **on request only**, because reading `screen` is
+      reading the device.
+- [x] The opt-in switch lives in Settings, and the docs page carries the same
+      switch. Both webs are one origin, so the key is shared and a reader who
+      decides in the docs is never asked again in the app.
+- [x] **The switch looks disabled when it is disabled.** A browser sending GPC or
+      DNT refuses on the reader's behalf, and both switches set `disabled` without
+      looking it, so the reader saw a live checkbox that would not move. The docs
+      switch dims on a refusal only, never on the pre-hydration disable, which
+      clears a tick later and would flash the row grey on every load.
+- [x] GoatCounter's own opt-out (`#toggle-goatcounter`) is honoured in their place,
+      since none of their script runs here.
+- [x] `privacy.mdx` says what each layer counts. `account-data.mdx` covers the
+      account and the Google data, which is also most of the paperwork a
+      `drive.file` consent screen asks for.
+- [x] **A 90-day retention purge.** Deleting an account set a tombstone and nothing
+      ever removed the rows, so the data lived on and revived on sign-in. A
+      `pg_cron` job now snapshots the aged-out accounts into an anonymized stats
+      table (counts and a plan, no id, email, username or content) and deletes the
+      `auth.users` row, which cascades to everything the account owned.
+- [x] The GoatCounter URL reaches the builds from CI, and is absent by default, so
+      a fork counts nothing.
+
+---
+
+## Epic 20: Search & list polish `[v1]`
+
+**User stories**: find a song by typing it the way it sounds, accents or not; find
+an entry inside a long songbook; come back from a song and still be where I was.
+**Depends on**: Epics 4, 5, 6.
+
+### What to build
+
+The lists were built in Epic 5 and reused in Epic 6. This is what using them for a
+few weeks asked for.
+
+### Subtasks
+
+- [x] **Fold accents for search.** One `foldForSearch` in the domain, used by every
+      pager, so `zlutoucky` finds `Žluťoučký` and the search box does not need to
+      know which language the library is in.
+- [x] **Find-and-jump search over the entry list**, matched to the explorer's own
+      search so the two lists in the builder answer typing the same way. Its result
+      count reserves its width, or the buttons beside it move while you type.
+- [x] **A list comes back where you left it.** The scroll is kept per module and
+      restored only when you return to the same list URL, because `?q=blue`
+      scrolled to row 200 is not the same place as an unfiltered list.
+- [x] **The endless list actually reaches its end.** Three faults, each enough on
+      its own: the paging threshold compared the _first visible_ row against the
+      row count, which a viewport can only push to `total − visibleRows`, so it was
+      unreachable on any pane taller than ~520px and read as intermittent; the
+      `loading` flag could be left raised for good by a refresh that claimed the
+      fetch stamp without ever lowering it, wedging `loadMore` for the session; and
+      two lists (the songbook list, the stage picker) were never wired to page at
+      all, capping silently at fifty with nothing on screen to say so.
+- [x] Row actions fold by **list width**, not by viewport, with a tooltip on the
+      `⋯` and a settings action in it.
+- [x] One tap opens a row on a phone, where there is no double click to spend.
+- [x] Shift and the tick take everything in between.
+- [x] The songbook row leads with edit and pockets the rest behind the dots.
+
+---
+
+## Epic 21: The docs site — Czech, brand and promotion `[v1]`
+
+**User stories**: read the manual in Czech; find the app at all.
+**Depends on**: Epic 11 (the app's own i18n and the deploy).
+
+### What to build
+
+`apps/docs` becomes a published, indexed, two-language site rather than a folder of
+pages, and the app and the site become two halves of one host.
+
+### Subtasks
+
+- [x] **The whole site translated into Czech**, chrome included, and the app's own
+      message catalog translated with it.
+- [x] The site wears the app's palette, mark and favicon, so the two do not read as
+      two products.
+- [x] The pages are synced with what shipped: stale notes dropped, the editing page
+      regrouped, the syntax examples turned into **live** ones that render through
+      the real renderer, and the prose spelled without em dashes and semicolons.
+- [x] Screenshots and the pictures the app cannot draw for itself, dark to match
+      the cards beside them, with the printed paper deliberately left white.
+- [x] **One host.** The site is served from the `achordeon.eu` apex domain, the root
+      opens the app, Settings points at the docs, the deploy paths come from repo
+      variables, and every cross-link is derived from a base URL rather than typed.
+      A plain-http load upgrades itself before the app boots.
+- [x] Every page says what it is (a description), plus a link preview and a
+      `robots.txt` naming both sitemaps.
+- [x] **One sitemap address for every language**, a locale in the URL honoured
+      rather than overruled, and the favicon answering at the root where the crawler
+      knocks.
+- [x] Search-engine submission on every deploy: an IndexNow ping from CI, keyed by
+      a repo variable and skipped when it is unset, with the ownership proof served
+      under the site's own base path.
+- [x] A **patch notes** page, in both languages, kept up as versions land.
+- [x] A README that is the project's front door, and an account chapter of its own.
+
+---
+
+## Epic 22: Backup — add or replace `[v1]`
+
+**User stories**: restore a backup without losing what is already on this device.
+**Depends on**: Epics 7, 10, 12.
+
+### What to build
+
+Epic 7's backup was a full replace, and it confirmed first because it had to. That
+is the right answer for "this device is wrong"; it is the wrong answer for "I have
+songs on both machines". Both acts now exist and the user picks.
+
+### Subtasks
+
+- [x] Read a backup blob **without clearing the database**, which is what makes an
+      additive restore possible at all.
+- [x] Ask whether a backup file adds to the library or replaces it.
+- [x] The Drive copy answers the same question, through the same path.
+- [x] **One Add-or-Replace dialog for both**, because a file and a Drive copy are
+      the same decision about the same rows, and two dialogs would eventually
+      disagree about what "add" means.
+- [x] The docs say what a backup file can do, and say plainly that a backup is not
+      sync.
+
+---
+
+## Epic 23: Report a problem `[v1]`
+
+**User stories**: tell somebody the render is broken, from inside the app, without
+a GitHub account.
+**Depends on**: Epic 11 (the CSP), Epic 12 (the Settings home).
+
+### What to build
+
+The app used to point at the issue tracker and stop. This is the same destination
+reached from inside the app: the report still becomes a GitHub issue, and the
+reporter never learns GitHub is involved.
+
+### Subtasks
+
+- [x] **A server endpoint, not a table insert.** The client holds only the anon key,
+      so anything that can file an issue has to run where a GitHub token can live —
+      and once there is a server, it is the only place a size cap or a rate limit
+      can be enforced.
+- [x] Three kinds (bug, idea, other), a message length floor and ceiling, a contact
+      cap and a cap on the attached app data.
+- [x] A per-IP-hash rate limit as the load-bearing defence, and a honeypot field the
+      app always sends empty as the cheap one in front of it.
+- [x] The client half: a dialog in Settings that attaches what it knows about the
+      build, so nobody has to describe a version they cannot see.
+- [x] The CSP is generated from the same environment the client is built from, or
+      the endpoint the client calls is one the policy forbids.
+
+---
+
+## Epic 24: Page zoom `[v1]`
+
+**User stories**: look closer at a page mid-verse, on a phone and on a desk.
+**Depends on**: Epics 8, 9 (it is worn by both performing and watching).
+
+### What to build
+
+`docs/adr/0012-page-zoom-is-ours-not-the-browsers.md` carries the decision and the
+reason it is not the browser's job: a fit-to-container render is immune to page
+zoom by construction, and that immunity is a feature everywhere else.
+
+### Subtasks
+
+- [x] Zoom and pan the page as our own state, over the desk, in performing and in
+      Audience alike.
+- [x] The gestures: pinch, double tap, and a drag that pans — with a tap-slop and a
+      double-tap window, so a tap that meant "show the chrome" is not read as a
+      zoom.
+- [x] A grab cursor over a magnified page, because a page that can be dragged has
+      to say so.
+- [x] The desk drops while **performing**, not while fullscreen — two different
+      questions that had been answered by one flag.
+- [x] The chrome waits while a panel is open, instead of auto-hiding out from under
+      the panel it opened.
+
+---
+
+## Epic 25: Page shape and the turn `[v1]`
+
+**User stories**: set the page to the shape of the screen I actually use; read a
+landscape song on a portrait phone; print one on portrait paper without wasting
+half the sheet.
+**Depends on**: Epics 3, 7, 8.
+
+### What to build
+
+`docs/adr/0013-rotation-is-derived-not-authored.md` and `plans/turn-the-page.md`.
+A landscape Song is one whose `aspectRatio` is wider than it is tall — there is no
+landscape flag and the registry needs no new row — so the turn is **derived from
+the shape**, never authored beside it.
+
+### Subtasks
+
+- [x] Aspect-ratio presets that read the device: **Match this screen**, and a list
+      of named devices, with the measured screen turned the way the device is
+      actually held.
+- [x] The device rows stay hidden until the list is long enough to be worth reading.
+- [x] A **Match this screen, sideways** preset, which is the same measurement asked
+      the other way round.
+- [x] Turn a sideways page upright for the reader, in performing and in Audience,
+      and offer the turn only where a page would gain by it.
+- [x] Centre the turned page, and turn on tablets too — the gain is a function of
+      the shapes, not of a device class.
+- [x] The turn is a **mode**, named after the songs it rotates, with the icon lying
+      down with it.
+- [x] On paper, a landscape song is turned sideways on the sheet rather than scaled
+      into a strip across the middle of it.
+- [x] Tests cover the turn, including not reading a ratio before it is known.
+
+**Landed alongside:** the song page can be read off a **black page**, and follows
+the dark theme rather than being a separate setting to remember.
+
+---
+
+## Epic 26: Performance transpose `[v1]`
+
+**User stories**: play it somewhere else, right now, without editing the song.
+**Depends on**: Epics 2, 8, 9.
+
+### What to build
+
+Down, the offset, up, and nothing else — on the stage bar and in Audience. It
+changes the performance, never the song: the offset is session state, and the
+performer's number and a viewer's are different numbers in different sessions.
+
+### Subtasks
+
+- [x] A controlled, stateless three-button control, so the desktop bar and both
+      phone sheets wear the same thing without either owning where the number is
+      kept.
+- [x] It wears the **editor's transpose glyph** — a note badged with a direction.
+      It is the same act on the same chords, so it may not be a different picture.
+- [x] Ruled off as one group rather than boxed, so the bar reads as one control and
+      not as three buttons that happen to be adjacent.
+
+---
+
+## Epic 27: Import from an AI `[v1]`
+
+**User stories**: hand a photo of a chord sheet to an assistant and get a song into
+the library; send somebody a song as a link.
+**Depends on**: Epic 7 (import, export and the migration gateway).
+
+### What to build
+
+`docs/adr/0014-import-boundary-normalises-hand-written-envelopes.md` and
+`plans/ai-import.md`. The import boundary stops being a format only this app can
+write, and starts tolerating an envelope a language model produced from a
+published schema — while the **normalisation happens once, at the boundary**, so
+nothing downstream has to know a file was hand-written.
+
+### Subtasks
+
+- [x] **Publish the schema** and tolerate a hand-written envelope against it:
+      missing optional fields, plausible mistakes, and the shapes a model actually
+      produces.
+- [x] Every envelope says which app wrote it, so a file's origin is a fact rather
+      than a guess.
+- [x] **Share as a link**, and register `.achordeon` — a media type, a file
+      extension and a `file_handlers` entry, so a double-clicked file opens here.
+      A shared link points at the app that wrote it.
+- [x] Open a link, and import a file dropped anywhere on the app.
+- [x] An import **says what arrived**, not just how much, and **names the songs it
+      could not make sense of** rather than reporting a count that does not add up.
+- [x] The intake skills ship: one shared core with two intakes (from an image, from
+      text), the converter extracted so chord recognition is not forked, and the
+      parser bundled so a skill runs without the repo.
+- [x] Shipped for Claude, a Custom GPT and a Gem, with the skill as the lead path
+      and a raw prompt as the fallback.
+- [x] The scan does not infer `aspectRatio`. It is a render setting the user owns,
+      and a guess from a photograph would silently reshape every imported song.
+
+**Landed alongside:** one Download button with Export as a row inside its dialog,
+that dialog laid out as one button column, and the download itself served as an
+attachment fetched in a frame — a chain of four fixes, because a blob URL, a
+document-typed PDF and a link clicked before it was in the page each broke on a
+different browser.
+
+---
+
+## Epic 28: The font library `[v1]`
+
+**User stories**: set a song in a font of my own; open a shared song and be told
+which font it wants.
+**Depends on**: Epics 3, 7, 11, 12.
+
+### What to build
+
+ADRs 0016 (a font is **acquired, not referenced**), 0017 (font identity is a family
+slug) and 0018 (bundled faces ship subset), plus `plans/the-font-library.md` and
+`plans/the-font-library-round-two.md`. Epic 7 left a disabled settings stub here;
+this is what the stub was for.
+
+### Subtasks
+
+- [x] **One keyed table per family, injected** — the font book stops being a fixed
+      list and becomes something the device can add to.
+- [x] A song can be set in a font, at the scopes the cascade already has.
+- [x] **A family short of a face borrows one** (no italic, so the upright is
+      synthesised or reused), rather than falling back to a different family
+      mid-page.
+- [x] **The device can hold fonts of its own**: bytes in a table beside the songs,
+      never a URL resolved at render, or a book prints differently on the machine
+      that made it.
+- [x] A font can be added **by file or by link**, and by searching the whole Google
+      Fonts catalogue from the add dialog.
+- [x] An **import says which fonts it is missing**. A song travels as a font
+      _name_, so the receiving device has to be told what it does not have.
+- [x] The bundled faces are **subset to Latin** (1.4 MB → 1.1 MB on disk), with
+      `OFL.txt` and ADR-0018 recording it. The lazy asset group covers the folder
+      rather than three names, so a new face is not silently un-cached.
+- [x] The picker says **what a family is short of for that role**, and folds the
+      built-in families away behind a summary, saying why one of them is a single
+      face.
+- [x] Three things that were in the way of using it: the picker's **"Add font…"
+      sentinel is printable text** (`@add-font`, which no slug can begin with)
+      rather than a NUL byte, which git stopped treating the file as text over and
+      which did not survive a round trip through the DOM; the **donor row is
+      disabled, not removed**, because a row that appears and disappears as the
+      body font changes moves every control under the pointer, and a greyed row
+      says that borrowing exists at all; and **adding a font closes the dialog**,
+      since the answer was already on the list behind it.
+- [x] Escape closes a dialog you have clicked into, which it used to leave open.
+- [x] The docs stop calling it coming soon, and the e2e replaces the stub test.
+
+---
+
 ## Suggested ordering
+
+This is the order epics 1–15 were planned in, kept as written. Epics 16+ were not
+ordered in advance — they arrived in the order using the app asked for them.
 
 1. Epics 1 → 2 → 3 → 4 in order (foundation; 3 and 4 can overlap once 1–2 land).
 2. Epic 13 (UI shell core) next — it gives every feature screen a frame to land in,

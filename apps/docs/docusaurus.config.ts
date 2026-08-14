@@ -241,6 +241,28 @@ const config: Config = {
 
   future: {
     v4: true,
+
+    // Which git reader the build asks "when did this file last change?" — the
+    // answer that becomes `<lastmod>` in the sitemaps (see the sitemap options
+    // below).
+    //
+    // Left alone this resolves to `default-v2`, the eager reader that Docusaurus
+    // Faster turns on: one `git log` for the whole repository, cached in a map.
+    // That map is keyed by ABSOLUTE paths, and the sitemap plugin looks routes up
+    // by the path relative to the site — so every lookup misses, every route gets
+    // no date, and the sitemaps come out with no `<lastmod>` at all. Silent: the
+    // build succeeds and the tag is simply absent (Docusaurus 3.10.1).
+    //
+    // `default-v1` is the older reader — one `git log` per file, resolved against
+    // the working directory, which is what the sitemap plugin hands it. Slower in
+    // principle and irrelevant here: this site is sixteen pages in two locales.
+    //
+    // The alternative was `showLastUpdateTime` on the docs plugin, which fills the
+    // date in through a different path — but it also prints a visible "Last
+    // updated on …" line under every page, and it would still leave the two
+    // landing pages (which are not docs) without a date. Those are the pages the
+    // crawlers are stuck on.
+    experimental_vcs: 'default-v1',
   },
 
   url,
@@ -339,6 +361,23 @@ const config: Config = {
           editUrl: `${repoUrl}/tree/main/apps/docs/`,
         },
         blog: false,
+        // `lastmod` is the one sitemap field crawlers actually act on:
+        // `changefreq` and `priority` are advisory and Google says outright it
+        // ignores them (both are plugin defaults here, left alone). A site
+        // sitting at "discovered but not crawled" has no other way to say a page
+        // is worth a fetch, so this is the freshness signal that was missing.
+        //
+        // The date comes from git — the plugin asks the VCS when each page's
+        // source file last changed. Which means the build needs the history:
+        // `.github/workflows/deploy.yml` fetches at full depth for this, and a
+        // shallow clone would silently stamp every page with the same day.
+        //
+        // `date` and not `datetime`: a day is the granularity the freshness
+        // claim actually has, and a timestamp implies a precision that a commit
+        // time does not carry.
+        sitemap: {
+          lastmod: 'date',
+        },
         theme: {
           customCss: './src/css/custom.css',
         },

@@ -18,6 +18,7 @@ import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
+  ForeignLibraryNotice,
   SplitPane,
   UiStore,
   Viewport,
@@ -44,6 +45,7 @@ import {
   imports: [
     ActionBar,
     BlankPage,
+    ForeignLibraryNotice,
     SplitPane,
     SongExplorer,
     SongbookPreview,
@@ -96,6 +98,8 @@ import {
           </button>
         </app-action-bar>
 
+        <app-foreign-library-notice />
+
         <!-- The same list component again, a fourth capability set: no
              checkboxes (nothing acts on several songbooks at once yet), no
              search (a library has hundreds of songs and a handful of books),
@@ -123,6 +127,93 @@ import {
              the list rather than replacing it. -->
         @if (hasOnlyVirtual()) {
           <p class="hint" data-testid="songbooks-empty">{{ emptyText }}</p>
+        }
+
+        <!-- The picked book's settings, opened from its row's ⋯ — the same
+             fields and the same panel the builder mounts, on a book you have not
+             opened. Its structure mirrors the builder's dialog
+             (songbook-detail.page); the presenter it binds to is this list's.
+
+             Centred on pane A with NO backdrop, exactly as the song editor's
+             render settings are (PRD-UI-SHELL.md §4), and for the same reason:
+             pane B is the book's print preview, so every one of these fields —
+             the title-page style above all — is something you set while watching
+             what it does. A scrim over that would dim the only thing worth
+             looking at, and the preview stays scrollable while the dialog is
+             open. -->
+        @if (presenter.isSettingsOpen()) {
+          <app-dialog
+            mode="container"
+            [title]="settingsLabel"
+            data-testid="songbook-settings-dialog"
+            (closed)="presenter.closeSettings()"
+          >
+            <!-- Title-page fields and the render cascade are a record's business; the
+                 virtual All songs has none, so its dialog is the print section alone. -->
+            @if (!presenter.isSettingsAllSongs()) {
+              <section class="fields">
+                <div class="fields-head">
+                  <h3 class="fields-title">{{ titlePageHeading }}</h3>
+                  <button
+                    appButton
+                    type="button"
+                    class="fields-hint"
+                    [isIconOnly]="true"
+                    [appTooltip]="titlePageHelp"
+                    appTooltipTrigger="help"
+                    [attr.aria-label]="titlePageHelp"
+                    data-testid="songbook-titlePage-hint"
+                  >
+                    <app-icon name="help" />
+                  </button>
+                </div>
+
+                @for (field of titleFieldDefs; track field.key) {
+                  <label class="field">
+                    <span class="field-label">{{ field.label }}</span>
+                    <input
+                      appField
+                      type="text"
+                      [value]="presenter.titleFields()[field.key]"
+                      [attr.data-testid]="'songbook-' + field.key"
+                      (change)="setField(field.key, $event)"
+                    />
+                  </label>
+                }
+              </section>
+            }
+
+            <!-- The book's print structure — set here, drawn by the download and the
+                 preview. For All songs this is (with the order below) the whole dialog. -->
+            <section class="fields">
+              <h3 class="fields-title">{{ printHeading }}</h3>
+              <app-songbook-print-fields
+                [print]="presenter.songbookPrint()"
+                (changed)="presenter.setPrint($event)"
+              />
+            </section>
+
+            <!-- The order All songs is arranged in — its alone, because a real book's
+                 order is its content. It rode in the download dialog before. -->
+            @if (presenter.isSettingsAllSongs()) {
+              <section class="fields">
+                <h3 class="fields-title">{{ orderHeading }}</h3>
+                <app-song-order-fields
+                  [order]="presenter.allSongsOrder()"
+                  (changed)="presenter.setAllSongsOrder($event)"
+                />
+              </section>
+            }
+
+            @if (!presenter.isSettingsAllSongs()) {
+              <app-settings-panel
+                scope="songbook"
+                [values]="presenter.songbookSettings()"
+                [inherited]="presenter.inheritedSettings()"
+                (changed)="presenter.patchSettings($event)"
+              />
+            }
+          </app-dialog>
         }
       </div>
 
@@ -195,84 +286,6 @@ import {
       </app-dialog>
     }
 
-    <!-- The picked book's settings, opened from its row's ⋯ — the same fields
-         and the same panel the builder mounts, on a book you have not opened.
-         Its structure mirrors the builder's dialog (songbook-detail.page); the
-         presenter it binds to is this list's. -->
-    @if (presenter.isSettingsOpen()) {
-      <app-dialog
-        [title]="settingsLabel"
-        data-testid="songbook-settings-dialog"
-        (closed)="presenter.closeSettings()"
-      >
-        <!-- Title-page fields and the render cascade are a record's business; the
-             virtual All songs has none, so its dialog is the print section alone. -->
-        @if (!presenter.isSettingsAllSongs()) {
-          <section class="fields">
-            <div class="fields-head">
-              <h3 class="fields-title">{{ titlePageHeading }}</h3>
-              <button
-                appButton
-                type="button"
-                class="fields-hint"
-                [isIconOnly]="true"
-                [appTooltip]="titlePageHelp"
-                appTooltipTrigger="help"
-                [attr.aria-label]="titlePageHelp"
-                data-testid="songbook-titlePage-hint"
-              >
-                <app-icon name="help" />
-              </button>
-            </div>
-
-            @for (field of titleFieldDefs; track field.key) {
-              <label class="field">
-                <span class="field-label">{{ field.label }}</span>
-                <input
-                  appField
-                  type="text"
-                  [value]="presenter.titleFields()[field.key]"
-                  [attr.data-testid]="'songbook-' + field.key"
-                  (change)="setField(field.key, $event)"
-                />
-              </label>
-            }
-          </section>
-        }
-
-        <!-- The book's print structure — set here, drawn by the download and the
-             preview. For All songs this is (with the order below) the whole dialog. -->
-        <section class="fields">
-          <h3 class="fields-title">{{ printHeading }}</h3>
-          <app-songbook-print-fields
-            [print]="presenter.songbookPrint()"
-            (changed)="presenter.setPrint($event)"
-          />
-        </section>
-
-        <!-- The order All songs is arranged in — its alone, because a real book's
-             order is its content. It rode in the download dialog before. -->
-        @if (presenter.isSettingsAllSongs()) {
-          <section class="fields">
-            <h3 class="fields-title">{{ orderHeading }}</h3>
-            <app-song-order-fields
-              [order]="presenter.allSongsOrder()"
-              (changed)="presenter.setAllSongsOrder($event)"
-            />
-          </section>
-        }
-
-        @if (!presenter.isSettingsAllSongs()) {
-          <app-settings-panel
-            scope="songbook"
-            [values]="presenter.songbookSettings()"
-            [inherited]="presenter.inheritedSettings()"
-            (changed)="presenter.patchSettings($event)"
-          />
-        }
-      </app-dialog>
-    }
-
     <!-- Just the file input; the Import button above opens its picker. The
          preview and error dialogs belong to the shell, because a drop or a link
          can arrive with no page to own them (plan §7). -->
@@ -293,7 +306,12 @@ import {
       margin-inline-start: auto;
     }
 
+    /* Positioned, because the settings dialog centres on it: container mode
+       places the panel against the nearest positioned ancestor, and without this
+       it would find the screen instead and read as a modal that forgot its
+       scrim. Coupled to the dialog above — move one, check the other. */
     .pane {
+      position: relative;
       display: flex;
       flex-direction: column;
       block-size: 100%;

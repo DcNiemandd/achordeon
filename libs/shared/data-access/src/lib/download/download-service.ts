@@ -13,11 +13,12 @@ import {
   ALL_SONGS_ID,
   isAllSongs,
   resolveSettings,
-  titlePageAst,
+  titlePageContent,
   type GlobalSettings,
   type Song,
   type SongAst,
   type Songbook,
+  type TitlePageVariant,
   type Uuid,
 } from '@achordeon/shared/domain';
 import {
@@ -174,10 +175,15 @@ export type PageNumberPosition =
   | 'top-left'
   | 'before-title';
 
-/** The title-page layouts. Only `classic` is drawn today (the render centres a
- * title block on the page); the others are named so the dialog can offer them
- * and are honoured as `classic` until each lands. */
-export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
+/**
+ * The title-page layouts — one list, the domain's (`shared/domain`).
+ *
+ * Re-exported rather than restated: this file used to declare its own copy of
+ * the union, which is exactly the kind of second definition that goes stale the
+ * first time a variant is added. The geometry for each lives in
+ * `layoutTitlePageCore`.
+ */
+export type { TitlePageVariant };
 
 export interface SongbookPdfOptions {
   /** PDF (the paper options below apply) or a ZIP of per-song images (they do
@@ -446,7 +452,7 @@ export class DownloadService {
     // `<app-title-page>` stand-in Epic 6 mounts.
     let isFirst = true;
     if (opts.hasTitlePage) {
-      const title = await this.renderTitlePage(book);
+      const title = await this.renderTitlePage(book, opts.titlePageVariant);
       registerFonts(doc, title.fonts);
       await drawOnPage(doc, title.svg, title.box, page, margin);
       isFirst = false;
@@ -713,21 +719,29 @@ export class DownloadService {
     return doc.output('blob');
   }
 
-  /** The songbook's title page, as a song with no lines. */
+  /**
+   * The songbook's title page, in the layout the book chose.
+   *
+   * Its own geometry pass (`layoutTitlePage`), not the song renderer with an
+   * alignment override: a page whose title is set across the full width, or read
+   * up the left edge, or reversed out of a band, is not "a title block above
+   * some content", and pretending otherwise is what kept three of the four
+   * declared variants unbuilt.
+   */
   private async renderTitlePage(
     book: Songbook,
+    variant: TitlePageVariant,
     inlineFonts = true,
     isDark = false,
   ): Promise<{ svg: string; box: Size; fonts: RenderPlan['fonts'] }> {
     const settings = resolveSettings(this.settings.global(), book.settings);
     await this.renderer.ensureFonts([settings]);
-    // Centred, not hugging the corner: this is a page of the book rather than a
-    // song, and three lines in the top-left of a sheet of paper read as a
-    // mistake. (§4.5 hugs for songs; `align` is the option that says otherwise.)
-    const plan = this.renderer.layout(titlePageAst(book), settings, {
-      align: 'center',
-      dark: isDark,
-    });
+    const plan = this.renderer.layoutTitlePage(
+      titlePageContent(book, songCountLabel(book.entries.length)),
+      variant,
+      settings,
+      { dark: isDark },
+    );
     return {
       svg: this.renderer.emit(plan, inlineFonts),
       box: plan.box,
@@ -820,7 +834,12 @@ export class DownloadService {
       if (!entry) return '';
 
       if (entry.kind === 'title') {
-        title ??= await this.renderTitlePage(book, false, isDark);
+        title ??= await this.renderTitlePage(
+          book,
+          opts.titlePageVariant,
+          false,
+          isDark,
+        );
         return asPrinted(title.svg, title.box);
       }
 
@@ -1042,13 +1061,28 @@ function yieldToPaint(): Promise<void> {
  * The contents page of the image ZIP, as a `SongAst` — the book's title over a
  * numbered list of its songs, in book order.
  *
- * Built as content and rendered like any other page, the sibling of
- * `titlePageAst`: the same reason it lives as an AST rather than as drawn text
- * is that the renderer already knows how to lay out a title and lines, and a
- * second layout path would have to be kept in step with the first. Local to the
- * download because it is the one thing that wants it — a title page is previewed
- * elsewhere; a contents *image* is not.
+ * Built as content and rendered like any other page: the renderer already knows
+ * how to lay out a title and a run of lines, and a second layout path would have
+ * to be kept in step with the first. (The title page went the other way — see
+ * `renderTitlePage` — because none of its layouts are "a title and some lines".)
+ * Local to the download because it is the one thing that wants it: a title page
+ * is previewed elsewhere; a contents *image* is not.
  */
+/**
+ * How big the book is, in words — the one thing the `ticket` title page prints
+ * that is not an authored field.
+ *
+ * Worded here rather than in the renderer because the renderer has no language:
+ * it is pure geometry and takes the string already translated
+ * (`TitlePageContent.countLabel`). The count is a **named placeholder** so a
+ * translation can move it, which some languages need and Czech does not: "N
+ * písní" is what a Czech title page says, and the genitive plural it uses is the
+ * form that reads at every count worth printing on a book.
+ */
+function songCountLabel(count: number): string {
+  return $localize`:@@songbookDownload.songCount:${count}:COUNT: songs`;
+}
+
 function contentsAst(book: Songbook, titles: readonly string[]): SongAst {
   return {
     title: book.title || book.name,

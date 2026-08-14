@@ -10,6 +10,7 @@ import {
   FeedbackRejectedError,
   FeedbackService,
   FeedbackThrottledError,
+  LibraryOwnership,
   SettingsStore,
   SyncService,
   type FeedbackReport,
@@ -97,6 +98,9 @@ export class SettingsPresenter {
   private readonly backups = inject(BackupService);
   private readonly auth = inject(AuthService);
   private readonly sync = inject(SyncService);
+  /** Whose the device's library is — so the page can say so when it is a
+   * different account's, and stand the manual tools down over it. */
+  private readonly ownership = inject(LibraryOwnership);
   /** Files the About block's bug report. The dialog gathers it; only this knows
    * that "send" means an edge function and, beyond it, a GitHub issue. */
   private readonly feedback = inject(FeedbackService);
@@ -136,9 +140,22 @@ export class SettingsPresenter {
   readonly autoSync = this.sync.autoSync;
   readonly hasUnsynced = this.sync.hasUnsynced;
   readonly syncStatus = this.sync.status;
+  /** The device's library belongs to a *different* signed-in account — the
+   * Account section says so, since the list elsewhere just goes empty. */
+  readonly isForeignLibrary = this.ownership.isForeign;
+  /** Manual backup, restore and Drive stand down while automatic sync is on and
+   * running it: the cloud is already the copy, and a hand restore that replaced
+   * the library would be pushed straight back up over everything. */
+  readonly manualBackupBlocked = computed(
+    () => this.canAutoSync() && this.autoSync(),
+  );
   /** Automatic sync needs the paid tier; the toggle is decoration over it while
-   * signed out or free (tierGuard is highlight-not-block during testing). */
-  readonly canAutoSync = computed(() => this.auth.isSignedIn() && this.isPro());
+   * signed out or free (tierGuard is highlight-not-block during testing). It also
+   * stands down over a foreign library — a library this account does not own is
+   * not this account's to push, and the banner above says so. */
+  readonly canAutoSync = computed(
+    () => this.auth.isSignedIn() && this.isPro() && !this.isForeignLibrary(),
+  );
   /** Whether the auto-sync toggle wears the Premium marker — the gate decides, so
    * a Premium user is not sold what they already have. */
   readonly marksAutoSyncPremium = computed(() =>

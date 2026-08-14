@@ -16,7 +16,12 @@ import { Button, Dialog, Icon, Premium, Tooltip } from '../primitives';
 import { BUILD_DATE } from '../shared/build-info';
 import { FeedbackDialog, type FeedbackDraft } from '../shared/feedback';
 import { ShortcutsDialog } from '../shared/keyboard';
-import { ActionBar, BackNavigation, docsPageUrl } from '../shared/layout';
+import {
+  ActionBar,
+  BackNavigation,
+  ForeignLibraryNotice,
+  docsPageUrl,
+} from '../shared/layout';
 import { FontList } from '../shared/fonts';
 import { SettingsPanel } from '../shared/settings-panel';
 import { SettingsPresenter, type RestoreMode } from './settings.presenter';
@@ -49,6 +54,7 @@ const MIN_PASSWORD = 8;
   imports: [
     ActionBar,
     FontList,
+    ForeignLibraryNotice,
     SettingsPanel,
     Button,
     Dialog,
@@ -68,6 +74,11 @@ const MIN_PASSWORD = 8;
          against the left. -->
     <div class="body">
       <div class="content">
+        <!-- The one data state that must not be skimmed past: a hidden foreign
+             library, with the same loud banner and takeover the songs pages show.
+             Draws nothing in every other state. -->
+        <app-foreign-library-notice />
+
         <!-- Account (Epic 10). Login gates cloud sync ONLY — the library works
              signed out (apps/docs/docs/settings.mdx §Profile). -->
         <section class="section">
@@ -290,15 +301,35 @@ const MIN_PASSWORD = 8;
                       <span class="check-label">{{ autoSyncOnLabel }}</span>
                     </label>
                   </app-premium>
-                  @if (!presenter.canAutoSync()) {
+                  @if (
+                    !presenter.canAutoSync() && !presenter.isForeignLibrary()
+                  ) {
                     <p class="requirement" data-testid="auto-sync-req">
                       {{ autoSyncReq }}
                     </p>
                   }
-                  @if (presenter.hasUnsynced()) {
-                    <p class="requirement" data-testid="unsynced">
-                      {{ unsyncedText }}
-                    </p>
+                  <!-- The sync status the app never used to show: honest the
+                       moment a save lands (the repo now recounts on every write),
+                       so this is where a user checks "did my last edit go up?".
+                       Only meaningful while sync is actually running. -->
+                  @if (presenter.canAutoSync() && presenter.autoSync()) {
+                    @if (presenter.syncStatus() === 'syncing') {
+                      <p class="requirement" data-testid="sync-status">
+                        {{ syncingText }}
+                      </p>
+                    } @else if (presenter.syncStatus() === 'error') {
+                      <p class="requirement" data-testid="sync-status">
+                        {{ syncFailedText }}
+                      </p>
+                    } @else if (presenter.hasUnsynced()) {
+                      <p class="requirement" data-testid="unsynced">
+                        {{ unsyncedText }}
+                      </p>
+                    } @else {
+                      <p class="requirement" data-testid="synced">
+                        {{ syncedText }}
+                      </p>
+                    }
                   }
                 </div>
               }
@@ -328,7 +359,9 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="presenter.isBusy()"
+                    [disabled]="
+                      presenter.isBusy() || presenter.manualBackupBlocked()
+                    "
                     data-testid="backup"
                     (click)="presenter.backup()"
                   >
@@ -338,7 +371,9 @@ const MIN_PASSWORD = 8;
                   <button
                     appButton
                     variant="secondary"
-                    [disabled]="presenter.isBusy()"
+                    [disabled]="
+                      presenter.isBusy() || presenter.manualBackupBlocked()
+                    "
                     data-testid="restore"
                     (click)="restoreInput.click()"
                   >
@@ -356,6 +391,13 @@ const MIN_PASSWORD = 8;
                     (change)="onRestoreFilePicked($event)"
                   />
                 </div>
+                <!-- Automatic sync already owns the cloud copy; a hand restore
+                     that replaced the library would be pushed straight back up. -->
+                @if (presenter.manualBackupBlocked()) {
+                  <p class="requirement" data-testid="backup-blocked">
+                    {{ backupBlockedNote }}
+                  </p>
+                }
               </div>
 
               @if (presenter.authStatus() !== 'unavailable') {
@@ -383,7 +425,11 @@ const MIN_PASSWORD = 8;
                     <button
                       appButton
                       variant="secondary"
-                      [disabled]="!canDrive() || presenter.driveBusy()"
+                      [disabled]="
+                        !canDrive() ||
+                        presenter.driveBusy() ||
+                        presenter.manualBackupBlocked()
+                      "
                       data-testid="drive-upload"
                       (click)="presenter.driveUpload()"
                     >
@@ -393,7 +439,11 @@ const MIN_PASSWORD = 8;
                     <button
                       appButton
                       variant="secondary"
-                      [disabled]="!canDrive() || presenter.driveBusy()"
+                      [disabled]="
+                        !canDrive() ||
+                        presenter.driveBusy() ||
+                        presenter.manualBackupBlocked()
+                      "
                       data-testid="drive-download"
                       (click)="askRestore({ source: 'drive' })"
                     >
@@ -412,6 +462,10 @@ const MIN_PASSWORD = 8;
                       {{
                         presenter.isSignedIn() ? driveReqLink : driveReqSignIn
                       }}
+                    </p>
+                  } @else if (presenter.manualBackupBlocked()) {
+                    <p class="requirement" data-testid="drive-blocked">
+                      {{ backupBlockedNote }}
                     </p>
                   }
                   @if (driveMessage(); as message) {
@@ -1980,6 +2034,9 @@ export class SettingsPage {
   protected readonly confirmEmailText = $localize`:@@settings.account.confirmText:We sent a confirmation link to your email. Click it to finish — the sign-in method is not active until you do.`;
 
   protected readonly unsyncedText = $localize`:@@settings.sync.unsynced:Some changes have not reached the cloud yet.`;
+  protected readonly syncingText = $localize`:@@settings.sync.syncing:Syncing your changes…`;
+  protected readonly syncFailedText = $localize`:@@settings.sync.failed:Sync did not go through — it will try again.`;
+  protected readonly syncedText = $localize`:@@settings.sync.synced:All your changes are on the cloud.`;
   protected readonly driveHelp = $localize`:@@settings.drive.help:Your backup, kept in your own Google Drive instead of a file you hold. The first upload asks Google for Drive permission. Uploading merges with the Drive copy, so it never drops another device's work; downloading asks whether to add to your library or replace it.`;
   protected readonly driveUploadLabel = $localize`:@@settings.drive.upload:Upload to Drive`;
   protected readonly driveDownloadLabel = $localize`:@@settings.drive.download:Download from Drive`;
@@ -2055,6 +2112,7 @@ export class SettingsPage {
   protected readonly backupHelp = $localize`:@@settings.backup.help:Save your whole library to a file, or bring one back in — either added beside what you have, or replacing it. This is the entire database, different from exporting a few songs.`;
   protected readonly backupButton = $localize`:@@settings.backup.save:Back up to a file`;
   protected readonly restoreButton = $localize`:@@settings.backup.restore:Restore from a file`;
+  protected readonly backupBlockedNote = $localize`:@@settings.backup.blocked:Automatic sync is keeping this library in the cloud. Turn it off to back up or restore by hand.`;
   protected readonly transferNote = $localize`:@@settings.transfer.note:Sending a few songs to someone else is a different job — export and import live with the songs.`;
   protected readonly transferLink = $localize`:@@settings.transfer.link:Go to Songs`;
   /**

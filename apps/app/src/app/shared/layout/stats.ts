@@ -10,7 +10,11 @@ import { Injectable, signal } from '@angular/core';
  *    told by the navigation itself, so nothing is stored on the device and
  *    nothing is read off it — which is why no permission is asked for.
  * 2. **On request.** The screen size, added only once `achordeon.stats` says
- *    yes. Reading `screen` IS reading the device, so it waits to be allowed.
+ *    yes. Reading `screen` IS reading the device, so it waits to be allowed —
+ *    and the aspect ratio a song is set to ({@link Stats.countAspectRatio}),
+ *    which is neither of the two: it is a fact about what somebody made rather
+ *    than about the navigation or the device. A third category, so it is asked
+ *    for, and privacy.mdx names it in the same breath as the screen size.
  *
  * There is no third-party script: the endpoint answers a plain GET with a 1x1
  * GIF, so an `Image` is the whole transport. That keeps `script-src` untouched
@@ -67,25 +71,79 @@ export class Stats {
    *
    * Fire-and-forget, like the lobby's analytics (ADR-0003): the `Image` is never
    * awaited and never inspected, so a blocked or failed beacon cannot show up as
-   * anything the reader notices. `rnd` defeats the cache — repeat views of one
-   * path are the entire point, and a cached GIF would swallow them.
+   * anything the reader notices.
    */
   count(path: string): void {
-    if (this.endpoint === '' || isCountingSkipped()) return;
-
     const params = new URLSearchParams({
       p: normalizePath(path),
       r: referrerHost(),
-      rnd: String(Math.random()).slice(2),
     });
 
-    if (this.isOn() && !this.isRefusedByBrowser) {
+    if (this.isExtraAllowed()) {
       params.set('s', screenSize());
     }
+
+    this.send(params);
+  }
+
+  /**
+   * Count one aspect ratio, as a GoatCounter **event** (`e=1`, the name in `p`).
+   *
+   * The question it answers is the `TODO` in `aspect-options.ts`: the picker
+   * offers thirty-odd shapes and nothing says which ones earn a row. So what is
+   * counted is the **pick**, not the render — a song drawn a hundred times is
+   * one decision, and counting the drawing would tell us which song somebody
+   * likes rather than which shape they reach for. `source` rides along because
+   * the two questions the card asks are different: which preset rows to keep,
+   * and whether the free-text field is used at all.
+   *
+   * Behind the opt-in, on the reasoning in this file's header. No referrer and
+   * no screen size go with it: an event is one fact, and pairing "this device is
+   * shaped so" with "this person chose that" is a join nobody needs to make.
+   */
+  countAspectRatio(source: AspectRatioSource, value: string): void {
+    if (!this.isExtraAllowed()) return;
+
+    this.send(
+      new URLSearchParams({ p: `aspect/${source}/${value.trim()}`, e: '1' }),
+    );
+  }
+
+  /** Both layers of consent, which every extra field is behind. */
+  private isExtraAllowed(): boolean {
+    return this.isOn() && !this.isRefusedByBrowser;
+  }
+
+  /**
+   * The transport, and the two switches that silence it — one endpoint check
+   * and one opt-out, applied to visits and events alike so neither can be
+   * counted by a route the other does not go through.
+   */
+  private send(params: URLSearchParams): void {
+    if (this.endpoint === '' || isCountingSkipped()) return;
+
+    // Last, so it reads as the cache-buster it is. Repeat counts of one path are
+    // the entire point, and a cached GIF would swallow them.
+    params.set('rnd', String(Math.random()).slice(2));
 
     new Image().src = `${this.endpoint}?${params}`;
   }
 }
+
+/**
+ * How a page shape was arrived at — the second half of what an aspect-ratio
+ * event says.
+ *
+ * `screen` and `screen-sideways` are the two measuring rows, which are worth
+ * telling apart from a preset with the same value: a ratio typed by a phone is
+ * evidence for adding that phone's row, where the same ratio picked off the list
+ * is evidence the row is already right.
+ */
+export type AspectRatioSource =
+  | 'preset'
+  | 'screen'
+  | 'screen-sideways'
+  | 'custom';
 
 const CONSENT_KEY = 'achordeon.stats';
 

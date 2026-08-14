@@ -12,9 +12,42 @@
 // *this* printer and stays device-local (the app's `PrintOptionsStore`); it never
 // reaches here.
 
-/** A title-page layout. Only `classic` renders today; the rest are declared so
- * the dialog can offer them and land later (Epic 7 follow-up stub). */
-export type TitlePageVariant = 'classic' | 'centered' | 'banner' | 'minimal';
+/**
+ * A title-page layout — the shape of the one sheet at the front of a book.
+ *
+ * A closed list rather than a free-text style, because each of these is a piece
+ * of geometry somebody wrote (`layoutTitlePage` in `shared/render-core`), and a
+ * value this build does not know draws as `classic` rather than as nothing: the
+ * list is additive, and a book bound on a newer version still prints here.
+ *
+ * `classic` is the original and is what an unset book gets. The rest divide by
+ * what they are made of — placement alone (`centered` … `column`) or placement
+ * plus rectangles (`rule` … `footer`).
+ */
+export type TitlePageVariant =
+  // Placement only.
+  | 'classic'
+  | 'centered'
+  | 'minimal'
+  | 'poster'
+  | 'stacked'
+  | 'plate'
+  | 'spine'
+  | 'baseline'
+  | 'corner'
+  | 'column'
+  // Placement plus one or more rectangles.
+  | 'rule'
+  | 'framed'
+  | 'banner'
+  | 'ticket'
+  | 'marquee'
+  | 'gate'
+  | 'bookplate'
+  | 'tag'
+  | 'half'
+  | 'bookmark'
+  | 'footer';
 
 /**
  * Where a song's page number goes. Six spots on the paper — and `before-title`,

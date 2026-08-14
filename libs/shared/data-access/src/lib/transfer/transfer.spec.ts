@@ -194,7 +194,7 @@ describe('ImportService', () => {
     expect((await songSource.all()).map((s) => s.id)).toEqual(['a']);
     const stored = await bookSource.all();
     expect(stored[0].entries).toEqual(['a']);
-    expect(stored[0].id).not.toBe('set'); // always a new songbook
+    expect(stored[0].id).toBe('set'); // keeps its id, so a reimport lands on it
   });
 
   it('ignoring a conflict leaves the local song exactly as it was', async () => {

@@ -10,6 +10,7 @@
 export { ActionBar } from './action-bar';
 export { AppUpdate } from './app-update';
 export type { UpdatePrompt } from './app-update';
+export { ForeignLibraryNotice } from './foreign-library-notice';
 export { UpdateNotice } from './update-notice';
 export {
   LANGUAGES,
@@ -50,6 +51,7 @@ export {
 } from './transpose';
 export { SplitPane } from './split-pane';
 export { Stats } from './stats';
+export type { AspectRatioSource } from './stats';
 export { ThemeApplier } from './theme-applier';
 export { WarnUnsynced } from './warn-unsynced';
 export { UiStore } from './ui-store';

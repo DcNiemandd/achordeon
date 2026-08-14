@@ -1,15 +1,16 @@
 ---
 name: song-from-text
 argument-hint: path to a text file holding a song, or a folder of them (not pasted text)
-description: Turn a song that already exists as text — a chord sheet copied off a tab site, a ChordPro file, a plain lyrics file, a folder of them — into Achordeon markup and an Achordeon import JSON, plus an editable text file. Chord rows sitting above the words are folded into inline brackets by a script, so the song is never retyped. Use when the user has song text in a file (or offers to paste one) and wants it formatted for Achordeon import.
+description: Turn a song that already exists as text — a chord sheet copied off a tab site, a ChordPro file, a plain lyrics file, a folder of them — into Achordeon markup and an Achordeon import file, plus an editable text file. Chord rows sitting above the words are folded into inline brackets by a script, so the song is never retyped. Use when the user has song text in a file (or offers to paste one) and wants it formatted for Achordeon import.
 ---
 
 # Song from text
 
 Turn a text file holding a song into **Achordeon content markup**, syntax-check it
-with the repo's actual parser, and hand back an **import JSON** the user can drop on
-Achordeon's Import button, plus the editable markup file it was built from. A folder
-of text files becomes one songbook, named after the folder.
+with the repo's actual parser, and hand back an **`.achordeon` file** the user can
+drop on Achordeon's Import button, plus the editable markup file it was built from. A
+folder of text files becomes one songbook, named after the folder —
+`<Folder>/<Folder>.achordeon`.
 
 ## The intake: a file, always a file
 
@@ -27,7 +28,7 @@ text in their own file costs them ten seconds and makes the whole rest of the
 pipeline work. Ask, wait, proceed.
 
 Once you have a path, the song never passes through the chat again: file → working
-file → import JSON, all on disk.
+file → `.achordeon` file, all on disk.
 
 ## The one rule that outranks the rest
 
@@ -78,6 +79,6 @@ chord symbols, then the line of words it sits over, blank lines between verses,
 
 - `Song.achordeon.txt` — the same song with the chords inline, `* Title` /
   `** Artist` on top, `Chorus::` so the colon survives printing;
-- `Song.json` — the import file;
+- `Song.achordeon` — the import file;
 - a chat report: title, subtitle, 6 blocks, 34 chords, one label, no warnings, one
   note that a lone `A` on line 12 was left alone because it could be a word.

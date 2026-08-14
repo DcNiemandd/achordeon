@@ -33,14 +33,29 @@
 // in on stdin). Give exactly one of `content` / `contentFile`.
 //
 // Usage:
-//   node build-import.mjs manifest.json                 # → JSON on stdout
-//   node build-import.mjs manifest.json -o import.json  # → file
-//   cat manifest.json | node build-import.mjs -         # stdin
-//   node build-import.mjs manifest.json --link          # + a link to open it with
+//   node build-import.mjs manifest.json                      # → JSON on stdout
+//   node build-import.mjs manifest.json -o Book.achordeon    # → file
+//   cat manifest.json | node build-import.mjs -              # stdin
+//   node build-import.mjs manifest.json --link               # + a link to open it
+//   node build-import.mjs manifest.json -o Book.achordeon --order order.txt
+//
+// `.achordeon` is the extension to write: it is what the app's own Export produces
+// and what the OS hands back to Achordeon on a double-click (`ACHORDEON_EXTENSION`
+// in libs/shared/data-access/src/lib/transfer/file-io.ts). The bytes are ordinary
+// JSON either way — a `.json` file still imports, because every file exported
+// before the extension existed is one — but a file this builder writes today should
+// be named the way the app names its own.
 //
 // If the -o file already exists, songs are MERGED into it (kept by name, new ones
 // added, songbook re-ordered by file name) — so a folder's import file grows one
-// batch at a time. Name that file after the folder: -o "<Folder>.json".
+// batch at a time. Name that file after the folder: -o "<Folder>.achordeon".
+//
+// `--order <file>` (newline-separated song names) pins that order instead, across
+// both the songs being added now and the ones already in the file. It is what lets
+// an import file be built one batch at a time and still come out in an order the
+// file names do not give — a contents page's sequence, above all. Names the file
+// does not list follow the listed ones, sorted by file name; names listed but not
+// (yet) present are skipped, which is the normal state of a run still in progress.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
@@ -78,19 +93,24 @@ function shareLink(json) {
 
 // --- args ---
 const args = process.argv.slice(2);
-const outIdx = args.indexOf('-o');
-const outFile = outIdx !== -1 ? args[outIdx + 1] : null;
-const wantsLink = args.includes('--link');
-// Guard the `outIdx + 1` arithmetic: with no -o, outIdx is -1 and its "value slot"
-// would be 0 — the manifest's own position.
-const input =
-  args.find(
-    (a, i) =>
-      a !== '-o' && a !== '--link' && (outIdx === -1 || i !== outIdx + 1),
-  ) ?? null;
+let outFile = null;
+let orderFile = null;
+let wantsLink = false;
+let input = null;
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a === '-o') outFile = args[++i];
+  else if (a === '--order') orderFile = args[++i];
+  else if (a === '--link') wantsLink = true;
+  else if (!a.startsWith('-') || a === '-') input ??= a;
+  else {
+    console.error(`unknown arg: ${a}`);
+    process.exit(2);
+  }
+}
 if (!input) {
   console.error(
-    'usage: node build-import.mjs <manifest.json|-> [-o import.json]',
+    'usage: node build-import.mjs <manifest.json|-> [-o import.json] [--order order.txt]',
   );
   process.exit(2);
 }
@@ -226,11 +246,43 @@ const byFileName = (a, b) =>
     sensitivity: 'base',
   });
 
+/**
+ * Sort by an explicit list of names, with the unlisted trailing in file-name order.
+ *
+ * A song can go missing from the list two ways that both have to pass quietly: the
+ * run is only part-way through and the rest have not been built yet, or the list is
+ * a contents page that never mentioned them. Neither is an error, and a merge that
+ * refused either would defeat the point of building the file one batch at a time.
+ */
+function byExplicitOrder(list, names) {
+  const rank = new Map(names.map((n, i) => [n, i]));
+  const listed = [];
+  const rest = [];
+  for (const s of list) (rank.has(s.name) ? listed : rest).push(s);
+  listed.sort((a, b) => rank.get(a.name) - rank.get(b.name));
+  rest.sort(byFileName);
+  return [...listed, ...rest];
+}
+
+const order = orderFile
+  ? readFileSync(orderFile, 'utf8')
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : null;
+
 const newNames = new Set(newSongs.map((s) => s.name));
 const kept = (existing?.data?.songs ?? []).filter((s) => !newNames.has(s.name));
-// Fresh build → keep manifest order (honours a summary-image sequence, step 2).
-// Incremental merge → order by file name so new songs slot into place.
-const songs = kept.length ? [...kept, ...newSongs].sort(byFileName) : newSongs;
+// --order wins wherever it is given: it is the only order that holds steady while a
+// file is grown batch by batch. Without it, a fresh build keeps manifest order
+// (honours a summary-image sequence, step 2) and an incremental merge falls back to
+// file name, so new songs still slot into place.
+const merged = [...kept, ...newSongs];
+const songs = order
+  ? byExplicitOrder(merged, order)
+  : kept.length
+    ? merged.sort(byFileName)
+    : newSongs;
 if (kept.length)
   console.error(
     `\nMerging into ${outFile}: kept ${kept.length} existing, added/updated ${newSongs.length}.`,
