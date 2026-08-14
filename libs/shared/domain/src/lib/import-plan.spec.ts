@@ -137,13 +137,67 @@ describe('applyImport — songs', () => {
 });
 
 describe('applyImport — songbooks', () => {
-  it('always creates a new songbook, never replaces one', () => {
+  it('keeps the book’s own id so a reimport lands on it, not beside it', () => {
+    // The bug this fixes: minting a fresh id here meant the stored book could
+    // never be recognised as the file's on the next import, and duplicates piled
+    // up. The id rides through, and createdAt is the file's for a first sighting.
     const incoming = data({ songbooks: [book()] });
-    const write = applyImport(planImport(incoming, [book() as never]), {
+    const write = applyImport(planImport(incoming, [song()]), {
       ...choices(),
     });
-    expect(write.songbooks[0].id).toBe('new-1');
-    expect(write.songbooks[0].createdAt).toBe(NOW);
+    expect(write.songbooks[0].id).toBe('book-1');
+    expect(write.songbooks[0].createdAt).toBe(1);
+  });
+
+  it('skips a book already here unchanged, so a reimport is a no-op', () => {
+    // The same file imported twice: the book matches an existing one by id and
+    // every authored field, so there is nothing to add.
+    const write = applyImport(
+      planImport(data({ songbooks: [book()] }), [song()], [book()]),
+      choices(),
+    );
+    expect(write.songbooks).toEqual([]);
+  });
+
+  it('replaces a changed book in place — same id, kept birthday, touched now', () => {
+    const write = applyImport(
+      planImport(
+        data({ songbooks: [book({ name: 'Renamed set' })] }),
+        [song()],
+        [book({ createdAt: 42 })],
+      ),
+      choices(),
+    );
+    expect(write.songbooks.map((b) => b.id)).toEqual(['book-1']);
+    expect(write.songbooks[0].name).toBe('Renamed set');
+    expect(write.songbooks[0].createdAt).toBe(42);
+    expect(write.songbooks[0].updatedAt).toBe(NOW);
+  });
+
+  it('undeletes a book whose local copy was soft-deleted, even if unchanged', () => {
+    // A tombstoned match is not a no-op: the write resurrects it with the same id
+    // and deletedAt cleared, so handing the file back brings the book back.
+    const write = applyImport(
+      planImport(
+        data({ songbooks: [book()] }),
+        [song()],
+        [book({ deletedAt: 999 })],
+      ),
+      choices(),
+    );
+    expect(write.songbooks.map((b) => b.id)).toEqual(['book-1']);
+    expect(write.songbooks[0].deletedAt).toBeNull();
+  });
+
+  it('an all-new import lands the book even against an identical existing one', () => {
+    // The date prefix makes it a deliberately distinct copy; matching would
+    // defeat the "I want both" escape hatch.
+    const write = applyImport(
+      planImport(data({ songbooks: [book()] }), [song()], [book()]),
+      choices({ isAllNew: true }),
+    );
+    expect(write.songbooks).toHaveLength(1);
+    expect(write.songbooks[0].name).toBe('2026-07-21 Set list');
   });
 
   it('re-points entries at the copies when the songs came in as new', () => {

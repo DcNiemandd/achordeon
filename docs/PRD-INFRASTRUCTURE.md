@@ -272,8 +272,8 @@ copy wins). [decided]
 - **Conflict v1** — whole-file last-write-wins **with a guard**: before
   overwrite, compare Drive `modifiedTime` / envelope `updatedAt` to local
   `lastSyncedUpdatedAt`; warn if Drive moved ahead. Pull applies via documented
-  import rules (songbooks new; songs replace/ignore/create-new), or full-replace
-  for a plain "restore latest".
+  import rules (a songbook replaces the one under its id; songs
+  replace/ignore/create-new), or full-replace for a plain "restore latest".
 - **Token reality** — the Google `provider_token` (~1h) is gone after any reload;
   Supabase does not refresh it. **Flow A (v1):** on Sync, if missing, re-run
   `signInWithOAuth(drive.file)` — fast redirect, usually no consent screen, zero
@@ -320,7 +320,9 @@ copy wins). [decided]
     and so cannot travel at all; the receiver is told which font is missing.
 - **Import** — accept Export JSON + (nice-to-have) Downloaded files with embedded
   metadata. Songs → replace / ignore / create-new (+ import-all-as-new with date
-  prefix); Songbooks → always new.
+  prefix); a Songbook → replaces the one under its id, so a reimport updates it
+  in place (undeleting it if the local copy was soft-deleted) instead of
+  duplicating; import-all-as-new mints a fresh copy.
 - **Download** — render → output: single song PDF or image (PNG, now
   cross-browser via the SVG path below); multiple = ZIP of images / ZIP of PDFs /
   one multi-page PDF; songbook always PDF (A4/custom, songs keep aspect ratio

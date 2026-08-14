@@ -1,7 +1,8 @@
 // Import planning — Epic 7 ▸ subtasks 2–3
 // Spec: PRD-INFRASTRUCTURE.md §8 (songs replace / ignore / create-new, + import
-// all as new with a date prefix; songbooks always create new), ADR-0007 (every
-// inbound path goes through `migrate` first — this runs after it).
+// all as new with a date prefix; a songbook replaces the one under its id, so a
+// reimport updates in place instead of duplicating), ADR-0007 (every inbound path
+// goes through `migrate` first — this runs after it).
 //
 // Pure: what a file would do to the library, decided before anything is written.
 // The two halves are deliberately separate — `planImport` answers "what collides"
@@ -31,6 +32,9 @@ export interface ImportPlan {
   /** Ids the library already holds — what tells a songbook slot the file does
    * not carry apart from one that points at nothing at all. */
   readonly existingIds: ReadonlySet<Uuid>;
+  /** The songbooks already in the library, by id — what lets a reimport of the
+   * same book resolve to a no-op instead of a duplicate. */
+  readonly existingBooks: ReadonlyMap<Uuid, Songbook>;
 }
 
 export interface ImportChoices {
@@ -70,6 +74,7 @@ export function datePrefix(now: number): string {
 export function planImport(
   incoming: SnapshotData,
   existing: readonly Song[],
+  existingBooks: readonly Songbook[] = [],
 ): ImportPlan {
   const byId = new Map(existing.map((song) => [song.id, song]));
   const songs = incoming.songs.filter((song) => song.deletedAt === null);
@@ -87,18 +92,39 @@ export function planImport(
       });
     }
   }
-  return { songs, songbooks, conflicts, existingIds: new Set(byId.keys()) };
+  return {
+    songs,
+    songbooks,
+    conflicts,
+    existingIds: new Set(byId.keys()),
+    existingBooks: new Map(existingBooks.map((book) => [book.id, book])),
+  };
 }
 
 /**
  * The records to write, with ids settled.
  *
- * **A songbook is always a new songbook** (§8) — never a replace, because its
- * content *is* its order and merging two orders has no defensible answer. Which
- * means its `entries` have to be re-pointed: a song imported as a new copy is a
- * different record, and a book that kept the old id would quietly fill up with
- * the *local* songs it was never about. An ignored song is the one case where
- * the old id is right — the local record is the one the user chose to keep.
+ * A songbook **keeps its own id and replaces the one already under it** — the
+ * same rule a song's `replace` follows. Minting a fresh id instead is what made a
+ * reimport of the same file pile up duplicates: the stored book drifted to a new
+ * id every time, so it could never be recognised as the one the file was about.
+ * Replace is not the merge the old design feared — merging two *orders* has no
+ * answer, but taking the file's version wholesale does, and it is what "import
+ * this book again" plainly means.
+ *
+ * Its `entries` are still re-pointed: a song imported as a new copy is a different
+ * record, and a book that kept the old id would quietly fill up with the *local*
+ * songs it was never about. An ignored song is the one case where the old id is
+ * right — the local record is the one the user chose to keep.
+ *
+ * Two escapes from replace-in-place. A **live** book already here unchanged is
+ * dropped, not rewritten — a reimport of the same file has nothing to add, and
+ * writing it would only bump its `updatedAt`. And an **import-all-as-new** takes a
+ * fresh id like everything else in that mode, so "I want both" keeps both.
+ *
+ * The unchanged-skip is for a live book only. If the local copy was **soft-
+ * deleted**, reimporting it writes over the tombstone with `deletedAt: null` and
+ * brings it back — an undelete is exactly what handing the file back should mean.
  */
 export function applyImport(
   plan: ImportPlan,
@@ -142,20 +168,94 @@ export function applyImport(
     });
   }
 
-  const songbooks = plan.songbooks.map((book) => ({
-    ...book,
-    id: choices.newId(),
-    name: `${prefix}${book.name}`,
-    createdAt: choices.now,
-    updatedAt: choices.now,
-    deletedAt: null,
+  const songbooks: Songbook[] = [];
+  for (const book of plan.songbooks) {
     // A slot pointing at a song neither the file nor the library has is dropped
     // rather than left dangling — the songbook UI would have to defend against
     // it forever, and a hand-edited export is exactly where one comes from.
-    entries: book.entries
+    const entries = book.entries
       .filter((entry) => remap.has(entry) || plan.existingIds.has(entry))
-      .map((entry) => remap.get(entry) ?? entry),
-  }));
+      .map((entry) => remap.get(entry) ?? entry);
+
+    // Already here, byte-for-byte the same *live* book? Nothing to write.
+    // Compared after re-pointing, so it is the entries that *would* land that are
+    // judged, not the file's raw ids. A date-prefixed all-new copy never matches
+    // (the name differs), which is the point of that mode. A *tombstoned* match is
+    // deliberately not skipped: the write below carries `deletedAt: null`, so
+    // reimporting a book you deleted brings it back rather than staying a no-op.
+    const existing = choices.isAllNew
+      ? undefined
+      : plan.existingBooks.get(book.id);
+    if (
+      existing?.deletedAt === null &&
+      sameBook(existing, book, entries, prefix)
+    ) {
+      continue;
+    }
+
+    songbooks.push({
+      ...book,
+      // Keep the book's own id so a reimport lands on it instead of beside it;
+      // all-new is the one mode that mints, because it is asking for a copy.
+      id: choices.isAllNew ? choices.newId() : book.id,
+      name: `${prefix}${book.name}`,
+      // A replace keeps the local book's birthday; a first sighting keeps the
+      // file's (it is the same book, just arriving); an all-new copy is born now.
+      createdAt: choices.isAllNew
+        ? choices.now
+        : existing
+          ? existing.createdAt
+          : book.createdAt,
+      updatedAt: choices.now,
+      deletedAt: null,
+      entries,
+    });
+  }
 
   return { songs, songbooks, ignored };
+}
+
+/**
+ * Is `incoming` (with its entries already re-pointed to local ids) the same book
+ * the library already holds? Every field the user can author is compared; the
+ * bookkeeping ones (`id`, timestamps, `deletedAt`) are not, because those always
+ * differ on a fresh landing and say nothing about whether the content changed.
+ */
+function sameBook(
+  existing: Songbook,
+  incoming: Songbook,
+  entries: readonly Uuid[],
+  prefix: string,
+): boolean {
+  return (
+    existing.name === `${prefix}${incoming.name}` &&
+    existing.title === incoming.title &&
+    existing.subtitle === incoming.subtitle &&
+    existing.author === incoming.author &&
+    arraysEqual(existing.entries, entries) &&
+    deepEqual(existing.settings, incoming.settings) &&
+    deepEqual(existing.print, incoming.print)
+  );
+}
+
+function arraysEqual(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
+}
+
+/** Structural equality for the flat settings/print bags — plain records of
+ * primitives, or `undefined` (an older row that never wrote the field). */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
+  const ak = Object.keys(a as object);
+  const bk = Object.keys(b as object);
+  return (
+    ak.length === bk.length &&
+    ak.every((key) =>
+      deepEqual(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key],
+      ),
+    )
+  );
 }

@@ -1,7 +1,8 @@
 // ImportService — Epic 7 ▸ subtasks 2–3
 // Spec: PRD-INFRASTRUCTURE.md §8 (accept Export JSON + downloaded files with
-// embedded metadata; songs replace/ignore/create-new, songbooks always new),
-// ADR-0007 (**one** ingest gateway — every inbound path runs `migrate` first).
+// embedded metadata; songs replace/ignore/create-new, a songbook replaces the one
+// under its id so a reimport updates in place), ADR-0007 (**one** ingest gateway —
+// every inbound path runs `migrate` first).
 //
 // Three steps, deliberately not one call: read (what is in this file), plan
 // (what would it do to my library), apply (do it). The middle step is the whole
@@ -84,7 +85,11 @@ export class ImportService {
 
   /** What this envelope would do to the library as it stands right now. */
   async plan(snapshot: SnapshotEnvelope): Promise<ImportPlan> {
-    return planImport(snapshot.data, await this.songs.all());
+    const [songs, songbooks] = await Promise.all([
+      this.songs.all(),
+      this.songbooks.all(),
+    ]);
+    return planImport(snapshot.data, songs, songbooks);
   }
 
   /**
