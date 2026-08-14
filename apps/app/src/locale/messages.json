@@ -104,6 +104,8 @@
     "editor.insertTitle": "Title",
     "editor.label": "Song content",
     "editor.name": "Song name",
+    "editor.notationHintEnglish": "This is a German note name (H) in a song set to English notation. It prints as B, so the page and what you typed will differ.",
+    "editor.notationHintGerman": "This is an English note name (B) in a song set to German notation, where a typed B stays B natural. The page and what you typed will differ.",
     "editor.placeholder": "Type your song here.",
     "editor.redo": "Redo",
     "editor.settings": "Render settings",

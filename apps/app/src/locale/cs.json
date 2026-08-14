@@ -104,6 +104,8 @@
     "editor.insertTitle": "Nadpis",
     "editor.label": "Obsah písně",
     "editor.name": "Název písně",
+    "editor.notationHintEnglish": "Toto je německý název noty (H) v písni nastavené na anglickou notaci. Vytiskne se jako B, takže se stránka a to, co jste napsali, budou lišit.",
+    "editor.notationHintGerman": "Toto je anglický název noty (B) v písni nastavené na německou notaci, kde se napsané B čte jako H. Stránka a to, co jste napsali, se budou lišit.",
     "editor.placeholder": "Sem napište svou píseň.",
     "editor.redo": "Znovu",
     "editor.settings": "Nastavení vykreslení",

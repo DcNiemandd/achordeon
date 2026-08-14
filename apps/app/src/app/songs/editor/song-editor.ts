@@ -42,6 +42,7 @@ import {
 import {
   achordeonHighlight,
   achordeonHighlightStyle,
+  findNotationSpans,
   findVerbatimSpans,
 } from '@achordeon/shared/editor-core';
 import type {
@@ -197,6 +198,21 @@ export class SongEditor {
   readonly verbatimHint = input(
     $localize`:@@editor.verbatimHint:Not a chord Achordeon recognises. It prints exactly as written and transpose leaves it alone.`,
   );
+  /**
+   * What a chord spelled in the other notation says when you hover it — see
+   * `notationMarkers`. One message per direction, chosen by the song's `notation`:
+   * the two say opposite things (an `H` is the German name, a `B` the English
+   * one), and the second is the trap worth naming — a typed `B` stays B natural,
+   * so copying a German page back in reads it a semitone up (NOTATION-PLAN §5).
+   * A fact about what will print, not a complaint: the spelling is legal, it just
+   * disagrees with the setting.
+   */
+  readonly notationHintEnglish = input(
+    $localize`:@@editor.notationHintEnglish:This is a German note name (H) in a song set to English notation. It prints as B, so the page and what you typed will differ.`,
+  );
+  readonly notationHintGerman = input(
+    $localize`:@@editor.notationHintGerman:This is an English note name (B) in a song set to German notation, where a typed B stays B natural. The page and what you typed will differ.`,
+  );
 
   /** Fired on every settled edit. Debouncing is the caller's business — parse
    * and autosave want different delays from the same keystroke. */
@@ -240,7 +256,13 @@ export class SongEditor {
     // Two inputs, two reconciliations, deliberately separate: markers arrive on
     // every reparse and must not touch the document.
     effect(() => this.syncDoc(this.content()));
-    effect(() => this.syncMarkers(this.markers()));
+    // `notation()` too: a foreign-spelling underline (`notationMarkers`) depends
+    // on the setting, so toggling English/German has to re-push diagnostics even
+    // when the parser's markers have not moved.
+    effect(() => {
+      this.notation();
+      this.syncMarkers(this.markers());
+    });
   }
 
   /** Insert at the cursor, wrapping the selection if there is one (subtask 5). */
@@ -899,6 +921,40 @@ export class SongEditor {
     );
   }
 
+  /**
+   * Chords spelled in the notation this song is not set to, as `warning`
+   * underlines — a German `H` in an English song, or an English `B` in a German
+   * one (NOTATION-PLAN §5).
+   *
+   * Louder than `verbatimMarkers` on purpose: a verbatim bracket prints what you
+   * typed, but a foreign spelling prints as its *other* name, so source and page
+   * quietly disagree. Computed the same local, un-parsed way (ADR-0010) from the
+   * live doc, the injected `theory`, and this song's resolved `notation` — the
+   * same value the preview spells with, so the two panes never contradict each
+   * other about which alphabet the song is in.
+   */
+  private notationMarkers(): EditorMarker[] {
+    const view = this.view;
+    if (!view) {
+      return [];
+    }
+    const notation = this.notation();
+    const message =
+      notation === 'german'
+        ? this.notationHintGerman()
+        : this.notationHintEnglish();
+    return findNotationSpans(
+      view.state.doc.toString(),
+      notation,
+      this.theory,
+    ).map((span) => ({
+      line: span.line,
+      range: span.range,
+      message,
+      severity: 'warning' as const,
+    }));
+  }
+
   /** `EditorMarker` (line + range) → CodeMirror's absolute document offsets. */
   private diagnostics(): Diagnostic[] {
     const view = this.view;
@@ -907,7 +963,11 @@ export class SongEditor {
     }
     const doc = view.state.doc;
     const out: Diagnostic[] = [];
-    for (const marker of [...this.markers(), ...this.verbatimMarkers()]) {
+    for (const marker of [
+      ...this.markers(),
+      ...this.verbatimMarkers(),
+      ...this.notationMarkers(),
+    ]) {
       // A marker can outlive the text it describes by one reparse — the doc has
       // already changed, the AST has not caught up. Drop it rather than throw:
       // CodeMirror rejects an out-of-range diagnostic outright.
