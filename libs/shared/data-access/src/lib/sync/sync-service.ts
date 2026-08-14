@@ -248,6 +248,53 @@ export class SyncService {
     return true;
   }
 
+  // --- Device takeover ------------------------------------------------------
+
+  /**
+   * "This device is mine now." Replace a library owned by another account with the
+   * signed-in one's: drop this device's local rows, claim the device, then pull the
+   * account's own library down fresh.
+   *
+   * Only the local copy is cleared — the other account's data is untouched in the
+   * cloud, and signing back in as them on a device that still owns their library
+   * brings it back. The watermark is reset to 0 so the pull is a full one (every
+   * remote row, not "since some past sync"), the mirror image of turning sync on.
+   */
+  /**
+   * Whether this device's local library holds rows that never reached the cloud —
+   * asked of the database directly, NOT of `hasUnsynced`, because that flag is
+   * gated on sync being active and a foreign library's sync is deliberately off.
+   * The takeover confirm reads it to warn that adopting discards the *other*
+   * account's unsynced work, which the clear-and-pull cannot get back.
+   */
+  async hasUnsyncedRows(): Promise<boolean> {
+    const watermark = await this.readWatermark();
+    const local = await snapshotFromDb(this.db);
+    return hasRows(changedSince(local.data, watermark));
+  }
+
+  async adoptDevice(): Promise<void> {
+    const uid = this.auth.user()?.id;
+    if (!uid) return;
+    await this.db.transaction(
+      'rw',
+      this.db.user,
+      this.db.songs,
+      this.db.songbooks,
+      async () => {
+        await Promise.all([
+          this.db.user.clear(),
+          this.db.songs.clear(),
+          this.db.songbooks.clear(),
+        ]);
+      },
+    );
+    await this.ownership.claimFor(uid);
+    await this.writeWatermark(0);
+    await Promise.all([this.songs.refresh(), this.songbooks.refresh()]);
+    await this.syncNow();
+  }
+
   // --- Toggle ---------------------------------------------------------------
 
   async setAutoSync(on: boolean): Promise<void> {

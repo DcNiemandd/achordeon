@@ -54,13 +54,27 @@ export class LibraryOwnership {
     return this.auth.isSignedIn() && this.auth.user()?.id === owner;
   });
 
+  /**
+   * The library is hidden because it belongs to a *different* signed-in account —
+   * the one case worth explaining, because the songs are here, not lost, and the
+   * empty list otherwise reads as data gone. Distinct from a signed-out hide (the
+   * owner will be back) and from a genuinely empty library. Drives the notice that
+   * offers to take the device over ({@link SyncService.adoptDevice}).
+   */
+  readonly isForeign = computed(() => {
+    const owner = this._owner();
+    return (
+      owner !== null && this.auth.isSignedIn() && this.auth.user()?.id !== owner
+    );
+  });
+
   constructor() {
     // Claim on the first sign-in and never again: ownership is sticky, so a later
     // sign-out hides the library, it does not hand it back to the next account.
     effect(() => {
       if (!this._loaded()) return;
       const uid = this.auth.user()?.id ?? null;
-      if (uid !== null && this._owner() === null) void this.claim(uid);
+      if (uid !== null && this._owner() === null) void this.claimFor(uid);
     });
   }
 
@@ -74,9 +88,15 @@ export class LibraryOwnership {
     this._loaded.set(true);
   }
 
-  private async claim(uid: string): Promise<void> {
-    // Signal first so `isVisible` and the sync gate read the claim this tick; the
-    // write only persists it.
+  /**
+   * Stamp this device's library onto an account. The first-sign-in claim of an
+   * unowned library goes through here, and so does the deliberate takeover behind
+   * the foreign-library notice — which replaces a prior owner rather than skipping
+   * it, so the caller must have cleared that owner's rows first.
+   */
+  async claimFor(uid: string): Promise<void> {
+    // Signal first so `isVisible`/`isForeign` and the sync gate read the claim this
+    // tick; the write only persists it.
     this._owner.set(uid);
     await this.db.meta.put({ key: META_LIBRARY_OWNER, value: uid });
   }

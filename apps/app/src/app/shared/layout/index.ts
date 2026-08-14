@@ -10,6 +10,7 @@
 export { ActionBar } from './action-bar';
 export { AppUpdate } from './app-update';
 export type { UpdatePrompt } from './app-update';
+export { ForeignLibraryNotice } from './foreign-library-notice';
 export { UpdateNotice } from './update-notice';
 export {
   LANGUAGES,

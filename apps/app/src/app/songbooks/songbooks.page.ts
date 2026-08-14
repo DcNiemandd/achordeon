@@ -18,6 +18,7 @@ import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
+  ForeignLibraryNotice,
   SplitPane,
   UiStore,
   Viewport,
@@ -44,6 +45,7 @@ import {
   imports: [
     ActionBar,
     BlankPage,
+    ForeignLibraryNotice,
     SplitPane,
     SongExplorer,
     SongbookPreview,
@@ -95,6 +97,8 @@ import {
             <app-icon name="import" />
           </button>
         </app-action-bar>
+
+        <app-foreign-library-notice />
 
         <!-- The same list component again, a fourth capability set: no
              checkboxes (nothing acts on several songbooks at once yet), no

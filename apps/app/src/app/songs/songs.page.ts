@@ -14,6 +14,7 @@ import { Button, Dialog, Icon, Tooltip } from '../primitives';
 import {
   ActionBar,
   BlankPage,
+  ForeignLibraryNotice,
   SplitPane,
   UiStore,
   Viewport,
@@ -49,6 +50,7 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
   imports: [
     ActionBar,
     BlankPage,
+    ForeignLibraryNotice,
     SplitPane,
     SongExplorer,
     SelectionStatus,
@@ -179,6 +181,8 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
             </button>
           </div>
         </app-action-bar>
+
+        <app-foreign-library-notice />
 
         <app-song-explorer
           class="explorer"
