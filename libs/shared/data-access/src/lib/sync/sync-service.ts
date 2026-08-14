@@ -24,6 +24,7 @@ import {
   SONG_REPOSITORY,
   SONGBOOK_REPOSITORY,
 } from '../stores/repositories';
+import { LibraryOwnership } from '../stores/library-ownership';
 import { SongStore } from '../stores/song-store';
 import { SongbookStore } from '../stores/songbook-store';
 import { SettingsStore } from '../stores/settings-store';
@@ -50,6 +51,7 @@ export class SyncService {
   private readonly songs = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly settings = inject(SettingsStore);
+  private readonly ownership = inject(LibraryOwnership);
   /** Where "this app is older than the data it was handed" is latched (ADR-0007). */
   private readonly boot = inject(BootGate);
 
@@ -68,9 +70,16 @@ export class SyncService {
    * device). */
   readonly hasUnsynced = this._hasUnsynced.asReadonly();
 
-  /** Automatic Supabase sync is live right now — signed in, paid, toggle on. */
+  /** Automatic Supabase sync is live right now — signed in, paid, toggle on, and
+   * the local library is this account's to sync. A library owned by a different
+   * account (or unclaimed by this session) is never pushed — which is what keeps
+   * one account's rows from landing on another's `owner` (RLS 42501). */
   readonly isActive = computed(
-    () => this.auth.isSignedIn() && this.auth.isPro() && this._autoSync(),
+    () =>
+      this.auth.isSignedIn() &&
+      this.auth.isPro() &&
+      this._autoSync() &&
+      this.ownership.isVisible(),
   );
 
   private pushTimer: ReturnType<typeof setTimeout> | null = null;

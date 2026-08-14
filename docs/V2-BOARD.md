@@ -46,22 +46,23 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 
 ## Board
 
-| ID                                                   | Card                                  | Tag               |
-| ---------------------------------------------------- | ------------------------------------- | ----------------- |
-| [V2-01](#v2-01--test-health--promotion)              | Test health & promotion               | `[now]`           |
-| [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`       |
-| [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[done]`          |
-| [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`            |
-| [V2-05](#v2-05--title-pages-twenty-one-of-them)      | Title pages, twenty-one of them       | `[done]`          |
-| [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`       |
-| [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`            |
-| [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`            |
-| [V2-09](#v2-09--aspect-ratio-instrument-then-curate) | Aspect ratio: instrument, then curate | `[done]` + `[v2]` |
-| [V2-10](#v2-10--google-oauth-and-drive)              | Google OAuth and Drive                | `[v2]`            |
-| [V2-11](#v2-11--buying-premium)                      | Buying premium                        | `[v2]`            |
-| [V2-12](#v2-12--sharing-a-slot)                      | Sharing a slot                        | `[blocked]`       |
-| [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`       |
-| [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`            |
+| ID                                                   | Card                                  | Tag                    |
+| ---------------------------------------------------- | ------------------------------------- | ---------------------- |
+| [V2-01](#v2-01--test-health--promotion)              | Test health & promotion               | `[now]`                |
+| [V2-02](#v2-02--the-german-b)                        | The German `B`                        | `[blocked]`            |
+| [V2-03](#v2-03--document-sync--the-board)            | Document sync & the board             | `[done]`               |
+| [V2-04](#v2-04--project-guidelines)                  | Project guidelines                    | `[v2]`                 |
+| [V2-05](#v2-05--title-pages-twenty-one-of-them)      | Title pages, twenty-one of them       | `[done]`               |
+| [V2-06](#v2-06--what-else-a-title-page-carries)      | What else a title page carries        | `[discuss]`            |
+| [V2-07](#v2-07--lift-the-account-into-view)          | Lift the account into view            | `[v2]`                 |
+| [V2-08](#v2-08--rebinding-a-shortcut)                | Rebinding a shortcut                  | `[v2]`                 |
+| [V2-09](#v2-09--aspect-ratio-instrument-then-curate) | Aspect ratio: instrument, then curate | `[done]` + `[v2]`      |
+| [V2-10](#v2-10--google-oauth-and-drive)              | Google OAuth and Drive                | `[v2]`                 |
+| [V2-11](#v2-11--buying-premium)                      | Buying premium                        | `[v2]`                 |
+| [V2-12](#v2-12--sharing-a-slot)                      | Sharing a slot                        | `[blocked]`            |
+| [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`            |
+| [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`                 |
+| [V2-15](#v2-15--library-ownership-on-a-device)       | Library ownership on a device         | `[done]` + `[discuss]` |
 
 ---
 
@@ -668,6 +669,54 @@ What it needs, in order:
 `PRD-UI-SHELL.md` §13's grey-ramp question (a warm tint beside a warm brand) is
 the same question asked once per possible brand, so answering it generically —
 neutral greys, always — is probably what a custom colour forces.
+
+---
+
+## V2-15 · Library ownership on a device `[done]` + `[discuss]`
+
+A device holds one library, and until this it belonged to nobody in particular.
+Sign in as one account, and its rows went to the cloud under that account's
+`owner`. Sign in later as a **second** account on the same machine and the same
+local rows were pushed again under the new session — which Supabase refuses, `owner
+= auth.uid()` on `songs`, `42501` on every edit while imports (fresh ids, a clean
+insert) sailed through. The library had no idea whose it was.
+
+**Done — the marker.** The local library now carries one `owner` in `meta`: the
+account uid it belongs to, or absent. The rule is one predicate:
+
+```
+absent            -> visible, editable (the offline, pre-account library)
+signed in & mine  -> visible, syncs
+signed in & other -> hidden, sync stands down
+signed out & owned-> hidden
+first sign-in     -> claim: stamp the uid onto the unowned library
+```
+
+So a second account never pushes the first's rows — the library it does not own
+is hidden and sync is off for it — and the `42501` cannot happen by construction.
+Signing out hides an owned library rather than deleting it (it is safe locally and
+in the cloud); signing back in as the owner brings it back. A fresh, never-signed-in
+library stays fully editable, and the first sign-in is what claims it.
+
+**Discuss — the richer model this deliberately does not build.** The marker owns
+the library as **one** thing, so a second account on a shared machine sees an empty
+library until the first's data is cleared. Letting **two accounts' libraries live
+in one IndexedDB at once**, each shown only to its owner, is a bigger change and
+nobody has asked for it twice:
+
+- **`owner` on the row, not on the library.** A nullable field on `Song` and
+  `Songbook` — additive and lossless under ADR-0007, no `SCHEMA_VERSION` bump (the
+  `allSongsOrder` precedent). `null` = unclaimed; a first sign-in stamps the uid
+  onto every `null` row rather than onto a single marker.
+- **Every list query filters** `owner ∈ {null, myUid}`, so the paging layer and the
+  stores' `live` grow an ownership predicate they do not have today.
+- **Sync mirrors it per row.** The Supabase `owner` column already exists; push
+  would send each row's own owner instead of leaning on `default auth.uid()`, and
+  pull would stamp `owner = myUid` on what it writes.
+
+The shared-device, two-account case is a dev and kiosk concern, not a user request,
+so it parks here beside the marker that handles the common one. Promote it if
+per-account coexistence is ever asked for by name.
 
 ---
 

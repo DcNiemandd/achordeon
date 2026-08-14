@@ -151,23 +151,24 @@ deleted so the survey still reads as what was found.
 Carried from `PRD.md` §Future and the PRD sections it cites. Listed so the survey
 is complete, not because anything is expected of them.
 
-| Area      | Item                                                                    |
-| --------- | ----------------------------------------------------------------------- |
-| Sync      | Concurrent multi-device sync + live Realtime updates (premium upgrade)  |
-| Sync      | In-app account merge; unlink a sign-in method; magic-link login         |
-| Sync      | Drive token-broker (Flow B) — the same Edge Function D7 needs           |
-| Storage   | "Empty trash" — ever purging tombstoned rows                            |
-| Rendering | Autofit (`PRD-RENDERING` §4.4); columns smart auto-fit                  |
-| Rendering | Scrolling / multi-page for over-long songs                              |
-| Rendering | Key-aware transpose spelling (v1 is direction-based, ADR-0008)          |
-| Rendering | A chord-collision / min-gap spacing setting                             |
-| Audience  | D9 — viewer transposes their own copy                                   |
-| Audience  | Audience over LAN with no internet                                      |
-| Audience  | Host-facing performance history (v1 analytics are developer-only)       |
-| Fonts     | woff/woff2 support; a separate chord face                               |
-| Security  | Optional passphrase encryption-at-rest                                  |
-| Import    | Re-import of downloaded PDFs (PNG already carries its `tEXt` metadata)  |
-| Toolchain | D11 — Angular 22, gated on `@ngrx/signals@22` (no release, peers `^21`) |
+| Area      | Item                                                                           |
+| --------- | ------------------------------------------------------------------------------ |
+| Sync      | Concurrent multi-device sync + live Realtime updates (premium upgrade)         |
+| Sync      | In-app account merge; unlink a sign-in method; magic-link login                |
+| Sync      | Per-device multi-account — two libraries in one IndexedDB (`V2-BOARD` [V2-15]) |
+| Sync      | Drive token-broker (Flow B) — the same Edge Function D7 needs                  |
+| Storage   | "Empty trash" — ever purging tombstoned rows                                   |
+| Rendering | Autofit (`PRD-RENDERING` §4.4); columns smart auto-fit                         |
+| Rendering | Scrolling / multi-page for over-long songs                                     |
+| Rendering | Key-aware transpose spelling (v1 is direction-based, ADR-0008)                 |
+| Rendering | A chord-collision / min-gap spacing setting                                    |
+| Audience  | D9 — viewer transposes their own copy                                          |
+| Audience  | Audience over LAN with no internet                                             |
+| Audience  | Host-facing performance history (v1 analytics are developer-only)              |
+| Fonts     | woff/woff2 support; a separate chord face                                      |
+| Security  | Optional passphrase encryption-at-rest                                         |
+| Import    | Re-import of downloaded PDFs (PNG already carries its `tEXt` metadata)         |
+| Toolchain | D11 — Angular 22, gated on `@ngrx/signals@22` (no release, peers `^21`)        |
 
 ---
 

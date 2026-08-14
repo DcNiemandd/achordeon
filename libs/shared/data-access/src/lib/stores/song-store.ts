@@ -18,6 +18,7 @@ import {
 } from '@ngrx/signals/entities';
 import type { Song, Uuid } from '@achordeon/shared/domain';
 import type { Cursor, SortDir, SortKey } from '../persistence/paging';
+import { LibraryOwnership } from './library-ownership';
 import { PAGE_LIMIT, SONG_REPOSITORY } from './repositories';
 
 /**
@@ -53,9 +54,20 @@ export const SongStore = signalStore(
   // Soft-delete filter (§3): tombstoned rows stay in the entity map so sync still
   // carries the delete, but lists bind to `live` and never show them. A row
   // soft-deleted mid-session drops out here without a refetch.
-  withComputed((store) => ({
-    live: computed(() => store.entities().filter((s) => s.deletedAt === null)),
-  })),
+  //
+  // Ownership gate on top of it: a library this session does not own (signed out,
+  // or signed in as another account) is hidden wholesale — `live` goes empty and
+  // every list that binds to it clears, without touching a stored row.
+  withComputed((store) => {
+    const ownership = inject(LibraryOwnership);
+    return {
+      live: computed(() =>
+        ownership.isVisible()
+          ? store.entities().filter((s) => s.deletedAt === null)
+          : [],
+      ),
+    };
+  }),
   withMethods((store) => {
     const repo = inject(SONG_REPOSITORY);
 

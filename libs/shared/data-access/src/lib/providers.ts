@@ -16,6 +16,7 @@ import { applyFirstRun } from './persistence/guide-song';
 import { FontLibrary } from './fonts/font-library';
 import { ParserService } from './parser/parser-service';
 import { SettingsStore } from './stores/settings-store';
+import { LibraryOwnership } from './stores/library-ownership';
 import { AuthService } from './auth/auth-service';
 import { SyncService } from './sync/sync-service';
 
@@ -169,17 +170,23 @@ function setSeedOff(off: boolean): void {
 /**
  * Start the account + sync layer at boot (Epic 10).
  *
- * `AuthService.init` reads the persisted session first, then `SyncService.init`
+ * `AuthService.init` reads the persisted session first, then `LibraryOwnership.init`
+ * loads whose library this device holds (so the first sign-in can claim it, and a
+ * library owned by another account is hidden and not synced), then `SyncService.init`
  * loads the toggle, wires the focus/blur handoff moments, and does a first pull.
- * Both degrade to no-ops without a backend or a session, so this is safe to run
- * on every build — the offline-only app simply finds nothing to do. Sync never
+ * All three degrade to no-ops without a backend or a session, so this is safe to
+ * run on every build — the offline-only app simply finds nothing to do. Sync never
  * blocks the shell, so the initializer does not await it: a slow or failed pull
  * must not hold up first paint.
  */
 export function provideAchordeonSync(): EnvironmentProviders {
   return provideAppInitializer(() => {
     const auth = inject(AuthService);
+    const ownership = inject(LibraryOwnership);
     const sync = inject(SyncService);
-    void auth.init().then(() => sync.init());
+    void auth
+      .init()
+      .then(() => ownership.init())
+      .then(() => sync.init());
   });
 }

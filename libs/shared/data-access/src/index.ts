@@ -44,4 +44,5 @@ export * from './lib/stores/repositories';
 export * from './lib/stores/song-store';
 export * from './lib/stores/songbook-store';
 export * from './lib/stores/settings-store';
+export * from './lib/stores/library-ownership';
 export * from './lib/stores/session-store';

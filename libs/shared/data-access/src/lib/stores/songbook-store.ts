@@ -18,6 +18,7 @@ import {
 } from '@ngrx/signals/entities';
 import type { Songbook, Uuid } from '@achordeon/shared/domain';
 import type { Cursor, SortDir, SortKey } from '../persistence/paging';
+import { LibraryOwnership } from './library-ownership';
 import { PAGE_LIMIT, SONGBOOK_REPOSITORY } from './repositories';
 
 interface SongbookQueryState {
@@ -43,10 +44,18 @@ export const SongbookStore = signalStore(
   withEntities<Songbook>(),
   withState<SongbookQueryState>(initialState),
   // Soft-delete filter (§3): tombstoned rows stay in the map for sync; lists bind
-  // to `live`.
-  withComputed((store) => ({
-    live: computed(() => store.entities().filter((b) => b.deletedAt === null)),
-  })),
+  // to `live`. Ownership gate on top: a library this session does not own is
+  // hidden wholesale (see LibraryOwnership) — `live` empties, no row is touched.
+  withComputed((store) => {
+    const ownership = inject(LibraryOwnership);
+    return {
+      live: computed(() =>
+        ownership.isVisible()
+          ? store.entities().filter((b) => b.deletedAt === null)
+          : [],
+      ),
+    };
+  }),
   withMethods((store) => {
     const repo = inject(SONGBOOK_REPOSITORY);
 
