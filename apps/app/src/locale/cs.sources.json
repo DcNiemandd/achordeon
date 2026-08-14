@@ -383,6 +383,7 @@
   "settings.autoSync.requires": "Available on a Premium account.",
   "settings.backup": "Manual backup",
   "settings.backup.about": "About backup",
+  "settings.backup.blocked": "Automatic sync is keeping this library in the cloud. Turn it off to back up or restore by hand.",
   "settings.backup.help": "Save your whole library to a file, or bring one back in — either added beside what you have, or replacing it. This is the entire database, different from exporting a few songs.",
   "settings.backup.restore": "Restore from a file",
   "settings.backup.save": "Back up to a file",

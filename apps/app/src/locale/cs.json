@@ -385,6 +385,7 @@
     "settings.autoSync.requires": "Dostupné s účtem Premium.",
     "settings.backup": "Ruční záloha",
     "settings.backup.about": "O zálohování",
+    "settings.backup.blocked": "Automatická synchronizace udržuje tuto knihovnu v cloudu. Vypněte ji, chcete-li zálohovat nebo obnovit ručně.",
     "settings.backup.help": "Uložte celou svou knihovnu do souboru, nebo ji ze souboru vraťte zpět — buď přidáním k tomu, co máte, nebo nahrazením. Jde o celou databázi, něco jiného než export několika písní.",
     "settings.backup.restore": "Obnovit ze souboru",
     "settings.backup.save": "Zálohovat do souboru",

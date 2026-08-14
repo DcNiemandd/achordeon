@@ -70,6 +70,7 @@ export const SongStore = signalStore(
   }),
   withMethods((store) => {
     const repo = inject(SONG_REPOSITORY);
+    const ownership = inject(LibraryOwnership);
 
     /**
      * Fetches are stamped, and one that resolves after a newer one started is
@@ -252,6 +253,11 @@ export const SongStore = signalStore(
        * the same knowledge in a presenter, one layer too high.
        */
       async lastChanged(): Promise<Song | undefined> {
+        // Ownership gate, same as `live`: a hidden library has no song to land on.
+        // This reads past the window straight from the repo, so the `live` filter
+        // does not cover it — without this a foreign library's newest song is what
+        // `/songs` auto-selects.
+        if (!ownership.isVisible()) return undefined;
         const page = await repo.page({
           limit: 1,
           sort: 'changed',
@@ -274,6 +280,11 @@ export const SongStore = signalStore(
         dir?: SortDir;
         favoritesFirst?: boolean;
       }): Promise<Song[]> {
+        // Ownership gate, same as `live`: the virtual All songs book reads the
+        // whole library past the window, so the `live` filter never touches it. A
+        // library this session does not own must come back empty here too, or the
+        // one list that bypasses `live` leaks every foreign song.
+        if (!ownership.isVisible()) return [];
         const page = await repo.page({
           limit: Number.MAX_SAFE_INTEGER,
           sort: order?.sort ?? 'name',

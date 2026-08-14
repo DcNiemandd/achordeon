@@ -19,21 +19,23 @@ import {
   signal,
 } from '@angular/core';
 import { LibraryOwnership, SyncService } from '@achordeon/shared/data-access';
-import { Button, Dialog } from '../../primitives';
+import { Button, Dialog, Icon } from '../../primitives';
 
 @Component({
   selector: 'app-foreign-library-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Dialog],
+  imports: [Button, Dialog, Icon],
   template: `
     @if (ownership.isForeign()) {
-      <div class="notice" role="status" data-testid="foreign-library">
+      <div class="notice" role="alert" data-testid="foreign-library">
+        <app-icon class="siren" name="warning" />
         <div class="text">
           <p class="lead">{{ heading }}</p>
           <p class="body">{{ explain }}</p>
         </div>
         <button
           appButton
+          variant="danger"
           type="button"
           data-testid="foreign-library-replace"
           (click)="openConfirm()"
@@ -80,28 +82,42 @@ import { Button, Dialog } from '../../primitives';
     }
   `,
   styles: `
+    /* A loud, unmistakable danger banner — a hidden foreign library is a data
+       state a user must not skim past. Heavy danger border, danger-tinted fill,
+       a siren icon and an accent bar down the leading edge. */
     .notice {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
       gap: var(--space-3);
       padding: var(--space-4);
       margin-bottom: var(--space-4);
-      border: 1px solid var(--border);
+      border: 2px solid var(--danger);
+      border-inline-start-width: 6px;
       border-radius: var(--radius-md);
-      background: var(--surface-raised);
+      background: var(--danger-subtle);
+      box-shadow: 0 0 0 1px var(--danger-subtle);
+    }
+    .siren {
+      flex: none;
+      --icon-size: 28px;
+      color: var(--danger);
     }
     .text {
       flex: 1 1 16rem;
+      min-inline-size: 0;
     }
     .lead {
       margin: 0 0 var(--space-1);
-      font-weight: 600;
+      font-weight: 700;
+      font-size: var(--text-md);
+      color: var(--danger);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
     .body {
       margin: 0;
-      color: var(--text-muted);
+      color: var(--text);
     }
     .warn {
       margin: 0;
