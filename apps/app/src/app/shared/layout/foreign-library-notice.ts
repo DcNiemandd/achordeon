@@ -35,7 +35,7 @@ import { Button, Dialog, Icon } from '../../primitives';
         </div>
         <button
           appButton
-          variant="danger"
+          variant="primary"
           type="button"
           data-testid="foreign-library-replace"
           (click)="openConfirm()"
