@@ -7,24 +7,218 @@ description: 'Open a lobby from the stage, and get everyone in the room onto it 
 
 Your songbook on their phones, turning when you turn.
 
+A lobby is five characters. You open one from inside a performance, everybody
+else types those five characters into the <Ui id="nav.audience" /> module, and
+from then on their screens show the song yours is on.
+
+What travels is the **song**, not a picture of your screen: the words, the
+chords and the settings the page is drawn with, so every phone lays it out for
+its own screen instead of squinting at a shrunk copy of yours. Hosting needs a
+connection; joining is free, and always will be.
+
 ## 1. As the performer: enter a performance
+
+There is no lobby outside one. Open <AppLink to="stage">Stage</AppLink>, pick
+the songbook you are playing tonight, and you are performing —
+[Perform from a songbook](./perform-from-a-songbook.mdx) covers that part if it
+is new. Everything below happens on top of that page.
+
+The lobby belongs to the **performance**, not to the songbook: it starts when
+you open it and it is over when the performance is.
 
 ## 2. Create an audience
 
+The audience control is in the performing bar with the others. On a desktop it
+is the icon whose tooltip reads <Ui id="stage.audience" />; on a phone it is a
+row of the same name inside <Ui id="stage.menu" />.
+
+It opens a dialog that so far has nothing to show — one sentence about what
+sharing does, and one button, <Ui id="stage.audienceDialog.create" />.
+
+<Image
+  alt="The audience dialog before a lobby exists: what sharing does, and the Create lobby button"
+  src="/img/screenshot-stage-audience-create.png"
+  srcDark="/img/screenshot-stage-audience-create-dark.png"
+/>
+
+The gold ring around the button is the Premium mark, and hovering it says so:
+hosting an audience is a Premium feature, lent to everyone free while the app is
+in testing. The button is not disabled and never has been — press it.
+
+Pressing it hands you a PIN straight away. The five characters are drawn on your
+own device, from an alphabet with no `0`/`O` and no `1`/`I`/`L` in it, because
+this is a code somebody reads off a screen across a room or hears called out.
+
 ## 3. Show the PIN, the link or the QR code
+
+The dialog is now the lobby, and it offers the same room three ways.
+
+<Image
+  alt="The live lobby: the PIN, the count of listeners, the join link and the QR code"
+  src="/img/screenshot-stage-lobby.png"
+  srcDark="/img/screenshot-stage-lobby-dark.png"
+/>
+
+- The code itself, under <Ui id="stage.audienceDialog.pin" /> — big enough to be
+  read from the back, short enough to say out loud between songs.
+- The address, under <Ui id="stage.audienceDialog.link" />. Click it and it is
+  copied; the clipboard mark turns into a tick for a moment to say it worked.
+  This is the one to paste into whatever the room is already looking at — a chat,
+  an invitation, a description under a video.
+- The same address as a picture, under <Ui id="stage.audienceDialog.qr" />. Hold
+  the screen up, or put it on the projector between numbers, and a camera does
+  the typing.
+
+The row marked <Ui id="stage.audienceDialog.count" /> is how many devices are on
+the lobby right now. It is the only honest answer to "did that work" — watch it
+go up as the room joins.
+
+:::note[Don't follow your own link]
+The link opens the audience page, and opening it on the performing device would
+be the stage walking off itself. Hand it over, don't click it.
+:::
 
 ## 4. Play — the page turns for them
 
+Nothing else to press. Every move you make to another song republishes the
+lobby, and the viewers redraw. So does a change of settings mid-set: the page
+they get is always the page you are looking at.
+
+They also get the **set list** with it, which is why a viewer can open the songs
+of the evening without asking you for anything.
+
+Three things you do on stage stay on stage, on purpose:
+
+- your own transpose — every viewer has one of their own, and one sent from the
+  stage would fight it;
+- the dark page (<Ui id="stage.darkPage" />) — a stage is dark and a kitchen
+  table is not, so each screen answers for the room it is in;
+- the zoom — leaning in is a thing you do with your own eyes.
+
 ## 5. Manage the lobby
+
+Closing the dialog does not close the lobby. The audience control stays lit and
+renames itself <Ui id="stage.audience.manage" />; opening it again puts you back
+on the same PIN, the same link and the same count.
+
+The lobby also survives leaving the page. Step out to <AppLink to="songs">Songs</AppLink> to fix a typo, or
+reload the tab your phone closed while it was locked, and the performance — the
+lobby included — resumes where it was. A performance you have not touched for
+twelve hours does not.
 
 ## 6. End it by exiting
 
+There is an <Ui id="stage.audienceDialog.end" /> at the foot of the dialog: it
+retires the lobby and leaves you performing. <Ui id="stage.exit" /> does both at
+once — the performance is over, so the audience is too.
+
+Either way, the viewers are told: their screens read <Ui id="audience.ended" />
+and offer the PIN prompt again.
+
+A lobby is one evening. The next one is a new PIN, so a code somebody wrote down
+last week gets them nowhere.
+
 ## 7. As a viewer: open `Audience`
+
+This half needs nothing: no account, no library, no songs of your own. The
+module is the fourth in the rail, under <Ui id="nav.stage" /> — <AppLink to="audience">open it now</AppLink>.
 
 ## 8. Type the PIN, or scan the QR code
 
+<Image
+  alt="The Audience module's join prompt: the PIN field and the Join button"
+  src="/img/screenshot-audience-join.png"
+  srcDark="/img/screenshot-audience-join-dark.png"
+/>
+
+Type the five characters and press <Ui id="audience.join" />. Case does not
+matter — the field puts everything in capitals as you go.
+
+Scanning the performer's QR code skips this screen: the code carries the PIN in
+the address, so the camera opens the app already joined. So does the link, which
+is why the link is worth pasting where the room can reach it.
+
+If the PIN is wrong you are told so — <Ui id="audience.notFound" /> — and left
+here to try again, which is the point of an alphabet that cannot be misread. The
+last PIN that actually worked is filled in for you next time, so rejoining after
+a break is one tap.
+
 ## 9. Follow along, with the summary and the zoom
+
+You are in. The song fills the screen and turns when the performer turns it.
+
+<Image
+  alt="A phone following a performance, with the audience controls in the bottom bar"
+  src="/img/screenshot-audience-following.png"
+  srcDark="/img/screenshot-audience-following-dark.png"
+/>
+
+The bar at the foot is yours: fullscreen, the song list, and a <Ui id="stage.menu" /> for
+the rest. On a desktop it sits under the page instead of at the bottom of the
+screen, but it is the same three.
+
+The song list is the set list the performer sent, marked at the song being
+played. It has its own search and it is read-only — you are following, so
+tapping a row does not take you anywhere.
+
+<Image
+  alt="The audience's song list: the set list, read-only, with the current song marked"
+  src="/img/screenshot-audience-summary.png"
+  srcDark="/img/screenshot-audience-summary-dark.png"
+/>
+
+Everything else about how you read it is yours alone and invisible to the
+performer:
+
+- Zoom — pinch, or double-tap the line you want; `+`, `-` and `0` do it from a
+  keyboard. A pill in the corner shows how far in you are and gives the whole
+  page back in one tap.
+- Chords off (<Ui id="audience.hideChords" />), for anyone in the room who is
+  singing rather than playing. The chord rows keep their space, so nothing
+  reflows under your eyes.
+- The dark page (<Ui id="stage.darkPage" />), for the same song on black.
+- Holding the phone sideways (<Ui id="stage.turnPage" />). The row is only there
+  when the song on screen would gain by it, and armed, it turns the songs that
+  do and leaves the rest upright.
+- The lobby itself (<Ui id="audience.lobby" />) — the PIN, the count, and a QR
+  code of your own. That is how you get the person beside you onto the same
+  lobby without going back to the performer.
+
+Last in the menu is <Ui id="audience.exit" />. The performance carries on
+without you, and the PIN is remembered for the way back.
 
 ## 10. Transpose your own screen
 
+The performer is playing it in the key it is written in. You have a capo on, or
+a different instrument, or a voice that does not reach the top note.
+
+The menu's <Ui id="transpose.title" /> opens a small panel over the page: down,
+the offset, up. It stays open while you step, so you can watch the chords move
+under it and stop where your hands are.
+
+<Image
+  alt="A viewer's own transpose: the panel over the page, and the chords already moved"
+  src="/img/screenshot-audience-transpose.png"
+  srcDark="/img/screenshot-audience-transpose-dark.png"
+/>
+
+The number is semitones, signed, and pressing it
+(<Ui id="transpose.reset" />) puts the song back the way it arrived. Twelve steps
+is the same music an octave away, so the twelfth wraps around to `0`.
+
+Nothing about this leaves your phone. The performer's screen does not move, the
+next viewer's does not either, and no song anywhere is rewritten — to change a
+song for good you need the editor, which
+[Transpose a song](./transpose-a-song.mdx) is about. Your offset holds for the
+rest of the evening and is gone when you leave the lobby.
+
 ## 11. Re-sync after your phone was locked
+
+A phone that was locked, or off in another app, catches up by itself when you
+come back to it. The lobby's current song is stored, not just broadcast, so a
+missed message is not a missed song.
+
+The menu's <Ui id="audience.sync" /> is for the case where you suspect you are
+behind and would rather not wait to find out: it re-reads the lobby and applies
+it. Pressing it when you are already current does nothing at all, so it is
+always safe to press.
