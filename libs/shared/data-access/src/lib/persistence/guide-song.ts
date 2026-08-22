@@ -97,7 +97,10 @@ export async function applyFirstRun(
       name: guide.name,
       content: guide.content,
       favorite: false,
-      settings: {},
+      // A landscape render box shaped to the tour's own content, so it fills the
+      // page with little whitespace — the shape the docs screenshot wants, and a
+      // sensible first thing a new user sees the aspect-ratio setting do.
+      settings: { aspectRatio: '756:491' },
       cache: guide.cache,
     };
     const starter = starterLibrary(now);
