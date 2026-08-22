@@ -93,6 +93,19 @@ export const SHOTS: readonly Shot[] = [
     capture: { mode: 'view', clip: '[data-testid="rail"]' },
   },
 
+  // The download dialog, opened over the songs page — its format options are
+  // localized, so both locales are captured.
+  {
+    name: 'download-dialog',
+    arrange: async (page) => {
+      await seededGoto(page, 'songs');
+      await page.getByTestId('song-row').first().waitFor({ state: 'visible' });
+      await page.getByTestId('songs-download').click();
+    },
+    ready: '[data-testid="download-dialog"]',
+    capture: { mode: 'view', clip: '[data-testid="download-dialog"]' },
+  },
+
   // Songs: the explorer with a song focused in the preview pane.
   {
     name: 'songs',
