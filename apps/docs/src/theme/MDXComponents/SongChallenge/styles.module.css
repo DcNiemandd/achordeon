@@ -1,0 +1,67 @@
+/*
+ * The exercise stacks: prompt, the two-up editor+render (borrowed whole from
+ * SongPreview's `.preview` row), then a footer with the verdict and — where there
+ * is one answer to give — a button that fills it in. Only the wrapper, the
+ * prompt, the footer, and the button live here; the editor box, its palette, and
+ * the render column all come from `previewStyles`.
+ */
+.challenge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: var(--ifm-leading);
+}
+
+.prompt {
+  margin: 0;
+}
+
+/* Verdict on the left, action on the right, on one line. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/*
+ * The verdict. Coloured by state — a green that reads as "done" against both
+ * themes, and the secondary content colour while there is still work to do so an
+ * unsolved step never nags.
+ */
+.correct,
+.pending {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.correct {
+  color: var(--ifm-color-success);
+}
+
+.pending {
+  color: var(--ifm-color-content-secondary);
+}
+
+/*
+ * A quiet, secondary action — it is a way out, not the thing to do. Bordered
+ * rather than filled so it never competes with the reader's own work in the
+ * editor; Infima's tokens so it is one button in two themes.
+ */
+.showSolution {
+  flex: none;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ifm-color-content-secondary);
+  background: transparent;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-button-border-radius);
+  cursor: pointer;
+}
+
+.showSolution:hover {
+  color: var(--ifm-color-content);
+  border-color: var(--ifm-color-emphasis-500);
+}
