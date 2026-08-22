@@ -82,6 +82,30 @@ const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
 
 /**
+ * Seed the library and hand back the guide song — the tour a fresh install is
+ * born with, and the song the render-settings shot is taken on.
+ *
+ * Not `firstRowId(page, 'song-row')`: the list sorts by name, so that is
+ * `Amazing Grace` — one four-line verse on an otherwise empty A4, and a settings
+ * panel photographed beside a mostly white page says nothing about what the
+ * settings are for. The guide song fills a page already cropped to its own
+ * content, so the render in pane B is one the settings visibly did something to.
+ *
+ * Found by the current-row mark rather than by name, because the name is
+ * translated and the id is a fresh UUID every seed: `Songs` selects the most
+ * recently changed row on arrival (`SongsPresenter.autoSelect`), and the guide
+ * song is seeded to be it.
+ */
+async function guideSongId(page: Page): Promise<string> {
+  await seededGoto(page, 'songs');
+  const row = page.locator('[data-testid="song-row"].is-current');
+  await row.waitFor({ state: 'visible' });
+  const id = await row.getAttribute('data-song-id');
+  if (!id) throw new Error('The current song row carries no id.');
+  return id;
+}
+
+/**
  * Put a performance on a peer device and open its lobby, so the shot's own page
  * has one to join. Returns once the host is publishing: a viewer that joins
  * before that sees a lobby with no song in it, which is a picture of a bug.
@@ -178,6 +202,70 @@ export const SHOTS: readonly Shot[] = [
     },
     ready: '[data-testid="song-render"] svg',
     capture: { mode: 'view' },
+  },
+
+  // The render settings, open where they are actually used. Full window and no
+  // clip, which is the entire reason this shot exists: the dialog is `container`
+  // mode with no backdrop, so pane B keeps drawing the song beside it, and a
+  // reader nudging a number is looking at the answer in the same frame. Clipped
+  // to `.panel` it would be a settings form like any other, and the one fact the
+  // tutorial is built on — you tune it while watching it — is the one that would
+  // not be in the picture.
+  {
+    name: 'song-settings',
+    arrange: async (page) => {
+      const id = await guideSongId(page);
+      await page.goto(`songs/${id}/edit`);
+      await page.getByTestId('editor-settings').click();
+    },
+    ready: '[data-testid="song-settings-dialog"]',
+    capture: { mode: 'view' },
+  },
+
+  // What `Columns` does, which is the one setting on this page a sentence
+  // cannot sell. Clipped to the paper: the step is about what happened on the
+  // page, and the editor around it is already `song-settings`'s job.
+  //
+  // `Feature Tour`, not the guide song the shot above uses. The renderer breaks
+  // a column only at a block boundary (`column-layout.ts`), so three of the five
+  // starter songs — one verse each — render at two columns exactly as they do at
+  // one. The guide song has the blocks but not the shape: its lines are long
+  // prose, so side by side they halve the fit scale and the two columns end up
+  // touching. `Feature Tour` has four short-lined blocks, which is the case this
+  // setting is for and the only one in the library that pictures it.
+  //
+  // It is *seeded* at two columns (`seed.ts`), so the shot resets the row and
+  // splits it again: the picture is then the result of the gesture the step
+  // describes, and it stays true if the seed ever ships this song at one.
+  //
+  // English only: a starter song is fixed source text with nothing to translate
+  // (`seed.ts`), and the app's own chrome is outside the clip — the two locales
+  // came out byte-identical, which is a second file promising a difference it
+  // does not hold.
+  {
+    name: 'song-columns',
+    locales: ['en'],
+    arrange: async (page) => {
+      await seededGoto(page, 'songs');
+      const row = page
+        .getByTestId('song-row')
+        .filter({ hasText: 'Feature Tour' });
+      await row.waitFor({ state: 'visible' });
+      const id = await row.getAttribute('data-song-id');
+      if (!id) throw new Error('The "Feature Tour" row carries no id.');
+      await page.goto(`songs/${id}/edit`);
+      await page.getByTestId('editor-settings').click();
+      // Back to the inherited single column, then the stepper's `+` once.
+      await page.getByTestId('reset-columns').click();
+      await page.getByTestId('inc-columns').click();
+      // The Reset button exists only while the song OWNS the setting
+      // (`row.isOverridden`), so waiting for it back is waiting for the change
+      // to have landed — the same render pass that redraws pane B. Waiting on
+      // the SVG alone would happily photograph the one-column render.
+      await page.getByTestId('reset-columns').waitFor({ state: 'visible' });
+    },
+    ready: '[data-testid="song-render"] svg',
+    capture: { mode: 'view', clip: '[data-testid="song-page"]', pad: 12 },
   },
 
   // Songbooks: the list of books.
