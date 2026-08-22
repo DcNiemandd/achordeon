@@ -152,9 +152,13 @@ interface VariantOption {
       display: contents;
     }
 
+    /* Label left, control right — and the control takes its half rather than
+       being sized to its own longest option, which left the pickers in one
+       dialog at four different widths with a ragged left edge down the column.
+       They fill what they are given, so a wider dialog widens them all. */
     .row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr minmax(0, 1fr);
       align-items: center;
       gap: var(--space-2);
     }
@@ -165,7 +169,8 @@ interface VariantOption {
     }
 
     .control {
-      min-inline-size: 8rem;
+      inline-size: 100%;
+      min-inline-size: 0;
       padding: var(--space-1) var(--space-2);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);

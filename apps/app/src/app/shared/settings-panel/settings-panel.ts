@@ -585,19 +585,19 @@ const SHAPE_SOURCE: Readonly<Record<string, AspectRatioSource>> = {
     }
 
     /* Big arrows: a native number spinner is a ~10px target and unusable on
-       touch. Sized to the content, not the column — arrows flung to opposite
-       edges of a wide row read as two unrelated buttons, not one control. */
+       touch. Fills the row, like every control above it — sized to its content
+       instead, the stepper stopped at 240px while the select beside it ran to
+       the edge, and a one-column panel came out with two different right edges.
+       Nothing is flung apart by that: the grid goes two-up at 420px, so a row
+       is never wider than that in the one-column view, and the columns it
+       splits into are narrower still. */
     /* 3ch fitted the old read-only <output>, which never showed more than "1".
-       A typable field has to hold what someone types into it — "0.5" was being
-       clipped to "0." the moment padding moved off its default. */
-    /* 3ch fitted the old read-only output, which never showed more than "1".
        A typable field has to hold what someone types into it — "0.5" was being
        clipped to "0." the moment padding moved off its default. */
     .stepper {
       display: flex;
       align-items: center;
       gap: var(--space-1);
-      max-inline-size: 240px;
     }
 
     .stepper > button {
