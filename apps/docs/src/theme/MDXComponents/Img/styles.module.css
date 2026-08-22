@@ -13,3 +13,74 @@
 [data-theme='dark'] .shadow {
   box-shadow: 0 4px 28px rgba(0, 0, 0, 0.55);
 }
+
+/* The image itself stays the thing you click; the button is only a hit area,
+   so it keeps none of a button's own box. */
+.trigger {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 0;
+  cursor: zoom-in;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 4px;
+}
+
+/* Fills the viewport so a click beside the image lands on the dialog itself
+   and closes it. `dialog` is display:none until open, hence the [open] rule. */
+.dialog {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.dialog[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.full {
+  max-width: 92vw;
+  max-height: 92vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: zoom-out;
+}
+
+.close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: rgba(0, 0, 0, 0.75);
+}

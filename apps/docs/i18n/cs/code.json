@@ -44,6 +44,14 @@
   "privacy.stats.state.off": {
     "message": "Vypnuto, pro tento prohlížeč."
   },
+  "image.dialog.open": {
+    "message": "Zobrazit v plné velikosti",
+    "description": "Tooltip of an image that opens in a full-size view"
+  },
+  "image.dialog.close": {
+    "message": "Zavřít obrázek",
+    "description": "Label of the close button of the full-size image view"
+  },
   "songPreview.source": {
     "message": "Zápis",
     "description": "Caption above the editable song markup of a live example"
