@@ -8,6 +8,7 @@
     "start": {
       "executor": "nx:run-commands",
       "_comment": "`.docusaurus-dev` instead of the default `.docusaurus`, because `docusaurus start` and `docusaurus build` generate into the SAME folder. A build run while the dev server is up (`nx build docs`, or anything that depends on it) overwrites that folder underneath it; the watcher sees the change and recompiles the running site from the build's leftovers - production config, and the last locale built, which is `cs`. The English dev site then believes its baseUrl is `/cs/`, so every link and every hot reload lands on a path it does not serve: a 404 in the other language, out of nowhere, on the next keystroke. Separate folders make that collision impossible.",
+      "dependsOn": ["gen-ui-strings"],
       "options": {
         "command": "pnpm --filter @achordeon/docs run start",
         "env": { "DOCUSAURUS_GENERATED_FILES_DIR_NAME": ".docusaurus-dev" }
@@ -26,10 +27,27 @@
         "command": "node tools/gen-json-schema.mjs"
       }
     },
+    "gen-ui-strings": {
+      "executor": "nx:run-commands",
+      "_comment": "The app labels the docs quote, pulled from the app's own translation tables by id (`<Ui id=\"…\">`). Inputs cover both the source of the words and the pages that ask for them, so adding a quote to an .mdx re-runs it.",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/gen-ui-strings.mjs",
+        "{workspaceRoot}/apps/app/src/locale/*.json",
+        "{projectRoot}/docs/**/*.mdx",
+        "{projectRoot}/i18n/**/*.mdx",
+        "{projectRoot}/src/**/*.tsx"
+      ],
+      "outputs": ["{projectRoot}/src/generated/ui-strings.json"],
+      "options": {
+        "command": "node tools/gen-ui-strings.mjs"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": [
         "gen-json-schema",
+        "gen-ui-strings",
         { "projects": ["skill"], "target": "gen-skill-zip" }
       ],
       "outputs": ["{projectRoot}/build"],
@@ -57,6 +75,7 @@
     },
     "typecheck": {
       "executor": "nx:run-commands",
+      "dependsOn": ["gen-ui-strings"],
       "options": {
         "command": "pnpm --filter @achordeon/docs run typecheck"
       }

@@ -8,6 +8,7 @@
 .docusaurus
 .docusaurus-dev
 .cache-loader
+/src/generated
 
 # Misc
 .DS_Store
