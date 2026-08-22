@@ -1,7 +1,9 @@
 import { translate } from '@docusaurus/Translate';
+import { useColorMode } from '@docusaurus/theme-common';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import Admonition from '@theme/Admonition';
 import type { Props } from '@theme/MDXComponents/Img';
+import ThemedImage from '@theme/ThemedImage';
 import clsx from 'clsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -14,6 +16,12 @@ function transformImgClassName(className?: string, shadow?: boolean): string {
 
 type ImgProps = Props & {
   isDesign?: boolean;
+  /** The same picture taken in the app's dark theme (`…-dark.png`, written by
+   * the shot harness). Given one, the image follows the READER's theme instead
+   * of being a lit window in a dark page. Optional: a picture with no dark
+   * counterpart — a design mockup, a printable song render — just keeps `src`
+   * in both themes. */
+  srcDark?: string;
   /** Lift the image off the page with a soft drop shadow (e.g. a floating
    * song render that would otherwise blend into the white page). */
   shadow?: boolean;
@@ -29,17 +37,25 @@ type ImgProps = Props & {
  * every stacking context on the page, Escape closes it, and focus stays inside
  * it — none of which we have to write. It is portalled to the body so the
  * markup never lands inside the paragraph the image sits in.
+ *
+ * Here the theme IS read in JS rather than left to CSS: the dialog only exists
+ * after a click, so there is no server-rendered markup to mismatch, and blowing
+ * a picture up to fill the screen is worth one `<img>` rather than two.
  */
 function ImageDialog({
   src,
+  srcDark,
   alt,
   onClose,
 }: {
   src: string;
+  srcDark?: string;
   alt?: string;
   onClose: () => void;
 }): ReactNode {
   const ref = useRef<HTMLDialogElement>(null);
+  const { colorMode } = useColorMode();
+  const shown = colorMode === 'dark' && srcDark ? srcDark : src;
 
   useEffect(() => {
     ref.current?.showModal();
@@ -65,7 +81,7 @@ function ImageDialog({
     >
       {/* Clicking the image closes too — the whole surface is one way out. */}
       <img
-        src={src}
+        src={shown}
         alt={alt}
         className={styles.full}
         onClick={() => ref.current?.close()}
@@ -88,23 +104,47 @@ function ImageDialog({
 }
 
 export default function MDXImg(props: ImgProps): ReactNode {
-  const { isDesign, shadow, isZoomable = true, ...rest } = props;
+  const {
+    isDesign,
+    shadow,
+    isZoomable = true,
+    src: source,
+    srcDark: sourceDark,
+    ...rest
+  } = props;
   const [isOpen, setIsOpen] = useState(false);
   // Resolve a root-relative `src` (e.g. `/img/foo.png`) against the site's
-  // baseUrl, so images work under a subpath deployment. Absolute URLs and empty
-  // values are left untouched by useBaseUrl.
-  const src = useBaseUrl(typeof rest.src === 'string' ? rest.src : '');
-  let image: ReactNode = (
-    <img
-      decoding="async"
-      loading="lazy"
-      {...rest}
-      src={rest.src ? src : undefined}
-      className={transformImgClassName(rest.className, shadow)}
-    />
-  );
+  // baseUrl, so images work under a subpath deployment. Absolute URLs are left
+  // untouched by useBaseUrl; an empty one resolves to the baseUrl itself, which
+  // is why every use below is guarded by the raw prop rather than the result.
+  const src = useBaseUrl(typeof source === 'string' ? source : '');
+  const srcDark = useBaseUrl(typeof sourceDark === 'string' ? sourceDark : '');
+  const className = transformImgClassName(rest.className, shadow);
 
-  if (!rest.src) {
+  // Both files ship and CSS picks (`ThemedImage`), rather than the component
+  // reading the theme and rendering one: the theme is not known while the HTML
+  // is built, so choosing in JS would serve the light picture to everyone and
+  // swap it after hydration — a flash on every dark-theme page load.
+  let image: ReactNode =
+    source && sourceDark ? (
+      <ThemedImage
+        decoding="async"
+        loading="lazy"
+        {...rest}
+        sources={{ light: src, dark: srcDark }}
+        className={className}
+      />
+    ) : (
+      <img
+        decoding="async"
+        loading="lazy"
+        {...rest}
+        src={source ? src : undefined}
+        className={className}
+      />
+    );
+
+  if (!source) {
     return (
       <Admonition type="danger" title="TODO: image">
         {image}
@@ -133,6 +173,7 @@ export default function MDXImg(props: ImgProps): ReactNode {
         {isOpen && (
           <ImageDialog
             src={src}
+            srcDark={sourceDark ? srcDark : undefined}
             alt={typeof rest.alt === 'string' ? rest.alt : undefined}
             onClose={() => setIsOpen(false)}
           />
