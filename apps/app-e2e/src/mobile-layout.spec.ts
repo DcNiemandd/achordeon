@@ -167,5 +167,25 @@ test.describe('mobile layout never overflows sideways', () => {
       await expect(page.getByTestId('module-title-input')).toBeVisible();
       await expectNoSideOverflow(page);
     });
+
+    // The summary is a panel the suite never opened, and it hid a real
+    // overflow: its search field is `inline-size: 100%` of a box it also has
+    // margins beside, so it ran off the right edge of every phone. Nothing
+    // else on the page did, which is why only opening the panel finds it.
+    test(`the stage summary fits at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 780 });
+      await withStarterLibrary(page, 'songbooks');
+      const bookId = await page
+        .getByTestId('songbook-row')
+        .filter({ hasNotText: 'All songs' })
+        .first()
+        .getAttribute('data-song-id');
+      await page.goto(`stage/${bookId}`);
+      await expect(page.getByTestId('stage-render')).toBeVisible();
+
+      await page.getByTestId('stage-summary').click();
+      await expect(page.getByTestId('stage-summary-list')).toBeVisible();
+      await expectNoSideOverflow(page);
+    });
   }
 });

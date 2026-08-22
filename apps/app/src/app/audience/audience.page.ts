@@ -366,6 +366,11 @@ function writeLastPin(pin: string): void {
 
     .summary-search {
       margin: var(--space-2) var(--space-3);
+      /* .app-field sets inline-size to 100%, and a percentage width does not
+         subtract the margins beside it — the field overflowed the panel by
+         exactly those two, off the right edge of a phone. Auto hands the
+         sizing back to the stretch, which is the one that knows about them. */
+      inline-size: auto;
     }
 
     .summary-list {
