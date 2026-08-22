@@ -7,22 +7,234 @@ description: 'Take a song that runs off the page and bring it back with the per-
 
 One song, one page, no scrolling while you play.
 
+The words are half of what you see. The other half is the page they are drawn
+on — its shape, the size of the text, the border around it, the air between the
+verses. Those are the **render settings**, and they belong to the song, so a
+song you have made fit stays fitted everywhere it turns up: in the editor, in a
+songbook, on stage, on a phone in the audience.
+
+They also compose, which is the thing worth learning here. Left on <Ui id="scale.auto" />,
+the scale fills the page as far as it will go — so room you take out of the gap
+between blocks, or off the border, does not stay empty. It comes back as bigger
+text.
+
 ## 1. Open the song's settings
+
+Everything below happens in the editor. Open the song from <AppLink to="songs">Songs</AppLink> —
+the pencil on its row, or a double-click — and the screen splits: the source on
+the left, the page it draws on the right.
+
+The gear at the far end of the toolbar is the one you want. Its tooltip reads <Ui id="editor.settings" />,
+and `Alt` + `,` opens it without the mouse.
+
+It opens **over the source, not over the render**. There is no backdrop and
+nothing is dimmed: the page on the right keeps drawing while you work, so every
+number you nudge is answered in the same breath. That is the method of this
+whole tutorial — do not tune blind and check afterwards, watch it.
+
+<Image
+  alt="The render settings open over the song source, with the page still drawing beside them"
+  src="/img/screenshot-song-settings.png"
+  srcDark="/img/screenshot-song-settings-dark.png"
+/>
+
+The panel is four sections — <Ui id="settingGroup.page" />, <Ui id="settingGroup.title" />, <Ui id="settingGroup.fonts" />
+and <Ui id="settingGroup.chords" /> — and the first of them holds almost
+everything this tutorial touches. Each row carries a `?` that says what the
+setting does.
+
+Every row starts out marked <Ui id="settings.inherited" />: the song is not
+setting it, and the value is coming from your global one. The moment you touch
+it the badge becomes a reset button (<Ui id="settings.reset" />), which is also
+how you hand the setting back later.
+
+:::note[On a phone]
+There is only one pane at a time, and a button in the bar switches between them.
+The settings still open over the source, so this is the one place where you tune
+first and look second.
+:::
 
 ## 2. Set the aspect ratio to the screen you play from
 
+<Ui id="setting.aspectRatio" /> is the **shape** of the page, not its size. It
+starts on <Ui id="aspect.a4" />, which is a compromise: that is the shape of
+paper, and you are almost certainly looking at a screen that is nothing like it.
+
+The picker has four shelves:
+
+- <Ui id="aspect.group.device" /> — <Ui id="aspect.matchScreen" /> measures the
+  device you are holding and stores the ratio it measured, so a phone saves
+  something like `131:284`, and that keeps meaning _that phone_ after it syncs
+  to your desktop. Its sideways twin, <Ui id="aspect.matchScreenSideways" />, is
+  the same measurement turned over — which is how you get a landscape song
+  without physically rotating a device that has rotation lock on.
+- <Ui id="aspect.group.paper" /> — <Ui id="aspect.a4" /> and
+  <Ui id="aspect.letter" />, for a song that is going to be printed.
+- <Ui id="aspect.group.portrait" /> — `9:19.5` down through `3:4`, tallest
+  first, ending at <Ui id="aspect.square" />.
+- <Ui id="aspect.group.landscape" /> — `21:9` down to `4:3`, which is the shelf
+  laptop screens live on.
+
+Every named ratio carries its numbers in its label, so you can check the claim
+before you act on it. Below the list is a free-text field: it takes a ratio like
+`3:4`, a fraction like `3/4`, a plain number, or the word `A4`, and it turns
+away anything the renderer could not draw rather than storing a value that would
+quietly do nothing.
+
+:::note[Shape, not size]
+Printing keeps the shape and scales it to fit the paper. Choosing a phone ratio
+does not make a small PDF — it makes a tall, narrow one.
+:::
+
+The fastest win on this page is often right here: crop the page to the song,
+instead of leaving A4's margins for the renderer to fill with nothing.
+
 ## 3. Close up the block gap
+
+<Ui id="setting.blockGap" /> is the space that separates a verse from a chorus.
+It is measured in lines of lyrics rather than in millimetres, so it keeps its
+proportion however big the song ends up being drawn.
+
+The default is `0.8` of a line and the stepper moves in tenths. `0` is a real
+answer — the blocks abut — and on a song of five blocks, a gap you close up is
+four lines of page you get back.
+
+It is the cheapest lever on the whole panel, and the reason is the composition
+rule from the top: with the scale left on <Ui id="scale.auto" />, the room you
+take out here does not sit empty. It is spent on making every letter bigger.
 
 ## 4. Split the song into columns
 
+<Ui id="setting.columns" /> cuts the song into side-by-side columns, up to six
+of them.
+
+The renderer chooses **where** to break, and it only ever breaks between blocks:
+a verse is never sawn in half, and the columns are balanced so that the tallest
+one comes out as short as it can. A song written as one long block therefore has
+nowhere to break, and setting it to two columns changes nothing whatsoever — a
+blank line is what gives the renderer a choice.
+
+<Image
+  alt="A song set to two columns: its blocks split into two runs across one page"
+  src="/img/screenshot-song-columns.png"
+  srcDark="/img/screenshot-song-columns-dark.png"
+/>
+
+Columns are for a song that is **taller** than its page: many short lines. Where
+the lines are long, two of them side by side need twice the width, and the fit
+scale is what pays for it — the song comes out smaller rather than bigger. Press
+the stepper and look; the render answers in the pane beside you.
+
 ## 5. Trim the padding
+
+<Ui id="setting.padding" /> is the white border between the song and the edge of
+the page, from `0` to `4` in quarters. Like the block gap it is measured in text
+sizes, so it holds its proportion however big the song is printed.
+
+It is the same trade as step 3 and it behaves the same way: what you take off
+the border comes back as text size. Take it to `0` and the song runs to the
+paper's edge — a fine thing on a screen you are reading from a metre away, and a
+poor one on a page you are about to print.
+
+:::note[A book adds its own]
+A songbook's print margin is added on top of this, not instead of it. See
+[Print a songbook](./print-a-songbook.mdx).
+:::
 
 ## 6. Set the scale, or leave it on auto
 
+<Ui id="setting.scale" /> is how big the text is, and it is the setting the
+three before it have been feeding all along.
+
+Left on <Ui id="scale.auto" />, it is not a number you chose. It is the largest
+size at which the whole song still fits its page, recomputed every time anything
+else moves. That is why closing the block gap makes the letters grow, and why
+two columns of long lines makes them shrink: you are not editing the size, you
+are editing how much room the size has to work with.
+
+Type a number instead and you have taken the wheel. `1` is the base size, the
+stepper moves in hundredths, and the song is drawn at exactly that whether or
+not it fits — a fixed scale is allowed to overflow the page. The reason to want
+one is consistency across a set: two songs at the same fixed scale have the same
+lettering, where two songs on <Ui id="scale.auto" /> almost certainly do not.
+
+The <Ui id="scale.auto" /> button beside the field hands it back.
+
 ## 7. Place the song on the page
+
+Once a song fits it usually does not fill, and something has to decide where the
+leftover room goes. Two rows answer that, and they are independent of each
+other:
+
+- <Ui id="setting.contentX" /> — across the page:
+  <Ui id="setting.contentX.left" />,
+  <Ui id="setting.contentX.center" />, <Ui id="setting.contentX.right" />.
+- <Ui id="setting.contentY" /> — down it: <Ui id="setting.contentY.top" />,
+  <Ui id="setting.contentY.middle" />, <Ui id="setting.contentY.bottom" />.
+
+Both start in the middle.
+
+Neither does anything to a song that already fills its page, which is worth
+knowing before you decide the buttons are broken. The corner-hugging pair, <Ui id="setting.contentX.left" />
+and <Ui id="setting.contentY.top" />, is what you want when the song shares the
+screen with something else.
 
 ## 8. Move the title
 
+The title block — the title and its subtitle together — has two settings of its
+own.
+
+<Ui id="setting.titlePosition" /> puts it <Ui id="setting.titlePosition.top" />,
+across the top of the page, or turns it into a
+<Ui id="setting.titlePosition.left" />: rotated, running up the left edge like
+the spine of a book. The spine costs a strip of width and gives back the whole
+height the title was using, which on a short, wide page is a real trade rather
+than a decoration. Either way the block hugs the top-left corner.
+
+<Ui id="setting.titleLayout" /> decides whether the subtitle sits under the
+title or beside it — <Ui id="setting.titleLayout.stacked" /> or
+<Ui id="setting.titleLayout.inline" />. Beside it is one line instead of two,
+which is one more line for the song.
+
 ## 9. Size the chords
 
+<Ui id="setting.chordSize" /> is the size of the chords **relative to the
+lyrics**, from `0.5` to `3`.
+
+It is not only a matter of taste. A chord rides in a row of its own above the
+line it belongs to, and that row is as tall as the chords in it — so shrinking
+the chords shortens every line of the song that carries any, and growing them
+lengthens it. If you play from across the room and want the chords big, this is
+where the page pays for them.
+
+<Ui id="setting.chordColor" /> is in the same section and changes nothing about
+the fit: it is the colour every chord in the song is drawn in.
+
+:::note[Notation is not a rewrite]
+The same section carries <Ui id="setting.notation" />, which spells the printed
+chords in English or German note names. It never touches what you wrote —
+[Transpose a song](./transpose-a-song.mdx) covers that.
+:::
+
 ## 10. Keep the setting for one song, or make it global
+
+Everything above was set on **one song**, which is the right scope for a song
+with a reason. The other two scopes are for when it is not.
+
+- **Global** — <Ui id="nav.settings" /> ▸ <Ui id="settings.rendering" /> is the
+  same panel with every row in it, and it is the base every song starts from.
+  Set your usual page shape and your usual block gap there once, and new songs
+  arrive already looking the way you like.
+- **A songbook** — a book carries the few settings that make a house style: the
+  fonts, the chord colour and size, the block gap, and the notation. That is
+  [Build a songbook](./build-a-songbook.mdx#13-restyle-the-chords-for-the-whole-book).
+- **A song** — everything, and the last word.
+
+The order is always global, then songbook, then song. A song that sets a value
+for itself beats the book it is in, and the book beats your global default —
+which is all a row marked <Ui id="settings.inherited" /> is saying: nobody
+nearer than the global has an opinion about it yet.
+
+Clearing an override hands the setting back up that chain. At global scope there
+is nothing above to hand it to, so the reset there reads <Ui id="settings.resetDefault" />
+and puts back the value Achordeon ships with.
