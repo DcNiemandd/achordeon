@@ -6,6 +6,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "strict": true,
+    // `@docusaurus/tsconfig` still sets `baseUrl`, which TS 5.9 reports as a
+    // hard error (TS5101) rather than a warning. Ours is gone; this silences
+    // theirs, and comes out when they drop it.
+    "ignoreDeprecations": "6.0",
     // The same map the `achordeon-libs` plugin hands webpack (docusaurus.config.ts).
     // Spelled out rather than inherited from `tsconfig.base.json`: that file sets a
     // workspace-wide `module`/`target` this site does not build under.

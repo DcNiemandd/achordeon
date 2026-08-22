@@ -9,6 +9,10 @@ export default [
       '**/dist',
       '**/build',
       '**/.docusaurus',
+      // `docusaurus start` writes its own generated dir when the site is served
+      // from a build-output path (`apps/docs/project.json`), and its generated
+      // client modules import by absolute path.
+      '**/.docusaurus-dev',
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',
     ],
