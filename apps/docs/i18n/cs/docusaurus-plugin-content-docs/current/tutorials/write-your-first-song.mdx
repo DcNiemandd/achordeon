@@ -1,0 +1,302 @@
+---
+sidebar_position: 2
+description: 'Vytvoř písničku, napiš text a umísti akordy přesně tam, kde se mění zvuk.'
+---
+
+import { findLabelDelimiter } from '@achordeon/shared/domain';
+
+# Napiš svou první písničku
+
+Od prázdné písničky k přehlednému akordovému zápisu. V aplikaci začneš v `Songs`:
+vytvoř písničku a pojmenuj ji. Všechno níže je zápis, který pak píšeš — projdi si
+to tady a náhled vpravo je vlastní náhled aplikace.
+
+## Postav písničku
+
+<SongChallenge
+  content={``}
+  steps={[
+    {
+      prompt: 'Napiš název: řádek, který začíná jednou hvězdičkou.',
+      check: (ast) => !!ast.title,
+      solution: `
+* Probuď mě
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.title,
+          message: 'Zatím žádný název — začni řádek jednou hvězdičkou a mezerou.',
+        },
+      ],
+    },
+    {
+      prompt: 'Pod něj přidej podnázev: řádek, který začíná dvěma hvězdičkami.',
+      check: (ast) => !!ast.subtitle,
+      solution: `
+* Probuď mě
+** Neznámý
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.subtitle,
+          message: 'Zatím žádný podnázev — začni řádek dvěma hvězdičkami a mezerou.',
+        },
+      ],
+    },
+    {
+      prompt: 'Napiš text: dva řádky pod podnázev.',
+      check: (ast) => ast.blocks.some((b) => b.lines.filter((l) => l.text.trim()).length >= 2),
+      solution: `
+* Probuď mě
+** Neznámý
+
+Probuď mě zevnitř
+zavolej mé jméno
+`,
+      feedback: [
+        {
+          when: (ast) => ast.blocks.every((b) => b.lines.every((l) => !l.text.trim())),
+          message: 'Zatím žádný text — napiš řádek pod podnázev.',
+        },
+        {
+          when: (ast) => ast.blocks.every((b) => b.lines.filter((l) => l.text.trim()).length < 2),
+          message: 'Zatím jeden řádek — přidej pod něj druhý.',
+        },
+      ],
+    },
+    {
+      prompt: 'Pojmenuj tento blok Refrén.',
+      check: (ast) => ast.blocks[0]?.label === 'Refrén',
+      solution: `
+* Probuď mě
+** Neznámý
+
+Refrén: Probuď mě zevnitř
+zavolej mé jméno
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks[0]?.label,
+          message: 'Zatím žádný štítek — před první řádek napiš slovo a dvojtečku.',
+        },
+        {
+          when: (ast) => ast.blocks[0]?.label !== 'Refrén',
+          message: 'Štítek tu je, ale není to „Refrén“.',
+        },
+      ],
+    },
+    {
+      prompt: 'Dej druhému řádku vlastní pod-štítek: Tiše.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.label === 'Tiše')),
+      solution: `
+* Probuď mě
+** Neznámý
+
+Refrén: Probuď mě zevnitř
+Tiše: zavolej mé jméno
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => !!l.label)),
+          message: 'Zatím žádný pod-štítek — štítek na dalším řádku pojmenuje jen ten řádek.',
+        },
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.label === 'Tiše')),
+          message: 'Pod-štítek tu je, ale není to „Tiše“.',
+        },
+      ],
+    },
+    {
+      prompt: 'Přidej další blok níže — prázdný řádek a pak nový řádek textu.',
+      check: (ast) => ast.blocks.filter((b) => b.lines.some((l) => l.text.trim())).length >= 2,
+      solution: `
+* Probuď mě
+** Neznámý
+
+Refrén: Probuď mě zevnitř
+Tiše: zavolej mé jméno
+
+zachraň mě ze tmy
+`,
+      feedback: [
+        {
+          when: (ast) => ast.blocks.filter((b) => b.lines.some((l) => l.text.trim())).length < 2,
+          message: 'Zatím jeden blok — nový blok začíná prázdným řádkem.',
+        },
+      ],
+    },
+    {
+      prompt: 'Tady je delší píseň. Umísti akord nad slovo — skutečný, transponovatelný akord jako Am, do hranatých závorek těsně před písmeno, nad které patří.',
+      content: `
+* Probuď mě
+** Neznámý
+
+Refrén: Probuď mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud svět ztichne
+`,
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.valid))),
+      solution: `
+* Probuď mě
+** Neznámý
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud svět ztichne
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.chords.length > 0)),
+          message: 'Zatím žádný akord — obal ho hranatými závorkami.',
+        },
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.valid))),
+          message: 'Závorka tu je, ale není to platný akord — zkus Am nebo G.',
+        },
+      ],
+    },
+    {
+      prompt: 'Přidej nahoru řádek jen s akordy — řadu akordů bez slov, jako předehru.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => !l.text.trim() && l.chords.length > 0)),
+      solution: `
+* Probuď mě
+** Neznámý
+
+[Am F G]
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud svět ztichne
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => !l.text.trim() && l.chords.length > 0)),
+          message: 'Zatím žádný řádek jen s akordy — dej akordy na samostatný řádek.',
+        },
+      ],
+    },
+    {
+      prompt: 'Nech jeden akord číst uvnitř řádku pomocí zdvojených závorek.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.inline))),
+      solution: `
+* Probuď mě
+** Neznámý
+
+[Am F G]
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než [[G]]začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud svět ztichne
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.inline))),
+          message: 'Jednoduché závorky sedí nad řádkem — zdvoj je a akord vejde do řádku.',
+        },
+      ],
+    },
+    {
+      prompt: 'Zvýrazni slovo tučně: obal ho dvěma hvězdičkami, jako **takhle**.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.bold))),
+      solution: `
+* Probuď mě
+** Neznámý
+
+[Am F G]
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než [[G]]začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud **svět** ztichne
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.bold))),
+          message: 'Zatím žádné tučné — obal slovo dvěma hvězdičkami: **takhle**.',
+        },
+      ],
+    },
+    {
+      prompt: 'Zvýrazni slovo kurzívou: obal ho jednou hvězdičkou, jako *takhle*.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.italic))),
+      solution: `
+* Probuď mě
+** Neznámý
+
+[Am F G]
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než [[G]]začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud **svět** *ztichne*
+`,
+      feedback: [
+        {
+          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.italic))),
+          message: 'Zatím žádná kurzíva — obal slovo jednou hvězdičkou: *takhle*.',
+        },
+      ],
+    },
+    {
+      prompt: 'Přidej řádek, který by začínal štítkem, jako „Vypravěč:“, ale nech dvojtečku ve slovech — escapuj ji zpětným lomítkem, ať zůstane textem.',
+      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => !l.label && findLabelDelimiter(l.text) >= 0)),
+      solution: `
+* Probuď mě
+** Neznámý
+
+[Am F G]
+
+Refrén: Probuď [Am]mě zevnitř
+Tiše: zavolej mé jméno
+zachraň mě ze tmy
+
+Sloka: Ležím tady v tichu
+než [[G]]začne píseň
+
+Můstek: Vrať mi život
+drž mě, dokud **svět** *ztichne*
+Vypravěč\\: drž se
+`,
+feedback: [
+{
+when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => !l.label && findLabelDelimiter(l.text) >= 0)),
+message: 'Zatím žádná escapovaná dvojtečka — dvojtečka, která by začala štítek, potřebuje před sebou zpětné lomítko (běžná jako 12:30 ne).',
+},
+],
+},
+]}
+/>

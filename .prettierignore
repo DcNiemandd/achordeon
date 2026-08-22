@@ -6,3 +6,13 @@
 .angular
 
 .nx/self-healing
+
+# These docs pages carry Achordeon song markup inside JS template literals passed
+# to <SongPreview> / <SongChallenge>. Prettier's MDX parser reads that markup as
+# page Markdown and rewrites it — `* title` becomes a `-` bullet, `*word*` becomes
+# `_word_`, `**` gets escaped — which silently breaks the examples. Keep it off them.
+apps/docs/docs/songs/syntax.mdx
+apps/docs/docs/songs/tips.mdx
+apps/docs/docs/tutorials/write-your-first-song.mdx
+apps/docs/i18n/cs/docusaurus-plugin-content-docs/current/songs/syntax.mdx
+apps/docs/i18n/cs/docusaurus-plugin-content-docs/current/tutorials/write-your-first-song.mdx
