@@ -21,7 +21,22 @@ export default defineConfig({
   workers: 4,
   fullyParallel: true,
   reporter: [['list']],
-  use: { baseURL },
+  use: {
+    baseURL,
+    // The shots run on a PUBLIC origin (`DOCS_ORIGIN`, so a lobby's join link
+    // and QR read as the real address) while the app's Supabase stays on
+    // `127.0.0.1`. Chrome's Local Network Access refuses a public page a socket
+    // to a local one, which killed Realtime: REST still answered, so a viewer
+    // rendered, but presence never synced and the lobby pictured itself with an
+    // audience of nobody. These flags stand the check down for the shot browser.
+    // Nothing about the app changes — only what this browser is willing to dial.
+    launchOptions: {
+      args: [
+        '--disable-features=BlockInsecurePrivateNetworkRequests,LocalNetworkAccessChecks,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults',
+        '--allow-running-insecure-content',
+      ],
+    },
+  },
   webServer: {
     command: 'pnpm exec nx run app:serve',
     url: 'http://localhost:4200',

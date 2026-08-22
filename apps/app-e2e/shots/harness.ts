@@ -46,6 +46,24 @@ export function outputPath(name: string, locale: Locale, theme: Theme): string {
 }
 
 /**
+ * The origin the pictures should read.
+ *
+ * One shot puts a URL on screen: a lobby shows the join link, and its QR code
+ * encodes the same string. `location.origin` is where that comes from, so a run
+ * against the dev server pictures `http://localhost:4200/…` — an address that
+ * is useless to a reader and a QR code that leads nowhere.
+ *
+ * So the browser is put on the real origin while the bytes still come from the
+ * local server (`contextFor`). Nothing is faked in the picture: the page really
+ * is at that address, the app really did compose the link from it, and the same
+ * link on the deployed site reaches the same route.
+ *
+ * Set `DOCS_ORIGIN` to another origin to move it, or to an empty string to shoot
+ * the dev server under its own address.
+ */
+const DOCS_ORIGIN = process.env['DOCS_ORIGIN'] ?? 'https://achordeon.eu';
+
+/**
  * A fresh context in `locale` and `theme`, with the OS save picker removed so
  * export shots produce a real `download` event (the picker is native UI
  * Playwright cannot drive — see `transfer.spec.ts`).
@@ -54,6 +72,12 @@ export function outputPath(name: string, locale: Locale, theme: Theme): string {
  * (`achordeon.language`, `achordeon.theme`), so they must be in place for the
  * very first load — hence `storageState` rather than a post-load switch, which
  * runtime `$localize` could not honour without a reload anyway.
+ *
+ * The context also lives at `DOCS_ORIGIN`, served from the dev server by a
+ * route that re-fetches every request against it. No DNS, no hosts file and no
+ * certificate: Playwright answers the request before the network is asked.
+ * Requests to any OTHER origin are left alone — which is what keeps Supabase
+ * local while the page claims a public address.
  */
 export async function contextFor(
   browser: Browser,
@@ -63,15 +87,24 @@ export async function contextFor(
   deviceScaleFactor: number,
   baseURL: string,
 ): Promise<Page> {
+  const server = new URL(baseURL);
+  // Same path (`/app/`), different host: the base href is the app's, and only
+  // the origin in front of it is being restated.
+  const publicURL = DOCS_ORIGIN
+    ? new URL(server.pathname, DOCS_ORIGIN).href
+    : baseURL;
   const context = await browser.newContext({
     viewport,
     deviceScaleFactor,
-    baseURL,
+    baseURL: publicURL,
     storageState: {
       cookies: [],
       origins: [
         {
-          origin: new URL(baseURL).origin,
+          // The origin the app will actually read this back from. Seeding the
+          // dev server's instead would leave the app in English on a light
+          // theme, on a page that never sees the keys.
+          origin: new URL(publicURL).origin,
           localStorage: [
             { name: 'achordeon.language', value: locale },
             { name: 'achordeon.theme', value: theme },
@@ -80,6 +113,15 @@ export async function contextFor(
       ],
     },
   });
+  if (publicURL !== baseURL) {
+    await context.route(`${new URL(publicURL).origin}/**`, async (route) => {
+      const asked = new URL(route.request().url());
+      const response = await route.fetch({
+        url: `${server.origin}${asked.pathname}${asked.search}`,
+      });
+      await route.fulfill({ response });
+    });
+  }
   await context.addInitScript(() => {
     // @ts-expect-error dropping an optional platform API so downloads fire
     delete window.showSaveFilePicker;

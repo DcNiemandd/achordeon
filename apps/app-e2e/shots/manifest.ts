@@ -372,6 +372,10 @@ export const SHOTS: readonly Shot[] = [
       await hostLobby(peers);
       await page.goto(`audience/${DOCS_LOBBY_PIN}`);
       await page.getByTestId('audience-render').waitFor({ state: 'visible' });
+      // On a phone the bar carries fullscreen, the song list and a More menu —
+      // transpose is inside it. Which is itself worth picturing: the reader has
+      // to open that menu to find this at all.
+      await page.getByTestId('audience-menu').click();
       await page.getByTestId('audience-transpose').click();
       await page.getByTestId('transpose-up').click();
     },
