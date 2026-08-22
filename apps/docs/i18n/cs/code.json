@@ -378,5 +378,25 @@
   "theme.docs.DocCard.categoryDescription.plurals": {
     "message": "1 položka|{count} položky|{count} položek|{count} položek",
     "description": "The default description for a category card in the generated index about how many items this category includes"
+  },
+  "songChallenge.progress": {
+    "message": "Krok {current} z {total}",
+    "description": "Which step of a multi-step exercise the reader is on"
+  },
+  "songChallenge.correct": {
+    "message": "Správně",
+    "description": "Shown when a step has been solved"
+  },
+  "songChallenge.pending": {
+    "message": "Zatím ne",
+    "description": "Shown while a step is not yet solved"
+  },
+  "songChallenge.next": {
+    "message": "Další",
+    "description": "Button that advances to the next step of an exercise"
+  },
+  "songChallenge.showSolution": {
+    "message": "Zobrazit řešení",
+    "description": "Button that fills the editor with the step answer"
   }
 }
