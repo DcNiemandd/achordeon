@@ -1,3 +1,15 @@
 .img {
   height: auto;
 }
+
+/* A soft lift for images that float on the page (a song render is mostly white,
+   so without it the edges vanish into the page). Rounded to match the app's own
+   surfaces; the shadow deepens in dark mode where a light image needs more. */
+.shadow {
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] .shadow {
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.55);
+}
