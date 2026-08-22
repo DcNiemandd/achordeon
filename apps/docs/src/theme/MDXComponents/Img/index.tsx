@@ -1,3 +1,4 @@
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import Admonition from '@theme/Admonition';
 import type { Props } from '@theme/MDXComponents/Img';
 import clsx from 'clsx';
@@ -15,11 +16,16 @@ type ImgProps = Props & {
 
 export default function MDXImg(props: ImgProps): ReactNode {
   const { isDesign, ...rest } = props;
+  // Resolve a root-relative `src` (e.g. `/img/foo.png`) against the site's
+  // baseUrl, so images work under a subpath deployment. Absolute URLs and empty
+  // values are left untouched by useBaseUrl.
+  const src = useBaseUrl(typeof rest.src === 'string' ? rest.src : '');
   const image = (
     <img
       decoding="async"
       loading="lazy"
       {...rest}
+      src={rest.src ? src : undefined}
       className={transformImgClassName(rest.className)}
     />
   );
