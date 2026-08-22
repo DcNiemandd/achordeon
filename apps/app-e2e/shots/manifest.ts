@@ -277,6 +277,52 @@ export const SHOTS: readonly Shot[] = [
     capture: { mode: 'view' },
   },
 
+  // The audience dialog one step BEFORE the lobby: the sentence explaining what
+  // sharing does, the Premium marker on the button, and the button itself. The
+  // live lobby (`stage-lobby`) is the same dialog with everything already
+  // decided, so it cannot answer "what do I press, and what will it cost me" —
+  // that question only has a picture here. No lobby is created, so no backend is
+  // touched: the shot stops at `create`, the state the dialog opens in.
+  {
+    name: 'stage-audience-create',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`stage/${bookId}`);
+      await page.getByTestId('stage-render').waitFor({ state: 'visible' });
+      await page.getByTestId('stage-audience').click();
+    },
+    ready: '[data-testid="stage-create-lobby"]',
+    // `.panel`, not the dialog host: the host carries the scrim, and clipping it
+    // pictures the whole dimmed performance instead of the dialog on it.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="stage-audience-dialog"] .panel',
+    },
+  },
+
+  // The viewer's front door: the PIN prompt on a bare `/audience`. The other
+  // audience pictures all start after a join, so this is the only one that shows
+  // the field the reader is being told to type into — and the hint that a QR
+  // code is the other way in. Free and lobby-less: the prompt is what the module
+  // renders with no PIN, so nothing has to be hosted for it.
+  //
+  // The PIN is typed in rather than left blank, for two reasons: an empty field
+  // greys Join out, and a docs picture of a dead primary button reads as a
+  // broken screen; and it is `DOCS_LOBBY_PIN`, so the five characters here are
+  // the same five the lobby picture shows the performer holding up.
+  {
+    name: 'audience-join',
+    arrange: async (page) => {
+      await seededGoto(page, 'audience');
+      await page.getByTestId('audience-pin-input').fill(DOCS_LOBBY_PIN);
+    },
+    ready: '[data-testid="audience-join"]',
+    // Clipped to the form: the rest of the route is an empty page, and a
+    // full-window shot would be a 320px card adrift in it.
+    capture: { mode: 'view', clip: '[data-testid="audience-join"]' },
+  },
+
   // ---------------------------------------------------------------------------
   // Lobby shots. Two devices each, and a Supabase to carry the song between
   // them — `needs: 'backend'`, so a run without one skips these four and takes
