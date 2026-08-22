@@ -1,6 +1,6 @@
 {
   "label": "Guides",
-  "position": 50,
+  "position": 1000,
   "link": {
     "type": "generated-index",
     "description": "Longer walkthroughs for the things that take more than a page - getting songs into Achordeon, and the workflows built around them."
