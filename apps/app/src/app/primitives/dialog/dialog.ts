@@ -153,7 +153,11 @@ import { DialogStack } from './dialog-stack';
       background: var(--surface-overlay);
       box-shadow: var(--shadow-2);
       pointer-events: auto;
-      overflow: auto;
+      /* The panel clips; the body inside it scrolls. Scrolling the PANEL took
+         the title bar and the actions down with the content — on a dialog tall
+         enough to need it (the shortcuts sheet, any dialog on a short viewport)
+         you lost the close button as soon as you moved. */
+      overflow: hidden;
     }
 
     /* A panel shaped like the page it frames — for content that IS the point
@@ -172,12 +176,8 @@ import { DialogStack } from './dialog-stack';
       );
     }
 
-    :host(.size-large) .body {
-      flex: 1;
-      min-block-size: 0;
-    }
-
     .head {
+      flex: none;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -190,12 +190,23 @@ import { DialogStack } from './dialog-stack';
       font-weight: 500;
     }
 
+    /* The only scroller. min-block-size: 0 because a flex item's floor is its
+       own content — without it the body grows and the clip above eats the
+       overflow instead of scrolling it. One rule covers both sizes: at "default"
+       the panel is auto-height (capped by max-block-size), so there is no free
+       space to grow into and the basis stands; at "large" the panel's height is
+       set, and the body takes what the header and footer leave. */
     .body {
+      flex: 1 1 auto;
+      min-block-size: 0;
+      overflow: auto;
+      scrollbar-gutter: stable;
       font-size: var(--text-sm);
       color: var(--text);
     }
 
     .foot {
+      flex: none;
       display: flex;
       justify-content: flex-end;
       gap: var(--space-2);
