@@ -9,7 +9,7 @@
 
 import { type Browser, type Download, type Page } from '@playwright/test';
 import { workspaceRoot } from '@nx/devkit';
-import { mkdirSync, copyFileSync } from 'node:fs';
+import { mkdirSync, copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type Locale = 'en' | 'cs';
@@ -171,6 +171,92 @@ export async function paddedClip(
   const right = Math.min(view.width, box.x + box.width + pad);
   const bottom = Math.min(view.height, box.y + box.height + pad);
   return { x, y, width: right - x, height: bottom - y };
+}
+
+/**
+ * The Supabase a lobby shot needs, if there is one.
+ *
+ * Read out of the app's own generated config rather than hard-coded, so a run
+ * points at whatever the app it is shooting points at - local `supabase start`
+ * or the deployed project. `SUPABASE_URL` overrides it for a run against one
+ * the config does not name.
+ */
+function backendUrl(): string {
+  const override = process.env['SUPABASE_URL'];
+  if (override) return override;
+  try {
+    const config = readFileSync(
+      join(workspaceRoot, 'apps', 'app', 'src', 'app', 'supabase.config.ts'),
+      'utf8',
+    );
+    return /"url":\s*"([^"]+)"/.exec(config)?.[1] ?? '';
+  } catch {
+    return '';
+  }
+}
+
+let backendProbe: Promise<boolean> | null = null;
+
+/**
+ * Whether a lobby can actually be hosted right now.
+ *
+ * A lobby shot is the only kind that needs something the workspace does not
+ * start for it, so it is the only kind that can be legitimately unrunnable: the
+ * runner skips those tests rather than failing them, and a run with no backend
+ * still produces every other picture. Probed once per process.
+ */
+export async function isBackendUp(): Promise<boolean> {
+  backendProbe ??= (async () => {
+    const url = backendUrl();
+    if (!url) return false;
+    try {
+      const response = await fetch(`${url}/auth/v1/health`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  })();
+  return backendProbe;
+}
+
+/**
+ * The lobby PIN every audience shot uses.
+ *
+ * Fixed, because a real one is allocated at random and would make every rerun
+ * write a different picture of the same thing - and because a PIN in the docs
+ * is read, typed and recognised across three images, which a fresh five
+ * characters each time cannot be. Spelled from the PIN alphabet (no `0/O`,
+ * no `1/I/L`), so it is a PIN the app itself could have handed out.
+ */
+export const DOCS_LOBBY_PIN = 'STAGE';
+
+/**
+ * Put a performance in place before the page that reads it loads.
+ *
+ * `StageSession` restores itself from this record at construction, lobby PIN
+ * included, which is what makes a *hosted* lobby reachable without clicking
+ * through the dialog - and what makes the PIN a value the shot chooses rather
+ * than one it has to read back off the screen. The route is then loaded fresh:
+ * the record is read once, at construction, not watched.
+ */
+export async function seedPerformance(
+  page: Page,
+  performance: { bookId: string; index?: number; pin?: string },
+): Promise<void> {
+  await page.evaluate((state) => {
+    localStorage.setItem(
+      'achordeon.stage',
+      JSON.stringify({
+        bookId: state.bookId,
+        index: state.index ?? 0,
+        lobbyPin: state.pin ?? '',
+        songDark: null,
+        savedAt: Date.now(),
+      }),
+    );
+  }, performance);
 }
 
 /** Copy the file a download produced to `dest`. */

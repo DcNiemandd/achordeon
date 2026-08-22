@@ -14,12 +14,23 @@
 
 import { type Page } from '@playwright/test';
 import {
+  DOCS_LOBBY_PIN,
   type Locale,
   type Theme,
   type Viewport,
   firstRowId,
+  seedPerformance,
   seededGoto,
 } from './harness';
+
+/** The other devices a shot can open — a lobby needs a second one. */
+export interface Peers {
+  /**
+   * Another device in this shot: its own context, same locale and theme,
+   * already on `route` with the starter library seeded.
+   */
+  readonly open: (route: string, viewport?: Viewport) => Promise<Page>;
+}
 
 interface Common {
   /** File stem: writes `screenshot-<name>.png`, plus `-dark` for that theme. */
@@ -30,8 +41,14 @@ interface Common {
   readonly themes?: readonly Theme[];
   readonly viewport?: Viewport;
   readonly deviceScaleFactor?: number;
+  /**
+   * What this shot needs that the workspace does not start for it. `backend`
+   * means a reachable Supabase; those shots are skipped without one rather
+   * than failing the run.
+   */
+  readonly needs?: 'backend';
   /** Drive the app to the moment of capture (navigate, open, seed extra). */
-  readonly arrange: (page: Page) => Promise<void>;
+  readonly arrange: (page: Page, peers: Peers) => Promise<void>;
 }
 
 /** A screenshot of the page, or of the box around `clip` if given. */
@@ -63,6 +80,20 @@ export const isView = (shot: Shot): shot is ViewShot =>
 /** The starter library's first real songbook — not the synthetic "All songs". */
 const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
+
+/**
+ * Put a performance on a peer device and open its lobby, so the shot's own page
+ * has one to join. Returns once the host is publishing: a viewer that joins
+ * before that sees a lobby with no song in it, which is a picture of a bug.
+ */
+async function hostLobby(peers: Peers): Promise<Page> {
+  const host = await peers.open('songbooks');
+  const bookId = await firstBookId(host);
+  await seedPerformance(host, { bookId, pin: DOCS_LOBBY_PIN });
+  await host.goto(`stage/${bookId}`);
+  await host.getByTestId('stage-render').waitFor({ state: 'visible' });
+  return host;
+}
 
 export const SHOTS: readonly Shot[] = [
   // The showcase render: the app's own SVG→PNG export of a song, not a
@@ -243,6 +274,109 @@ export const SHOTS: readonly Shot[] = [
     name: 'settings',
     arrange: (page) => seededGoto(page, 'settings'),
     ready: 'app-settings-page',
+    capture: { mode: 'view' },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Lobby shots. Two devices each, and a Supabase to carry the song between
+  // them — `needs: 'backend'`, so a run without one skips these four and takes
+  // everything else.
+  //
+  // Hosting needs no account: `lobby_publish` and `lobby_end` are granted to
+  // `anon` (supabase/migrations/20260724000000_lobbies.sql), and the PIN is
+  // allocated on the device. So the whole set works signed out, against local
+  // `supabase start` or a deployed project — whichever the app's own config
+  // names, or whatever `SUPABASE_URL` overrides it with.
+  //
+  // The PIN is seeded rather than pressed for (`DOCS_LOBBY_PIN`): a real one is
+  // five random characters, and a docs picture of a lobby has to show the same
+  // PIN as the picture beside it.
+  // ---------------------------------------------------------------------------
+
+  // The performer's lobby, live: PIN, link, QR, and a count that says somebody
+  // is actually there. The count is why this shot has a viewer at all — a lobby
+  // pictured with nobody on it is a lobby that looks like it failed.
+  {
+    name: 'stage-lobby',
+    needs: 'backend',
+    arrange: async (page, peers) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await seedPerformance(page, { bookId, pin: DOCS_LOBBY_PIN });
+      await page.goto(`stage/${bookId}`);
+      await page.getByTestId('stage-render').waitFor({ state: 'visible' });
+      await page.getByTestId('stage-audience').click();
+
+      // The viewer joins after the host is publishing, so it lands on a song
+      // rather than on an empty lobby it would have to be told about later.
+      const viewer = await peers.open(`audience/${DOCS_LOBBY_PIN}`);
+      await viewer
+        .getByTestId('audience-render')
+        .waitFor({ state: 'visible', timeout: 30_000 });
+
+      // Presence, not the join: the count is what the picture is for.
+      await page
+        .getByTestId('stage-lobby-count')
+        .filter({ hasText: /[1-9]/ })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    // Tall: PIN, count, link and QR are a four-row list, and a QR cut in half
+    // is a QR nobody can scan out of the docs.
+    viewport: { width: 1280, height: 1400 },
+    ready: '[data-testid="stage-lobby-qr"]',
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="stage-audience-dialog"] .panel',
+    },
+  },
+
+  // The viewer's screen, following the performance. A phone, because that is
+  // what an audience holds — and because the narrow layout is the one that puts
+  // the viewer's controls in the bottom bar.
+  {
+    name: 'audience-following',
+    needs: 'backend',
+    arrange: async (page, peers) => {
+      await hostLobby(peers);
+      await page.goto(`audience/${DOCS_LOBBY_PIN}`);
+    },
+    viewport: { width: 420, height: 860 },
+    ready: '[data-testid="audience-render"] svg',
+    capture: { mode: 'view' },
+  },
+
+  // The set list as the audience gets it: the same book, read-only, with its
+  // own search. It travels once on join, which is why a viewer can open it
+  // without asking the performer for anything.
+  {
+    name: 'audience-summary',
+    needs: 'backend',
+    arrange: async (page, peers) => {
+      await hostLobby(peers);
+      await page.goto(`audience/${DOCS_LOBBY_PIN}`);
+      await page.getByTestId('audience-render').waitFor({ state: 'visible' });
+      await page.getByTestId('audience-summary').click();
+    },
+    viewport: { width: 420, height: 860 },
+    ready: '[data-testid="audience-summary-list"]',
+    capture: { mode: 'view' },
+  },
+
+  // A viewer transposing their own screen. Full window on purpose: the step is
+  // that the chords behind the sheet moved and the performer's did not, which
+  // is a sentence about two things being in one picture.
+  {
+    name: 'audience-transpose',
+    needs: 'backend',
+    arrange: async (page, peers) => {
+      await hostLobby(peers);
+      await page.goto(`audience/${DOCS_LOBBY_PIN}`);
+      await page.getByTestId('audience-render').waitFor({ state: 'visible' });
+      await page.getByTestId('audience-transpose').click();
+      await page.getByTestId('transpose-up').click();
+    },
+    viewport: { width: 420, height: 860 },
+    ready: '[data-testid="audience-transpose-sheet"]',
     capture: { mode: 'view' },
   },
 ];
