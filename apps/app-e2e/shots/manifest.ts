@@ -23,9 +23,14 @@ interface Common {
   readonly arrange: (page: Page) => Promise<void>;
 }
 
-/** A screenshot of the page, or of `clip` if given. */
+/** A screenshot of the page, or of the box around `clip` if given. */
 interface ViewShot extends Common {
-  readonly capture: { readonly mode: 'view'; readonly clip?: string };
+  readonly capture: {
+    readonly mode: 'view';
+    readonly clip?: string;
+    /** Room left around `clip`, in CSS pixels. Defaults to `DEFAULT_PAD`. */
+    readonly pad?: number;
+  };
   /** A selector that is present once the view is ready to be pictured. */
   readonly ready: string;
 }
@@ -90,7 +95,9 @@ export const SHOTS: readonly Shot[] = [
       await page.setViewportSize({ width, height });
     },
     ready: '[data-testid="rail"]',
-    capture: { mode: 'view', clip: '[data-testid="rail"]' },
+    // No padding: the rail IS the picture, and a halo would just be a strip of
+    // the page beside it (the viewport is already cut to the rail's height).
+    capture: { mode: 'view', clip: '[data-testid="rail"]', pad: 0 },
   },
 
   // The download dialog, opened over the songs page — its format options are
@@ -144,6 +151,67 @@ export const SHOTS: readonly Shot[] = [
     },
     ready: '[data-testid="songbook-detail"]',
     capture: { mode: 'view' },
+  },
+
+  // The book's reorder tools, live. The four buttons are dead until slots are
+  // ticked, so the shot picks one first — a picture of a disabled toolbar would
+  // teach the reader the wrong thing. Clipped: this is a step about four
+  // buttons, not about the module around them.
+  {
+    name: 'songbook-reorder',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      const slotKey = await firstRowId(page, 'entry-row');
+      await page.getByTestId(`select-${slotKey}`).click();
+    },
+    ready: '[data-testid="entry-tools"] button:not([disabled])',
+    // The book's header strip, not the toolbar alone: a 24px halo around four
+    // buttons only crops the neighbours mid-word. The strip has its own edges,
+    // so nothing in the picture is cut, and the four buttons are shown where
+    // they actually live — beside the book's name and its perform/download.
+    capture: { mode: 'view', clip: '[data-testid="action-bar"]', pad: 12 },
+  },
+
+  // The song preview over the builder — the dialog a row's preview opens, with
+  // its Edit. It reopens from the URL (`?preview=`), which is how this gets
+  // there: the song id comes from the library, since an entry row's id is a
+  // slot key and not a song's.
+  {
+    name: 'songbook-preview',
+    arrange: async (page) => {
+      await seededGoto(page, 'songs');
+      const songId = await firstRowId(page, 'song-row');
+      await page.goto('songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}?preview=${songId}`);
+    },
+    // The whole window on purpose: the step is "look at a song WITHOUT leaving
+    // the list", and the dimmed builder behind the dialog is half of that
+    // sentence. Clipped to the panel it would just be a render.
+    ready: '[data-testid="song-preview-dialog"] svg',
+    capture: { mode: 'view' },
+  },
+
+  // The book's own settings dialog — the songbook scope of the cascade, which
+  // is what a tutorial step about restyling a whole book points at.
+  {
+    name: 'songbook-settings',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      await page.getByTestId('songbook-settings').click();
+    },
+    // Tall on purpose: the dialog scrolls at 900, and a picture of a settings
+    // panel cut off mid-list teaches the reader that the list ends there.
+    viewport: { width: 1280, height: 1500 },
+    ready: '[data-testid="songbook-settings-dialog"]',
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="songbook-settings-dialog"] .panel',
+    },
   },
 
   // Stage: the picker that lists what can be performed.

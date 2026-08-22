@@ -11,6 +11,7 @@ import {
   DEFAULT_VIEWPORT,
   contextFor,
   outputPath,
+  paddedClip,
   saveDownload,
   settle,
   type Locale,
@@ -39,10 +40,14 @@ for (const shot of SHOTS) {
           await page.locator(shot.ready).first().waitFor({ state: 'visible' });
           await settle(page);
 
-          const target = shot.capture.clip
-            ? page.locator(shot.capture.clip).first()
-            : page;
-          await target.screenshot({ path: dest });
+          // A clipped shot screenshots the PAGE through a box, not the element:
+          // an element screenshot is the element and nothing else, and a subject
+          // cropped to its own edges loses what it sits in (`paddedClip`).
+          const { clip, pad } = shot.capture;
+          await page.screenshot({
+            path: dest,
+            ...(clip ? { clip: await paddedClip(page, clip, pad) } : {}),
+          });
         } else {
           const waiting = page.waitForEvent('download', { timeout: 60_000 });
           await shot.capture.act(page);

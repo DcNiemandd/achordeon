@@ -112,7 +112,12 @@ export async function firstRowId(
 
 /**
  * Make the frame reproducible: freeze animations and transitions, hide the text
- * caret, and wait for web fonts so glyphs are not swapped in after capture.
+ * caret, drop focus, and wait for web fonts so glyphs are not swapped in after
+ * capture.
+ *
+ * Focus is dropped because a dialog captures it on open (`cdkTrapFocusAutoCapture`)
+ * and the ring lands on its close button — a docs picture with one control
+ * ringed reads as "press this", which is not what the step is pointing at.
  */
 export async function settle(page: Page): Promise<void> {
   await page.addStyleTag({
@@ -127,7 +132,38 @@ export async function settle(page: Page): Promise<void> {
       }
     `,
   });
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  });
   await page.evaluate(() => document.fonts.ready);
+}
+
+/** How much room a clipped shot leaves around its subject, in CSS pixels. */
+export const DEFAULT_PAD = 24;
+
+/**
+ * The box to screenshot for a clipped shot: the element's own, grown by `pad`
+ * on every side and clamped to the viewport.
+ *
+ * A locator screenshot is the element and nothing else, which for a small
+ * subject — four buttons, one field — crops so tight that the picture loses what
+ * the thing sits in. Padding puts it back on its shelf. Clamping matters because
+ * an element against an edge would otherwise ask for a box that starts at a
+ * negative coordinate, which is not a clip Playwright will take.
+ */
+export async function paddedClip(
+  page: Page,
+  selector: string,
+  pad: number = DEFAULT_PAD,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const box = await page.locator(selector).first().boundingBox();
+  if (!box) throw new Error(`"${selector}" has no box to clip.`);
+  const view = page.viewportSize() ?? { width: box.width, height: box.height };
+  const x = Math.max(0, box.x - pad);
+  const y = Math.max(0, box.y - pad);
+  const right = Math.min(view.width, box.x + box.width + pad);
+  const bottom = Math.min(view.height, box.y + box.height + pad);
+  return { x, y, width: right - x, height: bottom - y };
 }
 
 /** Copy the file a download produced to `dest`. */
