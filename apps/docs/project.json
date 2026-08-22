@@ -7,8 +7,10 @@
   "targets": {
     "start": {
       "executor": "nx:run-commands",
+      "_comment": "`.docusaurus-dev` instead of the default `.docusaurus`, because `docusaurus start` and `docusaurus build` generate into the SAME folder. A build run while the dev server is up (`nx build docs`, or anything that depends on it) overwrites that folder underneath it; the watcher sees the change and recompiles the running site from the build's leftovers - production config, and the last locale built, which is `cs`. The English dev site then believes its baseUrl is `/cs/`, so every link and every hot reload lands on a path it does not serve: a 404 in the other language, out of nowhere, on the next keystroke. Separate folders make that collision impossible.",
       "options": {
-        "command": "pnpm --filter @achordeon/docs run start"
+        "command": "pnpm --filter @achordeon/docs run start",
+        "env": { "DOCUSAURUS_GENERATED_FILES_DIR_NAME": ".docusaurus-dev" }
       }
     },
     "gen-json-schema": {
@@ -44,8 +46,13 @@
     },
     "clear": {
       "executor": "nx:run-commands",
+      "_comment": "Both generated folders: `docusaurus clear` only knows about the one it is pointed at, and the dev server's (see `start`) is exactly the one somebody reaches for `clear` to unstick.",
       "options": {
-        "command": "pnpm --filter @achordeon/docs run clear"
+        "commands": [
+          "pnpm --filter @achordeon/docs run clear",
+          "node -e \"require('node:fs').rmSync('apps/docs/.docusaurus-dev', { recursive: true, force: true })\""
+        ],
+        "parallel": false
       }
     },
     "typecheck": {
