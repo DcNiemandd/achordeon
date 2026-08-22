@@ -1,5 +1,5 @@
 import { translate } from '@docusaurus/Translate';
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 
 import { parse, type SongAst } from '@achordeon/shared/domain';
 
@@ -81,6 +81,25 @@ function trimSource(content: string): string {
 }
 
 /**
+ * How many lines the tallest step of this challenge holds.
+ *
+ * A challenge grows: step one is a title, the last is a whole song, and a frame
+ * sized to whatever is in the editor right now would grow with it — pushing the
+ * verdict, the button and the rest of the page down a line at a time as the
+ * reader types. Measuring every step up front and cutting the frame for the
+ * longest of them makes the box a fixed thing the reader works inside.
+ *
+ * Each step is measured at its *largest* — its `solution` where there is one (the
+ * markup the reader is working towards, and what "Show solution" fills in),
+ * its `content` otherwise. Open-ended steps have no solution to measure, so they
+ * fall back to what they start from.
+ */
+function tallestStep(steps: Step[], content: string): number {
+  const markup = [content, ...steps.map((s) => s.solution ?? s.content ?? '')];
+  return Math.max(...markup.map((m) => trimSource(m).split('\n').length));
+}
+
+/**
  * Turn a step's two ways of defining "correct" into the one thing grading needs:
  * a predicate on the reader's AST. `check` wins when given; otherwise `solution`
  * is parsed and compared by value (both ASTs come from the same parser, so their
@@ -133,7 +152,12 @@ export default function SongChallenge(props: SongChallengeProps): ReactNode {
   }
 
   return (
-    <div className={styles.challenge}>
+    <div
+      className={styles.challenge}
+      // Read by `SongPreview`'s stylesheet as the floor under both columns — the
+      // frame is the tallest step's, from the first step onwards.
+      style={{ '--song-lines': tallestStep(steps, content) } as CSSProperties}
+    >
       {steps.length > 1 ? (
         <span className={styles.progress}>
           {translate(

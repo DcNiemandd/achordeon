@@ -3,7 +3,7 @@
  * SongPreview's `.preview` row), then a footer with the verdict and — where there
  * is one answer to give — a button that fills it in. Only the wrapper, the
  * prompt, the footer, and the button live here; the editor box, its palette, and
- * the render column all come from `previewStyles`.
+ * the render column are `SongPreview`'s own, mounted whole.
  */
 .challenge {
   display: flex;

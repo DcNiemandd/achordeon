@@ -109,7 +109,13 @@ function renderSvg(content: string, isDark: boolean): string {
     // markup beside it starts is the one the eye can follow line for line.
     { align: 'top-left', dark: isDark },
   );
-  return emit(plan);
+  // No ground, either way. A dark plan carries a true-black `paper` so the SVG
+  // stays self-describing when it leaves the app (`RenderPlan.paper`) — but this
+  // one never leaves: it is an inline picture on a page that already has a
+  // background, and a black slab in the middle of the docs' own dark grey reads
+  // as a hole rather than a page. Dropping it keeps the ink (still resolved
+  // against the dark palette) and lets the page behind show through.
+  return emit({ ...plan, paper: undefined });
 }
 
 export default function SongRender({ content }: SongRenderProps): ReactNode {
