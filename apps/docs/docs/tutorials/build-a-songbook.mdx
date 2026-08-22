@@ -7,28 +7,157 @@ description: 'Make a songbook, put songs into it in the order you play them, and
 
 An ordered list of songs, arranged the way the evening runs.
 
+A songbook does not copy your songs. It holds positions that point at them, so a
+song edited anywhere is edited everywhere it appears, and the same song can sit
+in a book twice without costing anything twice.
+
 ## 1. Open `Songbooks`
+
+The module is in the rail on the left — <AppLink to="songbooks">open it
+now</AppLink>. It lists your books, with <Ui id="songbooks.allSongs" /> at the
+top: the whole
+library as one read-only book. That one you cannot rename, reorder or delete;
+everything below it is yours.
+
+Click a book to see its title page in the pane beside the list, double-click to
+open it. On a phone there is no second pane, so one tap opens it.
+
+<Image
+  alt="The Songbooks module, listing the books over the title page of the selected one"
+  src="/img/screenshot-songbooks.png"
+/>
 
 ## 2. Create a songbook
 
+Press <Ui id="songbooks.add" icon="+" /> in the header. An empty book appears in
+the list, named <Ui id="songbooks.newName" />, and the app takes you straight
+into it.
+
 ## 3. Name it
+
+It arrived called <Ui id="songbooks.newName" />, which is no use once there are
+two of them.
+The book's heading is the name field: click it, type, and press Enter. Escape
+puts back what was there. You can rename it from the list too, without opening
+it — the pencil on the row does the same thing.
+
+The name is what you will search for later, so it is worth being the name of the
+evening rather than of the month: _Campfire_, _Wedding — Friday_, _Set 2_.
 
 ## 4. Select songs in the left list
 
+An open book is two lists side by side: your library on the left, the book
+itself on the right. The left list is the <Ui id="nav.songs" /> module's own
+explorer, with the acts that do not belong here switched off.
+
+Tick the rows you want. The tick is a separate gesture from opening a row, so a
+selection survives everything else you do — you can scroll, search, and tick
+some more before you commit to anything.
+
 ## 5. Insert them into the book
+
+Between the two lists is a small column with a `+` and a `−`. The `+` puts
+everything you ticked into the book **below the slot you have picked there**, or
+at the end when you have picked none.
+
+There is one Add button, not four. Hover it and the book draws a line where the
+songs would land, so you can see the answer before you press; if it is not the
+answer you wanted, the reorder buttons in the next step nudge it from there.
+
+<Image
+  alt="A songbook open in the builder: the library on the left, the book on the right, the transfer column between them"
+  src="/img/screenshot-songbook-detail.png"
+/>
 
 ## 6. Drag songs in instead
 
+Every row has a drag handle before its tick, and the handle is the only part of
+the row that drags — so a press that was meant to select never turns into a
+move. Drag a selected row and the whole selection comes with it. The book draws
+the same landing line as the `+` does, and the drop lands there.
+
 ## 7. Reorder the book
+
+Tick slots in the book and use the four move buttons: to the start, up one, down
+one, to the end. They act on the whole selection, so a run of songs moves as a
+run. Dragging by the handle works here too.
+
+The buttons are dead while nothing is ticked, and say so if you hover them.
+
+<Image
+  alt="The four reorder buttons: move to the start, up one, down one, to the end"
+  src="/img/screenshot-songbook-reorder.png"
+/>
 
 ## 8. Add the same song twice
 
+Nothing stops you, and nothing is duplicated when you do. A book of a reprise,
+an encore, or a song you open and close the night with is a book with that song
+in two positions.
+
+The two positions are independent — removing one leaves the other alone.
+
 ## 9. Preview a song without leaving the list
+
+Any row, in either list, opens the song's render in a dialog. It is the real
+render, the same one the page would be printed from, so it answers the question
+you actually have at this point: does this song fit where I am putting it.
+
+<Image
+  alt="A song's render open in a dialog over the songbook builder"
+  src="/img/screenshot-songbook-preview.png"
+/>
 
 ## 10. Edit a song from the preview and come back
 
+The dialog has an <Ui id="songbooks.previewEdit" /> button. It takes you into
+the song's own editor, and <Ui id="songbooks.previewClose" /> there brings you
+back to the songbook exactly where you left it — same selection, same scroll,
+same song still previewed.
+
+That is deliberate: fixing a chord you noticed mid-build should cost you the fix
+and nothing else. The trail home is in the URL, so a reload does not lose it
+either.
+
 ## 11. Jump to a song with the songbook search
+
+The book has its own search above it, separate from the library's. It does not
+filter: filtering a book you are arranging would hide the slot you were looking
+at. Instead it **jumps** to the next entry that matches — by name, title,
+subtitle or lyrics.
+
+A counter shows which match you are on. Enter and the arrows step through them,
+Escape clears. Like every search in the app, it ignores accents, so `nekdo`
+finds _Někdo_.
 
 ## 12. Remove a song from the book
 
+Tick the slots and press `−`, the button under the `+`.
+
+:::note[Remove vs delete]
+Removing a song from a songbook won't delete the song. The song can be deleted
+only in the <Ui id="nav.songs" /> module.
+:::
+
 ## 13. Restyle the chords for the whole book
+
+<Ui id="songbooks.settings" /> in the book's header — also on its row in the
+list — opens the songbook's own scope of the render settings: the fonts (the
+song's, the title's, and the italic it borrows), chord colour and chord size,
+the block gap, and the notation. Set one here and every song in the book follows
+it, without any of those songs being changed.
+
+Every field reads <Ui id="settings.inherited" /> until you touch it — the setting is still coming
+from the global one, and clearing it hands it back.
+
+A song that sets the same thing for itself still wins. The order is always
+global, then songbook, then song: the book imposes a house style, and a song is
+allowed to have a reason.
+
+The same dialog carries the book's title page and how it is put together when
+printed — see [Songbooks](/songbooks/index.mdx) for what each field does.
+
+<Image
+  alt="The songbook's settings dialog, holding the book's own render settings"
+  src="/img/screenshot-songbook-settings.png"
+/>

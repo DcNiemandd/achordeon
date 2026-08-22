@@ -7,28 +7,152 @@ description: 'Založ zpěvník, dej do něj písničky v pořadí, ve kterém je
 
 Seřazený seznam písniček, poskládaný tak, jak běží večer.
 
-## 1. Otevři `Songbooks`
+Zpěvník tvoje písničky nekopíruje. Drží jen pozice, které na ně ukazují — takže
+písnička upravená kdekoli je upravená všude, kde se objevuje, a tatáž písnička
+může být v zpěvníku dvakrát, aniž by cokoli stála dvakrát.
+
+## 1. Otevři `Zpěvníky`
+
+Modul je v liště vlevo — <AppLink to="songbooks">otevři si ho</AppLink>. Vypíše
+tvoje zpěvníky, nahoře s <Ui id="songbooks.allSongs" />: celá knihovna jako jeden
+zpěvník jen ke čtení. Ten nepřejmenuješ, nepřerovnáš ani nesmažeš; všechno pod ním je tvoje.
+
+Klikem si zobrazíš titulní stranu zpěvníku v panelu vedle seznamu, dvojklikem ho
+otevřeš. Na telefonu žádný druhý panel není, takže ho otevře jedno ťuknutí.
+
+<Image
+  alt="Modul Zpěvníky se seznamem zpěvníků a titulní stranou toho vybraného"
+  src="/img/cs/screenshot-songbooks.png"
+/>
 
 ## 2. Vytvoř zpěvník
 
+Zmáčkni <Ui id="songbooks.add" icon="+" /> v hlavičce. V seznamu se objeví
+prázdný zpěvník jménem <Ui id="songbooks.newName" /> a aplikace tě do něj rovnou
+vezme.
+
 ## 3. Pojmenuj ho
+
+Přišel jako <Ui id="songbooks.newName" />, což přestane stačit ve chvíli, kdy
+jsou dva. Nadpis
+zpěvníku je zároveň pole s názvem: klikni na něj, piš a zmáčkni Enter. Escape
+vrátí, co tam bylo. Přejmenovat ho můžeš i ze seznamu, aniž bys ho
+otevíral — tužka na řádku dělá totéž.
+
+Podle názvu ho budeš později hledat, takže se vyplatí pojmenovat ho po večeru, ne
+po měsíci: _U ohně_, _Svatba — pátek_, _Druhá půlka_.
 
 ## 4. Vyber písničky v levém seznamu
 
+Otevřený zpěvník jsou dva seznamy vedle sebe: vlevo tvoje knihovna, vpravo
+zpěvník sám. Ten levý je stejný seznam jako v modulu <Ui id="nav.songs" />, jen
+s vypnutým tím, co sem nepatří.
+
+Zaškrtni řádky, které chceš. Zaškrtnutí je jiné gesto než otevření řádku, takže
+výběr přežije všechno ostatní — můžeš scrollovat, hledat a přidávat další, než se
+k něčemu zavážeš.
+
 ## 5. Vlož je do zpěvníku
+
+Mezi oběma seznamy je úzký sloupec s `+` a `−`. `+` vloží všechno zaškrtnuté do
+zpěvníku **pod pozici, kterou tam máš vybranou**, a na konec, když žádnou
+vybranou nemáš.
+
+Přidávací tlačítko je jedno, ne čtyři. Najeď na něj a zpěvník nakreslí čáru tam,
+kam by písničky dopadly — odpověď tedy vidíš dřív, než zmáčkneš. A když to není
+odpověď, kterou jsi chtěl, tlačítka z dalšího kroku ji odtud posunou.
+
+<Image
+  alt="Otevřený zpěvník: vlevo knihovna, vpravo zpěvník, mezi nimi sloupec pro přesun"
+  src="/img/cs/screenshot-songbook-detail.png"
+/>
 
 ## 6. Nebo je do něj rovnou přetáhni
 
+Každý řádek má před zaškrtávátkem úchyt a úchyt je jediná část řádku, která se
+táhne — takže se stisk, který měl vybírat, nikdy nepromění v přesun. Když
+potáhneš vybraný řádek, jde s ním celý výběr. Zpěvník kreslí stejnou čáru jako
+`+` a puštění dopadne přesně tam.
+
 ## 7. Přerovnej zpěvník
+
+Zaškrtni pozice ve zpěvníku a použij čtyři tlačítka pro přesun: na začátek,
+o jednu nahoru, o jednu dolů, na konec. Pracují s celým výběrem, takže se řada
+písniček přesune jako řada. Tažení za úchyt funguje i tady.
+
+Dokud nic zaškrtnuté není, jsou tlačítka mrtvá a po najetí ti řeknou proč.
+
+<Image
+  alt="Čtyři tlačítka pro přesun: na začátek, o jednu nahoru, o jednu dolů, na konec"
+  src="/img/cs/screenshot-songbook-reorder.png"
+/>
 
 ## 8. Přidej stejnou písničku dvakrát
 
+Nic ti v tom nebrání a nic se přitom nekopíruje. Zpěvník s reprízou, s přídavkem
+nebo s písničkou, kterou večer otevíráš i zavíráš, je prostě zpěvník, kde ta
+písnička stojí na dvou pozicích.
+
+Ty dvě pozice jsou na sobě nezávislé — odebráním jedné se druhé nic nestane.
+
 ## 9. Prohlédni si písničku, aniž bys opustil seznam
+
+Kterýkoli řádek, v obou seznamech, otevře vykreslení písničky v dialogu. Je to
+opravdové vykreslení, to samé, ze kterého by se tiskla stránka — takže odpovídá
+na otázku, kterou v tuhle chvíli vážně máš: vejde se tahle písnička tam, kam ji
+dávám?
+
+<Image
+  alt="Vykreslení písničky otevřené v dialogu nad stavbou zpěvníku"
+  src="/img/cs/screenshot-songbook-preview.png"
+/>
 
 ## 10. Uprav písničku z náhledu a vrať se zpátky
 
+Dialog má tlačítko <Ui id="songbooks.previewEdit" />. Vezme tě do editoru té
+písničky a <Ui id="songbooks.previewClose" /> tam tě vrátí do zpěvníku přesně
+tam, kde jsi skončil — stejný výběr, stejné posunutí, stejná písnička pořád
+v náhledu.
+
+Je to tak schválně: oprava akordu, kterého sis všiml uprostřed skládání, tě má
+stát tu opravu a nic víc. Cesta zpátky je v adrese, takže ji neztratí ani
+načtení stránky znovu.
+
 ## 11. Skoč na písničku hledáním ve zpěvníku
+
+Zpěvník má nad sebou vlastní hledání, oddělené od toho v knihovně. Nefiltruje:
+odfiltrovat zpěvník, který zrovna skládáš, by schovalo pozici, na kterou se
+díváš. Místo toho **skočí** na další odpovídající položku — podle názvu, nadpisu,
+podnadpisu nebo textu.
+
+Počítadlo ukazuje, na které shodě jsi. Enter a šipky jimi procházejí, Escape
+mazání zruší. Jako každé hledání v aplikaci i tohle ignoruje diakritiku, takže
+`nekdo` najde _Někdo_.
 
 ## 12. Odeber písničku ze zpěvníku
 
+Zaškrtni pozice a zmáčkni `−`, tlačítko pod `+`.
+
+:::note[Odebrat vs. smazat]
+V modulu <Ui id="nav.songs" /> se písnička maže; odebrání ze zpěvníku ji
+nesmaže.
+:::
+
 ## 13. Přenastav akordy pro celý zpěvník
+
+<Ui id="songbooks.settings" /> v hlavičce — a taky na jeho řádku v seznamu —
+otevře zpěvníkovou úroveň nastavení vykreslování: písma (písničky, nadpisu a to,
+ze kterého se berou chybějící řezy), barvu a velikost akordů, mezeru mezi bloky
+a notaci. Nastav to tady a každá písnička ve zpěvníku se tím bude řídit, aniž by
+se kterákoli z nich změnila.
+
+U každého pole svítí <Ui id="settings.inherited" />, dokud se ho nedotkneš — nastavení tam pořád
+teče z globálního a vymazáním ho vrátíš zpátky.
+
+Ten samý dialog nese titulní stranu zpěvníku a to, jak se zpěvník poskládá při
+tisku — co které pole dělá, najdeš v [Zpěvnících](/songbooks/index.mdx).
+
+<Image
+  alt="Dialog nastavení zpěvníku s jeho vlastním nastavením vykreslování"
+  src="/img/cs/screenshot-songbook-settings.png"
+/>
