@@ -12,6 +12,16 @@
   margin-bottom: var(--ifm-leading);
 }
 
+/* Which step of a multi-step exercise the reader is on — a quiet, uppercased
+   eyebrow above the prompt, in the same idiom as the editor/render captions. */
+.progress {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ifm-color-content-secondary);
+}
+
 .prompt {
   margin: 0;
 }
@@ -64,4 +74,25 @@
 .showSolution:hover {
   color: var(--ifm-color-content);
   border-color: var(--ifm-color-emphasis-500);
+}
+
+/*
+ * The forward action — the one thing to do once a step is solved, so it is the
+ * filled, branded button that "Show solution" deliberately is not.
+ */
+.next {
+  flex: none;
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ifm-button-color);
+  background: var(--ifm-color-primary);
+  border: 1px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-button-border-radius);
+  cursor: pointer;
+}
+
+.next:hover {
+  background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
 }
