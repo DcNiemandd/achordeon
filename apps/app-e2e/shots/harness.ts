@@ -1,8 +1,8 @@
 // Screenshot harness — the shared machinery every shot runs through.
 //
 // A "shot" (see `manifest.ts`) says WHAT to picture; this file is HOW: seed the
-// library, force a language and the light theme, wait for the app to settle,
-// then either screenshot the page or capture the PNG the app itself downloads.
+// library, force a language and a theme, wait for the app to settle, then
+// either screenshot the page or capture the PNG the app itself downloads.
 //
 // Nothing here touches the docs `.mdx` — a run only writes image files into
 // `apps/docs/static/img/` (English) and `apps/docs/static/img/cs/` (Czech).
@@ -13,6 +13,7 @@ import { mkdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type Locale = 'en' | 'cs';
+export type Theme = 'light' | 'dark';
 
 export interface Viewport {
   readonly width: number;
@@ -27,20 +28,25 @@ export const DEFAULT_SCALE = 2;
 const IMG_DIR = join(workspaceRoot, 'apps', 'docs', 'static', 'img');
 
 /**
- * The file a shot named `name` writes for `locale`.
+ * The file a shot named `name` writes for `locale` in `theme`.
  *
  * English keeps the bare `screenshot-<name>.png` the docs already expect; Czech
  * gets the same file name under `img/cs/`, so one `<Image src>` swap per locale
  * is all the wiring a shot needs later.
+ *
+ * The light theme keeps that bare name and dark adds a `-dark` postfix, so the
+ * two themes of one shot stay one name apart and `<Image srcDark>` is a
+ * mechanical edit rather than a lookup.
  */
-export function outputPath(name: string, locale: Locale): string {
+export function outputPath(name: string, locale: Locale, theme: Theme): string {
   const dir = locale === 'cs' ? join(IMG_DIR, 'cs') : IMG_DIR;
   mkdirSync(dir, { recursive: true });
-  return join(dir, `screenshot-${name}.png`);
+  const postfix = theme === 'dark' ? '-dark' : '';
+  return join(dir, `screenshot-${name}${postfix}.png`);
 }
 
 /**
- * A fresh context in `locale`, light-themed, with the OS save picker removed so
+ * A fresh context in `locale` and `theme`, with the OS save picker removed so
  * export shots produce a real `download` event (the picker is native UI
  * Playwright cannot drive — see `transfer.spec.ts`).
  *
@@ -52,6 +58,7 @@ export function outputPath(name: string, locale: Locale): string {
 export async function contextFor(
   browser: Browser,
   locale: Locale,
+  theme: Theme,
   viewport: Viewport,
   deviceScaleFactor: number,
   baseURL: string,
@@ -67,7 +74,7 @@ export async function contextFor(
           origin: new URL(baseURL).origin,
           localStorage: [
             { name: 'achordeon.language', value: locale },
-            { name: 'achordeon.theme', value: 'light' },
+            { name: 'achordeon.theme', value: theme },
           ],
         },
       ],

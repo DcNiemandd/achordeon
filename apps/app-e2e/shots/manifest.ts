@@ -5,18 +5,29 @@
 // odd one out is `song-render`, an `export` shot: the app renders a song to a PNG
 // and hands it over as a download, which is the picture the docs want.
 //
-// `locales` defaults to both. A shot opts out of one only when it would be
-// redundant — the icon-only rail is English-only, since its bytes do not change
-// with the language (the labels that do are tooltips, not in the picture).
+// `locales` and `themes` each default to both, so a shot is captured four ways
+// unless it says otherwise. A shot opts out of one only when that copy would be
+// redundant or wrong — the icon-only rail is English-only, since its bytes do
+// not change with the language (the labels that do are tooltips, not in the
+// picture), and `song-render` is light-only, because it is sheet music: the
+// export is ink on paper whatever the app around it is wearing.
 
 import { type Page } from '@playwright/test';
-import { type Locale, type Viewport, firstRowId, seededGoto } from './harness';
+import {
+  type Locale,
+  type Theme,
+  type Viewport,
+  firstRowId,
+  seededGoto,
+} from './harness';
 
 interface Common {
-  /** File stem: writes `screenshot-<name>.png`. */
+  /** File stem: writes `screenshot-<name>.png`, plus `-dark` for that theme. */
   readonly name: string;
   /** Which UI languages to capture. Defaults to both. */
   readonly locales?: readonly Locale[];
+  /** Which app themes to capture. Defaults to both. */
+  readonly themes?: readonly Theme[];
   readonly viewport?: Viewport;
   readonly deviceScaleFactor?: number;
   /** Drive the app to the moment of capture (navigate, open, seed extra). */
@@ -57,8 +68,13 @@ export const SHOTS: readonly Shot[] = [
   // The showcase render: the app's own SVG→PNG export of a song, not a
   // screenshot of the screen. The starter song's content is itself translated,
   // so the render differs by locale — both are captured (the default).
+  //
+  // Light only: the export is the printable sheet, which the app renders on
+  // paper regardless of its own theme. A `-dark` copy would be the same pixels
+  // under a name that promises different ones.
   {
     name: 'song-render',
+    themes: ['light'],
     arrange: (page) => seededGoto(page, 'songs'),
     capture: {
       mode: 'export',
