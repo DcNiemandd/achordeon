@@ -99,6 +99,18 @@ const FONT_LIBRARY = 'section:has(> app-font-list)';
  */
 const PRINT_FIELDS = 'section:has(> app-songbook-print-fields)';
 
+/**
+ * The `Application` block of Settings — theme, dark page, language, panel size
+ * and statistics.
+ *
+ * That section holds no component of its own to name: every row in it is plain
+ * markup on the page. So the same `:has()` trick FONT_LIBRARY and PRINT_FIELDS
+ * play, aimed at the theme buttons instead — they are in this section and in no
+ * other, so the selector is exact without an attribute being added to the app
+ * for a screenshot's sake.
+ */
+const SETTINGS_APP = 'section:has([data-testid="theme-system"])';
+
 /** The starter library's first real songbook — not the synthetic "All songs". */
 const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
@@ -804,6 +816,90 @@ export const SHOTS: readonly Shot[] = [
     arrange: (page) => seededGoto(page, 'settings'),
     ready: 'app-settings-page',
     capture: { mode: 'view' },
+  },
+
+  // The Application block of Settings on its own — theme, dark page, language,
+  // panel size and the statistics switch. The whole-page `settings` shot above
+  // has this section in it, but at a third of the size and below the account
+  // half; the step that says "find these" wants the block filling the frame.
+  //
+  // Clipped by what the section CONTAINS rather than by a tag or an attribute:
+  // this section holds no component of its own (it is plain rows), so the
+  // FONT_LIBRARY `:has()` trick is played on the theme buttons instead. They
+  // exist nowhere else on the page, so the selector is exact — and no attribute
+  // is added to the app for a screenshot's sake.
+  {
+    name: 'settings-app',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      await page.locator(SETTINGS_APP).scrollIntoViewIfNeeded();
+    },
+    ready: '[data-testid="theme-system"]',
+    capture: { mode: 'view', clip: SETTINGS_APP, pad: 12 },
+  },
+
+  // The sign-in dialog. Everything an account gets you is prose in the tutorial
+  // — a signed-in Settings cannot be pictured, since the shot harness has no
+  // account and mocking one would picture a fiction — but the door itself is
+  // real signed out, and it is the one control the step tells the reader to
+  // press. Both ways in are in it: the email/password form, and the way back
+  // from a password nobody remembers.
+  {
+    name: 'login-dialog',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      await page.getByTestId('open-login').click();
+      // Off the button it just pressed: a hover-lit control in a docs picture
+      // reads as the one to press next.
+      await page.mouse.move(20, 20);
+    },
+    ready: '[data-testid="login-dialog"]',
+    // `.panel`, not the dialog host: the host carries the scrim, so clipping it
+    // pictures the whole dimmed settings page. No padding — the panel IS the
+    // picture.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="login-dialog"] .panel',
+      pad: 0,
+    },
+  },
+
+  // The one irreversible button in the whole tutorial: a backup that has been
+  // handed to the app, and the two things it can be made to do. Both are
+  // described in full before either can be pressed, which is the fact the step
+  // is about — so the picture has to carry the sentences, not just the buttons.
+  //
+  // The file is **earned, not staged**: the library is backed up through the
+  // real Back-up button and the bytes that come out are fed straight back to the
+  // restore input, the way the file picker would. So this is a genuine Achordeon
+  // backup of a real library, not a fixture that could drift from the format.
+  //
+  // `restore-input` rather than the Restore button, for the same reason
+  // `import-conflicts` uses `songs-import-input`: the button only opens the OS
+  // file picker, which Playwright cannot drive.
+  {
+    name: 'restore-dialog',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      const waiting = page.waitForEvent('download', { timeout: 60_000 });
+      await page.getByTestId('backup').click();
+      const file = await (await waiting).path();
+      if (!file) throw new Error('The backup produced no file.');
+
+      await page.getByTestId('restore-input').setInputFiles({
+        name: 'achordeon-backup.json',
+        mimeType: 'application/json',
+        buffer: readFileSync(file),
+      });
+      await page.mouse.move(20, 20);
+    },
+    ready: '[data-testid="restore-dialog"]',
+    // No padding, and `.panel` — the same reasoning as the dialogs above.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="restore-dialog"] .panel',
+      pad: 0,
+    },
   },
 
   // The font library, with the built-in shelf opened. Shut it is one grey line
