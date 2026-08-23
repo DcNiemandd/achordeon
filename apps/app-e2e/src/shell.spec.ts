@@ -11,6 +11,7 @@
 // change; "the rail is gone on a phone" is not.
 
 import { expect, test } from '@playwright/test';
+import { withStarterLibrary } from './starter-library';
 
 const COMPACT = { width: 390, height: 844 };
 const ROOMY = { width: 1440, height: 900 };
@@ -138,23 +139,31 @@ test.describe('document title', () => {
 });
 
 test.describe('fullscreen mode', () => {
-  test('audience keeps the normal frame — chrome is a mode, not a route', async ({
+  test('the audience PIN prompt keeps the normal frame and offers no controls', async ({
     page,
   }) => {
     await page.setViewportSize(ROOMY);
     await page.goto('audience');
 
+    // The route is not the act. Nothing is being watched yet, so the prompt is
+    // chromeless by design — no bar, and nothing to go fullscreen for. The rail
+    // stays, because this is still the app.
     await expect(page.getByTestId('rail')).toBeVisible();
-    await expect(page.getByTestId('audience-fullscreen')).toBeVisible();
+    await expect(page.getByTestId('audience-page-bar')).toHaveCount(0);
+    await expect(page.getByTestId('audience-fullscreen')).toHaveCount(0);
   });
 
   test('entering hides the chrome; moving the pointer brings it back', async ({
     page,
   }) => {
     await page.setViewportSize(ROOMY);
-    await page.goto('audience');
+    // Performing, because the mode needs a screen that offers it and this suite
+    // has no lobby to join. The Fullscreen service is the shell's own, so which
+    // of the two screens presses the button is not what is under test.
+    await withStarterLibrary(page, 'stage');
+    await page.getByTestId('stage-perform-all-songs').click();
 
-    await page.getByTestId('audience-fullscreen').click();
+    await page.getByTestId('stage-fullscreen').click();
 
     // The bars fade after the idle delay — that is the whole point of the mode.
     await expect(page.getByTestId('rail')).toHaveCount(0, { timeout: 6000 });

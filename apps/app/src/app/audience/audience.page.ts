@@ -2,10 +2,17 @@
 // Spec: docs/achordeon-implementation.md §Epic 9; apps/docs/docs/stage-audience/index.mdx
 //
 // The viewer half of the follow-along feature. One full-bleed render, a read-only
-// summary overlay, and a read-only lobby dialog. The CONTROLS are AudienceBar
-// (Summary · Fullscreen · More), which — exactly like the performing controls —
-// lives in the shell's one bottom bar on a phone (so there is never a second
-// bar) and is mounted here at the foot only on desktop. Both read AudienceSession.
+// summary overlay, and a read-only lobby dialog. The CONTROLS come in the same
+// two shapes performing's do, and for the same reasons:
+//
+// - **A phone** gets AudienceBar (Summary · Fullscreen · More) in the shell's one
+//   bottom bar, so there is never a second bar of the feature's stacked on the
+//   shell's.
+// - **Desktop** gets this page's own top bar, where the ⋯ menu is unwrapped into
+//   the row and the transpose stepper stands in the open — there is no shell
+//   bottom bar above the breakpoint (the rail takes its place) and there is room.
+//
+// Both read AudienceSession, so the two bars cannot disagree about state.
 //
 // Join by PIN (typed) or the QR deep link `/audience/:pin`; the payload carries
 // the full Song + resolved settings, so this render matches the host's byte for
@@ -24,17 +31,25 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import qrcode from 'qrcode-generator';
-import { Button, Dialog, EmptyState, Field, Icon } from '../primitives';
 import {
-  AudienceBar,
+  Button,
+  Dialog,
+  EmptyState,
+  Field,
+  Icon,
+  Tooltip,
+} from '../primitives';
+import {
   AudienceSession,
   BlankPage,
   DocumentTitle,
   Fullscreen,
   PageZoom,
+  TransposeStepper,
   UiStore,
   Viewport,
   ZoomPill,
+  turnPageLabel,
 } from '../shared/layout';
 import { type ShortcutAction, registerShortcuts } from '../shared/keyboard';
 import { SongRender } from '../shared/song-render';
@@ -66,17 +81,178 @@ function writeLastPin(pin: string): void {
   imports: [
     BlankPage,
     SongRender,
-    AudienceBar,
     Button,
     Dialog,
     EmptyState,
     Field,
     Icon,
     PageZoom,
+    Tooltip,
+    TransposeStepper,
     ZoomPill,
   ],
   template: `
     <div class="screen">
+      <!-- Desktop only: the viewer's own bar, built to the performing bar's
+           shape (StagePerformPage) so the two views read alike — the acts
+           unwrapped across the row instead of folded behind ⋯, the transpose
+           stepper in the open, and the red leave cross in the close position.
+           A phone draws nothing here: its controls are <app-audience-bar> in the
+           shell's one bottom bar, three thumb targets and a menu.
+
+           No prev/next in the middle, which is the one place the two bars part
+           company: the performer drives the song and a viewer follows. -->
+      @if (presenter.status() === 'joined' && !viewport.isCompact()) {
+        <nav
+          class="audience-bar--top"
+          [hidden]="!fullscreen.isChromeVisible()"
+          [attr.aria-label]="controlsLabel"
+          data-testid="audience-page-bar"
+        >
+          <div class="bar-start">
+            <span class="bar-title">{{ presenter.songName() }}</span>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="session.isSummaryOpen()"
+              [attr.aria-pressed]="session.isSummaryOpen()"
+              [attr.aria-label]="summaryLabel"
+              [appTooltip]="summaryLabel"
+              data-testid="audience-summary"
+              (click)="session.toggleSummary()"
+            >
+              <app-icon name="list" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [attr.aria-pressed]="fullscreen.isActive()"
+              [attr.aria-label]="fullscreenLabel()"
+              [appTooltip]="fullscreenLabel()"
+              data-testid="audience-fullscreen"
+              (click)="fullscreen.toggle()"
+            >
+              <app-icon
+                [name]="fullscreen.isActive() ? 'fullscreenExit' : 'fullscreen'"
+              />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="session.isSongDark()"
+              [attr.aria-pressed]="session.isSongDark()"
+              [attr.aria-label]="darkPageLabel"
+              [appTooltip]="darkPageLabel"
+              data-testid="audience-dark-page"
+              (click)="session.toggleSongDark()"
+            >
+              <app-icon name="moon" />
+            </button>
+
+            <!-- Turn the page (ADR-0013), on the same terms as the performer's:
+                 offered only where a quarter turn would gain this song room, and
+                 here on desktop as well as on the phone because "wide layout"
+                 and "cannot be turned" are different facts — a tablet held
+                 sideways is both. -->
+            @if (ui.isPageTurnOffered()) {
+              <button
+                appButton
+                type="button"
+                [isIconOnly]="true"
+                [class.is-active]="ui.isPageTurnArmed()"
+                [attr.aria-pressed]="ui.isPageTurnArmed()"
+                [attr.aria-label]="turnPageLabel"
+                [appTooltip]="turnPageLabel"
+                data-testid="audience-turn-page"
+                (click)="ui.togglePageTurn()"
+              >
+                <span class="stacked-icon">
+                  <!-- The device turns with the page: armed, the phone is drawn
+                       the quarter round the song will be. -->
+                  <app-icon
+                    name="smartphone"
+                    [class.is-turned]="ui.isPageTurnArmed()"
+                  />
+                  <app-icon class="badge" name="rotateCcw" />
+                </span>
+              </button>
+            }
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [class.is-active]="session.hideChords()"
+              [attr.aria-pressed]="session.hideChords()"
+              [attr.aria-label]="hideChordsLabel"
+              [appTooltip]="hideChordsLabel"
+              data-testid="audience-hide-chords"
+              (click)="session.toggleHideChords()"
+            >
+              <app-icon name="note" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [attr.aria-label]="lobbyLabel"
+              [appTooltip]="lobbyLabel"
+              data-testid="audience-lobby"
+              (click)="session.openLobby()"
+            >
+              <app-icon name="audience" />
+            </button>
+
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [attr.aria-label]="syncLabel"
+              [appTooltip]="syncLabel"
+              data-testid="audience-sync"
+              (click)="session.sync()"
+            >
+              <app-icon name="reset" />
+            </button>
+
+            <!-- Transpose, in the open and last, exactly as performing has it:
+                 no ⋯ to hide it behind and the room for the number, so the
+                 phone's two taps (menu, sheet) collapse into the control. Last
+                 because it is the only thing here that rules itself off, and a
+                 ruled group mid-row would cut the loose icons in two. -->
+            <app-transpose-stepper
+              [value]="session.transpose()"
+              (stepped)="session.transposeBy($event)"
+              (cleared)="session.resetTranspose()"
+            />
+          </div>
+
+          <!-- Right: the red leave cross — the songs/songbooks close position,
+               and the performer's exit position. -->
+          <div class="bar-end-slot">
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              class="btn-exit"
+              [attr.aria-label]="leaveLabel"
+              [appTooltip]="leaveLabel"
+              data-testid="audience-exit"
+              (click)="exit()"
+            >
+              <app-icon name="close" />
+            </button>
+          </div>
+        </nav>
+      }
+
       <!-- PageZoom owns the pointer stream over the page: pinch and wheel to
            magnify, drag to pan, double-tap to toggle — and what is left of a
            single finger comes back as a tap, which is tap-to-reveal. Off while
@@ -167,19 +343,6 @@ function writeLastPin(pin: string): void {
            sees it and never sends it. Everyone leans in at their own distance. -->
       @if (zoom.isZoomed()) {
         <app-zoom-pill [percent]="zoom.percent()" (cleared)="zoom.reset()" />
-      }
-
-      <!-- Desktop: the controls sit at the foot of the page (there is no shell
-           bottom bar above the breakpoint — the rail takes its place). On a phone
-           this is absent and the shell mounts <app-audience-bar> in its one bar. -->
-      @if (presenter.status() === 'joined' && !viewport.isCompact()) {
-        <div
-          class="page-bar"
-          [hidden]="!fullscreen.isChromeVisible()"
-          data-testid="audience-page-bar"
-        >
-          <app-audience-bar />
-        </div>
       }
 
       <!-- Read-only summary: search + list, no jump. The current song is marked;
@@ -284,12 +447,74 @@ function writeLastPin(pin: string): void {
       min-block-size: 0;
     }
 
-    /* Desktop foot bar — a full-width strip that AudienceBar (flex: 1) fills. */
-    .page-bar {
-      display: flex;
-      padding: 2px;
+    /* Desktop top bar — the performing bar's grid with the middle column gone:
+       there is no prev/next to centre, so the row is [actions 1fr] [exit auto]
+       and the cross still lands hard against the right edge. */
+    .audience-bar--top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: var(--space-1) var(--space-3);
       background: var(--surface-raised);
-      border-block-start: 1px solid var(--border);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .bar-start {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: nowrap;
+      min-inline-size: 0;
+    }
+
+    .bar-title {
+      font-size: var(--text-md);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-inline-end: var(--space-1);
+    }
+
+    /* A glyph with a second one badged on it, the way the phone's menu draws
+       Turn the page. This bar has no overflow menu, so the same composition has
+       to exist here rather than being borrowed from it. */
+    .stacked-icon {
+      position: relative;
+      flex: none;
+      display: inline-flex;
+      inline-size: 20px;
+      block-size: 20px;
+    }
+
+    .stacked-icon .badge {
+      --icon-size: 14px;
+      position: absolute;
+      inset-block-start: -1px;
+      inset-inline-end: -2px;
+      color: var(--brand);
+    }
+
+    /* Armed, the phone lies down the quarter turn the song does. The arrow does
+       not move — it names the act, which is the same act either way round. */
+    .stacked-icon app-icon.is-turned {
+      transform: rotate(-90deg);
+      transition: transform 150ms ease;
+    }
+
+    .bar-end-slot {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    /* Red leave button — danger colour, the performing exit's skin. */
+    .btn-exit {
+      color: var(--danger, #c0362c);
+    }
+
+    .btn-exit:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--danger, #c0362c) 12%, transparent);
     }
 
     /* Join form — centered card in the render area. */
@@ -605,6 +830,13 @@ export class AudiencePage {
     void this.router.navigate(['/audience']);
   }
 
+  /** Says which way the button goes, the way AudienceBar's does. */
+  protected fullscreenLabel(): string {
+    return this.fullscreen.isActive()
+      ? this.exitFullscreenLabel
+      : this.enterFullscreenLabel;
+  }
+
   protected onPinInput(event: Event): void {
     this.pinDraft.set((event.target as HTMLInputElement).value.toUpperCase());
   }
@@ -692,6 +924,19 @@ export class AudiencePage {
   protected readonly closeLabel = $localize`:@@audience.close:Close`;
   protected readonly searchPlaceholder = $localize`:@@stage.search:Search…`;
   protected readonly noMatchText = $localize`:@@stage.noMatch:No songs match your search.`;
+
+  // The desktop bar's own words. Every one is an id AudienceBar already carries,
+  // deliberately: the two bars are the same acts at two widths, and a second
+  // string for "Leave audience" would be a second thing to translate and a
+  // second thing to get out of step.
+  protected readonly controlsLabel = $localize`:@@audience.controls:Audience controls`;
+  protected readonly darkPageLabel = $localize`:@@stage.darkPage:Dark page`;
+  protected readonly hideChordsLabel = $localize`:@@audience.hideChords:Hide chords`;
+  protected readonly syncLabel = $localize`:@@audience.sync:Re-sync`;
+  protected readonly leaveLabel = $localize`:@@audience.exit:Leave audience`;
+  protected readonly enterFullscreenLabel = $localize`:@@stage.enterFullscreen:Enter fullscreen`;
+  protected readonly exitFullscreenLabel = $localize`:@@stage.exitFullscreen:Exit fullscreen`;
+  protected readonly turnPageLabel = turnPageLabel;
 
   protected readonly lobbyLabel = $localize`:@@audience.lobby:Lobby`;
   protected readonly pinLabel = $localize`:@@stage.audienceDialog.pin:PIN`;
