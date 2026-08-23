@@ -18,9 +18,10 @@ Every visit, in the docs and in the app, is one request that looks like this:
 GET /count?p=/docs/privacy&r=google.com
 ```
 
-- **p**: which page. Song and songbook ids are stripped out first, so
-  `/songs/<id>` is counted as `/songs/:id` and every library folds into one row.
-  The prefix says whether it was the docs or the app, and which language
+- **p**: which page. Song ids, songbook ids and lobby PINs are stripped out
+  first, so `/songs/<id>` is counted as `/songs/:id` and every library folds into
+  one row. The prefix says whether it was the docs or the app, and which
+  language
 - **r**: the domain that linked you here, never the full address. Our own
   domain counts as nothing, so moving around inside Achordeon reports no source
 

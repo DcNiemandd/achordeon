@@ -216,18 +216,51 @@ function isRefusedByBrowser(): boolean {
 }
 
 /**
+ * The second segment of the routes that carry one, by what it names there.
+ *
+ * By route rather than by the shape of the value, because not every id is a
+ * uuid: a seeded songbook is a slug and a lobby is five characters somebody
+ * could have typed. Both would survive a pattern match and neither should.
+ */
+const IDENTIFIED_ROUTES: Record<string, string> = {
+  songs: ':id',
+  songbooks: ':id',
+  stage: ':id',
+  audience: ':pin',
+};
+
+/**
+ * The one identifier that stays, because it is not one.
+ *
+ * `all-songs` is the whole library performed as if it were a book — the same
+ * route for everybody, naming nothing of anybody's. Folding it into `:id` would
+ * lose the only number that says whether the row is worth keeping.
+ */
+const KEPT_SEGMENT = 'all-songs';
+
+/**
  * A route, with everything specific to one library taken out.
  *
  * This is the line between "which pages get used" and following a person around
  * their own songbook, and the promise in docs/privacy.mdx rests on it. Ids go
- * first — `/songs/<uuid>` becomes `/songs/:id`, so a thousand libraries fold into
+ * first — `/songs/<id>` becomes `/songs/:id`, so a thousand libraries fold into
  * one row instead of a thousand — and the query string goes with them, because a
  * search term is something the reader typed.
+ *
+ * The uuid sweep stays behind the table as a backstop: a route added later and
+ * forgotten here still arrives stripped, which fails towards the promise rather
+ * than away from it.
  */
 function normalizePath(path: string): string {
   const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const segments = path.split(/[?#]/)[0].split('/');
+  const placeholder = IDENTIFIED_ROUTES[segments[1]];
 
-  return path.split(/[?#]/)[0].replace(UUID, ':id');
+  if (placeholder && segments[2] && segments[2] !== KEPT_SEGMENT) {
+    segments[2] = placeholder;
+  }
+
+  return segments.join('/').replace(UUID, ':id');
 }
 
 /**

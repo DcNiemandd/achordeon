@@ -108,6 +108,10 @@ export async function contextFor(
           localStorage: [
             { name: 'achordeon.language', value: locale },
             { name: 'achordeon.theme', value: theme },
+            // A shoot is not traffic. GoatCounter's own opt-out, which `stats.ts`
+            // honours in their script's place, and it silences both layers — so
+            // a run that walks every screen adds nothing to the counts.
+            { name: 'skipgc', value: 't' },
           ],
         },
       ],

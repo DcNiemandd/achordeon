@@ -17,7 +17,7 @@ Každá návštěva, v dokumentaci i v aplikaci, je jeden požadavek, který vyp
 GET /count?p=/docs/privacy&r=google.com
 ```
 
-- **p**: která stránka. ID písní a zpěvníků se nejdřív odstraní, takže `/songs/<id>` se počítá jako `/songs/:id` a každá knihovna se složí do jednoho řádku. Předpona říká, zda šlo o dokumentaci nebo aplikaci, a v jakém jazyce
+- **p**: která stránka. ID písní, ID zpěvníků a PIN lobby se nejdřív odstraní, takže `/songs/<id>` se počítá jako `/songs/:id` a každá knihovna se složí do jednoho řádku. Předpona říká, zda šlo o dokumentaci nebo aplikaci, a v jakém jazyce
 - **r**: doména, která vás sem odkázala, nikdy ne celá adresa. Naše vlastní doména se počítá jako nic, takže pohyb uvnitř Achordeonu žádný zdroj nehlásí
 
 To je celý požadavek a nespouští se kvůli němu žádný skript: odpovědí je obrázek 1×1.

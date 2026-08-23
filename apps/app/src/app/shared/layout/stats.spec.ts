@@ -47,6 +47,23 @@ describe('Stats', () => {
     expect(params().get('p')).toBe('/songs/:id');
   });
 
+  it('strips the identifiers the uuid sweep would miss', () => {
+    const beacon = stats();
+    // A lobby PIN is five characters somebody typed, and a seeded songbook is a
+    // slug. Neither looks like a uuid and both name one library's evening.
+    beacon.count('/audience/Z8V7W');
+    beacon.count('/stage/stage-swipe-book');
+    expect(params().get('p')).toBe('/audience/:pin');
+    expect(params(1).get('p')).toBe('/stage/:id');
+  });
+
+  it('keeps all-songs, which names nobody', () => {
+    stats().count('/stage/all-songs');
+    // The same route for everybody, and the only row that says how much the
+    // whole library gets performed as one book.
+    expect(params().get('p')).toBe('/stage/all-songs');
+  });
+
   it('leaves the screen size off until it is allowed', () => {
     const beacon = stats();
     beacon.count('/songs');

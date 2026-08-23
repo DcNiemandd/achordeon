@@ -41,7 +41,12 @@ export default defineConfig({
       origins: [
         {
           origin: new URL(baseURL).origin,
-          localStorage: [{ name: 'achordeon.seed', value: 'off' }],
+          localStorage: [
+            { name: 'achordeon.seed', value: 'off' },
+            // And counting off with it: a suite is not traffic. `skipgc` is
+            // GoatCounter's own opt-out, honoured by `stats.ts`.
+            { name: 'skipgc', value: 't' },
+          ],
         },
       ],
     },
