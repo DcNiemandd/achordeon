@@ -63,6 +63,7 @@ And a third, about the German notation, in [V2-02](#v2-02--the-german-b--blocked
 | [V2-13](#v2-13--the-parked-shelf)                    | The parked shelf (15 items)           | `[discuss]`            |
 | [V2-14](#v2-14--a-theme-colour-of-your-own)          | A theme colour of your own            | `[v2]`                 |
 | [V2-15](#v2-15--library-ownership-on-a-device)       | Library ownership on a device         | `[done]` + `[discuss]` |
+| [V2-16](#v2-16--the-unload-write-journal)            | The unload write journal              | `[discuss]`            |
 
 ---
 
@@ -717,6 +718,60 @@ nobody has asked for it twice:
 The shared-device, two-account case is a dev and kiosk concern, not a user request,
 so it parks here beside the marker that handles the common one. Promote it if
 per-account coexistence is ever asked for by name.
+
+---
+
+## V2-16 · The unload write journal `[discuss]`
+
+The editor has no Save button and never will (PRD-INFRASTRUCTURE.md §5), so the
+promise "local work is never lost" rests entirely on a 400 ms debounce and the
+handlers that flush it. A **full page load** is the one exit that can outrun it:
+Angular's `onDestroy` never fires, and the write that does fire is an IndexedDB
+transaction Dexie issues a microtask later — by which time the document is being
+discarded, and a discarded document's in-flight transaction is not guaranteed to
+commit. Chrome's own guidance is not to use IndexedDB in unload handlers.
+
+**Done — `beforeunload`.** `song-editor.presenter.ts` now flushes on three events
+rather than two: `visibilitychange` for the mobile kill, `pagehide` for the
+bfcache freeze, and `beforeunload` for the close, the reload and the address bar.
+`beforeunload` is the one that earns its keep here, because it fires while the
+page is still fully alive and the navigation has not committed — the widest window
+this side of the teardown. It does not `preventDefault`: a browser confirm on
+every dirty exit is a worse promise than the one it protects, and `WarnUnsynced`
+already owns that prompt for the question it belongs to.
+
+This was found by the docs shots, not by a user: a `page.goto` out of the editor
+dropped a just-made setting and `font-remove` pictured a count of 1 instead of 2.
+The harness answer stands regardless of this card — **leave a module by clicking
+the rail, never by `goto`** — because an in-app route keeps the page alive to
+finish the write, and is the only fully deterministic exit there is.
+
+**Discuss — the guarantee this deliberately does not buy.** A wide window is not
+a promise. The app reloads _itself_: the Update banner lives in the root shell, so
+pressing it from inside the editor takes `WarnUnsynced.reload()` through a pending
+debounce. The version that cannot lose is a **synchronous journal**, because
+`localStorage.setItem` completes before the handler returns — no microtask, no
+transaction, nothing left in flight. It is the only storage a page can write
+during unload with certainty; IndexedDB cannot be made to offer that.
+
+- **Stash.** In the same three handlers, while dirty, write the **whole** record
+  as JSON under `achordeon.journal.song.<id>` — whole, so unrecognised fields
+  survive the round-trip (ADR-0007). The IDB flush still fires as it does today.
+- **Replay.** At boot (`persistence/boot-gate.ts`), read the journal keys, compare
+  each `updatedAt` against what IndexedDB holds, upsert what is newer, drop the
+  key. In the common case the IDB write landed and the entry is stale-or-equal,
+  so replay is a no-op that cleans up after itself.
+- **Guards.** `try`/`catch` the write — localStorage is ~5 MB per origin and a
+  full one throws. Keyed by id so two tabs on two songs cannot collide, carrying
+  `updatedAt` so sync's LWW (ADR-0004) cannot be confused by a replayed row.
+- **Where it lives.** Not the presenter — a `WriteJournal` beside `persistence/`
+  with `stash(record)` / `replay()`, called from the flush handlers and from boot.
+
+The cost is the reason it parks: **a second place a song's text exists.** Two
+storage locations for one record, a replay step in the boot path, and a new way
+for the two to disagree — against a window that is already wide enough for every
+exit anyone has actually reported. Promote it if a lost edit is ever observed in
+the wild, or if the Update-from-the-editor path is measured and found to bite.
 
 ---
 

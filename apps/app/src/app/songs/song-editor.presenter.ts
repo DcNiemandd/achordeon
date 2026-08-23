@@ -166,17 +166,36 @@ export class SongEditorPresenter {
    * (PRD-INFRASTRUCTURE.md §5), so the promise "local work is never lost" has to
    * survive the one exit the framework cannot see.
    *
-   * **Both events, because neither one fires everywhere.** `visibilitychange` to
-   * hidden is the last moment a mobile browser reliably gives you — a tab it kills
-   * in the background never gets an unload of any kind. `pagehide` covers the
-   * desktop close and reload, and the bfcache freeze, where visibility may not
-   * change at all. Flushing twice is free: `isDirty` makes the second a no-op.
+   * **Three events, because none of them fires everywhere.** `visibilitychange`
+   * to hidden is the last moment a mobile browser reliably gives you — a tab it
+   * kills in the background never gets an unload of any kind. `pagehide` covers
+   * the bfcache freeze, where visibility may not change at all. `beforeunload`
+   * covers the close, the reload and the address bar. Flushing three times is
+   * free: `isDirty` makes the rest a no-op.
    *
-   * It is fire-and-forget on purpose. The write is an IndexedDB transaction, which
-   * a browser will normally let commit while the page goes away; there is no
-   * synchronous way to store a song and nothing useful to do with a rejection at
-   * that point. Switching tabs mid-song therefore saves too — which is the right
-   * behaviour anyway, not a side effect to apologise for.
+   * **`beforeunload` is the one that earns its keep on a full page load**, and it
+   * is there because `pagehide` was measurably too late. The write is an
+   * IndexedDB transaction that Dexie issues a microtask after the handler
+   * returns; by `pagehide` the document is already being discarded, and a
+   * discarded document's in-flight transaction is not guaranteed to commit
+   * (Chrome says as much: do not use IndexedDB in unload handlers). `beforeunload`
+   * fires while the page is still fully alive and the navigation has not
+   * committed, which is the widest window this side of the teardown. It does not
+   * `preventDefault`: a browser confirm on every dirty exit is a worse promise
+   * than the one it would be protecting, and `WarnUnsynced` already owns that
+   * prompt for the question it actually belongs to.
+   *
+   * Widest window is not a guarantee, and the app reloads itself: the Update
+   * banner lives in the root shell, so pressing it from inside the editor takes
+   * `WarnUnsynced.reload()` straight through here with a debounce pending. The
+   * in-app route out — the rail — leaves the page alive to finish the write, and
+   * stays the only fully deterministic exit; the docs shots navigate that way on
+   * purpose (`apps/app-e2e/shots/manifest.ts`).
+   *
+   * It is fire-and-forget on purpose: there is no synchronous way to store a song
+   * and nothing useful to do with a rejection at that point. Switching tabs
+   * mid-song therefore saves too — which is the right behaviour anyway, not a
+   * side effect to apologise for.
    */
   private readonly flushOnHide = (): void => {
     if (this.document.visibilityState === 'hidden') {
@@ -186,12 +205,19 @@ export class SongEditorPresenter {
   private readonly flushOnPageHide = (): void => {
     void this.flushSave();
   };
+  private readonly flushOnBeforeUnload = (): void => {
+    void this.flushSave();
+  };
 
   constructor() {
     this.document.addEventListener('visibilitychange', this.flushOnHide);
     this.document.defaultView?.addEventListener(
       'pagehide',
       this.flushOnPageHide,
+    );
+    this.document.defaultView?.addEventListener(
+      'beforeunload',
+      this.flushOnBeforeUnload,
     );
 
     inject(DestroyRef).onDestroy(() => {
@@ -200,6 +226,10 @@ export class SongEditorPresenter {
       this.document.defaultView?.removeEventListener(
         'pagehide',
         this.flushOnPageHide,
+      );
+      this.document.defaultView?.removeEventListener(
+        'beforeunload',
+        this.flushOnBeforeUnload,
       );
       // Leaving the editor is a boundary: flush rather than drop. The pending
       // save is the last few hundred milliseconds of typing, and this is exactly
