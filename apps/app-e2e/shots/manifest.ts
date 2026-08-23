@@ -77,6 +77,16 @@ export type Shot = ViewShot | ExportShot;
 export const isView = (shot: Shot): shot is ViewShot =>
   shot.capture.mode === 'view';
 
+/**
+ * The Font library block of Settings, heading and Add button included.
+ *
+ * The section carries no testid, and the component tag alone would cut off both
+ * the heading that says where this is and the sentence under it. `:has()` picks
+ * the section the list is in without an attribute being added to the app for a
+ * screenshot's sake.
+ */
+const FONT_LIBRARY = 'section:has(> app-font-list)';
+
 /** The starter library's first real songbook — not the synthetic "All songs". */
 const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
@@ -469,6 +479,122 @@ export const SHOTS: readonly Shot[] = [
     arrange: (page) => seededGoto(page, 'settings'),
     ready: 'app-settings-page',
     capture: { mode: 'view' },
+  },
+
+  // The font library, with the built-in shelf opened. Shut it is one grey line
+  // saying "4 fonts built into the app", which pictures a disclosure rather than
+  // a library — open, the same shot carries the four families drawn in their own
+  // letters AND the "n of 4 styles" line under each, which is the fact the whole
+  // tutorial turns on. The section, not `app-font-list`: the heading and the
+  // sentence about a font staying on this device are what say where in Settings
+  // this is, and the Add button is the next thing the reader presses.
+  {
+    name: 'font-library',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      await page.getByTestId('font-built-in').click();
+      await page.locator(FONT_LIBRARY).scrollIntoViewIfNeeded();
+      // Off the summary it just clicked: a lit hover in a docs picture reads as
+      // the control to press, and here that is the Add button below it.
+      await page.mouse.move(20, 20);
+    },
+    // A bundled row, which exists only once the disclosure is open — waiting for
+    // the list itself would photograph it still folded.
+    ready: '[data-testid="font-roboto-mono"]',
+    capture: { mode: 'view', clip: FONT_LIBRARY, pad: 12 },
+  },
+
+  // The add dialog with a search answered, which is the state the step is about:
+  // the three ways in are all on screen, and the results underneath the field
+  // show what a result actually promises. `crimson` is the query because its two
+  // answers are one of each kind — Crimson Text installs as four static files
+  // ("4 of 4 styles"), Crimson Pro ships as two variable ones and says so. Both
+  // sentences the tutorial explains, in one picture, before anything is fetched.
+  {
+    name: 'add-font-dialog',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      await page.getByTestId('font-add').click();
+      await page.getByTestId('add-font-search').fill('crimson');
+    },
+    ready: '[data-testid="add-font-results"]',
+    // `.panel`, not the dialog host: the host carries the scrim, and clipping it
+    // pictures the whole dimmed settings page instead of the dialog on it. And
+    // no padding, because the panel IS the picture — a halo around it is a strip
+    // of dimmed settings page with every label in it cut off mid-word.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="add-font-dialog"] .panel',
+      pad: 0,
+    },
+  },
+
+  // What removing a font costs, in the app's own words. The count is the whole
+  // picture, so the shot has to earn one: it installs a family, sets a song and
+  // a book in it, and only then asks to remove it — with nothing set in it the
+  // dialog says "Nothing is set in …", which is the one sentence this step is
+  // not about.
+  //
+  // The family is fetched from jsDelivr, the only shot that reaches a third
+  // party. Courier Prime because the repo ships it as four static files, so the
+  // library row behind the dialog reads "4 of 4 styles" rather than needing the
+  // variable-font caveat explained twice.
+  //
+  // The id is read back off the row rather than spelled here: it is slugged from
+  // the family name inside the file (`customFontId`), which is the file's
+  // property and not the search result's.
+  {
+    name: 'font-remove',
+    arrange: async (page) => {
+      await seededGoto(page, 'settings');
+      await page.getByTestId('font-add').click();
+      await page.getByTestId('add-font-search').fill('courier prime');
+      await page.getByTestId('add-font-result-courierprime').click();
+
+      const remove = page.locator('[data-testid^="remove-custom:"]').first();
+      await remove.waitFor({ state: 'visible', timeout: 60_000 });
+      const fontId = (await remove.getAttribute('data-testid'))?.slice(
+        'remove-'.length,
+      );
+      if (!fontId) throw new Error('The added font row carries no id.');
+
+      // One song and one book, so the count reads "2 of your songs and
+      // songbooks" — the plural the sentence is written for, and the two scopes
+      // the step before this one is about.
+      //
+      // Every hop out of a module is a click on the rail rather than a `goto`.
+      // The editor's autosave is debounced (`SAVE_DEBOUNCE_MS`) and flushed when
+      // the component is destroyed; a full page load destroys the whole document
+      // instead, and the write it fires on the way out races the unload. Routing
+      // inside the app leaves the page alive to finish it.
+      await page.goto('songs');
+      const songId = await firstRowId(page, 'song-row');
+      await page.goto(`songs/${songId}/edit`);
+      await page.getByTestId('editor-settings').click();
+      await page.getByTestId('select-bodyFont').selectOption(fontId);
+      // The Reset badge exists only while the song OWNS the setting, so waiting
+      // for it is waiting for the change to have landed in the record.
+      await page.getByTestId('reset-bodyFont').waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+      await page.getByTestId('rail-songbooks').click();
+
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      await page.getByTestId('songbook-settings').click();
+      await page.getByTestId('select-bodyFont').selectOption(fontId);
+      await page.getByTestId('reset-bodyFont').waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('rail-settings').click();
+      await page.getByTestId(`remove-${fontId}`).click();
+    },
+    ready: '[data-testid="font-remove-dialog"]',
+    // No padding, for the same reason as the add dialog above.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="font-remove-dialog"] .panel',
+      pad: 0,
+    },
   },
 
   // The audience dialog one step BEFORE the lobby: the sentence explaining what
