@@ -106,6 +106,44 @@ async function guideSongId(page: Page): Promise<string> {
 }
 
 /**
+ * Put the caret inside the first chord bracket of the song in the open editor.
+ *
+ * ♯ and ♭ act on the ONE chord under the caret, so they are dead until there is
+ * one (`caret().isInsideChord` — `song-editor.page.ts`), and a picture of the
+ * transpose group with half of it greyed out teaches the reader that the buttons
+ * do not work. There is nothing to click by selector: CodeMirror draws the source
+ * as plain text with no chord element in it, so the bracket is found in the
+ * document's own text nodes and clicked where it is actually painted.
+ */
+async function caretIntoChord(page: Page): Promise<void> {
+  await page.locator('.cm-content').waitFor({ state: 'visible' });
+  const point = await page.evaluate(() => {
+    for (const line of Array.from(
+      document.querySelectorAll('.cm-content .cm-line'),
+    )) {
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        // A bracket with a note behind it: `[Solo]` is a bracket the caret would
+        // sit in just as happily, and the buttons would stay dead in it.
+        const at = /\[[A-H]/.exec(node.textContent ?? '')?.index;
+        if (at !== undefined) {
+          const range = document.createRange();
+          range.setStart(node, at + 1);
+          range.setEnd(node, at + 2);
+          const box = range.getBoundingClientRect();
+          return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        }
+        node = walker.nextNode();
+      }
+    }
+    return null;
+  });
+  if (!point) throw new Error('The open song has no chord bracket to click.');
+  await page.mouse.click(point.x, point.y);
+}
+
+/**
  * Put a performance on a peer device and open its lobby, so the shot's own page
  * has one to join. Returns once the host is publishing: a viewer that joins
  * before that sees a lobby with no song in it, which is a picture of a bug.
@@ -202,6 +240,35 @@ export const SHOTS: readonly Shot[] = [
     },
     ready: '[data-testid="song-render"] svg',
     capture: { mode: 'view' },
+  },
+
+  // The transpose group in the editor's bar — four buttons a reader has to find
+  // before any of the rest of that tutorial can happen. The two badged notes move
+  // the whole song; ♯ and ♭ move the one chord the caret is in, which is why the
+  // shot puts it in one (`caretIntoChord`): shown greyed they read as broken, and
+  // the step they illustrate is precisely that they wake up inside a chord.
+  //
+  // The bar, not the group alone: a halo around four buttons crops the insert
+  // group beside them mid-glyph — the `songbook-reorder` lesson. The bar has its
+  // own edges, and it also answers the question the reader actually has, which is
+  // where in the editor these live.
+  //
+  // English only: inside the clip there is not one translated word — the buttons
+  // are glyphs, their labels are tooltips, and the heading is a starter song's
+  // fixed name. The two locales came out byte-identical.
+  {
+    name: 'editor-transpose',
+    locales: ['en'],
+    arrange: async (page) => {
+      await seededGoto(page, 'songs');
+      const id = await firstRowId(page, 'song-row');
+      await page.goto(`songs/${id}/edit`);
+      await caretIntoChord(page);
+    },
+    // The buttons coming alive IS the arrange having worked: `chord-sharp` is
+    // rendered disabled until the caret lands in a chord.
+    ready: '[data-testid="chord-sharp"]:not([disabled])',
+    capture: { mode: 'view', clip: '[data-testid="action-bar"]', pad: 12 },
   },
 
   // The render settings, open where they are actually used. Full window and no
@@ -354,6 +421,45 @@ export const SHOTS: readonly Shot[] = [
     name: 'stage',
     arrange: (page) => seededGoto(page, 'stage'),
     ready: '[data-testid="stage-list"]',
+    capture: { mode: 'view' },
+  },
+
+  // The other transpose: a performance shifted while it plays. Full window on
+  // purpose — the offset on the bar means nothing without the song it is acting
+  // on underneath it, and the whole point of this half is that the page moved
+  // while the stored song did not.
+  //
+  // Stepped twice, because the control pictures itself at rest as a `0` between
+  // two arrows: an offset of 0 is a picture of the feature not being used. The
+  // readout wakes up off zero (it is the reset button, dead at the written key),
+  // so waiting for it to become pressable is waiting for the shift to have
+  // landed — the same trick `song-columns` plays with its Reset.
+  //
+  // Desktop, so the stepper is on the bar in the open. The phone puts it behind
+  // ⋯ in a sheet, which is already pictured — from the viewer's side, on a phone
+  // — by `audience-transpose`.
+  //
+  // English only: a performance is a starter song on a starter book, both fixed
+  // text (`seed.ts`), and the bar around it is glyphs. Byte-identical in both.
+  {
+    name: 'stage-transpose',
+    locales: ['en'],
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`stage/${bookId}`);
+      await page.getByTestId('stage-render').waitFor({ state: 'visible' });
+      await page.getByTestId('transpose-up').click();
+      await page.getByTestId('transpose-up').click();
+      await page
+        .locator('[data-testid="transpose-value"]:not([disabled])')
+        .waitFor({ state: 'visible' });
+      // Off the button it just pressed: the pointer stays where it clicked, and
+      // a hover-lit control in a docs picture reads as the one to press — the
+      // same thing `settle` drops focus for.
+      await page.mouse.move(720, 600);
+    },
+    ready: '[data-testid="stage-render"] svg',
     capture: { mode: 'view' },
   },
 
