@@ -115,12 +115,16 @@ export class ThemeApplier {
   }
 
   /**
-   * Mirror the choice into `localStorage` for the pre-paint script.
+   * Write the choice to `localStorage`, where the pre-paint script and
+   * {@link cached} both read it back.
    *
-   * The **source of truth is the User record** (SettingsStore, IndexedDB, and it
-   * syncs). This is only a cache, and it exists because the pre-paint script has
-   * to run before first paint and IndexedDB cannot be read synchronously. A stale
-   * value costs one frame of the wrong theme, never a wrong setting.
+   * This is where the choice lives between visits. The theme is device-local:
+   * `SettingsStore` holds it in memory only, deliberately, because the pre-paint
+   * script has to run before first paint and IndexedDB cannot be read
+   * synchronously — so unlike the global render defaults it is not on the synced
+   * `User` row, and a dark laptop leaves a bright phone bright. Failing to
+   * write costs the choice, so the catch below is the only place it can go
+   * wrong — and there it costs one session, not a wrong setting.
    */
   private cacheForPrePaint(theme: Theme): void {
     try {

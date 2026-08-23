@@ -12,8 +12,10 @@ import { StagePresenter } from './stage.presenter';
  *
  * A simple list rather than the full SongExplorer — the stage is a
  * performance context, not a management one, so search, sort, and bulk
- * actions would be noise. Each row is a button: clicking anywhere on the row
- * starts performing that songbook.
+ * Two ways into a performance, and no accidental third: the row's own Perform
+ * button, or a double-click on the row. A single click does nothing, because
+ * the All songs row carries a second button and a list that started playing
+ * under one press would be a list you could not aim at.
  *
  * Empty songbooks are hidden entirely (you cannot perform nothing).
  * A note below the list reports how many are hidden.
