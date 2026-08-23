@@ -1,5 +1,6 @@
 {
   "locale": "cs",
+  "stale": [],
   "translations": {
     "actionBar.label": "Akce",
     "actionBar.rename": "Název",
@@ -247,7 +248,7 @@
     "import.renamed": "{$incoming} (vaše: {$existing})",
     "import.replace": "Nahradit moje importovanou verzí",
     "import.skipOne": "Přeskočit tento",
-    "import.songbookNote": "Zpěvníky se vždy přidávají jako nové — stávající se nikdy nepřepíše.",
+    "import.songbookNote": "Zpěvník se uloží na ten, ze kterého pochází — stejný zpěvník se přepíše, ne zduplikuje. Import všeho jako nového z něj udělá kopii.",
     "import.summary": "Soubor obsahuje písní: {$songs}, zpěvníků: {$books}.",
     "import.title": "Import",
     "import.unknown": "Tento soubor vytvořila novější verze. Nastavení, která tato verze nezná, se zachovají, ale nezobrazí.",

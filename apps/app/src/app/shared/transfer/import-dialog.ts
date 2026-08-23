@@ -323,7 +323,12 @@ export class ImportDialog {
   protected readonly title = $localize`:@@import.title:Import`;
   protected readonly resolutionLegend = $localize`:@@import.legend:What should happen to those?`;
   protected readonly allNewLabel = $localize`:@@import.allNew:Import everything as new, with today's date in the name`;
-  protected readonly songbookNote = $localize`:@@import.songbookNote:Songbooks are always added as new — an existing one is never overwritten.`;
+  // What happens to a songbook is not one of the choices above, so it is stated
+  // rather than asked. It used to claim a songbook is never overwritten, which
+  // was only ever true between two libraries: `applyImport` keeps the book's own
+  // id, so the same book arriving again lands ON the local one (import-plan.ts,
+  // and `import-plan.spec.ts` pins it). Only the all-new checkbox mints.
+  protected readonly songbookNote = $localize`:@@import.songbookNote:A songbook lands on the one it came from — the same book is replaced, not duplicated. Importing everything as new copies it instead.`;
   protected readonly unknownText = $localize`:@@import.unknown:This file was made by a newer version. Settings this one does not know are kept, but not shown.`;
   protected readonly importLabel = $localize`:@@import.confirm:Import`;
 }
