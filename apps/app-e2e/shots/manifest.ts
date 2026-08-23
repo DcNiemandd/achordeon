@@ -87,6 +87,17 @@ export const isView = (shot: Shot): shot is ViewShot =>
  */
 const FONT_LIBRARY = 'section:has(> app-font-list)';
 
+/**
+ * The `Print` block of the songbook settings dialog, its heading included.
+ *
+ * `app-songbook-print-fields` is `display: contents` — it has no box of its own,
+ * so there is nothing there to clip to — and the heading above it is what says
+ * which half of the dialog these rows are. The same `:has()` trick FONT_LIBRARY
+ * plays, and for the same reason: no attribute is added to the app for a
+ * screenshot's sake.
+ */
+const PRINT_FIELDS = 'section:has(> app-songbook-print-fields)';
+
 /** The starter library's first real songbook — not the synthetic "All songs". */
 const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
@@ -423,6 +434,145 @@ export const SHOTS: readonly Shot[] = [
     capture: {
       mode: 'view',
       clip: '[data-testid="songbook-settings-dialog"] .panel',
+    },
+  },
+
+  // The print half of that dialog on its own: what the book is MADE of — a title
+  // page and its style, page numbers and where they sit, a contents list and
+  // which side its numbers go. Six rows a print tutorial walks down in order,
+  // where `songbook-settings` above is the whole dialog and shows this section
+  // as three lines at the bottom of it.
+  //
+  // Every toggle is switched ON first, and that is the shot rather than a
+  // preference: each one HIDES the row under it while it is off, so the default
+  // book — summary off — pictures a style picker, a position picker, and a
+  // checkbox with nothing beneath it. Three of the six rows would be missing
+  // from a picture of all six.
+  //
+  // `check()` and not `click()`: the title page and the page numbers are on in a
+  // book that has said nothing (`DEFAULT_SONGBOOK_PRINT`), and a click on a
+  // ticked box switches it off.
+  {
+    name: 'songbook-print-fields',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      await page.getByTestId('songbook-settings').click();
+      await page.getByTestId('pdf-title-page').check();
+      await page.getByTestId('pdf-page-numbers').check();
+      await page.getByTestId('pdf-summary').check();
+      // Off the box it just ticked — a hover-lit control in a docs picture reads
+      // as the one to press.
+      await page.mouse.move(20, 20);
+    },
+    // Tall for the same reason `songbook-settings` is: the dialog scrolls at
+    // 900, and this section is the last one in it.
+    viewport: { width: 1280, height: 1500 },
+    // The numbering row exists only while the summary is on, so waiting for it
+    // is waiting for the last of the three toggles to have landed on the record.
+    ready: '[data-testid="pdf-summary-number"]',
+    capture: { mode: 'view', clip: PRINT_FIELDS, pad: 12 },
+  },
+
+  // The book as paper: the Songbooks list's pane B, holding every sheet the PDF
+  // would — the title page, the contents, then the songs, each with its folio in
+  // the corner the settings put it in. The step is "look before you print", and
+  // this is the thing to look at.
+  //
+  // Zoomed out to three columns, which is the only way the picture makes the
+  // point: at one page per screen it is a title page and nothing to compare it
+  // with, and the sentence being illustrated is about a SEQUENCE — front matter
+  // first, numbering starting at the first song.
+  //
+  // The summary is switched on for it. Off, the book is a title page and three
+  // songs and the contents step has no picture anywhere on the page.
+  //
+  // Back to the list by the rail rather than by `goto`: the print structure was
+  // just written from a dialog, and a full page load races the app's own write
+  // on the way out (the `font-remove` lesson).
+  {
+    name: 'songbook-print-preview',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      await page.getByTestId('songbook-settings').click();
+      await page.getByTestId('pdf-title-page').check();
+      await page.getByTestId('pdf-summary').check();
+      await page
+        .getByTestId('pdf-summary-number')
+        .waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+      await page.getByTestId('rail-songbooks').click();
+
+      // A click picks a book and previews it; the double click is what opens it.
+      await page.getByTestId(`open-${bookId}`).click();
+      await page
+        .locator('[data-testid="title-page"] svg')
+        .waitFor({ state: 'visible' });
+
+      // Zoom is a column count, and the magnifier reads the other way round:
+      // "out" shows more, smaller pages. Twice → three across, which is the
+      // whole five-sheet book in two rows.
+      await page.getByTestId('preview-zoom-out').click();
+      await page.getByTestId('preview-zoom-out').click();
+      // Every song sheet inked. The pane draws lazily — a frame near the
+      // viewport is a spinner until its SVG arrives — so the last of the three
+      // songs having one is the book being finished rather than caught drawing.
+      await page
+        .locator('[data-testid="song-page"] svg')
+        .nth(2)
+        .waitFor({ state: 'visible' });
+      await page.mouse.move(20, 20);
+    },
+    // Short on purpose. The desk fits its pages to its own height as well as to
+    // the column width, so at the default 900 the five sheets sit in the top
+    // two-thirds of the pane and the bottom third is bare desk — a third of a
+    // docs picture spent on grey. This is the height at which two rows of three
+    // fill it.
+    viewport: { width: 1440, height: 780 },
+    ready: '[data-testid="summary-page"] svg',
+    // The pane, bar included: the zoom that produced this view and the "1–5 / 5"
+    // readout are half of what the step is telling the reader to do. No padding —
+    // the pane has its own edges, and 24px of halo is a strip of the songbook
+    // list beside it with every row cut off mid-word.
+    capture: { mode: 'view', clip: 'app-songbook-preview', pad: 0 },
+  },
+
+  // The songbook download dialog: the format that decides everything under it,
+  // and — for a PDF — the paper. It is the last screen of the tutorial and the
+  // only one the book's own settings do not reach: the structure travels with
+  // the book, the paper stays on this device.
+  //
+  // Opened on a real book rather than All songs, so the format row offers the
+  // link (All songs is the whole library and never fits in one).
+  {
+    name: 'songbook-download-dialog',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await page.goto(`songbooks/${bookId}`);
+      await page.getByTestId('songbook-detail-download').click();
+      // Whether the book fits in a link is only knowable once the payload has
+      // been built, and until it is, `Link` is greyed and a "too big" line may
+      // yet appear under the row. Waiting for the answer is what keeps the
+      // picture from depending on how fast the machine was.
+      await page.waitForFunction(
+        () =>
+          document.querySelector<HTMLOptionElement>(
+            '[data-testid="songbook-format"] option[value="share-link"]',
+          )?.disabled === false,
+      );
+    },
+    ready: '[data-testid="pdf-margin"]',
+    // `.panel`, not the dialog host: the host carries the scrim, and clipping it
+    // pictures the whole dimmed book behind it. No padding, because the panel IS
+    // the picture — a halo is a strip of dimmed page with its labels cut in half.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="songbook-download-dialog"] .panel',
+      pad: 0,
     },
   },
 
