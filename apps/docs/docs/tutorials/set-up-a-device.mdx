@@ -7,22 +7,379 @@ description: 'Install the app on a device, make it yours, and get your library o
 
 Install it, then make sure the library is not only in this browser.
 
+Achordeon has no server holding your songs. The library is a database inside the
+browser you are reading this in — **IndexedDB**, on this machine, under this
+address — and that is what makes the app fast, private and usable on a train.
+It is also the whole risk: a library that exists in exactly one place exists
+until something clears it.
+
+So this page is two jobs. The first three steps make the app a proper app on
+this device. The seven after them make the library recoverable from somewhere
+that is not this device — by hand into a file, into your own Google Drive, or
+continuously between machines. Do the first three today; do at least one of the
+others before you have written anything you would mind retyping.
+
 ## 1. Open the app in the browser
+
+Achordeon lives at `achordeon.eu/app` — <AppLink>open it now</AppLink>. There is
+nothing to install first, no account, and no empty screen at the end of it: the
+first visit writes a starter library, so every module opens on real songs and a
+real songbook instead of on its own blank state. They are ordinary songs from
+that moment — rename them, rewrite them, throw them away.
+
+Bookmark the address. It is the only one there is, and it is the same address
+whether you end up running the app in a tab or in a window of its own.
+
+That first visit also creates the database. Two things follow from where it
+lives, and both matter more than they sound:
+
+- **A browser is a device.** Chrome and Firefox on the same laptop are two
+  Achordeons with two libraries that know nothing about each other. So is a
+  private window, which throws its library away when you close it.
+- **Nobody else has a copy.** Not us — no library reaches a server unless you
+  switch on the sync in step 9.
+
+:::warning[Clearing site data clears the library]
+
+The browser's own "clear cookies and site data" takes IndexedDB with it, and it
+is offered next to the things people clear routinely. Uninstalling the app or
+resetting the browser does the same. Nothing on this page stops that happening —
+steps 6 to 9 are what make it survivable.
+
+:::
 
 ## 2. Install it
 
+Achordeon is a Progressive Web App, which means the browser can promote it from
+a page to something that behaves like an installed program. There is no Install
+button anywhere in Achordeon, because the control is not ours: your browser owns
+it, and where it sits depends on which browser you are holding.
+
+- **Chrome, Edge or Brave on a desktop** — an install icon at the right-hand end
+  of the address bar, or the same entry in the `⋮` menu.
+- **Chrome on Android** — `⋮`, then _Install app_ or _Add to Home screen_.
+- **Safari on iPhone or iPad** — the Share button, then _Add to Home Screen_.
+  There is no other way in on iOS, and it is easy to walk past.
+- **Firefox on a desktop** does not install web apps at all. Everything on this
+  page still works; it stays a tab.
+
+What you get for it is a window with no address bar and no tab strip, an icon in
+the launcher or on the home screen, and — on a Chromium desktop — a file
+association: double-click an `.achordeon` file and it opens in the app.
+
+What you do **not** get for it is offline, because you already had it. The
+service worker that keeps a copy of the app itself is registered on your first
+visit whether you install or not; installing changes the frame around the app,
+not what it can do without a connection.
+
+:::note[Installing does not make a second library]
+
+The installed window and the tab are the same address, so they read the same
+database. Install after a month of writing and everything is already there;
+uninstall and it is still in the tab. What you install is the app, never a copy
+of your songs.
+
+:::
+
+An installed app has no app store behind it, so updating is Achordeon's own job.
+It checks when it starts and again whenever you come back to the window, and a
+new version that has finished downloading announces itself as a bar with two
+buttons: <Ui id="update.reload" /> takes it now, <Ui id="update.later" /> puts it
+off. It never reloads on its own — you could be halfway through a song in front
+of a room. The bar comes back on the next check, which is as insistent as a
+routine deploy gets.
+
+Two updates do insist, and both say why. <Ui id="update.required.title" /> means
+something handed the app data written by a newer version, which it will not guess
+at. <Ui id="update.broken.title" /> means the offline cache is damaged beyond
+repair — and it is careful to tell you that _your songs are stored separately and
+are not affected_, because a reload prompt after months of writing deserves that
+sentence.
+
 ## 3. Set the theme and the language
+
+Everything on this step is in <AppLink to="settings">Settings</AppLink>, in the
+section headed <Ui id="settings.app" />. Scroll past the account block at the top
+— that is steps 5 to 9 — and this is the next card down.
+
+<Image
+  alt="The Application section of Settings: theme, dark page, language, panel size and usage statistics"
+  src="/img/screenshot-settings-app.png"
+  srcDark="/img/screenshot-settings-app-dark.png"
+  shadow
+/>
+
+<Ui id="settings.theme" /> is three buttons. <Ui id="theme.light" /> and
+<Ui id="theme.dark" /> are decisions; <Ui id="theme.system" /> hands the
+decision to the machine, and follows it live — a laptop that goes dark at dusk
+takes the app with it without a reload.
+
+The checkbox beside it, <Ui id="settings.songDark.on" />, is a different
+question: it turns over the **paper** rather than the app. With it on, every song
+Achordeon draws goes light-on-dark while the app is dark — previews, the editor's
+render, a performance. Printing, PDFs and downloads stay on white whatever it
+says, and so does anybody watching you from their own phone. There is more of it
+in [Perform from a songbook](./perform-from-a-songbook.mdx#7-turn-the-page-dark).
+
+<Ui id="settings.language" /> offers English and Čeština, each written in its
+own language rather than in the one you are currently stuck in — which is the
+point, since somebody hunting for Czech in an English app is looking for the
+word _Čeština_. Choosing one **reloads the app**, and the hint beside the row
+says so: _Achordeon reloads to switch language, and stays on the page you are
+on._ A message is translated once, on first use, so a running app cannot be
+re-lettered in place.
+
+:::note[This section belongs to the device, not to the account]
+
+The theme, the dark page, the language, the panel sizing and the statistics
+switch are all stored on the machine you set them on. They do not travel — not in
+a backup, not over sync — so a second device is three clicks of setting up, and a
+phone can run dark while the desktop runs light. Everything under <Ui id="settings.rendering" /> below is the opposite: those are your account's
+defaults, and they do travel.
+
+:::
 
 ## 4. Use it with no connection
 
+Turn the aeroplane on and reload. The app comes up.
+
+Two separate things make that true, and knowing which is which explains
+everything that follows. The **app** — the code, the four bundled fonts, both
+translation files — was copied onto the device by the service worker on your
+first visit, and is served from there rather than from the network. The
+**library** was never anywhere else to begin with.
+
+So the whole of the songwriting side works with nothing connected: writing and
+editing, the live render, transposing, building and reordering songbooks,
+printing, PDFs, PNGs and ZIPs, performing a set on stage, importing a file
+somebody dropped on the window, and even opening a share link — the song is
+inside the link, so there is nothing to fetch. Backing up to a file and restoring
+from one work too, which is exactly why they are the steps that need no account.
+
+Two things are worth doing while you still have a connection:
+
+- **Open a song in each title font once.** Achordeon ships four faces, and only
+  the one the app is written in is copied down at install time; the other three
+  are fetched the first time a page actually needs one. A font you have never
+  rendered is a font that may not be there in the dark.
+- **Add the fonts you want before you go.** Adding one downloads it (step 10) —
+  but once added it is kept on the device and never fetched again. See
+  [Add a font](./add-a-font.mdx).
+
+Step 10 is the list of what genuinely stops. It is shorter than people expect.
+
 ## 5. Sign in
+
+Everything up to here needed no account, and that is not an accident: the account
+buys you exactly one thing, which is getting the library off this single device.
+
+Three things sit behind it, and they are not all the same price:
+
+- **Google Drive backup** — free, and step 7.
+- **Automatic sync** — <Ui id="settings.account.pro" />, and step 9.
+- **Hosting an audience lobby** — <Ui id="settings.account.pro" />, though it is
+  lent to free accounts while it is being tested. See
+  [Play to an audience](./play-to-an-audience.mdx).
+
+The account block is the first card on <AppLink to="settings">Settings</AppLink>,
+and offers two doors into the same account. <Ui id="settings.account.google" />
+is one tap and also connects the identity Drive rides on. <Ui id="settings.account.login" /> opens this:
+
+<Image
+  alt="The Log in dialog: email, password, and a link for a password you have forgotten"
+  src="/img/screenshot-login-dialog.png"
+  srcDark="/img/screenshot-login-dialog-dark.png"
+  shadow
+/>
+
+If you have not got an account yet, <Ui id="settings.account.register" /> beside
+it takes the same two fields plus a confirmation of the password, and then sends
+you an email: the method is not live until you click the link in it. A password
+you have lost is <Ui id="settings.account.forgotLink" /> in the dialog above,
+which mails you a link to set a new one.
+
+You are not choosing between the two doors for good. Once you are in, the account
+grows the method it is missing — <Ui id="settings.account.linkGoogle" /> or <Ui id="settings.account.addPassword" /> — and after that either one gets you in.
+Signing in with Google a second time never merges you into somebody else's
+account; it attaches to yours.
+
+:::note[Signing in with Google is not granting Drive]
+
+The sign-in asks for your email address and basic profile and nothing else.
+Permission to write a file in your Drive is a separate grant, asked the first
+time you press a Drive button in step 7 — and it covers only the file Achordeon
+itself creates. See
+[your account & Google data](/settings-account/account-data.mdx#google-drive).
+
+:::
+
+One thing to know before you press it, because it surprises people. **The first
+sign-in claims the library on this device.** From then on those songs belong to
+that account, and Achordeon shows them only to it: sign out and the lists go
+empty — the songs are not deleted, they are hidden, and signing back in brings
+them straight back. Sign in as somebody else in the same browser and you get told
+so in as many words — <Ui id="library.foreign.heading" /> — with the choice of
+signing in as the owner instead, or <Ui id="library.foreign.replace" />, which
+clears this device's copy of their library and puts yours here. One browser holds
+one library, and it belongs to one account.
 
 ## 6. Back up to a file
 
+The one on this page that needs no account, no connection and nobody's
+permission. It is in the <Ui id="settings.sync" /> block of the account card,
+under <Ui id="settings.backup" />: press <Ui id="settings.backup.save" /> and a
+file lands, named `achordeon-backup-` and today's date.
+
+What is in it is worth being exact about, because it is not what an export is.
+A backup is the **entire database, verbatim** — every song and every songbook,
+your global render defaults, the record of the songs you have deleted, and the
+font files you added yourself, which no other file in Achordeon carries. It is
+not a selection and there is nothing to choose: the button is the whole act.
+
+Sending a few songs to somebody is the other job, and the other file. That is
+[Share and import songs](./share-a-song.mdx), and the app says so in the same
+block: _Sending a few songs to someone else is a different job._
+
+Where the file goes is your browser's business rather than the app's — Chromium
+asks, Firefox and Safari drop it in the downloads folder. Put it somewhere that
+is not this device. A backup sitting in the Downloads folder of the machine you
+are protecting against is a backup of nothing.
+
+:::tip[The cheapest habit on this page]
+
+Press it after an evening of writing, keep the last few files, delete the rest.
+It costs two seconds and it is the only step here that works on a machine that
+has never been signed into anything.
+
+:::
+
 ## 7. Grant Drive access and back up there
+
+The same backup, kept in your own Google Drive instead of in a file you have to
+remember to move. <Ui id="settings.drive.heading" /> is the row under <Ui id="settings.backup" />, with <Ui id="settings.drive.upload" /> and <Ui id="settings.drive.download" /> on it. It is free — Premium starts at step 9.
+
+Both buttons are dead until Google is attached to your account, and the line
+under them names the step that is actually missing rather than the one you have
+already done: <Ui id="settings.drive.requiresSignIn" /> while you are signed out,
+and <Ui id="settings.drive.requires" /> once you are in by email. Go back to step
+5 for that.
+
+The first <Ui id="settings.drive.upload" /> is where Google asks. The permission
+is the narrow one: Achordeon can see and touch **only the backup file it wrote
+itself**, and the rest of your Drive stays invisible to it — it cannot list your
+files, read them, or know they are there.
+
+Uploading **merges with the copy already in Drive** rather than flattening it, so
+a backup pushed from your laptop does not throw away what your phone put there
+this morning. When the Drive copy has moved on further than Achordeon expected it
+says so — <Ui id="settings.drive.conflict" /> — and offers <Ui id="settings.drive.force" />, which is the one you press when you know your
+copy is the one that should win.
+
+Coming the other way, <Ui id="settings.drive.download" /> asks the same question a
+file does, in the same dialog, with the same two answers. That is step 8.
 
 ## 8. Bring a backup back: add to the library, or replace everything
 
-## 9. Switch on real-time sync
+<Ui id="settings.backup.restore" /> opens the file picker; the Drive button
+above fetches the copy from there. Either way you land here, because a backup is
+a backup wherever it was kept:
+
+<Image
+  alt="The restore dialog: what Add and Replace each do, then Cancel, Replace everything and Add to my library"
+  src="/img/screenshot-restore-dialog.png"
+  srcDark="/img/screenshot-restore-dialog-dark.png"
+  shadow
+/>
+
+Nothing has been written yet. The dialog describes both answers in full before
+either can be pressed, because only the person holding the file knows which of
+two completely different jobs it is here to do.
+
+**<Ui id="settings.restore.merge" />** brings the backup's songs and songbooks in
+beside the ones you have. Where the same song is in both, the newer copy wins,
+one row at a time — the same rule import, Drive and sync all reconcile by. Your
+settings are not touched, and neither is anything the backup has never heard of.
+Deletions ride along like any other change, so an old backup does not resurrect
+the songs you threw away last month.
+
+**<Ui id="settings.restore.replace" />** puts the library back exactly as the
+backup has it — settings, added fonts, the lot — and **anything not in the backup
+is gone**. That is the one irreversible button on this page. It is the right
+answer to "put this machine back the way it was" and the wrong answer to almost
+everything else.
+
+Either way the app reloads when it is done, because the version of your library
+it was holding a moment ago no longer exists.
+
+A file that is not an Achordeon backup, or one that arrived damaged, gets <Ui id="settings.restore.failedTitle" /> and the reassurance that goes with it:
+_Your library is unchanged._ Nothing is half-applied.
+
+:::tip[Add is the one you usually want]
+
+<Ui id="settings.restore.replace" /> is for a machine being rebuilt. If you are
+after a song out of an old backup, <Ui id="settings.restore.merge" /> gets it
+without costing you anything you have written since.
+
+:::
+
+## 9. Switch on automatic sync
+
+<Ui id="settings.autoSync" />, at the top of the <Ui id="settings.sync" />
+block, is the step that stops this being a chore. Tick
+<Ui id="settings.autoSync.on" /> and the library keeps itself the same on every
+device you sign in on, with no file in the story at all.
+
+It is <Ui id="settings.account.pro" />, and it is the one Premium feature that is
+genuinely held back rather than lent for testing: on a free or signed-out account
+the checkbox is dead and says why — <Ui id="settings.autoSync.requires" /> The Premium badge on it disappears once
+you have paid, since marking somebody's own feature as an upsell is just noise.
+
+It is not, despite what people expect of the word, keystroke-by-keystroke. It
+works on **boundaries**: a song saved, a book reordered, a global default changed
+— each schedules a push a few seconds later, so a burst of edits costs one round
+trip rather than thirty. It pulls when the app launches and every time you come
+back to the window, which is the moment a change made on the other device
+matters, and it flushes whatever is still pending when you leave. Two devices
+edited apart reconcile row by row, newest wins, exactly as a restore does.
+
+The row tells you where it has got to rather than leaving you guessing: <Ui id="settings.sync.syncing" /> while it runs, <Ui id="settings.sync.unsynced" /> when there is something still to go, <Ui id="settings.sync.synced" /> when there is not, and <Ui id="settings.sync.failed" /> when a round trip did not land — which is a
+statement of fact rather than a request, since it tries again by itself. Close
+the tab with work that has not gone up and the browser asks whether you meant to.
+
+While it is running it takes the manual tools out of your hands, and both rows
+say so: <Ui id="settings.backup.blocked" /> The cloud is already the copy, and a
+restore by hand would be pushed straight back up over every other device.
+
+:::note[Sync is not a backup]
+
+Sync's job is to make every device agree, and it does that faithfully in both
+directions: delete a song on the phone and it is gone from the laptop within
+seconds. A backup is the thing that still has it afterwards. They answer
+different questions, and a device that matters is worth both.
+
+:::
 
 ## 10. Know what still needs a connection
+
+Everything Achordeon does with your songs works offline. What needs the network
+is, without exception, something that involves somebody else's computer:
+
+- **Signing in, registering, and resetting a password.** The session already on
+  the device keeps working; getting a new one does not.
+- **Automatic sync.** It queues and catches up when you are back; the row reads <Ui id="settings.sync.unsynced" /> in the meantime.
+- **Google Drive**, in both directions.
+- **Adding a font.** Searching Google Fonts and fetching the file both go out.
+  Once a font is on the device it is never fetched again — including in a
+  performance, and including in a PDF.
+- **Hosting or joining an audience lobby.** Every phone in the room is talking to
+  the same server, so this one is online by definition. Performing from the stage
+  yourself is not.
+- **Reporting a bug** from <Ui id="settings.about.heading" />, and the <Ui id="settings.about.docsButton" /> and <Ui id="settings.about.patchNotesButton" /> buttons beside it, which open this
+  site.
+- **Checking for a new version.** It fails quietly: not knowing about an update
+  breaks nothing.
+
+Nothing else. Not the editor, not the renderer, not a PDF, not a songbook, not a
+performance, not an import, not a backup to a file and not a restore from one.
+That is the point of the whole arrangement — and it is why the seven steps above
+are worth doing before the evening you need them.
