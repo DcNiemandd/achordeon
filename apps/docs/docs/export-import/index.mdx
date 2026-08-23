@@ -39,10 +39,37 @@ You can import all exported and downloaded files. The downloaded files has metad
 
 The metadata rides in the **PNG**, one file that is both the picture and the song. A PDF carries none, so import a PDF's song from the Export JSON or from the image.
 
+Which format brings the song back is the thing most often got wrong:
+
+| What you took      | Comes back?         | And brings                                                         |
+| ------------------ | ------------------- | ------------------------------------------------------------------ |
+| **Achordeon file** | yes                 | every song and songbook in the file, with their settings           |
+| **Link**           | yes                 | the same as the file - it is the same data, in a URL               |
+| **Image (PNG)**    | yes                 | the one song in that picture, with its settings                    |
+| **PDF**            | no                  | nothing importable; keep the song as well if you will want it back |
+| **ZIP of images**  | the pictures inside | unpack it first - each image is a song, the contents page is not   |
+| **ZIP of PDFs**    | no                  | nothing importable, the same as a single PDF                       |
+
+Two more things travel, and one deliberately does not:
+
+- Render settings travel. A song arrives shaped the way the sender shaped it - page ratio, columns, scale, chord colour and the rest.
+- Font names travel, font files do not. The file says which fonts the songs are set in; the bytes stay on the sender's device, which is why the preview names the fonts this one has not got.
+- The sender's global settings are never in the file. No export carries them, so a file cannot quietly re-base every song you already had on somebody else's defaults.
+
+:::note[Editing the image loses the song]
+
+The song rides in a PNG chunk that only Achordeon reads. Crop the image, resize it, or run it through anything that re-encodes pictures, and the chunk is dropped: what is left is a perfectly good picture that imports as nothing.
+
+:::
+
 The rules of importing are as follows:
 
 - Importing songbook will replace the songbook it came from — they are matched by id, not by name. Only "import everything as new" creates a new one.
 - Importing songs will give user options to replace, ignore, or create new. You can also import all songs as new with date tag as a prefix
+
+**Import everything as new** is a checkbox under those three choices, and it applies to the whole file, collision or not: every song lands as a fresh copy with today's date in front of its name. While it is ticked the three choices go dead, because it has already answered them.
+
+Songbooks are matched by identity too, never by name. A book you have not seen before arrives as a new book however it is called, and reimporting your own file updates the book in place rather than piling up a second copy of it. There is no merge either way: a book is a running order, and two running orders have no sensible average.
 
 There are three ways in, and all three end at the same preview:
 
@@ -50,7 +77,11 @@ There are three ways in, and all three end at the same preview:
 - a file **dropped anywhere on the page**, several at once being offered one after another
 - a **link**, which opens the preview already filled in
 
+Several files at once are previewed one after another, not merged: each file's answer is applied before the next one is planned, because what the second file collides with depends on what the first one just added. While a queue is running, Cancel reads **Skip this one** and drops that file alone; the button beside it counts what is left - **Cancel all 4** - and is the way out of the whole drop.
+
 The Achordeon file is written as `.achordeon` now. Files already exported as `.json` still import, and the picker accepts both.
+
+On a Chromium desktop with Achordeon installed there is a fourth way in, and it is not something you switch on: double-click an `.achordeon` file and the operating system opens it in the app.
 
 ## Sharing a song as a link
 

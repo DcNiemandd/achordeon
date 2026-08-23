@@ -33,7 +33,9 @@ Removing a song from a songbook won't delete the song. The song can be deleted o
 
 A songbook can restyle the chords of all its songs - chord color, chord size and font are songbook-scoped settings.
 
-A click on a songbook shows its title page in the pane beside the list, and a double click opens it. On a phone there is no such pane, so one tap opens it.
+A click on a songbook shows the whole book in the pane beside the list — every page the PDF would hold, not the title page alone — and a double click opens it. On a phone there is no such pane, so one tap opens it.
+
+The pane carries two controls of its own. **Zoom** moves a column count rather than a magnification, so the pair of buttons works the other way round from its sign: **Zoom in** shows fewer, larger pages, and **Zoom out** more, smaller ones, up to the whole book at once as a contact sheet. The moon is **Dark page**, which turns the paper over for reading in the dark. It is separate from the app's own theme, and it does not reach the PDF — the caption beside it says as much: _Not the print output_.
 
 Each songbook in the list carries its own actions on the row: settings, rename, duplicate, download, and delete. Download covers the export too, and the file format is the first thing its dialog asks. Duplicating one makes an independent copy with the same songs, which are only referenced, so nothing is copied twice.
 
@@ -44,10 +46,16 @@ The **All songs** book can be downloaded, as a PDF of your whole library or an e
 The row's **Settings** opens the songbook's own dialog: its title page fields, the chord settings above, and how the book is put together when it is printed. All of it belongs to the book, so a download only draws the book as it already stands.
 
 - **Title page**: whether there is one, and its style. Its title, subtitle and author are the songbook's own fields, separate from any song's title and subtitle. It is a rendered page of the songbook, so it wears the book's own chord colours and fonts, the same page you see previewed in `Songbooks`. There are twenty-one styles and every one of them is drawn. Some are placement alone: **Classic** (the block centred on the sheet), **Centered**, **Plate** (a small title high on the page, the author at the foot), **Minimal** (the title alone in a corner), **Poster** (the title as large as the page is wide), **Stacked** (one word to a line), **Spine** (the title read up the left edge), **Baseline** (the book stood on the bottom-left corner), **Corner** (title and author at opposite ones) and **Column** (the title on the left, the author against the right edge on the same line). The rest put ink on the paper as well: **Rule** (a line under the title), **Marquee** (a line above it and below it), **Gate** (an upright at each margin), **Framed**, **Bookplate** (one frame inside another), **Ticket** (the book in a rounded box, with how many songs it holds), **Tag** (the title in a box drawn tight around it), **Banner** (the title reversed out of a band across the top), **Half** (the top half of the sheet filled solid), **Bookmark** (a strip down the left edge) and **Footer** (the author in a band at the foot). Whichever you pick, a small `achordeon.eu` is printed somewhere on the page — it is the app's mark rather than part of your book, so no style leaves it out and no setting turns it off. Each style places it its own way, as part of the design: under the block on **Classic**, up the ribbon on **Bookmark**, on the ticket itself on **Ticket**, inside the band on **Banner** and **Footer**.
-- **Summary**: a contents list of every song against its page number. Each line is a link, so tap it to jump to the song. The title page and the summary are not numbered, and the first song is page 1. You choose which side of the title the number sits on: **after** it, at the right edge of the column under a row of leader dots, or **before** it, as `7. Wonderwall`, with the numbers in a column of their own and every title lined up past the widest of them.
+- **Summary**: a contents list of every song against its page number. Each line is a link, so tap it to jump to the song. The title page and the summary are not numbered, and the first song is page 1. You choose which side of the title the number sits on: **after** it, at the right edge of the column under a row of leader dots, or **before** it, as `7. Wonderwall`, with the numbers in a column of their own and every title lined up past the widest of them. It is the one page of the book that is not a render: it is drawn as PDF text, because a page number is only knowable once the pagination has been decided.
 - **Page numbers**: whether they are printed, and where they sit (any corner or centred, top or bottom, or **before the song title**, which puts the number into the song's heading instead of onto the paper, so the book reads like a hymnal: "turn to 7"). The numbers are never padded: 1, 2, … 10, 11.
 
-Because All songs has no order of its own, its settings dialog carries one section more: the order it is arranged in, by song title, library name, or date (created or changed), in either direction, with an option to put your favorites first. A real songbook keeps the order you arranged, so it has no such choice. All songs has no fields of its own either, so its dialog is the print section and that order, nothing else. Both are kept on the device.
+:::note[If the book is going to be bound]
+
+The number is printed in the same corner on every sheet — there is no odd page and even page. Bind the sheets back to back and a fixed **Bottom right** lands on the outer edge of one page of the spread and against the spine on the other. **Bottom, centred** is the default for that reason: it is the one position a binding cannot swallow.
+
+:::
+
+Because All songs has no order of its own, its settings dialog carries one section more: the order it is arranged in, by song title, library name, or date (created or changed), in either direction, with an option to put your favorites first. A real songbook keeps the order you arranged, so it has no such choice. All songs has no fields of its own either, so its dialog is the print section and that order, nothing else. Both are kept on the device. That order is the one it is **printed** in; the order it is **performed** in is a separate setting, on the All songs row in `Stage`, and that one is saved to your account.
 
 ## Download
 
@@ -57,11 +65,21 @@ When downloading the songbook, you first choose the format: a PDF, a ZIP of imag
 - orientation: portrait or landscape
 - the page margin, in millimetres
 
+The ZIP of images is one PNG per song, numbered in book order so a file browser keeps the sequence you arranged, with a contents page as `00-summary.png` in front of them when the book has a summary. There is no title sheet and no corner page numbers — a folder of pictures has no paper. Each PNG carries its song inside it, so the images import back.
+
+There is a fourth format as well: a **Link**. The book and its songs travel inside the address, so nothing is uploaded and nothing is saved to disk — the button copies it to the clipboard instead of downloading. Like the Achordeon file it says nothing about paper, so the rows above stand down.
+
+A book that will not fit in a link has the option greyed rather than removed, with the reason beside it. The limit is the length of the finished address, not a song count, so one long song can trip it where three short ones would not. The Achordeon file has no such ceiling.
+
 Your last paper choices are remembered on the device, so the next download opens on the same paper. Taking the Achordeon file is not one of them, because it says nothing about paper, so it is not remembered.
 
 :::note[Print]
 Printing settings will not change the aspect ratio of a song. Every song keeps its own shape and is scaled to fit the page, so a song shaped unlike the paper sits centred with white either side.
 :::
+
+A song wider than it is tall is laid on its side when turning gains it room. That is automatic and has no setting behind it, because a sheet of paper always turns.
+
+The margin and the song's own **Padding** are both there. The padding is a border measured in text sizes, inside the render; the margin is millimetres taken off the sheet before the render is placed on it. They add up, but they do not fight, because the song is scaled into whatever is left: a wider margin does not push the padding off the page, it makes the whole song, its padding included, smaller.
 
 <Image
   alt="Download dialog"

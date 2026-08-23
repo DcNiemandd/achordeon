@@ -52,10 +52,44 @@ upravíte.
 Metadata jedou v **PNG**, jeden soubor, který je zároveň obrázkem i písní. PDF
 žádná nenese, takže píseň z PDF importujte z exportovaného JSONu nebo z obrázku.
 
+Který formát píseň vrátí zpátky, je to, v čem se lidé nejčastěji pletou:
+
+| Co jste si odnesli    | Vrátí se?      | A přinese                                                             |
+| --------------------- | -------------- | --------------------------------------------------------------------- |
+| **Soubor Achordeonu** | ano            | každou píseň i zpěvník v souboru, i s jejich nastavením               |
+| **Odkaz**             | ano            | totéž co soubor - jsou to tatáž data, jen v URL                       |
+| **Obrázek (PNG)**     | ano            | tu jednu píseň, která je na obrázku, i s jejím nastavením             |
+| **PDF**               | ne             | nic importovatelného; když ji budete chtít zpět, odneste si i píseň   |
+| **ZIP s obrázky**     | obrázky uvnitř | nejdřív jej rozbalte - každý obrázek je píseň, stránka s obsahem není |
+| **ZIP s PDF**         | ne             | nic importovatelného, stejně jako jedno PDF                           |
+
+Cestují ještě dvě věci a jedna záměrně ne:
+
+- Nastavení vykreslení cestuje. Píseň dorazí ve tvaru, jaký jí dal odesílatel - poměr strany, sloupce, měřítko, barva akordů a zbytek.
+- Jména fontů cestují, soubory fontů ne. Soubor říká, jakými fonty jsou písně vysázené; bajty zůstanou na zařízení odesílatele, a proto vám náhled vyjmenuje fonty, které tohle zařízení nemá.
+- Globální nastavení odesílatele v souboru není. Nenese je žádný export, takže soubor nemůže potichu přestavět každou píseň, kterou už jste měli, na cizí výchozí hodnoty.
+
+:::note[Úprava obrázku o píseň připraví]
+
+Píseň jede v kusu PNG, který čte jen Achordeon. Obrázek ořízněte, zmenšete nebo ho prožeňte čímkoli, co obrázky překóduje, a ten kus se zahodí: zbude naprosto dobrý obrázek, který se naimportuje jako nic.
+
+:::
+
 Pravidla importu jsou následující:
 
 - Import zpěvníku přepíše ten zpěvník, ze kterého pochází — párují se podle id, ne podle jména. Nový vytvoří jen volba importovat vše jako nové.
 - Import písní dá uživateli možnosti nahradit, ignorovat nebo vytvořit nové. Všechny písně můžete také importovat jako nové s datem jako předponou.
+
+**Importovat vše jako nové** je zaškrtávátko pod těmi třemi volbami a platí pro celý
+soubor, ať už se něco střetne, nebo ne: každá píseň dorazí jako čerstvá kopie
+s dnešním datem před názvem. Dokud je zaškrtnuté, ty tři volby nad ním zmrtví,
+protože už za ně bylo rozhodnuto.
+
+Zpěvníky se také párují podle identity, nikdy podle jména. Zpěvník, který jste ještě
+neviděli, dorazí jako nový, ať se jmenuje jakkoli, a opětovný import vašeho vlastního
+souboru zpěvník přepíše na místě, místo aby přibyla jeho druhá kopie. Tak ani tak se
+nic neslučuje: zpěvník je pořadí, ve kterém se hraje, a dvě taková pořadí nemají
+rozumný průměr.
 
 Cesty dovnitř jsou tři a všechny tři končí u téhož náhledu:
 
@@ -63,8 +97,18 @@ Cesty dovnitř jsou tři a všechny tři končí u téhož náhledu:
 - soubor **puštěný kamkoli na stránku**, několik naráz se nabídne jeden po druhém
 - **odkaz**, který otevře náhled už vyplněný
 
+Několik souborů naráz se nabídne jeden po druhém, neslévají se: odpověď u každého
+souboru se použije dřív, než se naplánuje další, protože to, s čím se střetne druhý
+soubor, závisí na tom, co právě přidal první. Dokud fronta běží, Zrušit se čte
+**Přeskočit tento** a zahodí jen ten jeden soubor; tlačítko vedle něj počítá, co
+zbývá - **Zrušit vše (4)** - a je cestou ven z celé fronty.
+
 Soubor Achordeonu se teď píše jako `.achordeon`. Soubory už vyvezené jako `.json`
 se pořád importují a výběr souboru bere obojí.
+
+Na desktopu s Chromiem a nainstalovaným Achordeonem je ještě čtvrtá cesta dovnitř
+a není to nic, co byste zapínali: na soubor `.achordeon` poklepete a operační systém
+ho otevře v aplikaci.
 
 ## Sdílení písničky odkazem
 
