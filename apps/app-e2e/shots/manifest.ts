@@ -637,6 +637,77 @@ export const SHOTS: readonly Shot[] = [
     capture: { mode: 'view' },
   },
 
+  // A performance, whole: the song filling the screen with the performing bar
+  // over it. Full window and no clip, because the picture IS the layout — one
+  // song, one bar, nothing else — and three steps of the tutorial read off it
+  // at once: Prev/Next sit in the middle of that bar, the page under it is the
+  // surface a swipe is made on, and it is the "before" the fullscreen step
+  // takes the chrome away from.
+  //
+  // Desktop, deliberately: above `--bp-compact` (1200px) the perform page draws
+  // its own top bar with every control in the open, which is the row the steps
+  // name one by one. Below it there is no feature bar at all and the same
+  // controls live in the shell's bottom `StageBar`, four thumb targets and a ⋯.
+  //
+  // The **second** song of the three, and seeded rather than clicked to. At the
+  // first, Prev is disabled, and a docs picture of a greyed-out control teaches
+  // the reader that the button does not work (the `songbook-reorder` lesson);
+  // seeding also leaves the pointer off the bar, where a pressed Next would
+  // photograph hover-lit. `StageSession` reads the record at construction, so
+  // the route is loaded fresh afterwards.
+  //
+  // English only: the bar is glyphs and a starter book's fixed name, and the
+  // page under it is a starter song's fixed text (`seed.ts`) — the two locales
+  // came out byte-identical, which is a second file promising a difference it
+  // does not hold. The song list beside it (`stage-summary`) is the one that
+  // does translate, and it keeps both.
+  {
+    name: 'stage-perform',
+    locales: ['en'],
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await seedPerformance(page, { bookId, index: 1 });
+      await page.goto(`stage/${bookId}`);
+    },
+    ready: '[data-testid="stage-render"] svg',
+    capture: { mode: 'view' },
+  },
+
+  // The song list over the performance: how you leave the running order without
+  // leaving the song. Its own search, the set numbered, and the song being
+  // played marked in it — which is why the shot stands on the middle song
+  // rather than the first, where "current" and "top of the list" are the same
+  // row and the mark says nothing.
+  //
+  // Clipped to the panel: it is a strip down one side of a page that is already
+  // pictured whole by `stage-perform` above, and a second full window would be
+  // that shot again with a list on it.
+  //
+  // Shorter than the default: the panel is full height whatever is in it, so at
+  // 900 a three-song set is a quarter of list and the rest bare panel.
+  {
+    name: 'stage-summary',
+    arrange: async (page) => {
+      await seededGoto(page, 'songbooks');
+      const bookId = await firstBookId(page);
+      await seedPerformance(page, { bookId, index: 1 });
+      await page.goto(`stage/${bookId}`);
+      await page.getByTestId('stage-render').waitFor({ state: 'visible' });
+      await page.getByTestId('stage-summary').click();
+      // Off the control it just pressed — a hover-lit button in a docs picture
+      // reads as the one to press, and this one is outside the clip anyway.
+      await page.mouse.move(20, 20);
+    },
+    viewport: { width: 1440, height: 300 },
+    ready: '[data-testid="stage-summary-list"]',
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="stage-summary-panel"]',
+      pad: 12,
+    },
+  },
+
   // The other transpose: a performance shifted while it plays. Full window on
   // purpose — the offset on the bar means nothing without the song it is acting
   // on underneath it, and the whole point of this half is that the page moved
