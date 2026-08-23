@@ -13,6 +13,7 @@
 // export is ink on paper whatever the app around it is wearing.
 
 import { type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import {
   DOCS_LOBBY_PIN,
   type Locale,
@@ -241,6 +242,58 @@ export const SHOTS: readonly Shot[] = [
     },
     ready: '[data-testid="download-dialog"]',
     capture: { mode: 'view', clip: '[data-testid="download-dialog"]' },
+  },
+
+  // The other half of the same tutorial: the import dialog with something to
+  // answer. The songs in the file that are already in the library, named one by
+  // one, and the three things that can be done with them — the one screen in
+  // this flow where a wrong click costs the reader a song, which is exactly the
+  // kind of thing the media doctrine says to picture rather than describe.
+  //
+  // The collision is **earned, not staged**: the seeded library is exported
+  // whole and handed straight back through the module's own Import input, so
+  // every id in the file is an id the library already holds. Nothing is faked —
+  // this is what importing the same file twice really looks like.
+  //
+  // Every row is ticked so the file carries the whole library. The dialog names
+  // the first five and counts the rest (`NAMED_CONFLICTS`), so a full selection
+  // pictures both the list and the "…and n more" line under it.
+  {
+    name: 'import-conflicts',
+    arrange: async (page) => {
+      await seededGoto(page, 'songs');
+      const boxes = page.locator('[data-testid^="select-"]');
+      await boxes.first().waitFor({ state: 'visible' });
+      const count = await boxes.count();
+      for (let i = 0; i < count; i++) await boxes.nth(i).check();
+
+      await page.getByTestId('songs-download').click();
+      const waiting = page.waitForEvent('download', { timeout: 60_000 });
+      await page.getByTestId('download-json').click();
+      const file = await (await waiting).path();
+      if (!file) throw new Error('The export produced no file.');
+
+      // The picked-file path, minus the OS dialog Playwright cannot drive: the
+      // input is the real control the Import button clicks (`ImportPanel`).
+      await page.getByTestId('songs-import-input').setInputFiles({
+        name: 'achordeon-library.achordeon',
+        mimeType: 'application/vnd.achordeon+json',
+        buffer: readFileSync(file),
+      });
+      // Off whatever was clicked last: a hover-lit radio in a docs picture reads
+      // as the answer already chosen.
+      await page.mouse.move(20, 20);
+    },
+    ready: '[data-testid="import-conflicts"]',
+    // `.panel`, not the dialog host: the host carries the scrim, and clipping it
+    // pictures the whole dimmed library instead of the dialog on it. No padding
+    // — the panel IS the picture, and a halo is a strip of dimmed song list with
+    // every row cut off mid-word.
+    capture: {
+      mode: 'view',
+      clip: '[data-testid="import-dialog"] .panel',
+      pad: 0,
+    },
   },
 
   // Songs: the explorer with a song focused in the preview pane.
