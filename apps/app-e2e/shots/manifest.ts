@@ -104,27 +104,52 @@ const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
 
 /**
- * Seed the library and hand back the guide song — the tour a fresh install is
- * born with, and the song the render-settings shot is taken on.
+ * The song `fit-a-song-on-one-page.mdx` is a walkthrough of, as a link.
  *
- * Not `firstRowId(page, 'song-row')`: the list sorts by name, so that is
- * `Amazing Grace` — one four-line verse on an otherwise empty A4, and a settings
- * panel photographed beside a mostly white page says nothing about what the
- * settings are for. The guide song fills a page already cropped to its own
- * content, so the render in pane B is one the settings visibly did something to.
+ * The tutorial hands the reader this exact URL and then repairs the song it
+ * carries, setting by setting — so the pictures have to be of THAT song. The
+ * whole export rides in the fragment, gzipped (`share-link.ts`), which makes the
+ * link its own fixture: there is no seeded copy here to drift out of step with
+ * the one the page publishes, and a link that stopped importing fails this run
+ * instead of misleading a reader.
  *
- * Found by the current-row mark rather than by name, because the name is
- * translated and the id is a fresh UUID every seed: `Songs` selects the most
- * recently changed row on arrival (`SongsPresenter.autoSelect`), and the guide
- * song is seeded to be it.
+ * The origin is the real one because `contextFor` puts the browser on
+ * `DOCS_ORIGIN`, so Playwright opens the address the reader clicks, character
+ * for character. A run with `DOCS_ORIGIN=''` shoots the dev server under its own
+ * address, and this is the one shot family that would then leave it.
  */
-async function guideSongId(page: Page): Promise<string> {
+const DEMO_SONG_LINK =
+  'https://achordeon.eu/app/#z1=H4sIAAAAAAACCq1UTW_bMAz9KwQvBQr1I1u2rrplBRr0MLQYhmFD7ANj07YQWzIkOl1R5L8PVBK0wNDtMt1M8pFPz496RhpHtNiJjMleXFDVhVhz8Oc8XdA4XqDBVHU80HeOyQWPdmaw5q2r-K5Gi2hwGmsSrheCdnb16Wo-f__uUo_BmoTQPuOUOKJdlQZT8G1Cu3pGp-hmdkVaenbJs9nZnK757Jo-8Nnly5mhwSryGxP-Mpt7PmT81PcGPQ2MFm-dwBeGew_3nuGBWtYBwQt7QYun8GdB4U9PYQE1DwH0AiAdCVCMbssJ1lT3T5BYCl94VYkt3MHqpnwMG4ZpBOeBYLUsqxA9x8I_OulgtRjKdhLhmKDnRoB8DavbMrq2E1P45H5pjyr00-ATNCFC47asfbY6IxVeEcOTgh5DrBNQZAiTQGgUmbTRuXK66UKckoWl4gdWwJqqDUjHWjhSy6bw7TG7fJVdDCW5aAovtOF96LZcq0MihKZ5aTHqxZTQ3Unfa4_kfAtNDAOQf1IxOo58_kqib0doXWupS3uRhkACPjzqzAMDcdIzVL0b1unIIY3OK2sdSblPT08cIWubG7WTE4qFr8ifiEIa5-sMT1wFFfum7J3fc_ocXd2y1Zhi81jF_C_5gt-zVvNMY_CQAzdl6lh9s3fEsvRBOhUjG0JCrhgp64YGG9qG6ITRNtQnNphYxOV9esZUUa_2pkkCGqQ0ciVfSVxAi4t59ni2EtqPBg-qo50bXPeh2ixpzB-HRfiBFrMTX3bjJ1pcB5EwoMH8Sx5CcpKfBFTCuDNYUdWx0skFb21bmtbH_L-3Cne7w7uxDmGjb0e52_0G5PB6I7cEAAA';
+
+/**
+ * The id inside that envelope.
+ *
+ * Fixed rather than minted, so importing the link twice updates the song instead
+ * of piling up copies — and so a shot can open the editor on it directly rather
+ * than guessing which row of the list it landed on.
+ */
+const DEMO_SONG_ID = 'f17a0000-0e11-4a9e-9a5e-000000000001';
+
+/**
+ * Import the demo song the way the reader does, and open its editor.
+ *
+ * Through the link and the preview, not seeded into the store: what these
+ * pictures have to be true about is what the published link actually produces —
+ * its content and, above all, its broken settings. Seeding the record would be a
+ * second spelling of the same song, and the picture would go on looking right
+ * long after the two disagreed.
+ *
+ * The starter library is seeded first all the same, so the song lands in a
+ * library that looks like somebody's rather than into an empty app.
+ */
+async function importDemoSong(page: Page): Promise<void> {
   await seededGoto(page, 'songs');
-  const row = page.locator('[data-testid="song-row"].is-current');
-  await row.waitFor({ state: 'visible' });
-  const id = await row.getAttribute('data-song-id');
-  if (!id) throw new Error('The current song row carries no id.');
-  return id;
+  await page.goto(DEMO_SONG_LINK);
+  // The preview opens over whatever page the link landed on, already filled in;
+  // confirming it is the reader's one gesture (`import-dialog.ts`).
+  await page.getByTestId('import-confirm').click();
+  await page.getByTestId('import-dialog').waitFor({ state: 'detached' });
+  await page.goto(`songs/${DEMO_SONG_ID}/edit`);
 }
 
 /**
@@ -345,65 +370,91 @@ export const SHOTS: readonly Shot[] = [
     capture: { mode: 'view', clip: '[data-testid="action-bar"]', pad: 12 },
   },
 
-  // The render settings, open where they are actually used. Full window and no
-  // clip, which is the entire reason this shot exists: the dialog is `container`
-  // mode with no backdrop, so pane B keeps drawing the song beside it, and a
-  // reader nudging a number is looking at the answer in the same frame. Clipped
-  // to `.panel` it would be a settings form like any other, and the one fact the
-  // tutorial is built on — you tune it while watching it — is the one that would
-  // not be in the picture.
+  // The demo song exactly as its link delivers it — the page the tutorial opens
+  // on, and the one the reader is looking at while they read step 1: six columns
+  // for five blocks, a border four text sizes deep, the words shoved into the
+  // bottom-right corner and the title climbing the spine.
+  //
+  // Clipped to the paper, and paired with `song-fitted`, which is the same clip
+  // of the same song after the walkthrough: two pictures of one page are only a
+  // before and an after if nothing but the page changed between them.
+  //
+  // English only. Inside the clip there is not one translated word — the song is
+  // the link's own English text, and the app's chrome is outside the frame. The
+  // two locales came out byte-identical.
+  {
+    name: 'song-broken',
+    locales: ['en'],
+    arrange: importDemoSong,
+    ready: '[data-testid="song-render"] svg',
+    capture: { mode: 'view', clip: '[data-testid="song-page"]', pad: 12 },
+  },
+
+  // The render settings, open where they are actually used, over the demo song
+  // in the state the link left it. Full window and no clip, which is the entire
+  // reason this shot exists: the dialog is `container` mode with no backdrop, so
+  // pane B keeps drawing the song beside it, and a reader nudging a number is
+  // looking at the answer in the same frame. Clipped to `.panel` it would be a
+  // settings form like any other, and the one fact the tutorial is built on —
+  // you tune it while watching it — is the one that would not be in the picture.
+  //
+  // It is also the picture of step 2's other claim: the rows this song sets for
+  // itself carry values, and everything it leaves alone still reads `Inherited`.
   {
     name: 'song-settings',
     arrange: async (page) => {
-      const id = await guideSongId(page);
-      await page.goto(`songs/${id}/edit`);
+      await importDemoSong(page);
       await page.getByTestId('editor-settings').click();
     },
     ready: '[data-testid="song-settings-dialog"]',
     capture: { mode: 'view' },
   },
 
-  // What `Columns` does, which is the one setting on this page a sentence
-  // cannot sell. Clipped to the paper: the step is about what happened on the
-  // page, and the editor around it is already `song-settings`'s job.
+  // The payoff: the same song after steps 3–9, one page anybody could play from.
   //
-  // `Feature Tour`, not the guide song the shot above uses. The renderer breaks
-  // a column only at a block boundary (`column-layout.ts`), so three of the five
-  // starter songs — one verse each — render at two columns exactly as they do at
-  // one. The guide song has the blocks but not the shape: its lines are long
-  // prose, so side by side they halve the fit scale and the two columns end up
-  // touching. `Feature Tour` has four short-lined blocks, which is the case this
-  // setting is for and the only one in the library that pictures it.
+  // Driven through the panel's own controls rather than written into the record,
+  // because the claim being made is that those gestures produce this page. Each
+  // typed value is waited on by its `Reset`, which the panel draws only while the
+  // song OWNS the setting (`row.isOverridden`) — so the wait is on the write
+  // having landed, which is the same render pass that redraws pane B. Waiting on
+  // the SVG alone would happily photograph the state before.
   //
-  // It is *seeded* at two columns (`seed.ts`), so the shot resets the row and
-  // splits it again: the picture is then the result of the gesture the step
-  // describes, and it stays true if the seed ever ships this song at one.
-  //
-  // English only: a starter song is fixed source text with nothing to translate
-  // (`seed.ts`), and the app's own chrome is outside the clip — the two locales
-  // came out byte-identical, which is a second file promising a difference it
-  // does not hold.
+  // The panel is left open and nothing is navigated to afterwards: the clip is
+  // pane B, and the dialog sits over pane A.
   {
-    name: 'song-columns',
+    name: 'song-fitted',
     locales: ['en'],
     arrange: async (page) => {
-      await seededGoto(page, 'songs');
-      const row = page
-        .getByTestId('song-row')
-        .filter({ hasText: 'Feature Tour' });
-      await row.waitFor({ state: 'visible' });
-      const id = await row.getAttribute('data-song-id');
-      if (!id) throw new Error('The "Feature Tour" row carries no id.');
-      await page.goto(`songs/${id}/edit`);
+      await importDemoSong(page);
       await page.getByTestId('editor-settings').click();
-      // Back to the inherited single column, then the stepper's `+` once.
-      await page.getByTestId('reset-columns').click();
-      await page.getByTestId('inc-columns').click();
-      // The Reset button exists only while the song OWNS the setting
-      // (`row.isOverridden`), so waiting for it back is waiting for the change
-      // to have landed — the same render pass that redraws pane B. Waiting on
-      // the SVG alone would happily photograph the one-column render.
-      await page.getByTestId('reset-columns').waitFor({ state: 'visible' });
+      const landed = (key: string) =>
+        page.getByTestId(`reset-${key}`).waitFor({ state: 'visible' });
+      const type = async (key: string, value: string) => {
+        const field = page.getByTestId(`input-${key}`);
+        // Committed on change, so the value has to leave the field before it
+        // reaches the renderer (`settings-panel.ts`).
+        await field.fill(value);
+        await field.blur();
+        await landed(key);
+      };
+      const press = async (testid: string) => {
+        await page.getByTestId(testid).click();
+        // A choice row that arrived overridden keeps its Reset either way, so
+        // the wait is on the button reading as pressed instead.
+        await page
+          .locator(`[data-testid="${testid}"][aria-pressed="true"]`)
+          .waitFor({ state: 'visible' });
+      };
+
+      await page.getByTestId('select-aspectRatio').selectOption('16:9');
+      await landed('aspectRatio');
+      await type('columns', '2');
+      await type('padding', '0.5');
+      await press('contentX-center');
+      await press('contentY-middle');
+      await press('titlePosition-top');
+      await type('blockGap', '1.2');
+      await type('chordSize', '1.2');
     },
     ready: '[data-testid="song-render"] svg',
     capture: { mode: 'view', clip: '[data-testid="song-page"]', pad: 12 },
@@ -717,7 +768,7 @@ export const SHOTS: readonly Shot[] = [
   // two arrows: an offset of 0 is a picture of the feature not being used. The
   // readout wakes up off zero (it is the reset button, dead at the written key),
   // so waiting for it to become pressable is waiting for the shift to have
-  // landed — the same trick `song-columns` plays with its Reset.
+  // landed — the same trick `song-fitted` plays with its Resets.
   //
   // Desktop, so the stepper is on the bar in the open. The phone puts it behind
   // ⋯ in a sheet, which is already pictured — from the viewer's side, on a phone
