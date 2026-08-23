@@ -38,15 +38,8 @@ the answer you are looking for is on the page beside you after every press.
   shadow
 />
 
-What you get is a **rewrite of the text**. `[G]` becomes `[G#]`, and `[D7/F#]`
-becomes `[D#7/G]` — the root and the `/bass` move by the same interval, and the
-quality between them (`m`, `maj7`, `sus4`) is carried across exactly as you
-typed it. Nothing else in the file moves by a character.
-
-The spelling follows the direction you pressed: up prefers sharps, down prefers
-flats. `A` up is `A#`; `B` down is `Bb`. So a song taken up and then back down is
-the same music, and now and then another spelling of it — `F#` up a semitone is
-`G`, and `G` back down is `Gb`.
+What you get is a **rewrite of the text**. Nothing else in the file moves by a
+character.
 
 There is no Save button here or anywhere else. The rewrite lands in the source
 and is written to your device a moment later, like any other edit.
@@ -67,37 +60,9 @@ That is the reach the two notes cannot offer: a bridge that modulates, a bass
 note you want spelled the other way, or the one `[F]` in the second verse that
 was meant to be `[F#]`.
 
-## 3. See which brackets moved and which did not
-
-A bracket is transposed when what is inside it is a chord — a root (`A` to `G`,
-with an accidental if it has one), a quality, and an optional `/bass`. Anything
-else in brackets is left exactly as written, and this is the step that saves you
-filing the bug:
-
-- `[Solo]`, `[x2]`, `[N.C.]` — annotations. They print as typed and never move.
-- `[Am F G Am (2×)]` — a bracket is read token by token, so the three chords
-  move and the `(2×)` between them stays put.
-- `[Amm]` — a chord you mistyped is not a chord, so it stands still while the
-  song goes past it. This is usually how you find it.
-- `\[C]` — escaped, so it is the literal text `[C]` and not a chord at all.
-
-Inline chords are chords like any other: `[[Am F G]]` moves exactly as
-`[Am F G]` does. And nothing outside a bracket is touched — a `G` in the lyrics
-is a letter.
-
-You do not have to transpose to find out which is which. The editor draws a
-dotted underline under every bracketed token that is not a chord, and hovering
-it says that the text prints exactly as written and that transpose leaves it
-alone. It reads each name separately, so the `Gmimi` in `[Em Am Gmimi]` is
-underlined on its own while the two chords beside it are not.
-
-:::note[Not a complaint]
-The underline is information, not an error. `[Solo]` and `[x2]` are exactly what
-brackets that are not chords are for, and a song full of them is a correct song.
 See [Chords](../songs/syntax.mdx#chords) for the whole of what counts as one.
-:::
 
-## 4. Undo
+## 3. Undo
 
 Because the transpose is a real edit to real text, it is undone like one:
 `Ctrl` + `Z`, or the <Ui id="editor.undo" /> button in the third group of the
@@ -112,10 +77,10 @@ press, look at the render, and take it back if it was not the key you meant.
 The history belongs to the editor you are sitting in, and it lasts as long as you
 are sitting in it. Leave the song and come back and there is nothing to undo —
 so if the rewrite was a mistake, the way back is to transpose the same number of
-semitones in the other direction (step 10 says what that does and does not
+semitones in the other direction (step 9 says what that does and does not
 restore).
 
-## 5. Choose the notation the chords print in
+## 4. Choose the notation the chords print in
 
 The gear at the end of the bar (<Ui id="editor.settings" />) opens the render
 settings. The last row of their <Ui id="settingGroup.chords" /> section is the
@@ -127,24 +92,11 @@ printed in**: German calls B natural `H`, and keeps the plain `B` for B flat.
 Only the printed page changes; the song is left exactly as you wrote it, which
 is why you can switch it back and lose nothing.
 
-The two meet in one place. A transpose has to write some spelling into the
-source, and it writes the song's own: in a song set to German, a chord that lands
-on B natural is written `[H]` and not `[B]`, so the text and the page stop
-disagreeing with each other. A B flat is the exception and stays `Bb` in the
-text — a bare `B` in a file is B natural to every reader whatever their setting,
-so writing the printed spelling back would move the chord a semitone the next
-time the song was read. It prints as `B` all the same.
-
-The editor watches for the mismatch too: an `[H]` in a song set to English, or a
-`[B]` in one set to German, gets a wavy underline saying which name the page
-will print instead. Neither is illegal — it is a warning that the source and the
-page are about to read differently.
-
 Notation cascades like every other render setting, so a whole book can be
 spelled one way at once:
 [Build a songbook](./build-a-songbook.mdx#13-restyle-the-chords-for-the-whole-book).
 
-## 6. While playing: open the transpose control
+## 5. While playing: open the transpose control
 
 Everything from here shifts a screen and saves nothing.
 
@@ -162,7 +114,7 @@ The sheet is deliberately not a dialog. It stays open while you step and it does
 not cover the song, because the thing you are pressing the buttons to look at is
 the song.
 
-## 7. Step up or down, and read the offset
+## 6. Step up or down, and read the offset
 
 <Ui id="transpose.down" /> and <Ui id="transpose.up" /> move it a semitone at a
 time, and the number between them says where you are: semitones, always signed,
@@ -177,18 +129,11 @@ the set is not in the written key.
 />
 
 The page behind it is drawn by the very same rewrite the editor's buttons
-perform — so the rules of step 3 hold here too, and `[Solo]` stands still on
-stage as well — except that the rewritten text is thrown away as soon as it has
-been drawn. Your song is not touched by it.
+perform — and `[Solo]` stands still on stage as well — except that the rewritten
+text is thrown away as soon as it has been drawn. Your song is not touched by
+it.
 
-Eleven semitones each way is as far as it travels. Twelve is the same music an
-octave away and therefore the same page, so the twelfth step lands on `0` rather
-than pretending to be a setting that does something.
-
-On a phone the menu row carries the number in its own label, so a menu you have
-not even opened still admits that the last half hour has been running a tone up.
-
-## 8. Play on — the offset holds across the songs
+## 7. Play on — the offset holds across the songs
 
 The offset belongs to the performance, not to the song you set it on. Turn the
 page and it comes with you: a capo does not come off between numbers.
@@ -199,7 +144,7 @@ written key. Coming back to a library that quietly plays everything a tone up,
 with nothing on screen outside the stage to say so, would be worse than coming
 back to what is written.
 
-## 9. In the audience: transpose your own screen
+## 8. In the audience: transpose your own screen
 
 What travels to a lobby is the song **as written**. The performer's offset stays
 on the performer's screen, and each viewer gets a control of their own — which is
@@ -215,12 +160,12 @@ then <Ui id="transpose.title" />, and the same three buttons open over the page.
   shadow
 />
 
-It obeys everything in steps 7 and 8, and it is just as private: the performer's
+It obeys everything in steps 6 and 7, and it is just as private: the performer's
 screen does not move, the next viewer's does not either, and no song anywhere is
 rewritten. The viewer's side of the evening is
 [Play to an audience](./play-to-an-audience.mdx#10-transpose-your-own-screen).
 
-## 10. Go back to the written key
+## 9. Go back to the written key
 
 On stage and in the audience the number is the way back. Press it
 (<Ui id="transpose.reset" />) and the offset is `0` again — one tap instead of
@@ -235,7 +180,7 @@ which returns every chord to the right pitch and most of them to the same
 letters: `F#` taken up and back down comes home as `Gb`, the same note under its
 other name.
 
-## 11. Know which of the two is kept
+## 10. Know which of the two is kept
 
 |              | Editor: the notes, `♯` and `♭` | Stage and audience: the stepper  |
 | ------------ | ------------------------------ | -------------------------------- |

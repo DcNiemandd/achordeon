@@ -37,7 +37,7 @@ what the book is made of.
 
 Open it from the **list** rather than from inside the book if you can. There is
 no backdrop and nothing is dimmed, so the pane beside it keeps drawing the book
-as pages while you work — which is step 8, happening continuously instead of at
+as pages while you work — which is step 7, happening continuously instead of at
 the end.
 
 :::note[All songs is different]
@@ -85,44 +85,14 @@ sheet is composed out of what is actually there. That is why an author you have
 not filled in costs you nothing, and is still worth filling in: several of the
 styles in the next step are built around having one.
 
-The title page is a **render**, like every other page in the book, so it is set
-in the book's own fonts. It also carries a small `achordeon.eu`, placed as part
-of each style's own design. That mark is the app's rather than your book's, so no
-style leaves it out and no setting turns it off.
-
 ## 4. Pick a title page style
 
 <Ui id="songbookDownload.variant" /> offers twenty-one, and every one of them is
-drawn — there is nothing in the list that cannot be chosen. They are ordered by
-how far each departs from the shipped page: the quiet ones first, the ones that
-put a shape on the paper last, so reading down the list is walking a scale.
+drawn — there is nothing in the list that cannot be chosen.
 
-They divide in two. Ten are **placement alone** — the same words, arranged
-differently:
-
-- <Ui id="songbookDownload.variant.classic" /> is what an untouched book gets:
-  the three fields as one left-aligned block, centred on the sheet.
-- <Ui id="songbookDownload.variant.plate" /> puts a small title high on the page
-  and the author at the foot, with the space between them left empty. The
-  hymnal.
-- <Ui id="songbookDownload.variant.poster" /> sets the title as large as the
-  width allows. One thing to read from across a room.
-- <Ui id="songbookDownload.variant.minimal" /> prints the title alone, at body
-  size, in a corner — and nothing else, including an author the book has.
-- <Ui id="songbookDownload.variant.spine" /> reads the title up the left edge,
-  the same quarter turn everything sideways in Achordeon takes.
-
-The other eleven put **ink** on the paper as well. <Ui id="songbookDownload.variant.rule" />
-draws a line under the title and <Ui id="songbookDownload.variant.marquee" /> one
-above it and below it; <Ui id="songbookDownload.variant.framed" /> is a border
-inset from the page edge; <Ui id="songbookDownload.variant.banner" /> is a filled
-band across the upper third with the title reversed out of it; and <Ui id="songbookDownload.variant.ticket" />
-is a small rounded box holding the whole book — the one style that also prints how
-many songs it binds.
-
-The rest are named for what they look like, and the fastest way to choose is not
-to read about them: pick one and watch the pane beside you. The full list, with a
-line on each, is in [Songbooks](/songbooks/index.mdx).
+The fastest way to choose is not to read about them: pick one and watch the pane
+beside you. The full list, with a line on each, is in
+[Songbooks](/songbooks/index.mdx).
 
 ## 5. Switch on the summary
 
@@ -130,65 +100,30 @@ line on each, is in [Songbooks](/songbooks/index.mdx).
 page it is **off** until you ask for it.
 
 It is a list of every song against the page it is printed on, laid out in two
-columns — one column of a forty-song book wastes half of an A4 and runs onto a
-second sheet it does not need.
+columns.
 
 The numbers are page numbers, and where they start is the point: **the title page
 and the contents page carry no number themselves, so the first song is page 1.**
-Numbering the front matter would make the contents send a reader to page 3 for
-the first song, which is a number they can only use by counting past two sheets
-that also claim one.
 
 In a PDF the whole line is a link — the title, the run of leader dots and the
-number alike — so tapping anywhere along it jumps to the song. It is the one page
-of the book that is not a render: it is drawn as PDF text, because a page number
-is only knowable once the pagination has been decided.
+number alike — so tapping anywhere along it jumps to the song.
 
-## 6. Choose which side the page number sits on
+That is the number in the **contents**, not the one on the song's own page.
+The row is <Ui id="songbookDownload.summaryNumber" />, and there are two
+answers: <Ui id="songbookDownload.afterTitle" /> is the reference table,
+`Wonderwall · · · · · 7`, and <Ui id="songbookDownload.beforeTitle" /> is the
+hymnal, `7. Wonderwall`.
 
-That is the number in the **contents**, not the one on the song's own page. The
-row is <Ui id="songbookDownload.summaryNumber" />, and there are two answers:
-
-- <Ui id="songbookDownload.afterTitle" /> is the reference table: `Wonderwall ·
-  · · · · 7`, the number against the right edge of its column under a run of
-  dots, which is what an eye runs along when it has a name and wants a page.
-- <Ui id="songbookDownload.beforeTitle" /> is the hymnal: `7. Wonderwall`, the
-  numbers in a column of their own with every title indented past the widest of
-  them, which is what you read when somebody has called out a number.
-
-One or the other, never both, and that is a decision rather than a missing
-checkbox: the book numbers each song by its page, so a contents line carrying the
-number at each end says the same thing twice on every row.
-
-## 7. Switch on page numbers and place them
+## 6. Switch on page numbers and place them
 
 <Ui id="songbookDownload.pageNumbers" /> is on by default, and the row under it,
 <Ui id="songbookDownload.position" />, offers seven places. Six of them are a
 spot on the paper — bottom or top, left, right or centred.
 
 The seventh is not a spot at all. <Ui id="songbookDownload.beforeSongTitle" />
-puts the number into the song's own heading — `7. Wonderwall` — which is how a
-book is used out loud, and what survives a page being photocopied or re-bound.
-Because it is part of the title it is drawn by the renderer rather than stamped
-on afterwards, so it wears the title's face and follows the title onto the left
-edge when the song's own settings put it there. Nothing is then printed in the
-corner as well: it is one number in one place, not a number and its echo.
+puts the number into the song's own heading — `7. Wonderwall`.
 
-Whichever you choose, the numbers count from the first **song**, exactly as the
-contents does, and they are never padded — 1, 2, … 10, 11, because `07` on a
-printed page reads as a serial number rather than as the seventh song.
-
-:::note[If the book is going to be bound]
-
-Achordeon prints the number in the same corner on every sheet — there is no odd
-page and even page. Bind the sheets back to back and a fixed <Ui id="songbookDownload.bottomRight" />
-lands on the outer edge of one page of the spread and against the spine on the
-other. <Ui id="songbookDownload.bottomCenter" /> is the default for that reason:
-it is the one position a binding cannot swallow.
-
-:::
-
-## 8. Check the preview
+## 7. Check the preview
 
 Go back to <AppLink to="songbooks">Songbooks</AppLink> and click the book. The
 pane beside the list is not its cover — it is **the whole book as pages**, every
@@ -202,26 +137,7 @@ with their numbers in the corner you chose.
   shadow
 />
 
-It is a real scroll box, so the scrollbar, the trackpad and PageDown all work the
-way they do everywhere else, and the readout in the bar under the paper says
-which sheets you are looking at and how many there are. Nothing snaps: a view
-resting halfway between two sheets is your business.
-
-The pair of buttons on the right is <Ui id="songbookPreview.zoom" />, and what it
-moves is a **column count**. It reads as a magnifier, so the two work the other
-way round from their sign: <Ui id="songbookPreview.zoomIn" /> shows fewer, larger
-pages, and <Ui id="songbookPreview.zoomOut" /> shows more, smaller ones, up to
-the whole book at once as a contact sheet. A sheet is not drawn until you are
-nearly at it, which is what keeps a two-hundred-page book cheap to scroll
-through; a frame with a turning ring in it is paper that has not been inked yet,
-not a page that failed.
-
-The moon on the left is <Ui id="stage.darkPage" />, and the caption that appears
-beside it says what it is: <Ui id="songbookPreview.notPrint" />. It turns the
-paper over for reading in the dark, it is separate from the app's own theme, and
-it does not reach the PDF.
-
-## 9. Press Download
+## 8. Press Download
 
 <Ui id="songbooks.download" /> is on the open book's header, beside the gear,
 and the row's own <Ui id="explorer.download" /> does the same thing. There is no
@@ -235,29 +151,18 @@ is the first thing it asks about.
   shadow
 />
 
-## 10. Choose the format
+## 9. Choose the format
 
 <Ui id="songbookDownload.format" /> decides which of the rows below it are even
-asked, because only one of the four is about paper.
-
-| Format                                     | What you get                                                                                                                                | Opens again in Achordeon                  |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| <Ui id="songbookDownload.format.pdf" />    | The whole book as one document: title page, contents, songs, numbers.                                                                       | no                                        |
-| <Ui id="songbookDownload.format.zipPng" /> | One image per song, numbered in book order, plus a contents page. No title sheet and no corner numbers — a folder of pictures has no paper. | yes — each PNG carries its song inside it |
-| <Ui id="songbookDownload.format.data" />   | The songbook **and its songs**, as data.                                                                                                    | yes                                       |
-| <Ui id="songbookDownload.format.link" />   | The same, packed into a URL and copied ready to paste. Nothing is uploaded.                                                                 | yes                                       |
-
-The link is the one that can be refused. It is greyed rather than removed when
-the book will not fit in one, with the reason beside it: <Ui id="songbookDownload.linkTooBig" />
-It is a length rather than a song count, so one long song can trip it where three
-short ones would not.
+asked, because only one of the four is about paper. The four, with a line on
+each, are in [Songbooks](/songbooks/index.mdx#download).
 
 Two of the four ignore everything below. The Achordeon file and the link are the
 book as data, and neither has an opinion about paper, so the dialog becomes one
 row and a button — which for the link reads <Ui id="songbookDownload.copyLink" />
 rather than <Ui id="songbookDownload.confirm" />.
 
-## 11. Set the paper size, orientation and margin
+## 10. Set the paper size, orientation and margin
 
 For a PDF, three more rows:
 
@@ -267,40 +172,18 @@ For a PDF, three more rows:
 - <Ui id="songbookDownload.margin" /> — the blank edge of the sheet, in whole
   millimetres, starting at `0`.
 
-Nothing here reshapes a song. Each one keeps the aspect ratio it was given in its
-own settings and is **scaled to fit** what the margin leaves, centred, so a song
-shaped unlike the paper sits with white either side rather than being stretched
-to fill it. A song wider than it is tall is laid on its side automatically when
-turning gains it room — there is no setting for that, because a sheet of paper
-always turns.
-
-:::note[The margin and the song's padding are both there]
-
-A song's own <Ui id="setting.padding" /> is a border measured in text sizes,
-inside the render; the book's margin is millimetres taken off the sheet before
-the render is placed on it. They **add** — but they do not fight, because the
-song is scaled into whatever is left: a wider margin does not push the padding
-off the page, it makes the whole song, its padding included, smaller. So set the
-margin for the printer's unprintable edge and for whatever binding you are
-planning, and set the padding for how the song itself looks. See
-[Fit a song on one page](./fit-a-song-on-one-page.mdx#5-trim-the-padding).
-
-:::
-
 Your paper is remembered on this device, so the next book opens the dialog on the
 same settings. Taking the Achordeon file or the link is not remembered, because
 neither says anything about paper.
 
-## 12. Save the file
+## 11. Save the file
 
 Press <Ui id="songbookDownload.confirm" />. The button becomes the progress — a
 spinner, and once the count is known an "n of N" that advances as the book
 renders — and it cannot be pressed twice.
 
-Where the file lands is the browser's business rather than the app's. Chromium
-opens the system save dialog, so it goes where you put it; Firefox and Safari
-send it to your downloads folder. Either way it is named after the book:
-`sunday-set.pdf`, or `sunday-set.zip` for the images.
+Where the file lands is the browser's business rather than the app's. Either way
+it is named after the book: `sunday-set.pdf`, or `sunday-set.zip` for the images.
 
 That file is finished. Nothing in it is a link back to Achordeon and nothing in
 it needs the app to read it — which is the whole reason to make one.

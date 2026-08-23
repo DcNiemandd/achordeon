@@ -3,8 +3,6 @@ sidebar_position: 2
 description: 'Create a song, write the lyrics, and place the chords exactly where the sound changes.'
 ---
 
-import { findLabelDelimiter } from '@achordeon/shared/domain';
-
 # Write your first song
 
 From an empty song to a readable chord sheet. In the app you start in
@@ -168,136 +166,8 @@ hold me while the world goes quiet
         },
       ],
     },
-    {
-      prompt: 'Add a chords-only line at the top — a row of chords with no words, like an intro.',
-      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => !l.text.trim() && l.chords.length > 0)),
-      solution: `
-* Anesthetize
-** Porcupine Tree
-
-[Am F G]
-
-Chorus: Wake me [Am]up inside
-Softly: Call my name
-Save me from the dark
-
-Verse: I'm lying here in silence
-before the song begins
-
-Bridge: Bring me to life
-hold me while the world goes quiet
-`,
-      feedback: [
-        {
-          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => !l.text.trim() && l.chords.length > 0)),
-          message: 'No chords-only line yet — put chords on a line by themselves.',
-        },
-      ],
-    },
-    {
-      prompt: 'Make one chord read inside the line, with doubled brackets.',
-      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.inline))),
-      solution: `
-* Anesthetize
-** Porcupine Tree
-
-[Am F G]
-
-Chorus: Wake me [Am]up inside
-Softly: Call my name
-Save me from the dark
-
-Verse: I'm lying here in silence
-before the [[G]]song begins
-
-Bridge: Bring me to life
-hold me while the world goes quiet
-`,
-      feedback: [
-        {
-          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.chords.some((c) => c.inline))),
-          message: 'Single brackets sit above the line — double them to bring the chord inline.',
-        },
-      ],
-    },
-    {
-      prompt: 'Make a word bold: wrap it in double asterisks, like **this**.',
-      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.bold))),
-      solution: `
-* Anesthetize
-** Porcupine Tree
-
-[Am F G]
-
-Chorus: Wake me [Am]up inside
-Softly: Call my name
-Save me from the dark
-
-Verse: I'm lying here in silence
-before the [[G]]song begins
-
-Bridge: Bring me to life
-hold me while the **world** goes quiet
-`,
-      feedback: [
-        {
-          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.bold))),
-          message: 'No bold yet — wrap a word in double asterisks: **like this**.',
-        },
-      ],
-    },
-    {
-      prompt: 'Make a word italic: wrap it in single asterisks, like *this*.',
-      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.italic))),
-      solution: `
-* Anesthetize
-** Porcupine Tree
-
-[Am F G]
-
-Chorus: Wake me [Am]up inside
-Softly: Call my name
-Save me from the dark
-
-Verse: I'm lying here in silence
-before the [[G]]song begins
-
-Bridge: Bring me to life
-hold me while the **world** goes *quiet*
-`,
-      feedback: [
-        {
-          when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => l.spans?.some((s) => s.italic))),
-          message: 'No italic yet — wrap a word in single asterisks: *like this*.',
-        },
-      ],
-    },
-    {
-      prompt: 'Add a line that would start with a label, like “Narrator:”, but keep the colon in the words — escape it with a backslash so it stays a lyric.',
-      check: (ast) => ast.blocks.some((b) => b.lines.some((l) => !l.label && findLabelDelimiter(l.text) >= 0)),
-      solution: `
-* Anesthetize
-** Porcupine Tree
-
-[Am F G]
-
-Chorus: Wake me [Am]up inside
-Softly: Call my name
-Save me from the dark
-
-Verse: I'm lying here in silence
-before the [[G]]song begins
-
-Bridge: Bring me to life
-hold me while the **world** goes *quiet*
-Narrator\\: hold on
-`,
-feedback: [
-{
-when: (ast) => !ast.blocks.some((b) => b.lines.some((l) => !l.label && findLabelDelimiter(l.text) >= 0)),
-message: 'No escaped colon yet — a colon that would start a label needs a backslash before it (an incidental one like 12:30 does not).',
-},
-],
-},
 ]}
 />
+
+The rest of the markup — chords on a line of their own, bold, italic — is in
+[Language syntax](../songs/syntax.mdx).

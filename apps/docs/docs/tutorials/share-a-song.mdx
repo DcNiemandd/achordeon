@@ -60,11 +60,8 @@ or a folder of them.
 
 ## 3. Choose export or download
 
-There is no Export button anywhere in Achordeon. There used to be one, standing
-beside this dialog's own — which asked you to know the difference between
-downloading and exporting **before** anything had explained it. So the two
-merged: exporting is now the last file row of this dialog, under a sentence
-saying what it is for.
+Exporting is the last file row of this dialog, under a sentence saying what it
+is for.
 
 The hairline across the list is where the answer changes. Above it are renders —
 a page, a picture, a folder of them. Below it is <Ui id="download.data" />, the
@@ -74,7 +71,7 @@ that explains it, and the choice is one click.
 
 The two below the line are the ones that come back. Read <Ui id="download.data" />'s
 own hint before you pick anything else — _the song itself — words, chords and
-settings_ — and then step 9, which is the whole reason this page exists.
+settings_.
 
 ## 4. Copy a link instead of taking a file
 
@@ -84,57 +81,22 @@ for a couple of seconds, which is the only acknowledgement a clipboard write
 ever gets.
 
 What is on the clipboard is worth being precise about, because almost everybody
-guesses wrong: **the song is inside the link.** The address ends in a `#` and
-then the whole export, compressed and encoded — not an id, not a filename, not a
-row in a database somewhere. Nothing is uploaded when you copy it and nothing is
-fetched when it is opened.
+guesses wrong: **the song is inside the link.** Nothing is uploaded when you
+copy it and nothing is fetched when it is opened.
 
-Three things follow from that, and they are the reason to prefer a link at all:
+Two things follow from that, and they are the reason to prefer a link at all:
 
 - **No account, on either side.** There is no server in the story to have one
   with. The sender needs none and the reader needs none.
 - **It works offline.** The receiving app already has everything the moment the
   link arrives, so an installed Achordeon opens one with no connection at all.
-- **It never reaches a server.** Everything after the `#` is the fragment, which
-  browsers keep to themselves: it is not sent with the request and it does not
-  land in anybody's logs.
 
-The link points at **the app that copied it**, not at a fixed address — so one
-copied from the installed app on your own machine opens there, and one copied
-from `achordeon.eu` opens there.
-
-Here is exactly what the person at the other end gets. They tap it and Achordeon
-opens — a fresh boot in a browser, or the installed app taking the link into the
-window it already had; both work, because the payload is read on every
-navigation rather than once at startup. The import preview from step 7 then
-opens over whatever page they landed on, already filled in with what the link is
-carrying. The address bar is cleaned **before** the dialog appears: by then the
-payload is in memory, and left in the URL it would be bookmarked, copied on by
-accident, and re-offered on every reload. Nothing in their library changes until
-they press <Ui id="import.confirm" />, and cancelling costs them nothing — the
-link is still wherever they tapped it from. A link that did arrive truncated
-gets the ordinary "could not be imported" dialog instead, because truncated and
-corrupt are the same thing to a reader and have the same answer: ask for it
-again.
-
-And it can be refused. A link has to survive being pasted through a chat client,
-a mail composer and an address bar, and past a certain length something along
-the way quietly cuts it short: the payload arrives truncated, and truncated is
-indistinguishable from corrupt. So Achordeon decides on the way **out**. When
-the selection will not fit, the row is greyed rather than removed and says
-why: <Ui id="download.link.tooBig" />
-
-:::note[A length, not a song count]
-
-The limit is the length of the finished address, measured on the real payload
-after it has been built — which is why the button is briefly dead when the
-dialog opens, and why one long song can trip it where three short ones do not.
-When it does, take the Achordeon file instead: it has no such ceiling.
-
-:::
+And it can be refused. When the selection will not fit, the row is greyed rather
+than removed and says why: <Ui id="download.link.tooBig" /> Take the Achordeon
+file instead: it has no such ceiling.
 
 A songbook offers the same thing, as one option of its own download dialog —
-see [Print a songbook](./print-a-songbook.mdx#10-choose-the-format).
+see [Print a songbook](./print-a-songbook.mdx#9-choose-the-format).
 
 ## 5. Pick the file format
 
@@ -143,8 +105,8 @@ For **one** song there are two renders:
 - <Ui id="download.pdf" /> — a page you can print. It is vector, so the text
   stays text: selectable, searchable, and sharp at any size. The fonts are
   packed into the file, so it looks the same on a machine that has none of them.
-- <Ui id="download.png" /> — a picture to share, and the one that comes back
-  (step 9).
+- <Ui id="download.png" /> — a picture to share, and the one that comes back: a
+  downloaded picture is both the picture and the song.
 
 For **several**, the same two ideas plus the question of one file or many. So
 there are three: <Ui id="download.onePdf" /> puts every song in one document,
@@ -187,26 +149,6 @@ Three ways in, and all three end at the same preview.
   already. It needs no route and no page of its own, which is why it works on a
   cold boot and on an app that was already open.
 
-Several files at once are previewed **one after another**, not merged: each
-file's answer is applied before the next one is planned, because what the second
-file collides with depends on what the first one just added. While a queue is
-running, Cancel reads <Ui id="import.skipOne" /> and means "not this one"; the
-second button beside it, which counts what is left, is the way out of the whole
-drop.
-
-On a Chromium desktop with Achordeon installed there is a fourth way, and it is
-not a feature you switch on: double-click an `.achordeon` file and the operating
-system opens it in the app.
-
-:::note[What the picker accepts]
-
-`.achordeon` and `.json` — every file exported before the extension existed is
-one — and `.png`. A ZIP is not offered: unpack it first and the images inside
-import one at a time. Anything else gets the dialog <Ui id="import.failedTitle" />,
-which says <Ui id="import.unreadable" />
-
-:::
-
 ## 7. Read the preview
 
 Nothing is written until you press <Ui id="import.confirm" />. The dialog exists
@@ -218,21 +160,11 @@ The first line is the size of it — how many songs the file holds, and how many
 songbooks. Under it come the things worth knowing before you agree, each
 appearing only when it applies:
 
-- **Songs whose markup Achordeon could not make sense of**, by name. Import
-  compares ids and never looks at the words, so without this a song written by a
-  chatbot with a stale idea of the grammar would land quietly and be discovered
-  on the page a week later. They still import — the message is "go and look",
-  not "stopped".
 - **Fonts this device has not got**, by name. A file names the fonts its songs
   are set in and never carries the font itself, so this is the only place you
   learn what to go and install. The names are kept in the songs either way:
   [add the font](./add-a-font.mdx) later and those pages come back exactly as
   the sender saw them.
-- **Settings this build does not know**, when the file was written by a newer
-  Achordeon. They are kept, not dropped, and you are told rather than stopped.
-
-A file from a build with a schema this one genuinely cannot read is the one hard
-stop: it is refused with <Ui id="import.refused" /> rather than guessed at.
 
 ## 8. Decide what happens to songs you already have
 
@@ -248,12 +180,6 @@ song that has been renamed on one side shows both names, the file's and yours.
   shadow
 />
 
-The match is on **identity, not name**. Two songs collide because they are the
-same song — the file came out of this library, or out of a copy of it that has
-been round the houses — and two songs both called _Wonderwall_ that were typed
-separately do not collide at all. Renaming yours first will not avoid the
-question.
-
 One answer covers the whole file, under <Ui id="import.legend" />:
 
 - <Ui id="import.replace" /> — the default, because the file is usually the
@@ -265,88 +191,6 @@ One answer covers the whole file, under <Ui id="import.legend" />:
   fresh ids, so they are separate songs from then on and will never collide
   again.
 
-Under the three is a checkbox answering a different question altogether:
-it reads <Ui id="import.allNew" /> and applies to **everything in the file**,
-collision or not. Every song lands as a fresh copy with today's date in front of
-its name — the escape hatch for "give me all of it beside what I have and I will
-sort it out myself". While it is ticked the three choices above go dead, because
-it has already decided them.
-
-:::note[Songbooks are matched the same way]
-
-The dialog's last line says songbooks are always added as new, and for a book
-somebody sent you that is exactly what happens: books are matched by identity
-too, never by name, so a book you have not seen before arrives as a new book
-however it is called. What it does not mean is that reimporting your own file
-piles up copies — the book in it is the same book, so it is updated in place.
-Either way there is no merge: a book is a running order, and two running orders
-have no sensible average.
-
-:::
-
-## 9. Know which formats carry the song back
-
-This is the fact people get wrong, and it costs a re-typing when they do. A
-downloaded picture is both the picture and the song: the export rides inside the
-PNG file, in a chunk viewers ignore, so one file can be looked at **and**
-imported. A PDF has no such passenger.
-
-| What you took               | Comes back?         | And brings                                                         |
-| --------------------------- | ------------------- | ------------------------------------------------------------------ |
-| <Ui id="download.data" />   | yes                 | every song and songbook in the file, with their settings           |
-| <Ui id="download.link" />   | yes                 | the same as the file — it is the same data, in a URL               |
-| <Ui id="download.png" />    | yes                 | the one song in that picture, with its settings                    |
-| <Ui id="download.pdf" />    | no                  | nothing importable; keep the song as well if you will want it back |
-| <Ui id="download.zipPng" /> | the pictures inside | unpack it first — each image is a song, the contents page is not   |
-| <Ui id="download.zipPdf" /> | no                  | nothing importable, the same as a single PDF                       |
-
-Two more things travel, and one deliberately does not:
-
-- **The render settings travel.** A song arrives shaped the way the sender
-  shaped it — page ratio, columns, scale, chord colour and the rest.
-- **Font names travel, font files do not.** The file says which fonts the songs
-  are set in; the bytes stay on the sender's device (step 7).
-- **Your global settings are never touched.** No export carries the sender's own
-  defaults, so a file cannot quietly re-base every song you already had on
-  somebody else's idea of a page.
-
-:::note[Editing the image loses the song]
-
-The song rides in a PNG chunk that only Achordeon reads. Crop the image, resize
-it, run it through a messaging app that re-encodes pictures, and the chunk is
-dropped: what is left is a perfectly good picture that imports as nothing. Send
-the file you were given, not a copy of it that has been through something else.
-
-:::
-
-## 10. Have a chatbot write the file from a photo
-
 The import file is plain JSON and its shape is published, so anything that can
 write text can write one — including a chatbot looking at a photo of a chord
-sheet. You send the picture, it hands back the file, you import it: no typing.
-
-The schema is at [achordeon.schema.json](pathname:///achordeon.schema.json), and
-there is a ready-made skill that teaches the markup and carries Achordeon's own
-parser, so the assistant can check its work before handing anything over:
-
-- [achordeon-song.zip](pathname:///achordeon-song.zip) — for Claude, which can
-  run the scripts inside it
-- [achordeon-song-gpt.zip](pathname:///achordeon-song-gpt.zip) — instructions
-  and knowledge files for a Custom GPT
-- [achordeon-song-gem.md](pathname:///achordeon-song-gem.md) — one file to paste
-  into a Gem
-
-Installing each one, and a prompt to paste when you would rather set nothing up,
-are in the [AI import guide](/export-import/ai-import.mdx).
-
-A short song can come back as a **link** rather than a file. The link from step
-4 has a second, uncompressed spelling that exists precisely for this: gzip is a
-byte-level transform with no reasoning in it, and a model asked for one writes a
-plausible string that decodes to nothing. Given the plain form it can hand you
-an address you tap, with no file to save first.
-
-Whatever wrote the file, step 7 is where you find out how it went: the preview
-names the songs whose markup did not parse before a single one of them is
-written. And the chatbot can still be wrong about what it read — a chord one
-letter out, a word misread off bad handwriting — so compare the render with your
-photo before you play from it.
+sheet, and that is the [AI import guide](/export-import/ai-import.mdx).

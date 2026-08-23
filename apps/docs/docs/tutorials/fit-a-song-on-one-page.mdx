@@ -92,29 +92,8 @@ demo song arrives on <Ui id="aspect.a4" />, which is the shape of paper — and
 you are almost certainly looking at a screen that is nothing like it. A good
 part of the white you are staring at is that mismatch and nothing else.
 
-The picker has four shelves:
-
-- <Ui id="aspect.group.device" /> — <Ui id="aspect.matchScreen" /> measures the
-  device you are holding and stores the ratio it measured, so a phone saves
-  something like `131:284`, and that keeps meaning _that phone_ after it syncs
-  to your desktop. Its sideways twin, <Ui id="aspect.matchScreenSideways" />, is
-  the same measurement turned over — which is how you get a landscape song
-  without physically rotating a device that has rotation lock on.
-- <Ui id="aspect.group.paper" /> — <Ui id="aspect.a4" /> and
-  <Ui id="aspect.letter" />, for a song that is going to be printed.
-- <Ui id="aspect.group.portrait" /> — `9:19.5` down through `3:4`, tallest
-  first, ending at <Ui id="aspect.square" />.
-- <Ui id="aspect.group.landscape" /> — `21:9` down to `4:3`, which is the shelf
-  laptop screens live on.
-
-Take the shelf that matches what you will play from. The pictures on this page
+Take the ratio that matches what you will play from. The pictures on this page
 were taken at `16:9`, off a laptop.
-
-Every named ratio carries its numbers in its label, so you can check the claim
-before you act on it. Below the list is a free-text field: it takes a ratio like
-`3:4`, a fraction like `3/4`, a plain number, or the word `A4`, and it turns
-away anything the renderer could not draw rather than storing a value that would
-quietly do nothing.
 
 :::note[Shape, not size]
 
@@ -132,17 +111,8 @@ and the whole song is drawn at the size of a footnote.
 
 Take it to `2`.
 
-The renderer chooses **where** to break, and it only ever breaks between blocks:
-a verse is never sawn in half, and the columns are balanced so that the tallest
-one comes out as short as it can. A song written as one long block therefore has
-nowhere to break, and setting it to two columns changes nothing whatsoever — a
-blank line is what gives the renderer a choice.
-
 Columns are for a song that is **taller** than its page: many short lines. This
-one is exactly that, which is why two of them is a win here. Where the lines are
-long instead, two of them side by side need twice the width, and the fit scale
-is what pays for it — the song comes out smaller rather than bigger. Press the
-stepper and look; the render answers in the pane beside you.
+one is exactly that, which is why two of them is a win here.
 
 ## 5. Trim the padding
 
@@ -154,11 +124,6 @@ The border is _inside_ the page, so it never bends the shape you chose in step
 3; it only pushes the song away from the edges. Which means what you take off it
 is room the song gets, and with the scale on <Ui id="scale.auto" /> that room
 comes straight back as bigger letters.
-
-It runs `0` to `4` in quarters. Like the block gap it is measured in text sizes
-rather than millimetres, so it holds its proportion however big the song is
-printed. `0` runs the song to the paper's edge — a fine thing on a screen you
-read from a metre away, and a poor one on a page you are about to print.
 
 :::note[A book adds its own]
 
@@ -181,14 +146,6 @@ say so, and they are independent of each other:
 Press <Ui id="setting.contentX.center" /> and <Ui id="setting.contentY.middle" />,
 which is where both of them start.
 
-Neither row does anything to a song that already fills its page: there is no
-leftover room to place. So the closer the last three steps have brought this
-song to fitting, the less these two have left to do — which is worth knowing
-before you decide the buttons are broken. The corner-hugging pair is not
-useless, though. Setting <Ui id="setting.contentX.left" />
-with <Ui id="setting.contentY.top" /> is what you want when the song shares a
-screen with something else.
-
 ## 7. Bring the title off the spine
 
 <Ui id="setting.titlePosition" /> is on <Ui id="setting.titlePosition.left" />,
@@ -200,12 +157,6 @@ screen you play from it is a title you have to tilt your head to read.
 <Ui id="setting.titlePosition.top" /> puts it back across the page, which is
 where this song wants it. Either way the title block hugs the top-left corner —
 the setting turns it, it does not move it.
-
-Its neighbour, <Ui id="setting.titleLayout" />, decides whether the subtitle
-sits under the title or beside it: <Ui id="setting.titleLayout.stacked" />
-or <Ui id="setting.titleLayout.inline" />. Beside it is one line instead of two,
-which is one more line for the song. The demo song leaves that row alone, so it
-is one of the few still reading <Ui id="settings.inherited" />.
 
 ## 8. Open the block gap until it reads
 
@@ -228,24 +179,10 @@ on here is the density you get on a phone, in a book, and in a PDF.
 ## 9. Size the chords to taste
 
 <Ui id="setting.chordSize" /> is the size of the chords **relative to the
-lyrics**, from `0.5` to `3`. Mostly a matter of taste, and not a free one.
-
-A chord rides in a row of its own above the line it belongs to, and that row is
-as tall as the chords in it. Shrink them and every line of the song that carries
-any gets shorter; grow them and the song gets taller, and the fit scale answers
-by drawing everything smaller. If you play from across the room and want the
-chords big, this is the row where the page pays for them.
+lyrics**, from `0.5` to `3`.
 
 <Ui id="setting.chordColor" /> sits beside it and changes nothing about the fit:
 it is the colour every chord in the song is drawn in.
-
-:::note[Notation is not a rewrite]
-
-The same section carries <Ui id="setting.notation" />, which spells the printed
-chords in English or German note names. It never touches what you wrote —
-[Transpose a song](./transpose-a-song.mdx) covers that.
-
-:::
 
 That is the repair. Same song, same words, same eight settings — a page you
 could hand to somebody and ask them to play from.
@@ -270,16 +207,6 @@ with a reason. The other two scopes are for when it has not got one.
   fonts, the chord colour and size, the block gap, and the notation. That is
   [Build a songbook](./build-a-songbook.mdx#13-restyle-the-chords-for-the-whole-book).
 - **A song** — everything, and the last word.
-
-The order is always global, then songbook, then song. A song that sets a value
-for itself beats the book it is in, and the book beats your global default —
-which is all a row marked <Ui id="settings.inherited" /> is saying: nobody
-nearer than the global has an opinion about it yet.
-
-Clearing an override hands the setting back up that chain. At global scope there
-is nothing above to hand it to, so the reset there
-reads <Ui id="settings.resetDefault" /> and puts back the value Achordeon ships
-with.
 
 The demo song has served its purpose by now. Keep it as a scratch page to
 experiment on, or delete it from <AppLink to="songs">Songs</AppLink> — the link

@@ -89,14 +89,6 @@ they get is always the page you are looking at.
 They also get the **set list** with it, which is why a viewer can open the songs
 of the evening without asking you for anything.
 
-Three things you do on stage stay on stage, on purpose:
-
-- your own transpose — every viewer has one of their own, and one sent from the
-  stage would fight it;
-- the dark page (<Ui id="stage.darkPage" />) — a stage is dark and a kitchen
-  table is not, so each screen answers for the room it is in;
-- the zoom — leaning in is a thing you do with your own eyes.
-
 ## 5. Manage the lobby
 
 Closing the dialog does not close the lobby. The audience control stays lit and
@@ -181,16 +173,6 @@ performer:
 - Chords off (<Ui id="audience.hideChords" />), for anyone in the room who is
   singing rather than playing. The chord rows keep their space, so nothing
   reflows under your eyes.
-- The dark page (<Ui id="stage.darkPage" />), for the same song on black.
-- Holding the phone sideways (<Ui id="stage.turnPage" />). The row is only there
-  when the song on screen would gain by it, and armed, it turns the songs that
-  do and leaves the rest upright.
-- The lobby itself (<Ui id="audience.lobby" />) — the PIN, the count, and a QR
-  code of your own. That is how you get the person beside you onto the same
-  lobby without going back to the performer.
-
-Last in the menu is <Ui id="audience.exit" />. The performance carries on
-without you, and the PIN is remembered for the way back.
 
 ## 10. Transpose your own screen
 
@@ -217,14 +199,3 @@ next viewer's does not either, and no song anywhere is rewritten — to change a
 song for good you need the editor, which
 [Transpose a song](./transpose-a-song.mdx) is about. Your offset holds for the
 rest of the evening and is gone when you leave the lobby.
-
-## 11. Re-sync after your phone was locked
-
-A phone that was locked, or off in another app, catches up by itself when you
-come back to it. The lobby's current song is stored, not just broadcast, so a
-missed message is not a missed song.
-
-The menu's <Ui id="audience.sync" /> is for the case where you suspect you are
-behind and would rather not wait to find out: it re-reads the lobby and applies
-it. Pressing it when you are already current does nothing at all, so it is
-always safe to press.

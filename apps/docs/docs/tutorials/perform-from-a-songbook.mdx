@@ -18,9 +18,8 @@ On a wide screen the performing page draws its own bar across the top of the
 song, every control in the open; the pictures here are that one. On a narrow one
 there is no second bar at all — the four thumb targets at the foot of the screen
 are <Ui id="stage.prev" />, <Ui id="stage.summary" />, <Ui id="stage.menu" /> and <Ui id="stage.next" />,
-and everything rarer is a row inside <Ui id="stage.menu" />. The line between the
-two is 1200 pixels wide. Where a step below says _the bar_, read whichever one
-you are holding.
+and everything rarer is a row inside <Ui id="stage.menu" />. Where a step below
+says _the bar_, read whichever one you are holding.
 
 :::
 
@@ -57,19 +56,8 @@ first song.
 <Ui id="songbooks.allSongs" /> is always the first row and always there: the
 whole library as one book, for the evening that has no set list. It is the one
 row with a gear beside its button, because it is the one book with no order of
-its own. <Ui id="stage.allSongsOrder" /> is where you answer that: order by
-<Ui id="allSongsOrder.byName" />, by <Ui id="allSongsOrder.byCreated" /> or by
-<Ui id="allSongsOrder.byChanged" />, up or down, with
-<Ui id="allSongsOrder.favoritesFirst" /> if you want the ones you actually play
-at the top. The answer is saved to your account, so it is already set on the
-next device you sign in on. A real songbook needs none of this: its order is the
-order you arranged it in — [Build a songbook](./build-a-songbook.mdx) is that
-half.
-
-One thing worth knowing before you press anything: while a performance is
-running, coming back to <Ui id="stage.title" /> does not show you this list. It
-puts you back into the performance. The picker is for choosing what to play, not
-for interrupting what is already playing.
+its own. <Ui id="stage.allSongsOrder" /> is where you answer that, and the
+options are in [Songbooks](/songbooks/index.mdx#settings).
 
 ## 3. Move to the next and previous song
 
@@ -90,19 +78,17 @@ the forward arrow is, so a set cannot quietly start over while you are looking a
 your hands.
 
 A page turn drops one thing and carries another. The zoom is dropped — every song
-starts as the whole page (step 9) — while the key you are playing in comes with
+starts as the whole page (step 8) — while the key you are playing in comes with
 you: a transpose set on the bar holds for the rest of the set, which is
-[Transpose a song](./transpose-a-song.mdx#8-play-on--the-offset-holds-across-the-songs).
+[Transpose a song](./transpose-a-song.mdx#7-play-on--the-offset-holds-across-the-songs).
 
 ## 4. Swipe, or use the arrow keys
 
 Both arrows have a bigger, blunter twin: the page itself.
 
 **Swipe** across the song — right to left for the next one, left to right for the
-one before. It has to travel about sixty pixels and be more sideways than up and
-down, so a scroll or a wobble is not a page turn. It works with a mouse held down
-as well as with a finger, and the whole page is the target: there is no strip you
-have to find in the dark.
+one before. It works with a mouse held down as well as with a finger, and the
+whole page is the target: there is no strip you have to find in the dark.
 
 **The arrow keys** do the same from a keyboard, and there are four of them:
 `←` and `↑` go back, `→` and `↓` go forward. Up and down as well as left and
@@ -144,24 +130,6 @@ device to stay awake while it has it. That second half is the one that matters
 at a gig: a performer reading a verse does not touch anything for minutes, and a
 phone that dims mid-song has to be woken with the hand holding the instrument.
 
-What it takes away is the **chrome**, and only for as long as you are still. The
-bars fade about three seconds after your last movement, and they come back on the
-next one: move the mouse, or tap the page. A swipe deliberately does not count —
-turning the page would otherwise light the bars up at every song.
-
-What it does not take away is anything else. It is a mode, not a place: the
-address does not change, the performance does not restart, and everything on the
-bar is one pointer move away. `Esc` leaves fullscreen, which is the browser's own
-key and not ours to take.
-
-:::note[If your phone refuses]
-
-There is no fullscreen for a web page on an iPhone, so the browser turns the
-request down. The mode still runs — the chrome hides, the screen stays awake —
-and you keep everything on this page except the last inch of glass.
-
-:::
-
 ## 7. Turn the page dark
 
 <Ui id="stage.darkPage" /> — the moon on the bar, or the row of that name inside
@@ -169,10 +137,7 @@ and you keep everything on this page except the last inch of glass.
 light, a bar at midnight: white A4 at full brightness is a lamp pointed at your
 own face.
 
-**It is the paper, not the app.** Look at the picture in step 3 again in a dark
-theme: the app around the song is black and the page is still white, because a
-song is a document — it prints, it downloads, it is what an audience sees — and
-dark mode is the desk it lies on. The moon is the one control that turns the
+**It is the paper, not the app.** The moon is the one control that turns the
 paper over, and it turns over nothing else. Your library and your editor keep
 drawing on white while a dark performance is running.
 
@@ -181,11 +146,6 @@ with it on, every song this device draws follows the theme onto a dark page.
 The moon still wins over it: it is a performer saying _not on this stage_ about
 the room they are actually standing in, and it holds for this performance only.
 End the performance and the setting is back in charge.
-
-Two things it never reaches. Printing, PDFs and downloads stay on white paper —
-this is a screen you are reading from, not a page you are making. And it does not
-travel to an audience: every viewer answers for the room they are sitting in, and
-some of them are at a kitchen table with the lights on.
 
 :::tip[Sideways songs]
 
@@ -203,47 +163,16 @@ The page is drawn to fit the screen it is on, which on a small screen can mean
 chords you have to lean in for. So there is a zoom, and it is the app's own:
 
 - **Pinch** with two fingers, or **scroll** with a wheel.
-- **Double-tap** — or double-click — the line you want. That lands at 250%,
-  centred on what you tapped rather than on the middle of the page, and doing it
-  again gives the whole page back.
-- `+` and `-` from a keyboard, a quarter bigger or smaller each press. 500% is as
-  far in as it goes; past that a chord is a wall, not a chord.
+- **Double-tap** — or double-click — the line you want, and doing it again gives
+  the whole page back.
 
 A pill appears in the corner with the magnification on it, and it stays put while
-the rest of the chrome fades. It is not chrome — it is the answer to a question
-you are about to ask.
+the rest of the chrome fades. The way back out to the whole page is the pill
+itself (<Ui id="zoom.reset" />).
 
-:::note[Your browser's zoom does nothing here]
+See [Stage & audience](/stage-audience/index.mdx#zooming-in).
 
-`Ctrl` and `+` shrink the layout by exactly the factor they enlarge each pixel,
-so the page re-fits to the same physical size and comes out unchanged. That is
-the whole reason Achordeon has a zoom of its own. See
-[Stage & audience](/stage-audience/index.mdx#zooming-in).
-
-:::
-
-## 9. Pan while zoomed, and get the whole page back
-
-Magnified, a drag **moves the page** instead of turning it — the same bargain a
-photo gallery makes, and the reason the pill is worth looking at: a swipe that
-has stopped working is a swipe the screen has an explanation for.
-
-The rest of the ways on still work while you are in close. The two arrows on the
-bar turn the page, and so do the arrow keys — a keyboard has no finger for the
-pan to be competing with.
-
-Three ways back out to the whole page: the pill itself (<Ui id="zoom.reset" />),
-`0` from a keyboard — `Esc` too, while there is a magnification for it to clear
-— or simply turning to the next song. **Every page turn starts whole**,
-deliberately: carrying a magnification into the next song
-would land you on whatever happens to be at those coordinates in a page of a
-different length, which is usually the middle of nothing.
-
-The zoom is yours and nothing else's. It is not saved, it is not sent to an
-audience — they each have one of their own — and it is not a setting you can
-arrive to.
-
-## 10. Leave and resume the performance
+## 9. Leave and resume the performance
 
 Somebody wants a song that is not in the book. Click another module in the rail
 and go and get it: the performance does not end, it simply stops being on screen.
@@ -257,13 +186,7 @@ the top of the book. A lobby comes back with it, which is what stops an audience
 being stranded by a locked phone —
 [Play to an audience](./play-to-an-audience.mdx) is that whole half.
 
-Two exceptions, both on purpose. A transpose is **not** kept across a reload: a
-library that quietly plays everything a tone up, with nothing on screen outside
-the stage to say so, would be worse than the written key. And a performance is an
-evening — one you have not touched for **twelve hours** is not resumed, because
-resuming would also resurrect a PIN from last night and start publishing to it.
-
-## 11. Exit
+## 10. Exit
 
 The red cross at the end of the bar, <Ui id="stage.exit" /> — on a phone, the
 last row of <Ui id="stage.menu" />, in the same red. It is the only thing that
