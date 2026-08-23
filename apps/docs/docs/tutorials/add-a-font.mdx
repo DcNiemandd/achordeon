@@ -7,18 +7,225 @@ description: 'Add a font from Google Fonts, a file or a link, and set your songs
 
 The face your songs are printed in, kept on the device.
 
-## 1. Open `Settings > Font library`
+A font in Achordeon is **acquired, not linked to**. Whichever of the three ways
+you use, the file is fetched once and stored on this device, and every render
+after that — the screen, the preview, the PDF — reads it from there. Nothing is
+fetched while you are looking at a song, and a font added on a train still
+prints in a cellar.
+
+The other half of it is the unit. What you add is not a family, it is a
+**style**: one `.ttf` file is the regular, or the bold, or the italic, and never
+two of them at once. Almost everything on this page follows from that one fact.
+
+## 1. Open `Settings` ▸ `Font library`
+
+The library is the last section but one of <AppLink to="settings">Settings</AppLink>,
+under <Ui id="settings.fontLibrary" />. It is the only place the fonts on this
+device are listed in full; the pickers in the render settings offer the same
+families, but reading what a font is short of, and deleting one, are page-sized
+questions.
+
+The four Achordeon ships with are folded away behind a line saying how many they
+are, so the list has a fixed top edge and the fonts you add yourself grow
+downwards from it. Open the line and each family is drawn **in its own letters**,
+with what it has under it: Roboto Mono has all four styles, Crimson Text, Oswald
+and Caveat have two.
+
+<Image
+  alt="The Font library in Settings, with the built-in fonts unfolded and the Add a font button under them"
+  src="/img/screenshot-font-library.png"
+  srcDark="/img/screenshot-font-library-dark.png"
+/>
+
+The sentence under the heading is worth reading once: a font you add **stays on
+this device**. It travels in a backup, because a backup is your whole library,
+and it does not travel in an [export](/export-import/index.mdx) — that file
+names the fonts your songs are set in so the person opening it knows what to
+install, and never carries the font itself.
 
 ## 2. Press Add a font
 
+The button at the foot of the list is <Ui id="fonts.add" />. The same dialog is
+the last option in **every** font picker in the app, so a font you decide you
+want while setting a song can be added without leaving the song.
+
+Its first line is the whole tutorial in one sentence: TrueType only, one file is
+one style, and a style you do not add is borrowed from another font. Under it are
+three ways in — <Ui id="addFont.search" />, <Ui id="addFont.file" /> and <Ui id="addFont.link" /> —
+separated by rules rather than by the word "or", because they are three routes
+to the same place and not three steps.
+
+<Image
+  alt="The Add a font dialog: a Google Fonts search with two results, a file picker, and a link field"
+  src="/img/screenshot-add-font-dialog.png"
+  srcDark="/img/screenshot-add-font-dialog-dark.png"
+/>
+
+Each of the three commits on its own — a result is its own button, a chosen file
+is added the moment you choose it, and the link has <Ui id="addFont.fetch" />
+beside it. That is why the footer holds only <Ui id="addFont.close" />: there is
+nothing pending for an OK button to confirm. While something is being fetched the
+three ways are replaced by <Ui id="addFont.fetching" />, and a font that arrives
+closes the dialog — the confirmation is the row now sitting in the list behind it.
+
 ## 3. Search Google Fonts by name
+
+Type into <Ui id="addFont.search" />, which reads <Ui id="addFont.searchPlaceholder" />.
+Two letters is the shortest query it answers; below that a search matches most of
+the catalogue and means nothing. There is no Search button and no waiting — the
+app carries its own index of the whole Google Fonts catalogue, so the list
+narrows as you type. A name nothing matches is answered at once, and answered
+plainly: <Ui id="addFont.noResults" />
+
+Under each name is what **installing it will give you**, counted out of the four
+styles a song can ask for, and worded exactly as the library list will word it
+afterwards. That is the line to read before you click:
+
+- **Four of four** — the family ships four static files, and one press gets you
+  the regular, the bold, the italic and the bold italic.
+- **Two of four** — two files exist and two do not. The rest are borrowed
+  (step 6).
+- **One variable file**, with a sentence saying so — see step 5. A family
+  advertising nine weights on the Google Fonts website can land here as a single
+  style, and it is better to know that before the download than after it.
+
+No result is drawn in its own face, which is deliberate: drawing a name in the
+letters it names means downloading the whole font first, and a catalogue of two
+thousand of them would cost megabytes to scroll past. The previews live on the
+installed list, where the bytes are already on the device.
+
+:::note[The list, and the fonts]
+The catalogue of names ships inside the app, so searching works with no
+connection at all. The **font file** does not: picking a result downloads it from
+jsDelivr, once. If the list itself cannot be read the dialog puts <Ui id="addFont.indexFailed" />
+where the results would be, and the other two ways in still work.
+:::
 
 ## 4. Or add a `.ttf` file, or a link
 
+<Ui id="addFont.file" /> takes a file off this machine, and it is the path that
+needs no network, no catalogue and no explanation. Its submit is the picker
+itself: the font is added the moment you choose one, with nothing else to press.
+
+TrueType only. An `.otf` file is turned away when it holds the other kind of
+outlines, and it is turned away **here**, while you are watching, rather than
+becoming a PDF with a face missing in it weeks later. The extension does not
+decide it; the file is read and the refusal names what was actually wrong with
+it.
+
+<Ui id="addFont.link" /> takes two shapes of address:
+
+- The **embed link** Google Fonts hands you, the one meant for a web page's
+  `<head>`. Only its query string is read, so the fonts you picked on that site
+  are the fonts you get — and if the link names four families, all four are
+  added.
+- A **direct `.ttf` address** on jsDelivr or raw.githubusercontent.com. Nowhere
+  else: reading a font from another site needs that site's permission, and those
+  two give it. A link elsewhere is refused with the two hosts named rather than
+  failing later for a reason nobody could have guessed.
+
+Press <Ui id="addFont.fetch" />. Anything refused says so under the way that
+earned it, beside the field you would fix.
+
 ## 5. Add the bold and the italic as their own files
+
+A song asks for four styles: regular, bold, italic and bold italic. A `.ttf`
+file holds **one**. So adding a font from a file, or from a direct link, adds
+one style, and the bold is a second file added the same way — dropping
+`Lora-Bold.ttf` in after `Lora-Regular.ttf` does not make a second family, it
+fills the second slot of the one you already have, and the row's count of styles
+goes up by one.
+
+Searching is the exception, and the reason to prefer it: a result adds every
+static file the family ships in one press, which for most families is all four.
+
+A **variable font** is the case worth understanding. One variable file carries a
+whole range of weights, and on screen the browser can draw any of them — but a
+PDF cannot, and Achordeon will not show you something on screen that it cannot
+print. So a variable file counts as **one style**, its default instance, and the
+library says so in the row rather than leaving the count looking like a failed
+download.
+
+:::note[Latin, out of the box]
+The four fonts Achordeon ships with are cut back to the Latin alphabets to keep
+the app small, so a song written in Greek or Russian prints empty boxes. Adding
+a font that has those letters is the fix, and this is the other reason the
+library exists.
+:::
 
 ## 6. Choose where a missing style is borrowed from
 
+A style you have not added still has to be drawn by something. Achordeon borrows
+it, and it tells you it did.
+
+The render settings' <Ui id="settingGroup.fonts" /> section is where this is
+read and changed — the same panel [Fit a song on one page](./fit-a-song-on-one-page.mdx#1-open-the-songs-settings)
+opens. It has three rows: <Ui id="setting.bodyFont" /> is the face the song
+itself is set in, <Ui id="setting.titleFont" /> is the title block's, and the
+third, <Ui id="setting.italicFont" />, is the donor.
+
+Pick a font that is short of a style and a note appears under the song's own
+row. It names the styles that are missing — <Ui id="face.italic" />, <Ui id="face.bold" />
+or <Ui id="face.boldItalic" /> — and the font they are now coming from. It is
+not an error: the page is fine, it is just not entirely in the font you picked,
+and the row that changes that is the next one down.
+
+<Ui id="setting.italicFont" /> starts with an answer already in it: Roboto Mono,
+the face the app itself is set in, which has all four styles and is on the
+device already. Change it to any other font that has all four — only a font that
+is not missing anything can lend. While the song's own font is missing nothing
+the row is greyed out rather than hidden, so choosing a font never makes the
+panel jump under your pointer.
+
+The reason to care is the last sentence of that row's `?`: **without a donor,
+italic text would slant on screen and come out upright in a PDF.** A browser will
+fake a slant out of the regular; a PDF has no such trick. Borrowing a real italic
+from another face is how the screen and the printed page are kept saying the same
+thing.
+
 ## 7. Set a song, or a whole songbook, in the font
 
+A font in the library is not yet a font in use. The pickers are the same three
+rows in whichever scope you open them:
+
+- **One song** — the gear in the editor, <Ui id="editor.settings" />. That is
+  [Fit a song on one page](./fit-a-song-on-one-page.mdx).
+- **A whole songbook** — <Ui id="songbooks.settings" /> carries the fonts among
+  the few settings that make a house style, so a book can be set in one press.
+  See [Build a songbook](./build-a-songbook.mdx#13-restyle-the-chords-for-the-whole-book).
+- **Everything** — <Ui id="nav.settings" /> ▸ <Ui id="settings.rendering" /> is
+  the base every song starts from.
+
+The order is always global, then songbook, then song, and the nearest opinion
+wins. A row still marked <Ui id="settings.inherited" /> is one nobody nearer than
+the global has an opinion about yet.
+
+In the picker itself, the families are shelved by kind, and the ones you added
+sit together under <Ui id="fontCategory.custom" />. A family short of a style
+carries its count in the option, so you can see what you are choosing before you
+choose it. The title row has one extra option at the top, <Ui id="titleFont.body" />,
+which is what it does until you say otherwise.
+
 ## 8. Remove a font
+
+Only the fonts you added can be removed — the built-in four have no delete
+button. Press the bin on the row and Achordeon answers <Ui id="fonts.removeTitle" />
+with the one thing you actually need to decide on: **how many of your songs and
+songbooks are set in it**.
+
+<Image
+  alt="The removal dialog, saying how many songs and songbooks are set in the font"
+  src="/img/screenshot-font-remove.png"
+  srcDark="/img/screenshot-font-remove-dark.png"
+/>
+
+It is a price, never a veto: <Ui id="fonts.removeConfirm" /> goes through
+whatever the count says, and <Ui id="fonts.cancel" /> leaves everything as it
+was. What removal costs is that those songs go back to the default font — and
+that is all it costs, because the font's **name stays written in every song that
+named it**. Add the family again, by any of the three ways, and every one of
+those pages comes back exactly as it was.
+
+Which makes the library safe to experiment in. A font you are not sure about is
+one you can install, set a song in, look at the render, and take back out again
+with nothing lost but the download.
