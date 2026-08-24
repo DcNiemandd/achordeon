@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tutorials — too technical: report</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        font:
+          15px/1.55 system-ui,
+          sans-serif;
+        max-width: 62rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin-top: 2.5rem;
+        border-bottom: 1px solid #8884;
+        padding-bottom: 0.2rem;
+      }
+      h3 {
+        font-size: 1rem;
+        margin: 1.4rem 0 0.3rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 0.8rem 0;
+      }
+      th,
+      td {
+        border: 1px solid #8884;
+        padding: 0.35rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #8881;
+      }
+      code {
+        background: #8882;
+        padding: 0 0.25em;
+        border-radius: 3px;
+      }
+      .cut {
+        color: #b00;
+        font-weight: 600;
+      }
+      .keep {
+        color: #070;
+        font-weight: 600;
+      }
+      .move {
+        color: #a60;
+        font-weight: 600;
+      }
+      ul {
+        margin: 0.3rem 0 0.8rem;
+        padding-left: 1.2rem;
+      }
+      li {
+        margin: 0.25rem 0;
+      }
+      .lines {
+        color: #888;
+        font-variant-numeric: tabular-nums;
+      }
+      blockquote {
+        margin: 0.3rem 0 0.3rem 0.6rem;
+        padding-left: 0.7rem;
+        border-left: 3px solid #8884;
+        color: #666;
+        font-style: italic;
+      }
+      .verdict {
+        background: #8881;
+        padding: 0.5rem 0.7rem;
+        border-radius: 4px;
+        margin: 0.5rem 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Where the tutorials are too technical</h1>
+
+    <p>
+      Scan of <code>apps/docs/docs/tutorials/</code>, 10 tutorials + index. The
+      measure used:
+      <strong>would a first-time user need this to finish the task?</strong> If
+      no, it is reference material and belongs in the section docs.
+    </p>
+
+    <h2>Size, first</h2>
+
+    <table>
+      <tr>
+        <th>Tutorial</th>
+        <th>Words</th>
+        <th>Steps</th>
+        <th>Verdict</th>
+      </tr>
+      <tr>
+        <td>set-up-a-device</td>
+        <td>3462</td>
+        <td>10</td>
+        <td class="cut">Worst. Should be ~1200 words / 5 steps.</td>
+      </tr>
+      <tr>
+        <td>share-a-song</td>
+        <td>3202</td>
+        <td>10</td>
+        <td class="cut">Second worst. Should be ~1000 / 5.</td>
+      </tr>
+      <tr>
+        <td>print-a-songbook</td>
+        <td>2650</td>
+        <td>12</td>
+        <td class="cut">Catalogue-heavy. ~1000 / 6.</td>
+      </tr>
+      <tr>
+        <td>perform-from-a-songbook</td>
+        <td>2463</td>
+        <td>11</td>
+        <td class="cut">~1000 / 6.</td>
+      </tr>
+      <tr>
+        <td>fit-a-song-on-one-page</td>
+        <td>2376</td>
+        <td>10</td>
+        <td class="move">Good <em>shape</em>, too much rationale per step.</td>
+      </tr>
+      <tr>
+        <td>transpose-a-song</td>
+        <td>2249</td>
+        <td>11</td>
+        <td class="cut">Half of it is parser rules.</td>
+      </tr>
+      <tr>
+        <td>add-a-font</td>
+        <td>2101</td>
+        <td>8</td>
+        <td class="cut">~600 words of it is a real tutorial.</td>
+      </tr>
+      <tr>
+        <td>play-to-an-audience</td>
+        <td>1710</td>
+        <td>11</td>
+        <td class="keep">Close to right. Light trim.</td>
+      </tr>
+      <tr>
+        <td>write-your-first-song</td>
+        <td>1232</td>
+        <td>12 challenge steps</td>
+        <td class="move">
+          Prose fine; challenge runs 5 steps past "first song".
+        </td>
+      </tr>
+      <tr>
+        <td>build-a-songbook</td>
+        <td>1170</td>
+        <td>13</td>
+        <td class="keep">The model. Copy its voice into the others.</td>
+      </tr>
+    </table>
+
+    <p>
+      Total ~22,600 words for "an introduction to the app". The section docs
+      (<code>songs/</code>,
+      <code>songbooks/</code>, <code>stage-audience/</code>,
+      <code>export-import/</code>, <code>settings-account/</code>) already exist
+      and are the right home for most of what follows.
+    </p>
+
+    <h2>Cross-cutting problems</h2>
+
+    <h3>1. Rationale voice instead of instruction voice</h3>
+    <p>
+      The dominant sentence pattern across all ten is
+      <em>"X does Y, <strong>because</strong> Z"</em> — a design memo explaining
+      itself. A tutorial says <em>press this, look at that</em>. Samples:
+    </p>
+    <blockquote>
+      "Numbering the front matter would make the contents send a reader to page
+      3 for the first song, which is a number they can only use by counting past
+      two sheets that also claim one." — print-a-songbook:140
+    </blockquote>
+    <blockquote>
+      "a book of a reprise… the two positions are independent" / "One or the
+      other, never both, and that is a decision rather than a missing checkbox"
+      — print-a-songbook:160
+    </blockquote>
+    <blockquote>
+      "which is why the button is briefly dead when the dialog opens" —
+      share-a-song:130
+    </blockquote>
+    <p>
+      This is the single biggest source of length. It is good writing in the
+      wrong document.
+    </p>
+
+    <h3>2. Implementation vocabulary leaking into a beginner page</h3>
+    <p>
+      <code>IndexedDB</code>, <code>service worker</code>,
+      <code>Progressive Web App</code>, "the fragment", <code>gzip</code>, "a
+      PNG chunk", "schema", "ids", "1200 pixels", <code>jsDelivr</code>,
+      <code>raw.githubusercontent.com</code>, "variable font default instance",
+      "AST"-shaped talk about the parser. None of these are needed to write a
+      song or print a book.
+    </p>
+
+    <h3>3. The cascade is explained four times</h3>
+    <p>
+      "global, then songbook, then song; the nearest opinion wins" appears in
+      full in fit-a-song §10 (lines 274–282), add-a-font §7 (449–452),
+      build-a-songbook §13 (161–164) and transpose §5 (143–145). Explain once —
+      in the docs — and link.
+    </p>
+
+    <h3>4. Option catalogues that are reference tables</h3>
+    <p>
+      Aspect-ratio shelves (fit §3), 21 title-page styles (print §4), 7
+      page-number positions (print §7), the format table (print §10, share §9),
+      All-songs sort orders (perform §2), the four ways in for fonts.
+      print-a-songbook:125
+      <em>already says</em> "The full list, with a line on each, is in
+      Songbooks" — and then lists them anyway.
+    </p>
+
+    <h3>5. Failure dialogs enumerated everywhere</h3>
+    <p>
+      <code>update.broken</code>, <code>restore.failedTitle</code>,
+      <code>addFont.indexFailed</code>, <code>import.refused</code>,
+      <code>download.link.tooBig</code>, <code>settings.drive.conflict</code>,
+      <code>library.foreign.heading</code>. A tutorial should hit the happy
+      path; error states are reference.
+    </p>
+
+    <h3>6. Keyboard-shortcut trivia scattered inline</h3>
+    <p>
+      <code>Alt</code>+<code>,</code> · <code>Alt</code>+<code>=</code> ·
+      <code>Alt</code>+<code>]</code> · <code>Ctrl</code>+<code>Y</code> ·
+      <code>g</code> then <code>h</code> · <code>0</code> ·
+      <code>+</code>/<code>-</code>. The app has its own shortcut list (perform
+      §4 points at it). Point there once.
+    </p>
+
+    <h2>set-up-a-device.mdx — heaviest rewrite</h2>
+    <div class="verdict">
+      Keep steps 1–3 and a single "get it off this device" step. Everything else
+      is settings/account reference.
+    </div>
+
+    <ul>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">10–20</span> — opens on
+        <code>IndexedDB</code>, "the whole risk", and a two-jobs meta-paragraph
+        about the page itself. Third sentence of the first tutorial anybody
+        reads.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">33–49</span> — "A
+        browser is a device", private windows, clearing site data. True and
+        important — belongs in
+        <code>settings-account/account-data.mdx</code> with a one-line warning
+        here.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">53–64</span> —
+        "Progressive Web App" + a four-browser install matrix. Reduce to: "Your
+        browser offers an install button; on iPhone it is Share ▸ Add to Home
+        Screen."
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">70–73</span> —
+        service-worker explanation of why offline already worked.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">84–97</span> — the
+        whole update mechanism, <code>update.required</code>,
+        <code>update.broken</code>, "the offline cache is damaged beyond
+        repair".
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">142–170</span> — step 4
+        "Use it with no connection" in full. It is a mechanism essay (service
+        worker vs library) plus font pre-caching advice. Step 10 already
+        restates it.
+      </li>
+      <li>
+        <span class="move">MOVE</span>
+        <span class="lines">176–182, 201–204</span> — the Premium tier matrix
+        and account-method linking.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">216–224</span> — "the
+        first sign-in claims the library", <code>library.foreign.replace</code>.
+        Real edge case, wrong page.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">256–279</span> —
+        Drive scope wording, merge-not-flatten, conflict + force.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">294–323</span> — Add
+        vs Replace argued in full, "the newer copy wins, one row at a time",
+        deletions/tombstones.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">338–351</span> — sync
+        internals: "works on boundaries", "schedules a push a few seconds
+        later", "one round trip rather than thirty", pull-on-focus,
+        flush-on-leave, four status strings. A user needs: tick it, it stays in
+        step.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">362–385</span> — step
+        10, the exhaustive online/offline matrix. This is a reference table.
+      </li>
+    </ul>
+
+    <h2>share-a-song.mdx</h2>
+    <div class="verdict">
+      Core is: tick songs → Download → pick link or file; and: open a file →
+      read the preview → confirm. Roughly 5 steps.
+    </div>
+
+    <ul>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">63–67</span> —
+        <em
+          >"There is no Export button anywhere in Achordeon. There used to be
+          one…"</em
+        >. Product history. A first-time user never knew about the old button.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">86–118</span> — the
+        link internals: the <code>#</code> fragment, "compressed and encoded",
+        "not sent with the request and it does not land in anybody's logs", "the
+        address bar is cleaned <em>before</em> the dialog appears",
+        truncated-is-indistinguishable-from-corrupt. Keep one sentence:
+        <em>the song is inside the link; nothing is uploaded.</em>
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">120–134</span> — the
+        length ceiling and why it is a length not a count.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">190–208</span> —
+        multi-file queue semantics, the Chromium file association, the
+        accepted-extensions note.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">220–235</span> —
+        "Import compares ids and never looks at the words", songs written by a
+        chatbot with a stale grammar, settings from a newer build, schema
+        refusal.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">251–285</span> —
+        identity-not-name matching, the three collision answers, the
+        <code>import.allNew</code> checkbox, the songbooks-matched-the-same-way
+        note. Keep the picture and one line:
+        <em>choose Replace, Ignore or Keep both.</em>
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">288–320</span> — the
+        whole "which formats carry the song back" table plus the PNG-chunk
+        explanation. Genuinely useful reference; not a step.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">322–352</span> — step
+        10, chatbots, the JSON schema, three downloadable skill bundles, the
+        uncompressed link spelling for models. This is an advanced workflow and
+        <code>export-import/ai-import.mdx</code> already exists for it.
+      </li>
+    </ul>
+
+    <h2>print-a-songbook.mdx</h2>
+    <div class="verdict">
+      Keep: title page on, fill the title, summary on, look at the preview,
+      download a PDF.
+    </div>
+
+    <ul>
+      <li>
+        <span class="keep">KEEP</span> <span class="lines">10–23</span> —
+        structure-vs-paper split is the one idea worth teaching. Shorten.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">88–91</span> — "the
+        title page is a render… carries a small <code>achordeon.eu</code>".
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">95–125</span> — 21
+        styles, "ten are placement alone / the other eleven put ink on the
+        paper", five named individually. The page's own advice at line 123 is
+        the whole step:
+        <em>pick one and watch the pane beside you.</em>
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">136–145</span> —
+        two-column rationale, front-matter numbering argument, "it is drawn as
+        PDF text, because a page number is only knowable once the pagination has
+        been decided".
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">147–161</span> —
+        afterTitle vs beforeTitle argued as reference-table-vs-hymnal.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">169–189</span> — the
+        seventh position, "wears the title's face", and the binding note.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">204–222</span> — the
+        preview as "a real scroll box", zoom-is-a-column-count, lazy page
+        rendering, "a frame with a turning ring in it is paper that has not been
+        inked yet".
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">240–258</span> — the
+        four-format table and the link ceiling (duplicates share-a-song).
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">270–288</span> —
+        scale-to-fit behaviour and the margin-plus-padding note.
+      </li>
+    </ul>
+
+    <h2>perform-from-a-songbook.mdx</h2>
+    <div class="verdict">
+      Keep: start a performance, next/previous, the summary, dark page, exit.
+      Five steps.
+    </div>
+
+    <ul>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">23</span> —
+        <em>"The line between the two is 1200 pixels wide."</em> A CSS
+        breakpoint in a tutorial.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">57–72</span> —
+        All-songs ordering enumerated (by name / created / changed, up or down,
+        favourites first) and the "coming back does not show the picker" rule.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">102–104</span> —
+        <em>"about sixty pixels and be more sideways than up and down"</em>.
+        Gesture thresholds.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">146–163</span> — wake
+        lock, the three-second chrome fade, "a swipe deliberately does not
+        count", the iPhone refusal.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">200–244</span> — steps
+        8 and 9 in full: 250%, 500%, quarter-steps, the browser-zoom
+        explanation, pan-vs-swipe, three ways back out, "every page turn starts
+        whole". Reduce to two lines:
+        <em>pinch or double-tap to zoom; the pill gives the page back.</em>
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">259–264</span> — the
+        transpose-not-kept and twelve-hour expiry exceptions.
+      </li>
+    </ul>
+
+    <h2>transpose-a-song.mdx</h2>
+    <div class="verdict">
+      Core is the opening two paragraphs plus two acts: rewrite in the editor,
+      shift on stage. The comparison table at line 240 says it best — keep it.
+    </div>
+
+    <ul>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">41–49</span> —
+        <code>[D7/F#]</code> → <code>[D#7/G]</code>, "the quality between them
+        is carried across", sharps-up/flats-down spelling.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">70–98</span> — step 3
+        entire. What counts as a chord, <code>[Solo]</code>, <code>[x2]</code>,
+        <code>[Amm]</code>, escaping, token-by-token brackets, the dotted
+        underline. This is <code>songs/syntax.mdx</code> material and the step
+        itself links there at line 97.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">129–141</span> — German
+        <code>H</code>, and the paragraph on why B flat stays <code>Bb</code> in
+        the source but prints as <code>B</code>. Correct, subtle, and nobody's
+        second hour with the app.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">184–189</span> —
+        eleven-semitone range, twelfth wraps to 0, the phone menu carrying the
+        number in its label.
+      </li>
+      <li>
+        <span class="keep">KEEP</span> <span class="lines">238–249</span> — the
+        table. It is the tutorial.
+      </li>
+    </ul>
+
+    <h2>add-a-font.mdx</h2>
+    <div class="verdict">
+      A tutorial here is three steps: open the font library, search a name, pick
+      the font in the song's settings. The rest is a font-management reference.
+    </div>
+
+    <ul>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">259–267</span> —
+        "acquired, not linked to" and the family-vs-style framing. It is the
+        page's thesis, and it is a docs thesis.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">326–353</span> —
+        two-letter minimum query, four-of-four / two-of-four counts, why results
+        are not drawn in their own face, the jsDelivr download,
+        <code>addFont.indexFailed</code>.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">361–376</span> —
+        <code>.otf</code> refused on outlines rather than extension; the two
+        permitted link hosts.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">381–405</span> — one
+        file is one style, variable fonts count as one because a PDF cannot draw
+        the range, the Latin-subset note.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">407–436</span> — step
+        6, the donor font, in full. Real feature, advanced concern;
+        <em
+          >"without a donor, italic text would slant on screen and come out
+          upright in a PDF"</em
+        >
+        is a docs sentence.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">474–479</span> —
+        removal keeps the name written in the song so re-adding restores the
+        page.
+      </li>
+    </ul>
+
+    <h2>fit-a-song-on-one-page.mdx</h2>
+    <div class="verdict">
+      Best-conceived tutorial of the set — one broken song, repaired setting by
+      setting. The problem is not the shape, it is that each step carries a
+      paragraph of renderer theory.
+    </div>
+
+    <ul>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">95–117</span> — four
+        shelves enumerated, <code>131:284</code> device measurement and how it
+        survives sync, the free-text field accepting a ratio / fraction / number
+        / the word <code>A4</code>.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">135–145</span> — the
+        column-break algorithm: only breaks between blocks, balances the
+        tallest, one long block cannot break, long lines cost more than they
+        gain.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">158–163</span> —
+        <code>0</code>–<code>4</code> in quarters, measured in text sizes not
+        millimetres. Keep "take it to 0.5".
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">184–190</span> —
+        "neither row does anything to a song that already fills its page".
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">204–208</span> — the
+        <code>titleLayout</code> aside; the demo song does not even set it.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">230–247</span> —
+        chord-size-costs-height mechanics and the notation aside.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">260–282</span> — the
+        cascade section. Pick one home for this (see cross-cutting §3).
+      </li>
+    </ul>
+
+    <h2>write-your-first-song.mdx</h2>
+    <div class="verdict">
+      Prose is short and right. The interactive challenge is where it goes long:
+      12 steps, of which the last 5 teach syntax a first song does not need.
+    </div>
+
+    <ul>
+      <li>
+        <span class="keep">KEEP</span> steps 1–7
+        <span class="lines">17–170</span> — title, subtitle, lyrics, block
+        label, sub-label, second block, first chord. That is a first song.
+      </li>
+      <li>
+        <span class="move">MOVE</span> step 8
+        <span class="lines">172–196</span> — chords-only line.
+      </li>
+      <li>
+        <span class="move">MOVE</span> step 9
+        <span class="lines">198–222</span> — inline chords with doubled
+        brackets.
+      </li>
+      <li>
+        <span class="move">MOVE</span> steps 10–11
+        <span class="lines">224–274</span> — bold and italic. Formatting, not
+        songwriting.
+      </li>
+      <li>
+        <span class="cut">CUT</span> step 12
+        <span class="lines">276–301</span> — escaping a colon so
+        <code>Narrator\:</code> stays a lyric. The tell is at line 6: the file
+        has to
+        <code
+          >import { findLabelDelimiter } from '@achordeon/shared/domain'</code
+        >
+        to grade it. A tutorial step that needs a parser helper to check is a
+        syntax-reference step.
+      </li>
+    </ul>
+
+    <h2>play-to-an-audience.mdx</h2>
+    <div class="verdict">
+      Nearly right — the task is concrete and the steps are short. Trim only.
+    </div>
+    <ul>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">92–98</span> — the
+        three things that stay on stage, each with its reasoning.
+      </li>
+      <li>
+        <span class="move">MOVE</span> <span class="lines">175–193</span> — the
+        viewer's whole menu enumerated (zoom, chords off, dark page, sideways,
+        own lobby, exit). Show two; list the rest in the docs.
+      </li>
+      <li>
+        <span class="cut">CUT</span> <span class="lines">221–229</span> — step
+        11, re-sync. "The lobby's current song is stored, not just broadcast" is
+        protocol detail, and the step ends by saying the button usually does
+        nothing.
+      </li>
+    </ul>
+
+    <h2>build-a-songbook.mdx — the model</h2>
+    <div class="verdict">
+      1170 words, 13 short steps, one idea per step, almost no rationale. This
+      is the voice the other nine should be rewritten into.
+    </div>
+    <ul>
+      <li>
+        Only two soft spots: <span class="lines">130–140</span> (search jumps
+        rather than filters, explained at length) and
+        <span class="lines">150–166</span> (the cascade again).
+      </li>
+    </ul>
+
+    <h2>Suggested order of work</h2>
+    <ol>
+      <li>
+        <strong>set-up-a-device</strong> — biggest win and it is the first page
+        a user reads. Steps 1–3 + back up + sync.
+      </li>
+      <li>
+        <strong>share-a-song</strong> — cut the link internals and the chatbot
+        step; both have docs homes already.
+      </li>
+      <li>
+        <strong>print-a-songbook</strong> and
+        <strong>perform-from-a-songbook</strong> — delete the catalogues and the
+        zoom/gesture detail.
+      </li>
+      <li>
+        <strong>transpose</strong> and <strong>add-a-font</strong> — pull the
+        parser rules and the font-style theory into
+        <code>songs/syntax.mdx</code> and the settings docs.
+      </li>
+      <li>
+        <strong>Cascade</strong> — write it once, link it from four places.
+      </li>
+      <li>
+        <strong>write-your-first-song</strong> — drop the challenge to 7 steps.
+      </li>
+    </ol>
+  </body>
+</html>
