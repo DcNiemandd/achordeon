@@ -34,6 +34,32 @@ Audience can be for free tier as well
 
 Application supports only one user in the browser. Everyone can see your data. The login is for synchronization only.
 
+## What needs a connection
+
+"Fully offline" has exceptions, and every one of them is something that involves
+somebody else's computer:
+
+- Signing in and registering
+- Automatic sync - it queues and catches up later, and the row reads **Some
+  changes have not reached the cloud yet** in the meantime
+- Google Drive, in both directions
+- Adding a font. Once a font is on the device it is never fetched again
+- Hosting or joining an audience lobby. Performing from the stage yourself is not
+- Reporting a bug, and the buttons beside it that open this site
+- Checking for a new version, which fails quietly
+
+Nothing else - not the editor, not the renderer, not a PDF, not a songbook, not a
+performance, not an import, not a backup to a file and not a restore from one.
+
+:::tip[Open a song in each title font once before you go]
+
+Achordeon ships four fonts, and only Roboto Mono - the one the app itself is set
+in - is copied down at install time. Caveat, Crimson Text and Oswald are fetched
+the first time a page needs one, so a font you have never rendered may not be
+there when you are offline.
+
+:::
+
 ## Signing in
 
 - With Google, or with an email and a password
@@ -44,6 +70,20 @@ Signing in with Google does not hand over your Drive. That is a separate
 permission, asked the first time you back up to Drive. What Google tells us about
 you, what Achordeon can touch in your Drive, and how to delete the account, are
 all on [your account & Google data](/settings-account/account-data.mdx).
+
+## One browser, one library
+
+The first sign-in claims the library on this device. From then on those songs
+belong to that account:
+
+- Sign out and the lists go empty. The songs are hidden, not deleted, and signing
+  back in brings them straight back
+- Sign in as somebody else in the same browser and you get told so - **These
+  songs belong to another account** - with the choice of signing in as the owner
+  instead, or **Use this account's library**, which clears this device's copy of
+  their library and puts yours here
+
+One browser holds one library, and it belongs to one account.
 
 ## Where it is in the app
 

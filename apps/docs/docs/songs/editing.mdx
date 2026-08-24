@@ -34,6 +34,12 @@ The transpose and sharp/flat buttons are two different reaches: transpose moves 
 chord in the song at once, while sharp/flat nudge only the chord the cursor is sitting in,
 so they light up only when the caret is inside a chord.
 
+Transposing is a rewrite of the text. `[G]` becomes `[G#]` and `[D7/F#]` becomes
+`[D#7/G]` - the root and the `/bass` move by the same interval, and the quality
+between them is carried across exactly as you typed it. The spelling follows the
+direction you pressed: up prefers sharps, down prefers flats, so `A` up is `A#`
+and `B` down is `Bb`.
+
 :::note[The chord button has three states]
 Pressing it off a chord brackets the selection, or opens an empty `[]` for you to type
 into when nothing is selected. Pressing it with the caret already in a chord makes that
