@@ -14,6 +14,7 @@
 
 import { type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { demoSongId, demoSongLink } from './demo-song';
 import {
   DOCS_LOBBY_PIN,
   type Locale,
@@ -48,8 +49,14 @@ interface Common {
    * than failing the run.
    */
   readonly needs?: 'backend';
-  /** Drive the app to the moment of capture (navigate, open, seed extra). */
-  readonly arrange: (page: Page, peers: Peers) => Promise<void>;
+  /**
+   * Drive the app to the moment of capture (navigate, open, seed extra).
+   *
+   * `locale` is the language this run is capturing, for the shots whose CONTENT
+   * differs by it — the demo song is written per language, so its link is too.
+   * Everything else gets its language from the context and never asks.
+   */
+  readonly arrange: (page: Page, peers: Peers, locale: Locale) => Promise<void>;
 }
 
 /** A screenshot of the page, or of the box around `clip` if given. */
@@ -116,33 +123,6 @@ const firstBookId = (page: Page) =>
   firstRowId(page, 'songbook-row', (id) => id !== 'all-songs');
 
 /**
- * The song `fit-a-song-on-one-page.mdx` is a walkthrough of, as a link.
- *
- * The tutorial hands the reader this exact URL and then repairs the song it
- * carries, setting by setting — so the pictures have to be of THAT song. The
- * whole export rides in the fragment, gzipped (`share-link.ts`), which makes the
- * link its own fixture: there is no seeded copy here to drift out of step with
- * the one the page publishes, and a link that stopped importing fails this run
- * instead of misleading a reader.
- *
- * The origin is the real one because `contextFor` puts the browser on
- * `DOCS_ORIGIN`, so Playwright opens the address the reader clicks, character
- * for character. A run with `DOCS_ORIGIN=''` shoots the dev server under its own
- * address, and this is the one shot family that would then leave it.
- */
-const DEMO_SONG_LINK =
-  'https://achordeon.eu/app/#z1=H4sIAAAAAAACCq1UTW_bMAz9KwQvBQr1I1u2rrplBRr0MLQYhmFD7ANj07YQWzIkOl1R5L8PVBK0wNDtMt1M8pFPz496RhpHtNiJjMleXFDVhVhz8Oc8XdA4XqDBVHU80HeOyQWPdmaw5q2r-K5Gi2hwGmsSrheCdnb16Wo-f__uUo_BmoTQPuOUOKJdlQZT8G1Cu3pGp-hmdkVaenbJs9nZnK757Jo-8Nnly5mhwSryGxP-Mpt7PmT81PcGPQ2MFm-dwBeGew_3nuGBWtYBwQt7QYun8GdB4U9PYQE1DwH0AiAdCVCMbssJ1lT3T5BYCl94VYkt3MHqpnwMG4ZpBOeBYLUsqxA9x8I_OulgtRjKdhLhmKDnRoB8DavbMrq2E1P45H5pjyr00-ATNCFC47asfbY6IxVeEcOTgh5DrBNQZAiTQGgUmbTRuXK66UKckoWl4gdWwJqqDUjHWjhSy6bw7TG7fJVdDCW5aAovtOF96LZcq0MihKZ5aTHqxZTQ3Unfa4_kfAtNDAOQf1IxOo58_kqib0doXWupS3uRhkACPjzqzAMDcdIzVL0b1unIIY3OK2sdSblPT08cIWubG7WTE4qFr8ifiEIa5-sMT1wFFfum7J3fc_ocXd2y1Zhi81jF_C_5gt-zVvNMY_CQAzdl6lh9s3fEsvRBOhUjG0JCrhgp64YGG9qG6ITRNtQnNphYxOV9esZUUa_2pkkCGqQ0ciVfSVxAi4t59ni2EtqPBg-qo50bXPeh2ixpzB-HRfiBFrMTX3bjJ1pcB5EwoMH8Sx5CcpKfBFTCuDNYUdWx0skFb21bmtbH_L-3Cne7w7uxDmGjb0e52_0G5PB6I7cEAAA';
-
-/**
- * The id inside that envelope.
- *
- * Fixed rather than minted, so importing the link twice updates the song instead
- * of piling up copies — and so a shot can open the editor on it directly rather
- * than guessing which row of the list it landed on.
- */
-const DEMO_SONG_ID = 'f17a0000-0e11-4a9e-9a5e-000000000001';
-
-/**
  * Import the demo song the way the reader does, and open its editor.
  *
  * Through the link and the preview, not seeded into the store: what these
@@ -151,17 +131,28 @@ const DEMO_SONG_ID = 'f17a0000-0e11-4a9e-9a5e-000000000001';
  * second spelling of the same song, and the picture would go on looking right
  * long after the two disagreed.
  *
+ * The link is built from `demo-song.ts`, the same recipe
+ * `tools/gen-demo-song-link.mjs` writes into the tutorial — so the picture is of
+ * the song the reader is handed, by construction rather than by a literal copied
+ * from the page and left behind. One song per language: the broken settings the
+ * steps talk about are shared, the words are the reader's own.
+ *
+ * The origin is the real one because `contextFor` puts the browser on
+ * `DOCS_ORIGIN`, so Playwright opens the address the reader clicks, character
+ * for character. A run with `DOCS_ORIGIN=''` shoots the dev server under its own
+ * address, and this is the one shot family that would then leave it.
+ *
  * The starter library is seeded first all the same, so the song lands in a
  * library that looks like somebody's rather than into an empty app.
  */
-async function importDemoSong(page: Page): Promise<void> {
+async function importDemoSong(page: Page, locale: Locale): Promise<void> {
   await seededGoto(page, 'songs');
-  await page.goto(DEMO_SONG_LINK);
+  await page.goto(demoSongLink(locale));
   // The preview opens over whatever page the link landed on, already filled in;
   // confirming it is the reader's one gesture (`import-dialog.ts`).
   await page.getByTestId('import-confirm').click();
   await page.getByTestId('import-dialog').waitFor({ state: 'detached' });
-  await page.goto(`songs/${DEMO_SONG_ID}/edit`);
+  await page.goto(`songs/${demoSongId(locale)}/edit`);
 }
 
 /**
@@ -364,12 +355,14 @@ export const SHOTS: readonly Shot[] = [
   // own edges, and it also answers the question the reader actually has, which is
   // where in the editor these live.
   //
-  // English only: inside the clip there is not one translated word — the buttons
-  // are glyphs, their labels are tooltips, and the heading is a starter song's
-  // fixed name. The two locales came out byte-identical.
+  // Both languages, though inside the clip there is not one translated word
+  // today — the buttons are glyphs, their labels are tooltips, and the heading is
+  // a starter song's fixed name. It is captured per locale all the same, so the
+  // Czech tutorial points at `img/cs/` like every other picture on it and a label
+  // that does arrive in the bar later is picked up without anyone remembering to
+  // come back here.
   {
     name: 'editor-transpose',
-    locales: ['en'],
     arrange: async (page) => {
       await seededGoto(page, 'songs');
       const id = await firstRowId(page, 'song-row');
@@ -391,13 +384,13 @@ export const SHOTS: readonly Shot[] = [
   // of the same song after the walkthrough: two pictures of one page are only a
   // before and an after if nothing but the page changed between them.
   //
-  // English only. Inside the clip there is not one translated word — the song is
-  // the link's own English text, and the app's chrome is outside the frame. The
-  // two locales came out byte-identical.
+  // Both languages, and this is one of the few shots where that is a difference
+  // in the CONTENT rather than in the chrome: the clip holds no app furniture at
+  // all, only the song, and the song is written per language (`demo-song.ts`).
+  // A Czech reader repairing an English page would be reading somebody else's.
   {
     name: 'song-broken',
-    locales: ['en'],
-    arrange: importDemoSong,
+    arrange: (page, _peers, locale) => importDemoSong(page, locale),
     ready: '[data-testid="song-render"] svg',
     capture: { mode: 'view', clip: '[data-testid="song-page"]', pad: 12 },
   },
@@ -414,8 +407,8 @@ export const SHOTS: readonly Shot[] = [
   // itself carry values, and everything it leaves alone still reads `Inherited`.
   {
     name: 'song-settings',
-    arrange: async (page) => {
-      await importDemoSong(page);
+    arrange: async (page, _peers, locale) => {
+      await importDemoSong(page, locale);
       await page.getByTestId('editor-settings').click();
     },
     ready: '[data-testid="song-settings-dialog"]',
@@ -435,9 +428,8 @@ export const SHOTS: readonly Shot[] = [
   // pane B, and the dialog sits over pane A.
   {
     name: 'song-fitted',
-    locales: ['en'],
-    arrange: async (page) => {
-      await importDemoSong(page);
+    arrange: async (page, _peers, locale) => {
+      await importDemoSong(page, locale);
       await page.getByTestId('editor-settings').click();
       const landed = (key: string) =>
         page.getByTestId(`reset-${key}`).waitFor({ state: 'visible' });
@@ -719,14 +711,12 @@ export const SHOTS: readonly Shot[] = [
   // photograph hover-lit. `StageSession` reads the record at construction, so
   // the route is loaded fresh afterwards.
   //
-  // English only: the bar is glyphs and a starter book's fixed name, and the
-  // page under it is a starter song's fixed text (`seed.ts`) — the two locales
-  // came out byte-identical, which is a second file promising a difference it
-  // does not hold. The song list beside it (`stage-summary`) is the one that
-  // does translate, and it keeps both.
+  // Both languages. The bar is glyphs and a starter book's fixed name, and the
+  // page under it is a starter song's fixed text (`seed.ts`), so the two copies
+  // are the same pixels today; the Czech one exists so that page's images all
+  // come from `img/cs/`, and so a bar that grows a word is captured in both.
   {
     name: 'stage-perform',
-    locales: ['en'],
     arrange: async (page) => {
       await seededGoto(page, 'songbooks');
       const bookId = await firstBookId(page);
@@ -786,11 +776,11 @@ export const SHOTS: readonly Shot[] = [
   // ⋯ in a sheet, which is already pictured — from the viewer's side, on a phone
   // — by `audience-transpose`.
   //
-  // English only: a performance is a starter song on a starter book, both fixed
-  // text (`seed.ts`), and the bar around it is glyphs. Byte-identical in both.
+  // Both languages, for the reason `stage-perform` gives: a performance is a
+  // starter song on a starter book, both fixed text (`seed.ts`), so the copies
+  // match today — and the Czech page keeps its images in one place.
   {
     name: 'stage-transpose',
-    locales: ['en'],
     arrange: async (page) => {
       await seededGoto(page, 'songbooks');
       const bookId = await firstBookId(page);

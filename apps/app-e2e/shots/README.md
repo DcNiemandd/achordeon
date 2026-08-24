@@ -42,3 +42,16 @@ language.
 
 Wiring the PNGs into the `.mdx` `<Image>` placeholders is a separate, manual
 step — the harness only produces the files.
+
+## The demo song
+
+`fit-a-song-on-one-page.mdx` opens with a link the reader taps, and the shots of
+that tutorial import the same link. Both come from `demo-song.ts`: the broken
+settings the steps name are shared, the words are per language.
+
+Change the song there, then rewrite the two tutorials' links:
+
+```sh
+node tools/gen-demo-song-link.mjs          # write them
+node tools/gen-demo-song-link.mjs --check  # or just say whether they are stale
+```

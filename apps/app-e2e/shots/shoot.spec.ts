@@ -67,7 +67,7 @@ for (const shot of SHOTS) {
         };
 
         try {
-          await shot.arrange(page, { open: openPeer });
+          await shot.arrange(page, { open: openPeer }, locale);
           const dest = outputPath(shot.name, locale, theme);
 
           if (isView(shot)) {
