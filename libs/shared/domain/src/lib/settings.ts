@@ -50,9 +50,11 @@ export const SETTINGS = {
   //
   // Named for the face this is almost always about, though it covers every gap.
   // It exists because the borrow is *overridable* and not merely announced; the
-  // panel warns which face is borrowed either way, and hides this row while
-  // nothing is borrowing. The default is the family the app is set in — it has
-  // all four faces and is precached, so borrowing from it costs no fetch.
+  // panel warns which face is borrowed either way, and greys this row — rather
+  // than hiding it — while nothing is borrowing, so choosing a font does not
+  // make the panel jump under the pointer. The default is the family the app is
+  // set in — it has all four faces and is precached, so borrowing from it costs
+  // no fetch.
   titleFont: {
     default: 'body' as string,
     scopes: ['songbook', 'song'],

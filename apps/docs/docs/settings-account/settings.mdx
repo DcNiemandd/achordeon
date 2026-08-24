@@ -71,6 +71,35 @@ The renderer allows you to customize the output. There is global setting and sco
   so what you see is what a PDF prints
 - _Chords_: the same colour, size and notation a songbook can set, here for a single song
 
+A few of those rows repay knowing how they behave:
+
+- **Aspect ratio** — the picker has four shelves. _This device_ holds **Match this
+  screen**, which measures the device you are holding and stores the ratio it
+  measured, so a phone saves something like `131:284` and that keeps meaning _that
+  phone_ after it syncs to the desktop; its sideways twin, **Match this screen,
+  sideways**, is the same measurement turned over, which is how you get a landscape
+  song without rotating a device that has rotation lock on. _Paper_ is A4 and Letter.
+  _Portrait_ runs `9:19.5` down through `3:4` to square, _Landscape_ `21:9` down to
+  `4:3`. Every named ratio carries its numbers in its label. Below the list is a
+  free-text field: it takes a ratio like `3:4`, a fraction like `3/4`, a plain number
+  or the word `A4`, and it turns away anything the renderer could not draw rather
+  than storing a value that would quietly do nothing
+- **Columns** are a count you set; the renderer chooses where to break. It only ever
+  breaks between blocks, so a verse is never sawn in half, and it balances them so
+  the tallest column comes out as short as it can. A song written as one long block
+  has nowhere to break, so setting it to two columns changes nothing at all — a blank
+  line is what gives the renderer a choice. Where the lines are long, two columns need
+  twice the width and the fit scale is what pays for it, so the song comes out smaller
+  rather than bigger
+- **Padding** runs `0` to `4` in quarters, and like the block gap it is measured in
+  text sizes rather than millimetres, so it holds its proportion however big the song
+  is printed. `0` runs the song to the paper's edge
+- **Content placement**, the two rows that say where a song sits, does nothing to a
+  song that already fills its page: there is no leftover room to place
+- **Chord size** costs height. A chord rides in a row of its own above the line it
+  belongs to, and that row is as tall as the chords in it — so growing them makes the
+  song taller, and the fit scale answers by drawing everything smaller
+
 A single song can override anything. A songbook only carries the shared few below.
 
 :::note[One song, one page]
@@ -82,7 +111,7 @@ The render settings exist to make the content fit one page.
 - block gap - the air between blocks, set once for every song in the book
 - chords color
 - chords size
-- chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**, but your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick, and English simply prints it as `B`, so a song that mixes the two spellings comes out in one language either way.
+- chord notation - English (C, D, B) or German (H for B natural, B for B♭). It changes how chords are **printed**, but your song is left exactly as you wrote it, so switching back changes nothing else. `[H]` has always been understood as B natural whichever you pick, and English simply prints it as `B`, so a song that mixes the two spellings comes out in one language either way. The one thing that writes a spelling back into the text is a transpose, and it writes the song's own: in a German song, a chord that lands on B natural is written `[H]`. B flat is the exception and stays `Bb` in the text — a bare `B` in a file is B natural to every reader, so writing the printed spelling back would move the chord a semitone the next time the song was read. It prints as `B` all the same. The editor watches for the mismatch too: an `[H]` in a song set to English, or a `[B]` in one set to German, gets a wavy underline saying which name the page will print instead.
 - song font - the face the songs themselves are set in. Set it on a songbook and every song in it follows.
 - title font - the face the title and subtitle are set in: the song's own font, or any other. Set it on a songbook and every song in it follows.
 
@@ -97,11 +126,35 @@ Fonts hands you, or a direct `.ttf` address on jsDelivr or raw.githubusercontent
 Whichever way, the font is **downloaded once and kept on the device**, so it works offline
 from then on and nothing is fetched while you are reading a song.
 
+The search reads an index of the Google Fonts catalogue that ships with the app rather
+than asking Google, so the list narrows as you type and there is no Search button. Two
+letters is the shortest query it answers — below that a search matches most of the
+catalogue and means nothing. Under each name is what installing it will give you, counted
+out of the four styles a song can ask for — `4 of 4 styles`, `2 of 4 styles` — and worded
+exactly as the library row will word it afterwards. If the index itself cannot be read,
+the dialog says so where the results would be, and the other two ways in still work.
+
 Some things worth knowing:
 
 - **One file is one style.** Adding the regular does not add the bold — add that as a
   second file. A style you never add is borrowed from another font, and Settings says
   which one; you can change where it is borrowed from.
+- **A variable font counts as one style**, its default instance. One variable file
+  carries a whole range of weights and a browser can draw any of them, but a PDF cannot,
+  and Achordeon will not show you on screen what it cannot print. The row says so, rather
+  than leaving the count looking like a failed download — which is why a family
+  advertising nine weights on the Google Fonts site can land here as a single style.
+- **Where a missing style is borrowed from** is a row of its own, the third in the render
+  settings' **Fonts** group. It starts on Roboto Mono, the face the app itself is set in,
+  which has all four styles and is on the device already, and only a font that is missing
+  no style can lend. While the song's own font is missing nothing the row is greyed out
+  rather than hidden, so choosing a font never makes the panel jump under your pointer.
+  The reason it exists: without a donor, italic text would slant on screen and come out
+  upright in a PDF — a browser fakes a slant out of the regular, and a PDF has no such
+  trick.
+- **An embed link is read for its query string only.** That string is the list of
+  families you picked on the Google Fonts site, so a link naming four families adds all
+  four.
 - **A font stays on the device you added it to.** It travels in a [backup](#backup),
   because that is your whole library. It does **not** travel in an
   [export](/export-import/index.mdx): that file names the fonts your songs use so the person

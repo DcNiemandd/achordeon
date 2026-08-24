@@ -63,6 +63,34 @@ Rozsah [`Písní`](/songs/editing.mdx#renderer). Ovládací prvky jsou seskupen�
 - _Písma_: písmo, kterým je vysázená samotná píseň — text, akordy a popisky — a písmo, které sdílejí nadpis s podnadpisem. Nadpisu lze říct, ať následuje píseň, což dělá, dokud neurčíte jinak. Každá volba je písmo, které tohle zařízení opravdu má, takže co vidíte, to PDF vytiskne
 - _Akordy_: tatáž barva, velikost a notace, jaké může nastavit zpěvník, zde pro jednu píseň
 
+Pár z těch řádků stojí za to znát blíž:
+
+- **Poměr stran** — výběr má čtyři police. _Toto zařízení_ nabízí **Podle této
+  obrazovky**, které změří zařízení, jež držíte v ruce, a uloží poměr, který naměřilo —
+  telefon si tak uloží třeba `131:284` a to znamená _ten telefon_ i potom, co se
+  nastavení sesynchronizuje na počítač; jeho protějšek **Podle této obrazovky, na
+  šířku** je totéž měření obrácené, což je způsob, jak dostat píseň na šířku, aniž
+  byste otáčeli zařízením se zamčenou orientací. _Papír_ je A4 a Letter. _Na výšku_
+  jde od `9:19.5` přes `3:4` až ke čtverci, _Na šířku_ od `21:9` po `4:3`. Každý
+  pojmenovaný poměr nese svá čísla přímo v popisku. Pod seznamem je volné pole: bere
+  poměr jako `3:4`, zlomek jako `3/4`, prosté číslo nebo slovo `A4` a odmítne cokoli,
+  co by renderer nedokázal vykreslit, místo aby uložilo hodnotu, která by potichu
+  nedělala nic
+- **Sloupce** jsou počet, který zadáte; kde se zlomí, volí renderer. Zlomí je vždy jen
+  mezi bloky, takže sloka se nikdy nerozřízne vejpůl, a vyváží je tak, aby nejvyšší
+  sloupec vyšel co nejnižší. Píseň napsaná jako jeden dlouhý blok nemá kde zlomit,
+  takže nastavit jí dva sloupce nezmění vůbec nic — volbu dá rendereru až prázdný
+  řádek. Tam, kde jsou řádky dlouhé, potřebují dva sloupce dvojnásobnou šířku a platí
+  za to měřítko, takže píseň vyjde menší, a ne větší
+- **Odsazení** jde od `0` do `4` po čtvrtinách a stejně jako mezera mezi bloky se měří
+  ve velikostech textu, ne v milimetrech, takže drží poměr, ať je píseň vytištěná
+  jakkoli velká. `0` dovede píseň až ke kraji papíru
+- **Umístění obsahu** — ty dva řádky, které říkají, kde píseň sedí — neudělá nic
+  s písní, která už svou stranu vyplňuje: nezbývá žádné místo, kam ji umístit
+- **Velikost akordů** stojí výšku. Akord jede ve vlastním řádku nad řádkem, ke kterému
+  patří, a ten řádek je tak vysoký jako akordy v něm — zvětšit je tedy znamená vyšší
+  píseň, a měřítko na to odpoví tím, že vykreslí všechno menší
+
 Jedna píseň může přepsat cokoli. Zpěvník nese jen těch pár sdílených níže.
 
 :::note[Jedna píseň, jedna strana]
@@ -74,7 +102,7 @@ Rozsah `Zpěvníků`:
 - mezera mezi bloky: prostor mezi bloky, nastavený jednou pro každou píseň v knize
 - barva akordů
 - velikost akordů
-- notace akordů: anglická (C, D, B) nebo německá (H pro B, B pro B♭). Mění to, jak se akordy **tisknou**, ale vaše píseň zůstane přesně tak, jak jste ji napsali, takže přepnutí zpět nic dalšího nezmění. `[H]` bylo vždy chápáno jako B, ať zvolíte cokoli, a anglická notace ho jen vytiskne jako `B`, takže píseň, která obě zápisy míchá, vyjde v jednom jazyce tak či tak.
+- notace akordů: anglická (C, D, B) nebo německá (H pro B, B pro B♭). Mění to, jak se akordy **tisknou**, ale vaše píseň zůstane přesně tak, jak jste ji napsali, takže přepnutí zpět nic dalšího nezmění. `[H]` bylo vždy chápáno jako B, ať zvolíte cokoli, a anglická notace ho jen vytiskne jako `B`, takže píseň, která obě zápisy míchá, vyjde v jednom jazyce tak či tak. Jediné, co zápis vepíše zpět do textu, je transpozice, a vepíše ten, který má píseň sama: v německé písni se akord, který padne na B, zapíše jako `[H]`. Výjimkou je B s béčkem, které v textu zůstává `Bb` — holé `B` je v souboru pro každého čtenáře B, takže vepsat zpátky tištěný zápis by akord při dalším čtení posunulo o půltón. Vytiskne se jako `B` tak jako tak. Editor na nesoulad upozorní i sám: `[H]` v písni nastavené na angličtinu, nebo `[B]` v písni nastavené na němčinu, dostane vlnovku, která říká, jaký název stránka vytiskne místo něj.
 - font písně: písmo, kterým se sázejí samotné písně. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
 - font nadpisu: písmo, kterým se sází nadpis a podnadpis: vlastní font písně, nebo kterékoli jiné. Nastavte jej na zpěvníku a každá píseň v něm jej převezme.
 
@@ -89,11 +117,35 @@ kterou nabízí Google Fonts, nebo přímá adresa souboru `.ttf` na jsDelivr č
 raw.githubusercontent.com. Tak či tak se písmo **jednou stáhne a zůstane v zařízení**,
 takže od té chvíle funguje offline a při čtení písně se nic nestahuje.
 
+Hledání čte rejstřík katalogu Google Fonts, který je součástí aplikace — Googlu se
+neptá — takže se seznam zužuje, jak píšete, a žádné tlačítko Hledat tu není.
+Nejkratší dotaz, na který odpoví, jsou dvě písmena; kratší by odpovídal skoro celému
+katalogu a neříkal by nic. Pod každým názvem stojí, co vám instalace dá, spočítané
+ze čtyř řezů, o které umí píseň požádat — `4 ze 4 řezů`, `2 ze 4 řezů` — a řečené
+přesně týmiž slovy, jakými to potom řekne řádek v knihovně. Když se rejstřík načíst
+nepodaří, dialog to napíše tam, kde by byly výsledky, a zbylé dvě cesty dovnitř
+fungují dál.
+
 Co je dobré vědět:
 
 - **Jeden soubor je jeden řez.** Přidáním základního nepřidáte tučný — ten přidejte
   jako druhý soubor. Řez, který nikdy nepřidáte, se půjčí z jiného písma a Nastavení
   řekne z kterého; můžete změnit, odkud se půjčuje.
+- **Variabilní písmo se počítá jako jeden řez**, ten výchozí. Jeden variabilní soubor
+  nese celou škálu tučností a prohlížeč umí vykreslit kteroukoli z nich, jenže PDF ne —
+  a Achordeon vám na obrazovce neukáže to, co neumí vytisknout. Řádek to rovnou řekne,
+  místo aby počet vypadal jako nedotažené stažení — proto může rodina, která na webu
+  Google Fonts nabízí devět tučností, přistát tady jako jediný řez.
+- **Odkud se chybějící řez půjčí** má vlastní řádek, třetí ve skupině **Písma**
+  v nastavení vykreslování. Začíná na Roboto Mono, písmu, kterým je vysázená sama
+  aplikace, které má všechny čtyři řezy a v zařízení už je; půjčit může jen písmo,
+  kterému nechybí žádný řez. Dokud písmu písně nic nechybí, je řádek zašedlý, ne
+  skrytý, takže výběr písma nikdy neuhne panelu pod kurzorem. Proč vůbec je: bez něj
+  by se kurzíva na obrazovce naklonila, ale z PDF by vyšla rovná — prohlížeč sklon
+  z běžného řezu předstírá, PDF takový trik nemá.
+- **Z vkládacího odkazu se čte jen dotazová část.** Ta je seznamem rodin, které jste
+  na webu Google Fonts vybrali, takže odkaz jmenující čtyři rodiny přidá všechny
+  čtyři.
 - **Písmo zůstává v zařízení, do kterého jste ho přidali.** Cestuje v [záloze](#záloha),
   protože ta je celá vaše knihovna. **Necestuje** v [exportu](/export-import/index.mdx) —
   v něm se pošle jen název písma, aby ten, kdo soubor otevře, věděl, co si má
