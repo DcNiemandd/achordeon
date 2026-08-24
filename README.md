@@ -119,8 +119,10 @@ docs/       PRDs and architecture decision records (not published)
 ```bash
 pnpm install
 
-pnpm dev:app    # Angular dev server  → http://localhost:4200
-pnpm dev:docs   # Docusaurus dev server → http://localhost:3000
+pnpm dev        # Both dev servers at once
+
+pnpm dev:app    # Angular dev server    → http://localhost:4200
+pnpm dev:docs   # Docusaurus dev server → http://localhost:3000, Czech at /cs/
 
 pnpm build      # Build both apps
 pnpm lint       # Lint both apps

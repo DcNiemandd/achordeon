@@ -6,6 +6,7 @@
   "packageManager": "pnpm@11.4.0",
   "scripts": {
     "prepare": "husky && node apps/app/tools/gen-supabase.mjs",
+    "dev": "nx run-many -t dev",
     "dev:app": "nx serve app",
     "dev:docs": "nx start docs",
     "build": "nx run-many -t build",

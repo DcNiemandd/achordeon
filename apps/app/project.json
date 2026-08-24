@@ -134,6 +134,12 @@
       },
       "defaultConfiguration": "development"
     },
+    "dev": {
+      "executor": "nx:noop",
+      "continuous": true,
+      "_comment": "What `pnpm dev` starts for this app - a noop over `serve`, so that one target name means \"the dev servers of this project\" in every project and `nx run-many -t dev` needs no list of exceptions. The app needs nothing per-language: one bundle serves every locale and fetches its translations at runtime (PRD-INFRASTRUCTURE.md §11).",
+      "dependsOn": ["serve"]
+    },
     "extract-i18n": {
       "executor": "@angular/build:extract-i18n",
       "dependsOn": ["gen-index"],

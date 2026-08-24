@@ -73,6 +73,12 @@ if (indexNowKey && !/^[A-Za-z0-9-]{8,128}$/.test(indexNowKey)) {
 // the locale dropdown are all deploy-only — see each one for why.
 const isDev = process.env.NODE_ENV !== 'production';
 
+// Dev, but behind `tools/docs-dev-proxy.mjs` — every locale on one port, at the
+// same paths the deployed site uses (`nx start docs`). The env var is set per
+// dev server by `apps/docs/project.json`, and nothing else sets it, so it is the
+// one signal that says "the other language is reachable from here".
+const isProxiedDev = isDev && Boolean(process.env.DOCS_DEV_WS_PORT);
+
 const i18n = {
   defaultLocale: 'en',
   locales: ['en', 'cs'],
@@ -234,6 +240,29 @@ function achordeonLibs(): Plugin {
   };
 }
 
+/**
+ * Where this dev server tells its browser client to open the hot-reload socket.
+ *
+ * Only ever set behind `tools/docs-dev-proxy.mjs`, which puts both locales on
+ * one port. The client defaults to the socket of the page it was served from —
+ * through the proxy that is port 3000 and path `/ws` for BOTH languages, one
+ * address for two servers, and the proxy has nothing left to route on. So each
+ * server names its own port here and the socket bypasses the proxy entirely.
+ * Unset (a plain `docusaurus start`) leaves the default alone.
+ */
+function devHmrPort(): Plugin {
+  const wsPort = Number(process.env.DOCS_DEV_WS_PORT || 0);
+  return {
+    name: 'achordeon-dev-hmr-port',
+    configureWebpack() {
+      if (!wsPort) return {};
+      return {
+        devServer: { client: { webSocketURL: { port: wsPort } } },
+      } as ReturnType<NonNullable<Plugin['configureWebpack']>>;
+    },
+  };
+}
+
 const config: Config = {
   title: 'Achordeon',
   tagline: 'Write, arrange and perform your songs — chords and all.',
@@ -303,6 +332,8 @@ const config: Config = {
     // to `/cs/…`, which the dev server does not serve at all — `docusaurus start`
     // builds a single locale, so the other one is a 404 rather than a translation.
     // Dropping it leaves local dev on the English site, at the page you asked for.
+    // Behind the dev proxy `/cs/…` does answer, and it stays off there too: the
+    // page you opened is the page you meant, and the navbar switch is right there.
     ...(isDev
       ? []
       : [
@@ -349,6 +380,7 @@ const config: Config = {
       },
     ],
     achordeonLibs,
+    devHmrPort,
     robotsTxt,
   ],
 
@@ -417,15 +449,16 @@ const config: Config = {
           label: 'Launch App',
           position: 'right',
         },
-        // Deploy-only as well, and for a sharper reason than tidiness: in dev the
-        // switch cannot work and does not fail quietly. `docusaurus start` serves
-        // one locale, and with `--locale cs` it serves it at the localized base
-        // path (`/cs/`) while the router's paths stay relative to that base — so
-        // Docusaurus builds the English URL as `"/" + "/docs/…"`, and the browser
-        // reads `//docs/…` as protocol-relative and goes looking for a host called
-        // `docs`. Locally, switching language means restarting:
-        // `pnpm nx start docs -- --locale cs`.
-        ...(isDev
+        // Off in a bare single-locale dev server, and for a sharper reason than
+        // tidiness: there the switch cannot work and does not fail quietly.
+        // `docusaurus start` serves one locale, and with `--locale cs` it serves it
+        // at the localized base path (`/cs/`) while the router's paths stay
+        // relative to that base — so Docusaurus builds the English URL as
+        // `"/" + "/docs/…"`, and the browser reads `//docs/…` as protocol-relative
+        // and goes looking for a host called `docs`. Behind the dev proxy both
+        // locales are served from one origin at the deployed paths, which is
+        // exactly what the switch assumes, so there it belongs in the navbar.
+        ...(isDev && !isProxiedDev
           ? []
           : [{ type: 'localeDropdown', position: 'right' } as const]),
         {

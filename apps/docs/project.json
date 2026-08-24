@@ -7,12 +7,44 @@
   "targets": {
     "start": {
       "executor": "nx:run-commands",
-      "_comment": "`.docusaurus-dev` instead of the default `.docusaurus`, because `docusaurus start` and `docusaurus build` generate into the SAME folder. A build run while the dev server is up (`nx build docs`, or anything that depends on it) overwrites that folder underneath it; the watcher sees the change and recompiles the running site from the build's leftovers - production config, and the last locale built, which is `cs`. The English dev site then believes its baseUrl is `/cs/`, so every link and every hot reload lands on a path it does not serve: a 404 in the other language, out of nowhere, on the next keystroke. Separate folders make that collision impossible.",
+      "continuous": true,
+      "_comment": "The whole docs site in dev, every language, on http://localhost:3000 - English at `/`, Czech at `/cs/`, the paths the deployed site uses. The two servers behind it are continuous dependencies, so Nx starts them with this and one Ctrl-C stops all three.",
+      "dependsOn": ["start-en", "start-cs"],
+      "options": {
+        "command": "node tools/docs-dev-proxy.mjs"
+      }
+    },
+    "start-en": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "_comment": "The English half of the dev site, on a private port behind `start`'s proxy. `.docusaurus-dev` instead of the default `.docusaurus`, because `docusaurus start` and `docusaurus build` generate into the SAME folder. A build run while the dev server is up (`nx build docs`, or anything that depends on it) overwrites that folder underneath it; the watcher sees the change and recompiles the running site from the build's leftovers - production config, and the last locale built, which is `cs`. The English dev site then believes its baseUrl is `/cs/`, so every link and every hot reload lands on a path it does not serve: a 404 in the other language, out of nowhere, on the next keystroke. Separate folders make that collision impossible - and the Czech dev server needs its own for the same reason.",
       "dependsOn": ["gen-ui-strings"],
       "options": {
-        "command": "pnpm --filter @achordeon/docs run start",
-        "env": { "DOCUSAURUS_GENERATED_FILES_DIR_NAME": ".docusaurus-dev" }
+        "command": "pnpm --filter @achordeon/docs run start --locale en --port 3010 --no-open",
+        "env": {
+          "DOCUSAURUS_GENERATED_FILES_DIR_NAME": ".docusaurus-dev",
+          "DOCS_DEV_WS_PORT": "3010"
+        }
       }
+    },
+    "start-cs": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "_comment": "The Czech half, beside the English one instead of in place of it: `docusaurus start` serves exactly one locale, so both languages at once means two servers. It serves them at the localized base path, which is what lets the proxy route by `/cs/` and what makes the links between the two work.",
+      "dependsOn": ["gen-ui-strings"],
+      "options": {
+        "command": "pnpm --filter @achordeon/docs run start --locale cs --port 3011 --no-open",
+        "env": {
+          "DOCUSAURUS_GENERATED_FILES_DIR_NAME": ".docusaurus-dev-cs",
+          "DOCS_DEV_WS_PORT": "3011"
+        }
+      }
+    },
+    "dev": {
+      "executor": "nx:noop",
+      "continuous": true,
+      "_comment": "What `pnpm dev` starts for this project. One target name means \"the dev servers of this project\" in every project, so `nx run-many -t dev` needs no list of exceptions.",
+      "dependsOn": ["start"]
     },
     "gen-json-schema": {
       "executor": "nx:run-commands",
@@ -48,7 +80,10 @@
       "dependsOn": [
         "gen-json-schema",
         "gen-ui-strings",
-        { "projects": ["skill"], "target": "gen-skill-zip" }
+        {
+          "projects": ["skill"],
+          "target": "gen-skill-zip"
+        }
       ],
       "outputs": ["{projectRoot}/build"],
       "options": {
@@ -68,7 +103,7 @@
       "options": {
         "commands": [
           "pnpm --filter @achordeon/docs run clear",
-          "node -e \"require('node:fs').rmSync('apps/docs/.docusaurus-dev', { recursive: true, force: true })\""
+          "node -e \"for (const d of ['apps/docs/.docusaurus-dev', 'apps/docs/.docusaurus-dev-cs']) require('node:fs').rmSync(d, { recursive: true, force: true })\""
         ],
         "parallel": false
       }
