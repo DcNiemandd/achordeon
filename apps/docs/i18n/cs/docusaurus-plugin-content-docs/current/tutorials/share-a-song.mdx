@@ -7,18 +7,188 @@ description: 'Pošli písničky ven jako odkaz, soubor, PDF nebo obrázek, a dos
 
 Ven z tvojí knihovny, a zase do ní.
 
+Tím samým tlačítkem odcházejí dvě různé věci a rozeznat je od sebe je většina
+téhle stránky. **Stažení** je stránka nebo obrázek — něco k vytištění, k
+pověšení na zeď, k poslání někomu, kdo o Achordeonu nikdy neslyšel. **Export**
+je samotná písnička: slova, akordy a nastavení vykreslování jako data, udělaná
+na to, aby se dala načíst zpátky. Jedno je hotové ve chvíli, kdy přistane; to
+druhé je pořád písnička.
+
+Cesta dovnitř je jedna obrazovka, ať to cestovalo jakkoli — soubor, který jsi
+vybral, soubor puštěný na okno, nebo odkaz, na který jsi ťukl — a vždycky řekne,
+co by udělala, dřív než cokoli zapíše.
+
 ## 1. Vyber písničky
+
+Všechno, co jde z knihovny ven, začíná v <AppLink to="songs">Písních</AppLink>.
+Zaškrtni řádky, které chceš. Zaškrtnutí je jiné gesto než otevření řádku, takže
+výběr přežije scrollování, hledání i zaškrtávání dalších.
+
+Když není zaškrtnuté nic, lišta jedná s **písničkou, na kterou koukáš** — s tou
+nakreslenou v panelu vedle seznamu — takže jedna písnička nepotřebuje zaškrtnout
+vůbec. Popisek říká, co má na mysli: <Ui id="songs.downloadOne" /> u zaměřené
+písničky, <Ui id="songs.downloadSelected" />, jakmile jsou řádky zaškrtnuté.
+
+Řádek nese i vlastní <Ui id="explorer.download" /> a ten znamená **ten řádek**,
+ať je zaškrtnuté kdekoli cokoli. Sedí na řádku, dokud je seznam široký, a složí
+se za `⋯` na řádku, jakmile je úzký — ta samá ikona tak nebo tak.
+
+Zpěvníky jdou ven stejnou cestou ze <AppLink to="songbooks">Zpěvníků</AppLink>,
+s jednou věcí, kterou je dobré vědět předem: **zpěvník si své písničky táhne s
+sebou**. Zpěvník je seřazený seznam odkazů, takže by soubor se zpěvníkem a bez
+písniček naimportoval prázdný zpěvník přesně na ten stroj, kterému jsi ho
+posílal. A <Ui id="songbooks.allSongs" /> nejsou záznam — vybrat je znamená
+celou knihovnu, takže přispějí každou písničkou a žádným zpěvníkem.
 
 ## 2. Stiskni Stáhnout
 
+Přihrádka se šipkou dolů, v řadě hromadných akcí vedle <Ui id="songs.add" icon="+" />.
+Ta vedle ní, se šipkou obráceně, je Import — ty dvě nosí zrcadlené znaky,
+protože dovnitř a ven je celý rozdíl, který zbývá nakreslit.
+
+Otevře dialog s nadpisem <Ui id="download.title" /> u jedné písničky a ten samý
+nadpis s počtem u víc písniček — protože počet je to, co rozhoduje, co se
+nabídne: jedna písnička může být stránka nebo obrázek, víc písniček může být
+kniha stránek nebo složka obrázků.
+
+<Image
+  alt="Dialog stažení nad seznamem Písní: PDF, obrázek, soubor Achordeonu a odkaz, každý s vlastním tlačítkem"
+  src="/img/cs/screenshot-download-dialog.png"
+  srcDark="/img/cs/screenshot-download-dialog-dark.png"
+  shadow
+/>
+
 ## 3. Vyber export, nebo stažení
+
+Export je poslední souborový řádek tohohle dialogu, pod větou, která říká, k
+čemu je.
+
+Vlasová čára napříč seznamem je místo, kde se odpověď mění. Nad ní jsou
+vykreslení — stránka, obrázek, složka obrázků. Pod ní je <Ui id="download.data" />,
+písnička jako data, a za ní odkaz. Každý řádek je vlastní tlačítko, takže není
+co potvrzovat a není tam OK: tlačítko, které stahuje, sedí vedle textu, který ho
+vysvětluje, a volba je jedno kliknutí.
+
+Ty dva pod čarou jsou ty, které se vracejí. Než sáhneš po čemkoli jiném, přečti
+si vlastní nápovědu <Ui id="download.data" /> — _samotná písnička — slova,
+akordy a nastavení_.
 
 ## 4. Zkopíruj odkaz místo toho, abys bral soubor
 
+Poslední řádek je <Ui id="download.link" /> a jeho tlačítko říká <Ui id="download.link.copy" />
+místo Stáhnout, protože na disk nic nepřistane. Na pár vteřin se přehodí na <Ui id="download.link.copied" />,
+což je jediné potvrzení, kterého se zápis do schránky kdy dočká.
+
+Co je ve schránce, stojí za přesnost, protože skoro každý hádá špatně:
+**písnička je uvnitř odkazu.** Při kopírování se nic nenahrává a při otevírání
+se nic nestahuje.
+
+Plynou z toho dvě věci a jsou to důvody, proč vůbec dávat přednost odkazu:
+
+- **Žádný účet, ani na jedné straně.** Není tu server, u kterého by ho bylo možné
+  mít. Odesílatel žádný nepotřebuje a čtenář taky ne.
+- **Funguje offline.** Přijímající aplikace má všechno už ve chvíli, kdy odkaz
+  dorazí, takže ho nainstalovaný Achordeon otevře úplně bez připojení.
+
+A jde ho odmítnout. Když se výběr nevejde, řádek zešedne místo aby zmizel, a
+řekne proč: <Ui id="download.link.tooBig" /> Vezmi místo něj soubor Achordeonu:
+ten žádný takový strop nemá.
+
+Zpěvník nabízí to samé jako jednu z voleb ve vlastním dialogu stažení — viz
+[Vytiskni zpěvník](./print-a-songbook.mdx#9-vyber-formát).
+
 ## 5. Vyber formát souboru
+
+Pro **jednu** písničku jsou vykreslení dvě:
+
+- <Ui id="download.pdf" /> — stránka, kterou jde vytisknout. Je vektorová, takže
+  text zůstane textem: dá se označit, hledat v něm a je ostrý v jakékoli
+  velikosti. Písma jsou zabalená v souboru, takže vypadá stejně i na stroji,
+  který nemá ani jedno z nich.
+- <Ui id="download.png" /> — obrázek na sdílení a ten, který se vrací: stažený
+  obrázek je zároveň obrázek i písnička.
+
+Pro **víc** písniček ty samé dvě myšlenky plus otázka jednoho souboru nebo více.
+Takže jsou tři: <Ui id="download.onePdf" /> dá všechny písničky do jednoho
+dokumentu, jednu za druhou; <Ui id="download.zipPdf" /> je dokument na písničku,
+zabalené k sobě; a <Ui id="download.zipPng" /> je obrázek na písničku.
+
+Každé vykreslení se kreslí z vlastního nastavení písničky, takže dostaneš tu
+stránku, na kterou celou dobu koukáš — její tvar, její měřítko, její sloupce.
+Viz [Vejdi se s písničkou na jednu stránku](./fit-a-song-on-one-page.mdx).
+
+Jakmile je formát vybraný, dialog zůstane otevřený a stane se z něj průběh:
+kolečko a — jakmile je znám součet — počet, který se posouvá, jak se každá
+písnička kreslí. Formáty jsou mezitím pryč, protože volba padla a rozdělat ji
+uprostřed kreslení se nenabízí. Kam soubor přistane, je věc prohlížeče: Chromium
+se zeptá, Firefox a Safari ho hodí do složky se staženými soubory.
+
+:::note[Celý zpěvník je jiný dialog]
+
+Stažení zpěvníku se ptá výběrem formátu a pak na papír — velikost, orientaci,
+okraj — protože zpěvník se tiskne, ne prohlíží. To je
+[Vytiskni zpěvník](./print-a-songbook.mdx). A kopie **celé** tvojí knihovny,
+včetně náhrobků po smazaných písničkách a nastavení zařízení, není export vůbec:
+to je Záloha, v [Nastavení](/settings-account/settings.mdx#záloha).
+
+:::
 
 ## 6. Import: tlačítkem, přetažením souboru na stránku, nebo odkazem
 
+Tři cesty dovnitř a všechny tři končí u toho samého náhledu.
+
+- **Tlačítko Import.** V Písních je to <Ui id="songs.import" />, zrcadlená
+  přihrádka vedle Stáhnout; ve Zpěvnících <Ui id="songbooks.import" />. Otevře
+  výběr souborů a bere jich víc najednou.
+- **Soubor puštěný kamkoli na okno.** Ne na cíl — celé okno je jeden. Přetáhni
+  soubor nad Achordeon a stránka ztmavne a řekne <Ui id="import.dropTitle" />,
+  s řádkem pod tím, který říká, co vezme: <Ui id="import.dropHint" /> Puštění
+  funguje na každé obrazovce, i na těch, které tlačítko Import vůbec nemají,
+  takže soubor jde pustit na Nastavení nebo uprostřed vystoupení.
+- **Odkaz.** Ťuknutí na něj otevře náhled tam, kde zrovna jsi, a rovnou
+  vyplněný. Nepotřebuje vlastní cestu ani vlastní stránku, a proto funguje na
+  studeném startu i v aplikaci, která už byla otevřená.
+
 ## 7. Přečti si náhled
 
+Dokud nezmáčkneš <Ui id="import.confirm" />, nic se nezapíše. Dialog je tu od
+toho, aby nejdřív odpověděl na jednu otázku — co by tenhle soubor udělal s mojí
+knihovnou — protože soubor, který kvůli dvacáté písničce potichu přepíše
+devatenáct, by se nedal obhájit.
+
+První řádek je jeho velikost — kolik písniček soubor drží a kolik zpěvníků. Pod
+tím přijde to, co je dobré vědět, než budeš souhlasit, a každá věc se objeví jen
+tehdy, když platí:
+
+- **Písma, která tohle zařízení nemá**, jmenovitě. Soubor jmenuje písma, ve
+  kterých jsou jeho písničky nastavené, a nikdy nenese samotné písmo, takže tohle
+  je jediné místo, kde se dozvíš, co si máš jít nainstalovat. Názvy zůstanou
+  v písničkách tak jako tak: [přidej si písmo](./add-a-font.mdx) později a ty
+  stránky se vrátí přesně tak, jak je viděl odesílatel.
+
 ## 8. Rozhodni, co se stane s písničkami, které už máš
+
+Jestli některé z příchozích písniček v knihovně už jsou, dialog je vyjmenuje —
+až pět a pak řádek, který spočítá zbytek. Vyjmenuje, ne spočítá, protože „3
+písničky už existují“ je číslo a odpověď záleží na tom, **které** tři. Písnička,
+která je na jedné straně přejmenovaná, ukáže obě jména, to ze souboru i tvoje.
+
+<Image
+  alt="Dialog importu jmenující šest písniček, které už v knihovně jsou, a pod nimi tři možnosti"
+  src="/img/cs/screenshot-import-conflicts.png"
+  srcDark="/img/cs/screenshot-import-conflicts-dark.png"
+  shadow
+/>
+
+Jedna odpověď platí pro celý soubor, pod <Ui id="import.legend" />:
+
+- <Ui id="import.replace" /> — výchozí, protože soubor je obvykle novější kopie:
+  je to ta, kterou jsi zrovna přinesl. Tvoje se přepíše.
+- <Ui id="import.ignore" /> — tvoje zůstane a příchozí verze se zahodí. Import,
+  který pak vypadá, jako by neudělal nic, udělal přesně to, oč jsi požádal.
+- <Ui id="import.new" /> — přežije obojí. Příchozí písničky se zapíšou pod
+  novými id, takže jsou od té chvíle samostatné písničky a už nikdy se nesrazí.
+
+Importní soubor je obyčejný JSON a jeho tvar je zveřejněný, takže ho umí napsat
+cokoli, co umí psát text — včetně chatbota, který kouká na fotku papíru
+s akordy, a o tom je [průvodce importem s AI](/export-import/ai-import.mdx).

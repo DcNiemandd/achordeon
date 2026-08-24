@@ -7,22 +7,189 @@ description: 'Vstup do režimu pódia, přecházej mezi písničkami bez rukou a
 
 Pódium: jedna písnička na obrazovce a nic jiného.
 
+Vystoupení není stránka, kterou navštívíš. Je to něco, co **běží** — zpěvník
+otevřený na jedné písničce, lišta ovládání nad ní a záznam v zařízení, který
+říká, kam jsi došel. Přežije to skok do jiného modulu, přežije to i to, že se
+záložka načte znovu, a končí to, až řekneš ty.
+
+:::note[To samé ovládání, na dvou místech]
+
+Na široké obrazovce si stránka vystoupení kreslí vlastní lištu přes horní kraj
+písničky, každé ovládání na očích; obrázky tady jsou z ní. Na úzké druhá lišta
+není vůbec — ty čtyři cíle pro palec dole u kraje obrazovky jsou <Ui id="stage.prev" />, <Ui id="stage.summary" />, <Ui id="stage.menu" />
+a <Ui id="stage.next" /> a všechno vzácnější je řádek uvnitř <Ui id="stage.menu" />.
+Kde krok níž říká _lišta_, čti tu, kterou zrovna držíš.
+
+:::
+
 ## 1. Začni na `Stage`, nebo tlačítkem Hrát ve zpěvníku
+
+Modul je v liště třetí — <AppLink to="stage">otevři si ho</AppLink>. Vypíše, co
+jde hrát, a nic víc: žádné hledání, žádné řazení, žádné hromadné akce, protože
+pódium je místo, ze kterého hraješ, ne místo, kde uklízíš.
+
+Nemusíš chodit tudy. Řádek zpěvníku ve <AppLink to="songbooks">Zpěvnících</AppLink>
+nese vlastní <Ui id="explorer.perform" /> a otevřený zpěvník ho má v hlavičce
+(<Ui id="songbooks.perform" />). Obojí přistane přesně na tom samém místě, o
+jeden stisk dřív — zpěvník, který jsi zrovna doskládal, je zpěvník, který jde
+zahrát, aniž bys ho šel znovu hledat.
+
+Prázdný zpěvník se nenabízí nikde. Výběr je vynechává úplně a na konci seznamu
+říká, kolik jich schoval; vlastní tlačítko Hrát je u zpěvníku mrtvé, dokud v něm
+něco není. Zahrát nic není užitečná schopnost.
 
 ## 2. Vyber zpěvník
 
+<Image
+  alt="Výběr na pódiu: nahoře Všechny písně s ozubeným kolem na řazení, pak zpěvníky, ve kterých něco je"
+  src="/img/cs/screenshot-stage.png"
+  srcDark="/img/cs/screenshot-stage-dark.png"
+  shadow
+/>
+
+Každý řádek je název zpěvníku a kolik je v něm písniček, na konci
+s <Ui id="stage.perform" />. Zmáčkni to, nebo na řádek dvakrát klikni —
+vystoupení začne první písničkou.
+
+<Ui id="songbooks.allSongs" /> jsou vždycky první řádek a jsou tam vždycky: celá
+knihovna jako jeden zpěvník, pro večer, který nemá set list. Je to jediný řádek
+s ozubeným kolem vedle tlačítka, protože je to jediný zpěvník bez vlastního
+pořadí. <Ui id="stage.allSongsOrder" /> je místo, kde na to odpovíš, a možnosti
+jsou ve [Zpěvnících](/songbooks/index.mdx#nastavení).
+
 ## 3. Přejdi na další a předchozí písničku
+
+<Image
+  alt="Hrající písnička: stránka plní obrazovku a přes ni je lišta vystoupení"
+  src="/img/screenshot-stage-perform.png"
+  srcDark="/img/screenshot-stage-perform-dark.png"
+  shadow
+/>
+
+To je celý režim pódia. Vlevo název zpěvníku, vedle něj ovládání, <Ui id="stage.prev" />
+a <Ui id="stage.next" /> uprostřed lišty, kam dosáhnou oba palce, a cesta ven
+červeně na druhém konci.
+
+Ty dvě šipky procházejí set v pořadí, ve kterém je zpěvník. Na koncích zastaví
+místo aby se přetočily: na první písničce je šipka zpátky mrtvá, na poslední ta
+dopředná, takže set nemůže potichu začít znovu, zatímco koukáš na ruce.
+
+Otočení stránky jednu věc zahodí a druhou veze dál. Zahodí se přiblížení — každá
+písnička začíná jako celá stránka (krok 8) — zatímco tónina, ve které hraješ,
+jde s tebou: transpozice nastavená na liště drží po zbytek setu, což je
+[Transponuj
+písničku](./transpose-a-song.mdx#7-hraj-dál--posun-drží-napříč-písničkami).
 
 ## 4. Přejeď prstem, nebo použij šipky
 
+Obě šipky mají většího a hrubšího dvojníka: samotnou stránku.
+
+**Přejeď** přes písničku — zprava doleva na další, zleva doprava na
+předchozí. Funguje to s myší se zmáčknutým tlačítkem stejně jako s prstem a
+cílem je celá stránka: není tam pruh, který bys musel hledat potmě.
+
+**Šipky** dělají to samé z klávesnice a jsou čtyři: `←` a `↑` jdou zpátky, `→` a
+`↓` dopředu. Nahoru a dolů stejně jako doleva a doprava, takže stránku otočí ta
+dvojice, po které tvoje ruce sáhnou — nebo ta, kterou posílá pedál pod tvojí
+nohou.
+
+Zbytek toho, co tady umí klávesnice, je ve vlastním seznamu aplikace — zmáčkni
+`?`, nebo `g` a `h`, a hledej skupinu <Ui id="stage.performing" />.
+
 ## 5. Otevři seznam písní a skoč na písničku
+
+Pátá písnička večera a někdo křičí po druhé. <Ui id="stage.summary" /> otevře
+set vedle písničky, očíslovaný, s tou, na které jsi, označenou.
+
+<Image
+  alt="Seznam písní otevřený nad vystoupením: očíslovaný set, označená aktuální písnička a hledání nad ním"
+  src="/img/cs/screenshot-stage-summary.png"
+  srcDark="/img/cs/screenshot-stage-summary-dark.png"
+  shadow
+/>
+
+Je to panel, ne dialog. Nic za ním se nezakryje a nic není zablokované; písnička
+zůstane, kde byla, a pořád je to písnička, kterou hraješ, i zatímco čteš seznam.
+
+Pole nahoře filtruje, jak píšeš, podle **názvu písničky a jejího vytištěného
+nadpisu** — podle těch dvou věcí, kterými na tebe někdo křikne. Ťukni na řádek a
+jsi na té písničce a panel se za tebou zavře, protože sis řekl o písničku, ne
+o seznam.
+
+Zavřením se nic nezmění: znovu tlačítkem, `Esc`, nebo ťuknutím kamkoli mimo
+panel. Dokud je otevřený, patří mu klávesnice — šipky patří seznamu, ne setu —
+takže nejdřív `Esc` a pak hraj dál.
 
 ## 6. Přepni na celou obrazovku
 
+<Ui id="stage.enterFullscreen" /> dá písničce celou obrazovku a požádá zařízení,
+aby zůstalo vzhůru, dokud ji má. Ta druhá půlka je ta, na které při hraní
+záleží: vystupující, který čte sloku, se pár minut ničeho nedotkne, a telefon,
+který uprostřed písničky ztmavne, se musí probudit rukou, která drží nástroj.
+
 ## 7. Ztmav stránku
+
+<Ui id="stage.darkPage" /> — měsíc na liště, nebo řádek toho jména uvnitř
+<Ui id="stage.menu" /> — nakreslí písničku světlou na tmavém. Tmavá místnost,
+reflektor, bar o půlnoci: bílá A4 na plný jas je lampa namířená do vlastního
+obličeje.
+
+**Je to papír, ne aplikace.** Měsíc je jediné ovládání, které otáčí papír, a
+neotáčí nic jiného. Tvoje knihovna i tvůj editor kreslí dál na bílé, zatímco
+běží tmavé vystoupení.
+
+Můžeš to nechat rozhodnout samo. Sekce <Ui id="settings.app" /> v <AppLink to="settings">Nastavení</AppLink>
+drží jedno zaškrtávátko, <Ui id="settings.songDark.on" />: když je zapnuté,
+každá písnička, kterou tohle zařízení nakreslí, jde s motivem na tmavou stránku.
+Měsíc nad ním pořád vyhrává: je to vystupující, který o místnosti, ve které
+opravdu stojí, říká _na tomhle pódiu ne_, a drží to jenom pro tohle vystoupení.
+Ukonči vystoupení a velí zase nastavení.
+
+:::tip[Písničky na šířku]
+
+Písnička širší, než je vysoká, promarní většinu telefonu drženého na výšku. Když
+by jí čtvrtotáčka získala trochu místa, objeví se vedle měsíce ovládání <Ui id="stage.turnPage" />
+— zapnuté otočí písničky, které tím získají, a zbytek nechá na výšku. Ukazuje se
+jenom na zařízení, kterým jde otočit, a proto ho počítač nikdy nevidí.
+
+:::
 
 ## 8. Přibliž si stránku
 
+Stránka se kreslí tak, aby se vešla na obrazovku, na které je, což na malé
+obrazovce může znamenat akordy, ke kterým se musíš naklonit. Takže je tu
+přiblížení a je vlastní, aplikace:
+
+- **Roztáhni** dvěma prsty, nebo **scrolluj** kolečkem.
+- **Ťukni dvakrát** — nebo dvakrát klikni — na řádek, který chceš, a další
+  dvojité ťuknutí vrátí celou stránku.
+
+V rohu se objeví bublina se zvětšením a zůstane na místě, zatímco zbytek
+ovládání vybledne. Cesta zpátky na celou stránku je ta bublina sama (<Ui
+id="zoom.reset" />).
+
+Viz [Pódium a publikum](/stage-audience/index.mdx#přiblížení).
+
 ## 9. Odejdi a pokračuj ve vystoupení
 
+Někdo chce písničku, která ve zpěvníku není. Klikni v liště na jiný modul a jdi
+si pro ni: vystoupení neskončí, jenom přestane být na obrazovce. Lišta jde se
+stránkou a <Ui id="nav.stage" /> tě vezme rovnou zpátky do písničky, kterou jsi
+opustil — ne do výběru.
+
+Přežije toho víc. Který zpěvník, která písnička a stav měsíce se zapisují do
+zařízení průběžně, takže záložka, kterou telefon zavřel, když byl zamčený, nebo
+načtení uprostřed setu se vrátí na tu samou písničku a ne na začátek zpěvníku.
+Vrátí se s tím i místnost, což je to, co brání publiku uváznout kvůli zamčenému
+telefonu — [Hraj před publikem](./play-to-an-audience.mdx) je celá ta půlka.
+
 ## 10. Ukonči vystoupení
+
+Červený křížek na konci lišty, <Ui id="stage.exit" /> — na telefonu poslední
+řádek <Ui id="stage.menu" />, ve stejné červené. Je to jediná věc, která
+vystoupení ukončí.
+
+Zmáčknutím se uklidí všechno: zpěvník, písnička, na které jsi byl, tmavá
+stránka, transpozice, celá obrazovka i každá otevřená místnost, o čemž se
+publikum dozví místo aby zůstalo čekat. Pak jsi zpátky ve výběru z kroku 2,
+večer je za tebou a další je čerstvý stisk <Ui id="stage.perform" />.

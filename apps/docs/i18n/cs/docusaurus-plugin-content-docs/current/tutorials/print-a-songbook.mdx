@@ -7,24 +7,178 @@ description: 'Dej zpěvníku titulní stranu, obsah a čísla stránek a stáhni
 
 Zpěvník jako papír: obálka, obsah, čísla, PDF.
 
+O tom, co vyleze z tiskárny, rozhodují dvě různé věci a rozeznat je od sebe je
+většina téhle stránky.
+
+**Stavba** zpěvníku — jestli má titulní stranu, jak vypadá, jestli má obsah, kde
+sedí čísla stránek — patří zpěvníku. „Tenhle kancionál má obsah“ je fakt
+o kancionálu, takže je uložený na zpěvníku, synchronizuje se a je nastavený už
+příště, když tiskneš z jiného zařízení.
+
+**Papír** — A4 nebo Letter, na výšku nebo na šířku, jak široký okraj — patří
+stroji, ze kterého tiskneš, a pamatuje se tam.
+
+Takže se stavba nastaví jednou, v nastavení zpěvníku, a dialog stažení se ptá
+jen na to, co zpěvník vědět nemůže: na čem to zrovna chceš vytisknout.
+
 ## 1. Otevři nastavení zpěvníku
+
+<Ui id="songbooks.settings" /> je ozubené kolo v hlavičce otevřeného zpěvníku a
+je to taky <Ui id="explorer.configure" /> na jeho řádku v seznamu — tak nebo tak
+ten samý dialog. Je vyfocený v [Postav
+zpěvník](./build-a-songbook.mdx#13-přenastav-akordy-pro-celý-zpěvník), kde je
+taky vysvětlená jeho spodní půlka — písma, barva akordů, notace.
+
+Tahle stránka je o dvou sekcích nad tím panelem: <Ui id="songbooks.titlePage" />,
+což je to, co říká přední list, a <Ui id="songbooks.print" />, což je to, z čeho
+je zpěvník poskládaný.
+
+Pokud můžeš, otevři ho ze **seznamu**, ne zevnitř zpěvníku. Není tam ztmavené
+pozadí a nic se nezakryje, takže panel vedle kreslí zpěvník jako stránky,
+zatímco pracuješ — což je krok 7, jen se děje průběžně místo na konci.
+
+:::note[Všechny písně jsou jiné]
+
+<Ui id="songbooks.allSongs" /> nemá vlastní záznam, takže nemá nadpis, podnadpis
+ani autora k vytištění, a jeho dialog je jenom tisková sekce plus pořadí, ve
+kterém je seřazený. Všechno ostatní na téhle stránce pro něj platí beze změny a
+co v něm nastavíš, se drží v zařízení místo aby se synchronizovalo.
+
+:::
 
 ## 2. Zapni titulní stranu
 
+<Ui id="songbookDownload.titlePage" /> je první řádek sekce
+<Ui id="songbooks.print" /> a zpěvník, který neřekl nic, ji už zapnutou má.
+Vypnutá, a soubor začíná první písničkou.
+
+Každý přepínač v téhle sekci schová řádek pod sebou, dokud je vypnutý, a to je
+dobré vědět dřív, než se vydáš hledat nastavení, které nechybí. Výběr stylu
+existuje jenom, dokud je titulní strana, řádek s číslováním jenom, dokud je
+obsah.
+
+<Image
+  alt="Tisková sekce v nastavení zpěvníku: titulní strana a styl, čísla stránek a jejich pozice, obsah a jeho číslování"
+  src="/img/cs/screenshot-songbook-print-fields.png"
+  srcDark="/img/cs/screenshot-songbook-print-fields-dark.png"
+  shadow
+/>
+
 ## 3. Vyplň nadpis, podnadpis a autora
+
+Ta tři pole jsou v sekci <Ui id="songbooks.titlePage" /> nad tím a `?` vedle
+jejího nadpisu říká tu jedinou věc, která o nich stojí za řečení: _Tiskne se na
+titulní straně zpěvníku. Odděleně od vlastního nadpisu kterékoli písničky._
+
+- <Ui id="songbooks.field.title" /> — co je na listu velkými písmeny. Nech ho
+  prázdný a vytiskne se **název** zpěvníku, takže zpěvník má na obálce vždycky
+  něco; vyplň ho, když jméno, pod kterým sis ho založil, není jméno, které chceš
+  na papíře.
+- <Ui id="songbooks.field.subtitle" /> — řádek pod ním.
+- <Ui id="songbooks.field.author" /> — ty, kapela, farnost.
+
+Pole, které necháš prázdné, se nevytiskne jako prázdný řádek — vypustí se a list
+se poskládá z toho, co tam opravdu je. Proto tě nevyplněný autor nestojí nic — a
+proto stojí za to ho vyplnit: několik stylů z dalšího kroku je postavených na
+tom, že ho mají.
 
 ## 4. Vyber styl titulní strany
 
+<Ui id="songbookDownload.variant" /> jich nabízí jedenadvacet a každý z nich se
+kreslí — v seznamu není nic, co by nešlo vybrat.
+
+Nejrychlejší způsob, jak vybrat, není o nich číst: vyber jeden a dívej se do
+panelu vedle. Celý seznam, s řádkem ke každému, je ve
+[Zpěvnících](/songbooks/index.mdx).
+
 ## 5. Zapni obsah
+
+<Ui id="songbookDownload.summary" /> přidá stránku s obsahem a na rozdíl od
+titulní strany je **vypnutý**, dokud si o něj neřekneš.
+
+Je to seznam všech písniček proti stránce, na které jsou vytištěné, vysázený do
+dvou sloupců.
+
+Ta čísla jsou čísla stránek a jde o to, kde začínají: **titulní strana ani obsah
+vlastní číslo nenesou, takže první písnička je stránka 1.**
+
+V PDF je odkazem celý řádek — nadpis, řada vodicích teček i číslo — takže
+ťuknutím kamkoli po něm skočíš na písničku.
+
+To je číslo v **obsahu**, ne to na vlastní stránce písničky. Ten řádek je <Ui id="songbookDownload.summaryNumber" />
+a odpovědi jsou dvě: <Ui id="songbookDownload.afterTitle" /> je rejstřík,
+`Wonderwall · · · · · 7`, a <Ui id="songbookDownload.beforeTitle" /> je
+kancionál, `7. Wonderwall`.
 
 ## 6. Zapni čísla stránek a umísti je
 
+<Ui id="songbookDownload.pageNumbers" /> je zapnuté ve výchozím stavu a řádek
+pod ním, <Ui id="songbookDownload.position" />, nabízí sedm míst. Šest z nich je
+místo na papíře — dole nebo nahoře, vlevo, vpravo nebo na střed.
+
+To sedmé není místo vůbec. <Ui id="songbookDownload.beforeSongTitle" /> dá číslo
+do vlastního nadpisu písničky — `7. Wonderwall`.
+
 ## 7. Zkontroluj náhled
+
+Vrať se do <AppLink to="songbooks">Zpěvníků</AppLink> a klikni na zpěvník. Panel
+vedle seznamu není jeho obálka — je to **celý zpěvník jako stránky**, každý
+list, který by PDF drželo, popořadě: titulní strana, obsah a pak písničky se
+svými čísly v rohu, který sis vybral.
+
+<Image
+  alt="Tiskový náhled zpěvníku: titulní strana, stránka s obsahem a tři stránky písniček s čísly stránek"
+  src="/img/cs/screenshot-songbook-print-preview.png"
+  srcDark="/img/cs/screenshot-songbook-print-preview-dark.png"
+  shadow
+/>
 
 ## 8. Stiskni Stáhnout
 
+<Ui id="songbooks.download" /> je v hlavičce otevřeného zpěvníku vedle ozubeného
+kola a <Ui id="explorer.download" /> na jeho řádku dělá to samé. Žádné zvláštní
+tlačítko Export nikde není: export je formát uvnitř tohohle dialogu a je to
+první, na co se ptá.
+
+<Image
+  alt="Dialog stažení zpěvníku: formát, velikost stránky, orientace a okraj"
+  src="/img/cs/screenshot-songbook-download-dialog.png"
+  srcDark="/img/cs/screenshot-songbook-download-dialog-dark.png"
+  shadow
+/>
+
 ## 9. Vyber formát
+
+<Ui id="songbookDownload.format" /> rozhoduje, na které z řádků pod ním se vůbec
+zeptá, protože jen jeden ze čtyř je o papíře. Ty čtyři, s řádkem ke každému,
+jsou ve [Zpěvnících](/songbooks/index.mdx#stažení).
+
+Dva ze čtyř všechno pod sebou ignorují. Soubor Achordeonu a odkaz jsou zpěvník
+jako data a ani jeden nemá na papír názor, takže se z dialogu stane jeden řádek
+a tlačítko — které u odkazu říká <Ui id="songbookDownload.copyLink" /> místo <Ui id="songbookDownload.confirm" />.
 
 ## 10. Nastav velikost stránky, orientaci a okraj
 
+Pro PDF tři další řádky:
+
+- <Ui id="songbookDownload.pageSize" /> — `A4`, `Letter` nebo `A5`.
+- <Ui id="songbookDownload.orientation" /> — na výšku nebo na šířku, což je ten
+  samý papír otočený.
+- <Ui id="songbookDownload.margin" /> — prázdná hrana listu, v celých
+  milimetrech, od `0`.
+
+Tvůj papír se pamatuje v tomhle zařízení, takže se u dalšího zpěvníku dialog
+otevře na tom samém nastavení. Volba souboru Achordeonu nebo odkazu se
+nepamatuje, protože ani jeden o papíře neříká nic.
+
 ## 11. Ulož soubor
+
+Zmáčkni <Ui id="songbookDownload.confirm" />. Z tlačítka se stane průběh —
+kolečko, a jakmile je znám počet, „n z N“, které se posouvá, jak se zpěvník
+kreslí — a nejde zmáčknout dvakrát.
+
+Kam soubor přistane, je věc prohlížeče, ne aplikace. Tak nebo tak se jmenuje po
+zpěvníku: `nedelni-set.pdf`, nebo `nedelni-set.zip` u obrázků.
+
+Ten soubor je hotový. Nic v něm není odkaz zpátky do Achordeonu a nic v něm
+aplikaci k přečtení nepotřebuje — a přesně proto se takový soubor dělá.

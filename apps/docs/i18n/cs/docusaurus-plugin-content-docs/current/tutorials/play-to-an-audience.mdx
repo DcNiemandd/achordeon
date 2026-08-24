@@ -7,22 +7,196 @@ description: 'Otevři z pódia místnost a dostaň do ní celý sál pomocí PIN
 
 Tvůj zpěvník na jejich telefonech, otáčí se, když otočíš ty.
 
+Místnost je pět znaků. Otevřeš ji zevnitř vystoupení, všichni ostatní těch pět
+znaků napíšou do modulu <Ui id="nav.audience" /> a od té chvíle jim na
+obrazovkách běží ta písnička, na které jsi ty.
+
+Co cestuje, je **písnička**, ne obrázek tvojí obrazovky: slova, akordy a
+nastavení, kterým se stránka kreslí, takže si ji každý telefon vysází pro svoji
+obrazovku místo aby mžoural na zmenšenou kopii té tvojí. Hostit chce připojení;
+připojit se je zadarmo a vždycky bude.
+
 ## 1. Jako vystupující: vstup do vystoupení
+
+Mimo vystoupení žádná místnost není. Otevři <AppLink to="stage">Stage</AppLink>,
+vyber zpěvník, který dneska hraješ, a hraješ —
+[Hraj ze zpěvníku](./perform-from-a-songbook.mdx) je o té části, jestli je nová.
+Všechno níž se děje nad tou stránkou.
+
+Místnost patří **vystoupení**, ne zpěvníku: začíná, když ji otevřeš, a končí
+s vystoupením.
 
 ## 2. Vytvoř publikum
 
+Ovládání publika je v liště vystoupení s ostatními. Na počítači je to ikona,
+jejíž popisek říká <Ui id="stage.audience" />; na telefonu je to řádek stejného
+jména uvnitř <Ui id="stage.menu" />.
+
+Otevře dialog, který zatím nemá co ukázat — jednu větu o tom, co sdílení dělá, a
+jedno tlačítko, <Ui id="stage.audienceDialog.create" />.
+
+<Image
+  alt="Dialog publika, než místnost existuje: co sdílení dělá, a tlačítko Vytvořit místnost"
+  src="/img/cs/screenshot-stage-audience-create.png"
+  srcDark="/img/cs/screenshot-stage-audience-create-dark.png"
+  shadow
+/>
+
+Zlatý prstenec kolem tlačítka je značka Premium a po najetí to řekne: hostit
+publikum je funkce Premium, půjčená všem zadarmo, dokud je aplikace v testování.
+Tlačítko není a nikdy nebylo zakázané — zmáčkni ho.
+
+Zmáčknutím dostaneš PIN hned. Těch pět znaků se vylosuje ve tvém vlastním
+zařízení, z abecedy, ve které není `0`/`O` ani `1`/`I`/`L`, protože tohle je
+kód, který někdo čte z obrazovky přes celou místnost nebo slyší zavolat.
+
 ## 3. Ukaž PIN, odkaz nebo QR kód
+
+Z dialogu je teď místnost a nabízí tu samou místnost trojí cestou.
+
+<Image
+  alt="Živá místnost: PIN, počet posluchačů, odkaz na připojení a QR kód"
+  src="/img/cs/screenshot-stage-lobby.png"
+  srcDark="/img/cs/screenshot-stage-lobby-dark.png"
+  shadow
+/>
+
+- Samotný kód, pod <Ui id="stage.audienceDialog.pin" /> — dost velký na to, aby
+  se dal přečíst zezadu, dost krátký na to, aby se dal mezi písničkami říct
+  nahlas.
+- Adresa, pod <Ui id="stage.audienceDialog.link" />. Klikni na ni a je zkopírovaná;
+  značka schránky se na chvíli změní na fajfku, aby řekla, že to vyšlo. Tohle je
+  to, co se vloží tam, kam se místnost už tak dívá — do chatu, do pozvánky, do
+  popisku pod videem.
+- Ta samá adresa jako obrázek, pod <Ui id="stage.audienceDialog.qr" />. Zvedni
+  obrazovku, nebo ji mezi čísly hoď na projektor, a psaní obstará foťák.
+
+Řádek označený <Ui id="stage.audienceDialog.count" /> je počet zařízení, která
+jsou v místnosti právě teď. Je to jediná poctivá odpověď na „povedlo se to?“ —
+dívej se, jak stoupá, zatímco se sál připojuje.
+
+:::note[Nechoď po vlastním odkazu]
+Odkaz otevírá stránku publika a otevřít ho na zařízení, ze kterého hraješ, by
+bylo pódium, které odejde samo od sebe. Podej ho dál, neklikej na něj.
+:::
 
 ## 4. Hraj — stránka se jim otáčí sama
 
+Není co dalšího mačkat. Každý přechod na jinou písničku místnost znovu vypustí a
+divákům se stránka překreslí. To samé udělá změna nastavení uprostřed setu:
+stránka, kterou dostanou, je vždycky stránka, na kterou koukáš ty.
+
+Dostanou s ní taky **seznam písní**, a proto si může divák otevřít písničky
+večera, aniž by tě o cokoli žádal.
+
 ## 5. Spravuj místnost
+
+Zavřením dialogu se místnost nezavře. Ovládání publika zůstane rozsvícené a
+přejmenuje se na <Ui id="stage.audience.manage" />; dalším otevřením jsi zpátky
+u toho samého PINu, toho samého odkazu a toho samého počtu.
+
+Místnost přežije i odchod ze stránky. Odskoč si do <AppLink to="songs">Písní</AppLink>
+opravit překlep, nebo načti znovu záložku, kterou telefon zavřel, když byl
+zamčený, a vystoupení — i s místností — pokračuje tam, kde bylo. Vystoupení,
+kterého ses dvanáct hodin nedotkl, ne.
 
 ## 6. Ukonči ji odchodem
 
+Na konci dialogu je <Ui id="stage.audienceDialog.end" />: uklidí místnost a
+nechá tě hrát dál. <Ui id="stage.exit" /> udělá obojí najednou — vystoupení
+skončilo, takže skončilo i publikum.
+
+Tak nebo tak se to diváci dozví: na obrazovkách jim stojí <Ui id="audience.ended" />
+a nabídne se jim zase pole na PIN.
+
+Místnost je jeden večer. Ta příští je nový PIN, takže kód, který si někdo minulý
+týden zapsal, ho nedostane nikam.
+
 ## 7. Jako divák: otevři `Audience`
+
+Tahle půlka nepotřebuje nic: žádný účet, žádnou knihovnu, žádné vlastní
+písničky. Modul je v liště čtvrtý, pod <Ui id="nav.stage" /> —
+
+<AppLink to="audience">otevři si ho</AppLink>.
 
 ## 8. Zadej PIN, nebo naskenuj QR kód
 
+<Image
+  alt="Výzva k připojení v modulu Publikum: pole na PIN a tlačítko Připojit se"
+  src="/img/cs/screenshot-audience-join.png"
+  srcDark="/img/cs/screenshot-audience-join-dark.png"
+  shadow
+/>
+
+Napiš těch pět znaků a zmáčkni <Ui id="audience.join" />. Na velikosti písmen
+nezáleží — pole si všechno průběžně převádí na velká.
+
+Naskenování vystupujícího QR kódu tuhle obrazovku přeskočí: kód nese PIN
+v adrese, takže se aplikace otevře už připojená. To samé dělá odkaz, a proto se
+vyplatí vložit ho tam, kam sál dosáhne.
+
+Jestli je PIN špatný, řekne se ti to — <Ui id="audience.notFound" /> — a
+zůstaneš tady na další pokus, což je smysl abecedy, kterou nejde přečíst špatně.
+Poslední PIN, který opravdu fungoval, ti bude příště předvyplněný, takže je
+připojení po pauze jedno ťuknutí.
+
 ## 9. Sleduj dění, se seznamem písní a přiblížením
 
+Jsi uvnitř. Písnička plní obrazovku a otočí se, když ji otočí vystupující.
+
+<Image
+  alt="Telefon sledující vystoupení, s ovládáním publika v dolní liště"
+  src="/img/cs/screenshot-audience-following.png"
+  srcDark="/img/cs/screenshot-audience-following-dark.png"
+  shadow
+/>
+
+Lišta dole u kraje je tvoje: celá obrazovka, seznam písní a <Ui id="stage.menu" />
+na zbytek. Na počítači sedí pod stránkou místo dole u kraje obrazovky, ale jsou
+to ti samí tři.
+
+Seznam písní je set list, který poslal vystupující, označený u písničky, která
+se zrovna hraje. Má vlastní hledání a je jen ke čtení — sleduješ, takže tě
+ťuknutí na řádek nikam nevezme.
+
+<Image
+  alt="Seznam písní v publiku: set list jen ke čtení s označenou aktuální písničkou"
+  src="/img/cs/screenshot-audience-summary.png"
+  srcDark="/img/cs/screenshot-audience-summary-dark.png"
+  shadow
+/>
+
+Všechno ostatní o tom, jak si to čteš, je jenom tvoje a vystupující to nevidí:
+
+- Přiblížení — roztažení dvěma prsty, nebo dvojité ťuknutí na řádek, který
+  chceš; `+`, `-` a `0` to udělají z klávesnice. Bublina v rohu ukazuje, jak
+  hluboko jsi, a jedním ťuknutím vrátí celou stránku.
+- Akordy pryč (<Ui id="audience.hideChords" />), pro každého v místnosti, kdo
+  zpívá a nehraje. Řádky s akordy si nechají svoje místo, takže se ti pod očima
+  nic nepřesází.
+
 ## 10. Transponuj si vlastní obrazovku
+
+Vystupující to hraje v tónině, ve které je to napsané. Ty máš kapodastr, jiný
+nástroj, nebo hlas, který nedosáhne na nejvyšší tón.
+
+<Ui id="transpose.title" /> v nabídce otevře nad stránkou malý panel: dolů,
+posun, nahoru. Zůstane otevřený, zatímco krokuješ, takže se můžeš dívat, jak se
+akordy pod ním posouvají, a zastavit tam, kde jsou tvoje ruce.
+
+<Image
+  alt="Vlastní transpozice diváka: panel nad stránkou a akordy už posunuté"
+  src="/img/cs/screenshot-audience-transpose.png"
+  srcDark="/img/cs/screenshot-audience-transpose-dark.png"
+  shadow
+/>
+
+Číslo jsou půltóny se znaménkem a jeho zmáčknutím
+(<Ui id="transpose.reset" />) se písnička vrátí tam, kam dorazila. Dvanáct kroků
+je ta samá hudba o oktávu jinde, takže se ten dvanáctý přetočí na `0`.
+
+Nic z tohohle neopustí tvůj telefon. Obrazovka vystupujícího se nehne, obrazovka
+dalšího diváka taky ne a žádná písnička se nikde nepřepisuje — na změnu písničky
+natrvalo potřebuješ editor, o kterém je [Transponuj
+písničku](./transpose-a-song.mdx). Tvůj posun drží po zbytek večera a je pryč,
+jakmile z místnosti odejdeš.

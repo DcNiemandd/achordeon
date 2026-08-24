@@ -7,22 +7,184 @@ description: 'Dvě cesty ke změně tóniny: přepiš písničku v editoru, nebo
 
 Jedna z nich se uloží. Ta druhá je kapodastr pro obrazovku.
 
+To slovo si dělí dva různé úkony. Transpozice v editoru **přepíše písničku**:
+závorky ve zdroji se změní, změna se uloží a jde s písničkou všude, kam ta jde —
+do knihovny, do každého zpěvníku, ve kterém sedí, na vytištěnou stránku, do
+telefonů v publiku. Ta na pódiu změní **obrazovku, ze které čteš**, a nic víc:
+žádná písnička se neupravuje, nic se neukládá a končí to s vystoupením.
+
+Kterou z nich chceš, je otázka toho, jak dlouho ji potřebuješ. Písnička, kterou
+vždycky hraješ o tón níž, je písnička, která má být o tón níž napsaná. Večer,
+kdy máš unavený hlas, je večer, ne přepis.
+
 ## 1. V editoru: transponuj celou písničku
+
+Otevři písničku z <AppLink to="songs">Písní</AppLink> — tužkou na jejím řádku,
+nebo dvojklikem. Lišta nad zdrojem nese tři skupiny tlačítek a ta prostřední je <Ui id="editor.transposeGroup" />:
+dvě noty s odznáčkem se šipkou, pak `♯` a `♭`.
+
+Ty dvě noty jednají s celou písničkou. Ta se šipkou nahoru je <Ui id="editor.transposeUp" />,
+na `Alt` + `=`, a zvedne každý akord v písničce o půltón; ta se šipkou dolů je <Ui id="editor.transposeDown" />,
+na `Alt` + `-`. Tři stisky jsou malá tercie — není tam pole na napsání
+intervalu, protože odpověď, kterou hledáš, je po každém stisku na stránce vedle
+tebe.
+
+<Image
+  alt="Lišta akcí v editoru se skupinou pro transpozici: dvě noty s odznáčkem, křížek a béčko"
+  src="/img/screenshot-editor-transpose.png"
+  srcDark="/img/screenshot-editor-transpose-dark.png"
+  shadow
+/>
+
+Co dostaneš, je **přepis textu**. Nic jiného v souboru se nehne ani o znak.
+
+Není tu ani nikde jinde tlačítko Uložit. Přepis přistane ve zdroji a o chvíli
+později se zapíše do zařízení, jako každá jiná úprava.
 
 ## 2. Zvedni nebo sniž jeden akord pod kurzorem
 
+`♯` a `♭` vedle nich — <Ui id="editor.sharp" /> a <Ui id="editor.flat" /> —
+dělají to samé s přesně **jedním** akordem: s tím, ve kterém stojí kurzor.
+Jejich klávesy jsou závorky, kterými se akord píše: `Alt` + `]` ho zvedne a
+`Alt` + `[` ho sníží.
+
+Všude jinde jsou šedá, což není chyba, kterou by bylo potřeba hledat. Mimo akord
+nemají čím pohnout, takže se probudí ve chvíli, kdy klikneš mezi jeho závorky —
+a kurzor v té závorce zůstane i potom, takže dalším stiskem krokuješ pořád ten
+samý akord.
+
+To je dosah, který ty dvě noty nabídnout neumí: bridge, který moduluje, basový
+tón, který chceš zapsat jinak, nebo to jedno `[F]` ve druhé sloce, které mělo
+být `[F#]`.
+
+Co všechno se počítá za akord, je v [Akordech](../songs/syntax.mdx#akordy).
+
 ## 3. Vrať krok zpět
+
+Protože je transpozice opravdová úprava opravdového textu, vrací se jako úprava:
+`Ctrl` + `Z`, nebo tlačítkem <Ui id="editor.undo" /> ve třetí skupině lišty, <Ui id="editor.historyGroup" />.
+Znovu je `Ctrl` + `Y`, nebo `Ctrl` + `Shift` + `Z`, podle toho, co už tvoje ruce
+znají, a tlačítko vedle je <Ui id="editor.redo" />.
+
+Jeden stisk tlačítka je jeden krok zpět, takže písnička, kterou jsi posunul
+čtyřikrát, se vrátí čtyřmi stisky. To je to, co dělá ty dvě noty bezpečné
+k pokusům: zmáčkni, koukni na vykreslení a vezmi to zpátky, jestli to nebyla
+tónina, kterou jsi myslel.
+
+Historie patří editoru, ve kterém sedíš, a vydrží tak dlouho, jak v něm sedíš.
+Odejdi z písničky a vrať se a není co vracet — takže jestli byl přepis omyl,
+cesta zpátky je transponovat o stejný počet půltónů opačným směrem (krok 9 říká,
+co to vrátí a co ne).
 
 ## 4. Vyber notaci, ve které se akordy tisknou
 
+Ozubené kolo na konci lišty (<Ui id="editor.settings" />) otevře nastavení
+vykreslování. Poslední řádek jeho sekce <Ui id="settingGroup.chords" /> je ten,
+o kterém je tenhle krok: <Ui id="setting.notation" />, s volbou <Ui id="setting.notation.english" />
+nebo <Ui id="setting.notation.german" />.
+
+Tohle není transpozice a nehýbe to žádnou výškou. Je to **abeceda, kterou se
+stránka tiskne**: německá říká čistému B `H` a prosté `B` si nechává pro béčko.
+Mění se jenom vytištěná stránka; písnička zůstane přesně tak, jak jsi ji napsal,
+a proto jde přepnout zpátky a nic se neztratí.
+
+Notace se dědí jako každé jiné nastavení vykreslování, takže se celý zpěvník dá
+zapsat jedním způsobem najednou:
+[Postav zpěvník](./build-a-songbook.mdx#13-přenastav-akordy-pro-celý-zpěvník).
+
 ## 5. Při hraní: otevři ovládání transpozice
+
+Všechno odsud dál posouvá obrazovku a neukládá nic.
+
+Spusť vystoupení — <AppLink to="stage">Stage</AppLink> a pak zpěvník, nebo
+tlačítko Hrát u samotného zpěvníku;
+[Hraj ze zpěvníku](./perform-from-a-songbook.mdx) je o té části. Ovládání je pak
+na liště vystoupení.
+
+Na počítači je na očích na konci levé půlky lišty, oddělené čárou od ikon vedle:
+nota se šipkou dolů, posun, nota se šipkou nahoru. Na telefonu jsou z lišty
+čtyři cíle pro palec a všechno vzácnější bydlí za <Ui id="stage.menu" />, kde
+řádek říká <Ui id="transpose.title" /> a otevře malý panel dole u kraje
+obrazovky.
+
+Ten panel schválně není dialog. Zůstává otevřený, zatímco krokuješ, a nezakrývá
+písničku, protože ta věc, kvůli které ta tlačítka mačkáš, je právě písnička.
 
 ## 6. Posuň se o půltón nahoru nebo dolů a přečti si posun
 
+<Ui id="transpose.down" /> a <Ui id="transpose.up" /> s tím hýbou po půltónech a
+číslo mezi nimi říká, kde jsi: půltóny, vždycky se znaménkem, `+2` nebo `-3`.
+Mimo nulu se obarví do barvy značky, takže lišta, na kterou jen mrkneš, ti
+řekne, že set neběží v napsané tónině.
+
+<Image
+  alt="Vystoupení transponované o dva půltóny nahoru: krokovátko na liště hlásí +2 a akordy pod ním jsou posunuté"
+  src="/img/screenshot-stage-transpose.png"
+  srcDark="/img/screenshot-stage-transpose-dark.png"
+  shadow
+/>
+
+Stránku za ním kreslí přesně ten samý přepis, který dělají tlačítka v editoru —
+a `[Solo]` stojí na pódiu stejně na místě — jen s tím rozdílem, že se přepsaný
+text zahodí, jakmile je nakreslený. Tvojí písničky se to nedotkne.
+
 ## 7. Hraj dál — posun drží napříč písničkami
+
+Posun patří vystoupení, ne písničce, na které jsi ho nastavil. Otoč stránku a
+jde s tebou: kapodastr se mezi čísly nesundává.
+
+Končí, když skončí vystoupení — <Ui id="stage.exit" />. A schválně se nikam
+neukládá: načti uprostřed setu záložku znovu a jsi zpátky v napsané tónině.
+Vrátit se do knihovny, která potichu hraje všechno o tón výš a nikde mimo pódium
+to na obrazovce neříká, by bylo horší než vrátit se k tomu, co je napsané.
 
 ## 8. V publiku: transponuj si vlastní obrazovku
 
+Do místnosti cestuje písnička **tak, jak je napsaná**. Posun vystupujícího
+zůstává na obrazovce vystupujícího a každý divák dostane vlastní ovládání — což
+je jediná rozumná odpověď, protože kapodastr na jedné kytaře není kapodastr na
+druhé.
+
+Divák má lištu dole u kraje telefonu: otevři <Ui id="stage.menu" />, pak <Ui id="transpose.title" />,
+a nad stránkou se otevřou ta samá tři tlačítka.
+
+<Image
+  alt="Vlastní transpozice diváka: panel nad stránkou a akordy už posunuté"
+  src="/img/cs/screenshot-audience-transpose.png"
+  srcDark="/img/cs/screenshot-audience-transpose-dark.png"
+  shadow
+/>
+
+Poslouchá všechno z kroků 6 a 7 a je to stejně soukromé: obrazovka vystupujícího
+se nehne, obrazovka dalšího diváka taky ne a žádná písnička se nikde
+nepřepisuje. Divácká strana večera je [Hraj před
+publikem](./play-to-an-audience.mdx#10-transponuj-si-vlastní-obrazovku).
+
 ## 9. Vrať se do napsané tóniny
 
+Na pódiu i v publiku je cestou zpátky to číslo. Zmáčkni ho (<Ui
+id="transpose.reset" />) a posun je zase `0` — jedno ťuknutí místo jedenácti, a
+proto to ovládání, které umí přetočit dokola, potřebuje. Na `0` je mrtvé, ne
+schované, takže se ty dvě šipky neposouvají do stran pokaždé, když se vrátíš
+domů.
+
+V editoru není co mazat, protože tam žádný posun není: je tam jen text, který
+jsi změnil. Takže dvě cesty zpátky. Krok zpět, dokud to historie pořád má — ten
+je přesný. Nebo transponovat o stejný počet půltónů opačným směrem, což vrátí
+každý akord na správnou výšku a většinu z nich i na stejná písmena: `F#`
+posunuté nahoru a zase dolů se vrátí jako `Gb`, ten samý tón pod svým druhým
+jménem.
+
 ## 10. Věz, která z těch dvou se uchová
+
+|            | Editor: noty, `♯` a `♭`             | Pódium a publikum: krokovátko               |
+| ---------- | ----------------------------------- | ------------------------------------------- |
+| Co se mění | vlastní text písničky               | obrazovka, na které se kreslí               |
+| Uloží se   | ano, jako každá úprava              | ne, a nikdy                                 |
+| Dosáhne    | všude, kde se písnička objeví       | jen na to zařízení, na kterém jsi to zmáčkl |
+| Cesta zpět | krok zpět, nebo transponovat zpátky | zmáčknout posun                             |
+| Končí      | nikdy — teď je to ta písnička       | s vystoupením                               |
+
+Takže: jestli ji tam hraješ vždycky, napiš ji tam. Jestli je to tónina na
+dnešek, nebo tvoje tónina místo té, kterou hraje vystupující, posuň obrazovku a
+písničku nech být.

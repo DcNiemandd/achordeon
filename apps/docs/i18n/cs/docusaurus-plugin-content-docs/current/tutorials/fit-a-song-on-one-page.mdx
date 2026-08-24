@@ -7,22 +7,205 @@ description: 'Naimportuj jednu schválně rozbitou písničku a sprav ji nastave
 
 Jedna písnička, jedna stránka, žádné posouvání při hraní.
 
+Tohle je oprava, ne prohlídka. Na konci odkazu níž je písnička, která je
+schválně nastavená špatně — šest sloupců na pět slok, bílý okraj, do kterého by
+se dalo zaparkovat, text zamáčknutý do pravého dolního rohu a nadpis běžící po
+levé hraně jako hřbet knížky. Naimportuj si ji a budeš koukat na stránku, ze
+které by nezahrál nikdo.
+
+Pak ji rozebereš nastavení po nastavení a budeš se dívat, jak stránka odpovídá.
+
 ## 1. Získej písničku
+
+[Otevři ukázkovou písničku](https://achordeon.eu/app/#z1=H4sIAAAAAAACCq1UTW_bMAz9KwQvBQr1I1u2rrplBRr0MLQYhmFD7ANj07YQWzIkOl1R5L8PVBK0wNDtMt1M8pFPz496RhpHtNiJjMleXFDVhVhz8Oc8XdA4XqDBVHU80HeOyQWPdmaw5q2r-K5Gi2hwGmsSrheCdnb16Wo-f__uUo_BmoTQPuOUOKJdlQZT8G1Cu3pGp-hmdkVaenbJs9nZnK757Jo-8Nnly5mhwSryGxP-Mpt7PmT81PcGPQ2MFm-dwBeGew_3nuGBWtYBwQt7QYun8GdB4U9PYQE1DwH0AiAdCVCMbssJ1lT3T5BYCl94VYkt3MHqpnwMG4ZpBOeBYLUsqxA9x8I_OulgtRjKdhLhmKDnRoB8DavbMrq2E1P45H5pjyr00-ATNCFC47asfbY6IxVeEcOTgh5DrBNQZAiTQGgUmbTRuXK66UKckoWl4gdWwJqqDUjHWjhSy6bw7TG7fJVdDCW5aAovtOF96LZcq0MihKZ5aTHqxZTQ3Unfa4_kfAtNDAOQf1IxOo58_kqib0doXWupS3uRhkACPjzqzAMDcdIzVL0b1unIIY3OK2sdSblPT08cIWubG7WTE4qFr8ifiEIa5-sMT1wFFfum7J3fc_ocXd2y1Zhi81jF_C_5gt-zVvNMY_CQAzdl6lh9s3fEsvRBOhUjG0JCrhgp64YGG9qG6ITRNtQnNphYxOV9esZUUa_2pkkCGqQ0ciVfSVxAi4t59ni2EtqPBg-qo50bXPeh2ixpzB-HRfiBFrMTX3bjJ1pcB5EwoMH8Sx5CcpKfBFTCuDNYUdWx0skFb21bmtbH_L-3Cne7w7uxDmGjb0e52_0G5PB6I7cEAAA)
+a zmáčkni <Ui id="import.confirm" />, až se přes stránku, na které zrovna jsi,
+otevře náhled.
+
+To je celý tenhle krok. Mechanika — co odkaz nese, na co se náhled ptá, co může
+import udělat s knihovnou — je [Sdílej a importuj písničky](./share-a-song.mdx).
+Dokud nepotvrdíš, nic se nezapíše, a písnička je _uvnitř_ odkazu, ne za ním,
+takže se nic nestahuje a ničeho tvého se to nedotkne.
+
+Důležité je, co s ní přišlo. **Písnička si nese vlastní nastavení
+vykreslování.** Patří jí stejně jako její slova: cestovalo v odkazu, přistálo v
+tvojí knihovně a po synchronizaci bude i v tvém telefonu. Proto vypadá tahle
+písnička rozbitě i u tebe, ne jenom u mě — a proto taky zůstane spravená všude,
+kde se objeví, jakmile ji spravíš.
+
+<Image
+  alt="Ukázková písnička tak, jak ji odkaz doručí: pět bloků roztahaných do šesti sloupců, drobných, zamáčknutých dolů na stránku A4, nadpis bokem po levé hraně"
+  src="/img/screenshot-song-broken.png"
+  srcDark="/img/screenshot-song-broken-dark.png"
+  shadow
+/>
 
 ## 2. Otevři její nastavení
 
+Otevři písničku z <AppLink to="songs">Písní</AppLink> — tužkou na jejím řádku,
+nebo dvojklikem — a obrazovka se rozdělí: vlevo zdroj, vpravo stránka, kterou
+kreslí.
+
+Ozubené kolo na konci lišty je to, co chceš. Jeho popisek říká <Ui id="editor.settings" />
+a `Alt` + `,` ho otevře bez myši.
+
+Otevře se **nad zdrojem, ne nad vykreslením**. Není tam žádné ztmavené pozadí a
+nic se nezakryje: stránka vpravo se kreslí dál, zatímco pracuješ, takže na každé
+číslo, se kterým hneš, přijde odpověď hned. To je metoda celého tohohle návodu —
+neladit poslepu a kontrolovat až potom, ale dívat se.
+
+<Image
+  alt="Nastavení vykreslování otevřené nad zdrojem ukázkové písničky, rozbitá stránka se vedle nich kreslí dál"
+  src="/img/cs/screenshot-song-settings.png"
+  srcDark="/img/cs/screenshot-song-settings-dark.png"
+  shadow
+/>
+
+Čti panel jako seznam toho, na co má tahle písnička názor. Řádek, který písnička
+nenastavuje, hlásí <Ui id="settings.inherited" /> a bere si hodnotu z tvého
+globálního nastavení; řádek, který nastavuje, ukazuje hodnotu a na místě štítku
+tlačítko pro reset (<Ui id="settings.reset" />). Skoro celá <Ui id="settingGroup.page" />
+tady ukazuje hodnotu a přesně to je na té stránce vedle špatně.
+
+Jeden řádek si všimni a pak ho nech být: <Ui id="setting.scale" /> je na <Ui id="scale.auto" />,
+kde zůstane po zbytek tohohle návodu a u skoro každé písničky, kterou kdy
+nastavíš. Není to velikost, kterou by někdo vybral — je to největší velikost,
+při které se celá písnička ještě vejde na stránku, a počítá se znovu pokaždé,
+když se hne cokoli jiného. Proto text poskočí pokaždé, když některý z kroků níž
+vrátí stránce trochu místa.
+
+:::note[Na telefonu]
+
+Panel je vždycky jen jeden a tlačítko v liště mezi nimi přepíná. Nastavení se
+pořád otevírá nad zdrojem, takže tohle je to jediné místo, kde ladíš první a
+koukáš druhé.
+
+:::
+
 ## 3. Nastav poměr stran
+
+Nejdřív rám: všechno další se měří uvnitř něj.
+
+<Ui id="setting.aspectRatio" /> je **tvar** stránky, ne její velikost. Ukázková
+písnička přijde na <Ui id="aspect.a4" />, což je tvar papíru — a ty se skoro
+jistě díváš na obrazovku, která mu vůbec není podobná. Slušná část té bílé, na
+kterou koukáš, je tenhle nesoulad a nic jiného.
+
+Vezmi poměr, který odpovídá tomu, z čeho budeš hrát. Obrázky na téhle stránce
+jsou dělané na `16:9`, z notebooku.
+
+:::note[Tvar, ne velikost]
+
+Tisk tvar zachová a zvětší ho na papír. Vybrat poměr telefonu neudělá malé PDF —
+udělá vysoké a úzké.
+
+:::
 
 ## 4. Vrať sloupce zpátky
 
+<Ui id="setting.columns" /> přišly na `6` a písnička má pět bloků. To je ta
+nejhloupější věc na stránce: jeden sloupec nemá co dát dovnitř a zbylých pět je
+moc úzkých na to, aby udržely řádek textu, takže se měřítko sesype a celá
+písnička se nakreslí velikostí poznámky pod čarou.
+
+Dej to na `2`.
+
+Sloupce jsou pro písničku, která je **vyšší** než její stránka: hodně krátkých
+řádků. Tahle je přesně taková, a proto jsou tu dva sloupce výhra.
+
 ## 5. Ubeř z odsazení
+
+<Ui id="setting.padding" /> přišlo na `4`, na své maximum — bílý okraj hluboký
+čtyři velikosti textu na každé hraně stránky, která už tak byla skoro celá bílá.
+Dej to na `0.5`.
+
+Okraj je _uvnitř_ stránky, takže nikdy neohne tvar, který jsi vybral v kroku 3;
+jenom odtlačí písničku od hran. Což znamená, že co z něj ubereš, je místo, které
+písnička dostane — a s měřítkem na <Ui id="scale.auto" /> se to místo vrátí
+rovnou jako větší písmena.
+
+:::note[Zpěvník si přidá svoje]
+
+Tiskový okraj zpěvníku se přičítá k tomuhle, ne místo něj. Viz
+[Vytiskni zpěvník](./print-a-songbook.mdx).
+
+:::
 
 ## 6. Umísti písničku tam, kam patří
 
+Písnička je dole v pravém rohu, protože jí to bylo řečeno. Říkají to dva řádky a
+jsou na sobě nezávislé:
+
+- <Ui id="setting.contentX" /> — napříč stránkou:
+  <Ui id="setting.contentX.left" />, <Ui id="setting.contentX.center" />,
+  <Ui id="setting.contentX.right" />.
+- <Ui id="setting.contentY" /> — po ní dolů: <Ui id="setting.contentY.top" />,
+  <Ui id="setting.contentY.middle" />, <Ui id="setting.contentY.bottom" />.
+
+Zmáčkni <Ui id="setting.contentX.center" /> a <Ui id="setting.contentY.middle" />,
+což je místo, kde obojí začíná.
+
 ## 7. Sundej nadpis ze hřbetu
+
+<Ui id="setting.titlePosition" /> je na <Ui id="setting.titlePosition.left" />,
+na té otočené: nadpis běží po levé hraně jako hřbet knížky. Stojí to pruh šířky
+a vrací to celou výšku, kterou nadpis zabíral, což je na nízké široké stránce
+opravdový obchod, ne ozdoba. Na obrazovce, ze které hraješ, je to nadpis, na
+který musíš naklánět hlavu.
+
+<Ui id="setting.titlePosition.top" /> ho vrátí napříč stránkou, což je místo,
+kam ho tahle písnička chce. Tak nebo tak se blok s nadpisem drží u levého
+horního rohu — nastavení ho otáčí, neposouvá.
 
 ## 8. Otevři mezeru mezi bloky, aby se to dalo číst
 
+Každý krok až sem bral stránce místo a dával ho slovům. Tenhle kus z něj utratí
+zpátky a je to důvod, proč se to místo vyhrávalo.
+
+<Ui id="setting.blockGap" /> je vzduch mezi bloky — místo, které odděluje sloku
+od refrénu. Přišla na `4`: čtyři celé řádky textu mezi každou dvojicí bloků, což
+je na písničce o pěti blocích šestnáct řádků stránky utracených úplně za nic.
+Výchozí je `0.8`, krokovátko jede po desetinách a `0` je opravdová odpověď, po
+které se bloky dotýkají.
+
+Sjeď dolů ze `4` a zastav tam, kde sloky vypadají jako sloky a ne jako jeden
+souvislý text. U téhle písničky je to někde kolem `1.2`.
+
+Mezera se měří v řádcích textu, ne v milimetrech, takže si drží svůj poměr, ať
+už se písnička nakreslí jakkoli velká — hustota, na které se tady zastavíš, je
+hustota, kterou dostaneš v telefonu, v zpěvníku i v PDF.
+
 ## 9. Nastav velikost akordů podle sebe
 
+<Ui id="setting.chordSize" /> je velikost akordů **vůči textu**, od `0.5` do
+`3`.
+
+<Ui id="setting.chordColor" /> sedí vedle a s vejitím na stránku nedělá nic: je
+to barva, kterou se kreslí každý akord v písničce.
+
+A to je ta oprava. Ta samá písnička, ta samá slova, těch samých osm nastavení —
+a stránka, kterou můžeš někomu podat a poprosit ho, aby z ní zahrál.
+
+<Image
+  alt="Ukázková písnička po opravě: dva vyrovnané sloupce plnící stránku na šířku, dost velké na čtení, nadpis zase napříč nahoře"
+  src="/img/screenshot-song-fitted.png"
+  srcDark="/img/screenshot-song-fitted-dark.png"
+  shadow
+/>
+
 ## 10. Nech si to, nebo z toho udělej domácí styl
+
+Všechno výš bylo nastavené na **jedné písničce**, což je správný rozsah pro
+písničku, která k tomu má důvod. Zbylé dva rozsahy jsou na to, když ho nemá.
+
+- **Globálně** — <Ui id="nav.settings" /> ▸ <Ui id="settings.rendering" /> je ten
+  samý panel se všemi řádky a je to základ, ze kterého každá písnička vychází.
+  Nastav si tam jednou svůj obvyklý tvar stránky a svou obvyklou mezeru mezi
+  bloky a nové písničky budou přicházet rovnou tak, jak je máš rád.
+- **Zpěvník** — zpěvník nese těch pár nastavení, ze kterých se dělá domácí styl:
+  písma, barvu a velikost akordů, mezeru mezi bloky a notaci. To je
+  [Postav zpěvník](./build-a-songbook.mdx#13-přenastav-akordy-pro-celý-zpěvník).
+- **Písnička** — všechno, a poslední slovo.
+
+Ukázková písnička už svoje odsloužila. Nech si ji jako pískoviště na pokusy,
+nebo ji smaž z <AppLink to="songs">Písní</AppLink> — odkaz výš ti vždycky podá
+novou, čerstvě rozbitou kopii.

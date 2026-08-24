@@ -7,14 +7,201 @@ description: 'Nainstaluj aplikaci do zařízení, nastav si ji a dostaň do ní 
 
 Nainstaluj ji a pak se ujisti, že knihovna není jen v tomhle prohlížeči.
 
+Achordeon nemá server, který by tvoje písničky držel. Knihovna je databáze
+uvnitř prohlížeče, ve kterém tohle čteš, a přesně to dělá aplikaci rychlou,
+soukromou a použitelnou ve vlaku. Je to zároveň celé riziko: knihovna, která
+existuje na jediném místě, existuje do chvíle, než ji něco smaže. Kopii nemá
+nikdo jiný — ani my: dokud v kroku 6 nezapneš synchronizaci, žádná knihovna se
+na server nedostane.
+
 ## 1. Otevři aplikaci v prohlížeči
+
+Achordeon bydlí na `achordeon.eu/app` — <AppLink>otevři si ho</AppLink>. Nic se
+nemusí instalovat předem, není potřeba účet a na konci nečeká prázdná obrazovka:
+první návštěva zapíše startovací knihovnu, takže se každý modul otevře nad
+opravdovými písničkami a opravdovým zpěvníkem místo nad svým prázdným stavem. Od
+té chvíle jsou to obyčejné písničky — přejmenuj je, přepiš je, zahoď je.
+
+Ulož si adresu do záložek. Jiná není a je to ta samá adresa, ať už nakonec budeš
+aplikaci pouštět v záložce, nebo ve vlastním okně.
+
+:::warning[Smazání dat stránek smaže knihovnu]
+
+Prohlížečové „smazat cookies a data stránek“ vezme knihovnu s sebou a nabízí se
+hned vedle věcí, které lidé mažou běžně. Odinstalování aplikace nebo reset
+prohlížeče udělá totéž. Nic na téhle stránce tomu nezabrání — přežitelné to
+dělají kroky 5 a 6. Viz [tvůj účet a data
+Google](/settings-account/account-data.mdx).
+
+:::
 
 ## 2. Nainstaluj ji
 
+Tlačítko Instalovat nikde v Achordeonu není, protože ten ovládací prvek není
+náš: vlastní ho tvůj prohlížeč a kde sedí, záleží na tom, který zrovna držíš.
+
+- **Safari na iPhonu nebo iPadu** — tlačítko Sdílet a pak _Přidat na plochu_.
+  Jiná cesta dovnitř na iOS není a dá se snadno minout.
+- **Firefox na počítači** webové aplikace neinstaluje vůbec. Všechno na téhle
+  stránce funguje dál, jen to zůstane záložkou.
+
+Co za to dostaneš, je okno bez adresního řádku a bez pruhu se záložkami, ikona
+v nabídce nebo na ploše a — na počítači s Chromiem — asociace souborů: soubor
+`.achordeon` se po dvojkliku otevře v aplikaci.
+
+Co za to **nedostaneš**, je offline, protože to jsi měl už předtím. Zapni
+letadlový režim a načti stránku znovu. Aplikace naběhne.
+
+:::note[Instalace nevyrobí druhou knihovnu]
+
+Nainstalované okno a záložka jsou tatáž adresa, takže čtou tutéž databázi.
+Nainstaluj si to po měsíci psaní a všechno tam už je; odinstaluj to a pořád je
+to v záložce. Co instaluješ, je aplikace, nikdy ne kopie tvých písniček.
+
+:::
+
 ## 3. Nastav motiv a jazyk
+
+Všechno v tomhle kroku je v <AppLink to="settings">Nastavení</AppLink>, v sekci <Ui id="settings.app" />.
+Přejeď účtový blok nahoře — to jsou kroky 4 až 6 — a tohle je hned další karta
+pod ním.
+
+<Image
+  alt="Sekce Aplikace v Nastavení: motiv, tmavá stránka, jazyk, velikost panelů a statistiky používání"
+  src="/img/cs/screenshot-settings-app.png"
+  srcDark="/img/cs/screenshot-settings-app-dark.png"
+  shadow
+/>
+
+<Ui id="settings.theme" /> jsou tři tlačítka. <Ui id="theme.light" /> a
+<Ui id="theme.dark" /> jsou rozhodnutí, <Ui id="theme.system" /> předává
+rozhodnutí stroji a řídí se jím za běhu — notebook, který za soumraku ztmavne,
+vezme aplikaci s sebou, aniž by se cokoli načítalo znovu.
+
+Zaškrtávátko vedle, <Ui id="settings.songDark.on" />, je jiná otázka: otáčí
+**papír**, ne aplikaci. Když je zapnuté, každá písnička, kterou Achordeon
+nakreslí, je světlá na tmavém, dokud je aplikace tmavá — náhledy, vykreslení
+v editoru, hraní. Tisk, PDF a stažené soubory zůstávají na bílé, ať říká cokoli,
+a stejně tak každý, kdo tě sleduje ze svého telefonu. Víc je toho v
+[Hraj ze zpěvníku](./perform-from-a-songbook.mdx#7-ztmav-stránku).
+
+<Ui id="settings.language" /> nabízí English a Čeština, každé napsané ve svém
+vlastním jazyce a ne v tom, ve kterém zrovna trčíš — a přesně o to jde, protože
+kdo hledá v anglické aplikaci češtinu, hledá slovo _Čeština_. Volbou se
+**aplikace načte znovu** a nápověda u řádku to říká: _Achordeon se kvůli změně
+jazyka načte znovu a zůstane na stránce, na které jsi._ Text se překládá jednou,
+při prvním použití, takže běžící aplikaci nejde přepsat na jiný jazyk za chodu.
+
+:::tip[Zapnuté statistiky nám pomáhají]
+
+<Ui id="settings.stats" /> je poslední řádek sekce a
+<Ui id="settings.stats.on" /> je vypnuté, dokud ho nezaškrtneš. Co zaškrtnutím
+přibude, je velikost obrazovky, na které jsi, a jaký tvar stránky si vybereš —
+žádná adresa, žádné id návštěvníka a nikdy ani slovo z toho, co jsi napsal. Je
+to jediný způsob, jak se dozvíme, jestli se nastavení vykreslování používá na
+telefonu, nebo na počítači, a které z toho dlouhého seznamu tvarů stojí za to
+nechat. Obě pole jsou vypsaná v [Soukromí](/privacy.mdx#rozšířené-statistiky),
+kde je i ten samý přepínač.
+
+:::
+
+:::note[Tahle sekce patří zařízení, ne účtu]
+
+Motiv, tmavá stránka, jazyk, velikost panelů i přepínač statistik jsou uložené v
+tom stroji, na kterém je nastavíš. Necestují — ani v záloze, ani přes
+synchronizaci — takže druhé zařízení jsou tři kliknutí nastavování a telefon
+může běžet tmavý, zatímco počítač běží světlý. Všechno pod <Ui id="settings.rendering" />
+níž je přesně naopak: to jsou výchozí hodnoty tvého účtu a ty cestují.
+
+:::
 
 ## 4. Přihlas se
 
+Všechno až sem se obešlo bez účtu a to není náhoda: účet ti kupuje přesně jednu
+věc, a to dostat knihovnu pryč z tohohle jediného zařízení.
+
+Účtový blok je první karta v <AppLink to="settings">Nastavení</AppLink> a nabízí
+dvoje dveře do téhož účtu. <Ui id="settings.account.google" /> je jedno ťuknutí
+a zároveň připojí identitu, na které jede Disk. <Ui id="settings.account.login" />
+otevře tohle:
+
+<Image
+  alt="Dialog Přihlásit se: e-mail, heslo a odkaz pro zapomenuté heslo"
+  src="/img/cs/screenshot-login-dialog.png"
+  srcDark="/img/cs/screenshot-login-dialog-dark.png"
+  shadow
+/>
+
+Jestli účet ještě nemáš, <Ui id="settings.account.register" /> vedle bere ta
+samá dvě pole plus potvrzení hesla a pak ti pošle e-mail: metoda není živá,
+dokud neklikneš na odkaz v něm. Ztracené heslo je <Ui id="settings.account.forgotLink" />
+v dialogu výš, který ti pošle odkaz na nastavení nového.
+
+:::note[Přihlášení přes Google není povolení k Disku]
+
+Přihlášení si řekne o tvůj e-mail a základní profil a o nic víc. Povolení zapsat
+soubor na tvůj Disk je samostatný souhlas, o který si aplikace řekne, až poprvé
+zmáčkneš tlačítko k Disku v kroku 5 — a týká se jenom toho souboru, který
+Achordeon sám vyrobí. Viz
+[tvůj účet a data Google](/settings-account/account-data.mdx#google-disk).
+
+:::
+
 ## 5. Zálohuj do souboru
 
+Ten krok, který na téhle stránce nepotřebuje účet, připojení ani ničí povolení.
+Je v bloku <Ui id="settings.sync" /> na účtové kartě, pod <Ui id="settings.backup" />:
+zmáčkni <Ui id="settings.backup.save" /> a přistane soubor pojmenovaný
+`achordeon-backup-` a dnešní datum.
+
+Co v něm je, stojí za přesnost, protože to není totéž co export. Záloha je
+**celá databáze, doslova** — každá písnička a každý zpěvník, tvoje globální
+výchozí nastavení vykreslování, záznam o smazaných písničkách a písma, která sis
+přidal sám a která nenese žádný jiný soubor v Achordeonu. Není to výběr a není
+z čeho vybírat: tlačítko je celý ten úkon.
+
+Poslat někomu pár písniček je jiná práce a jiný soubor. To je
+[Sdílej a importuj písničky](./share-a-song.mdx) a aplikace to říká v tom samém
+bloku: _Poslat pár písniček někomu jinému je jiná věc._
+
+Kam soubor spadne, je věc tvého prohlížeče, ne aplikace — Chromium se zeptá,
+Firefox a Safari ho hodí do složky se staženými soubory. Dej ho někam, kde není
+tohle zařízení. Záloha ležící ve složce Stažené na stroji, proti kterému se
+chráníš, je záloha ničeho.
+
+Tu samou zálohu jde nechat ve vlastním Google Disku místo v souboru, který si
+musíš pamatovat přesunout. <Ui id="settings.drive.heading" /> je řádek pod <Ui id="settings.backup" />,
+s <Ui id="settings.drive.upload" /> a <Ui id="settings.drive.download" /> na
+něm. Je to zadarmo — Premium začíná v kroku 6.
+
+Tak nebo tak jde zálohu vrátit zpátky: <Ui id="settings.backup.restore" /> se
+nejdřív zeptá, jestli ji přidat ke knihovně, nebo všechno nahradit, a popíše obě
+odpovědi celé, než jde kteroukoli zmáčknout. Viz
+[Záloha](/settings-account/settings.mdx#záloha).
+
+:::tip[Nejlevnější návyk na téhle stránce]
+
+Zmáčkni to po večeru psaní, nech si posledních pár souborů, zbytek smaž. Stojí
+to dvě vteřiny a je to jediný krok tady, který funguje i na stroji, který nikdy
+do ničeho nebyl přihlášený.
+
+:::
+
 ## 6. Zapni synchronizaci v reálném čase
+
+<Ui id="settings.autoSync" />, nahoře v bloku <Ui id="settings.sync" />, je
+krok, po kterém tohle přestane být povinnost. Zaškrtni
+<Ui id="settings.autoSync.on" /> a knihovna se drží stejná na každém zařízení,
+na kterém se přihlásíš, bez jediného souboru v tom příběhu.
+
+Je to <Ui id="settings.account.pro" />: na účtu zdarma nebo odhlášeném je
+zaškrtávátko mrtvé a říká proč — <Ui id="settings.autoSync.requires" />
+
+:::note[Synchronizace není záloha]
+
+Práce synchronizace je udržet všechna zařízení ve shodě a dělá to poctivě oběma
+směry: smaž písničku v telefonu a během pár vteřin je pryč i z notebooku. Záloha
+je to, co ji potom pořád má. Odpovídají na jiné otázky a zařízení, na kterém
+záleží, si zaslouží obojí.
+
+:::

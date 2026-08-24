@@ -7,16 +7,129 @@ description: 'Přidej si písmo z Google Fonts, ze souboru nebo z odkazu a nasta
 
 Písmo, kterým se tvoje písničky tisknou, uložené v zařízení.
 
+Ať použiješ kteroukoli ze tří cest, soubor se stáhne jednou a uloží se do
+tohohle zařízení a každé vykreslení potom — obrazovka, náhled, PDF — si ho bere
+odtamtud.
+
 ## 1. Otevři `Settings > Font library`
+
+Knihovna je předposlední sekce <AppLink to="settings">Nastavení</AppLink>, pod <Ui id="settings.fontLibrary" />.
+Je to jediné místo, kde jsou písma v tomhle zařízení vypsaná celá; výběry v
+nastavení vykreslování nabízejí ty samé rodiny, ale přečíst si, co písmu chybí,
+a smazat ho, jsou otázky na celou stránku.
+
+Ty čtyři, které Achordeon veze s sebou, jsou složené za řádkem, který říká,
+kolik jich je, takže má seznam pevnou horní hranu a písma, která si přidáš sám,
+rostou od ní dolů. Rozbal ten řádek a každá rodina se vykreslí **vlastními
+písmeny**, s tím, co má, pod sebou: Roboto Mono má všechny čtyři řezy, Crimson
+Text, Oswald a Caveat mají dva.
+
+<Image
+  alt="Knihovna písem v Nastavení s rozbalenými vestavěnými písmy a tlačítkem Přidat písmo pod nimi"
+  src="/img/cs/screenshot-font-library.png"
+  srcDark="/img/cs/screenshot-font-library-dark.png"
+  shadow
+/>
+
+Věta pod nadpisem stojí za jedno přečtení: písmo, které si přidáš, **zůstane
+v tomhle zařízení**. Cestuje v záloze, protože záloha je celá tvoje knihovna, a
+necestuje v [exportu](/export-import/index.mdx) — ten soubor jmenuje písma, ve
+kterých jsou tvoje písničky nastavené, aby ten, kdo ho otevírá, věděl, co si má
+nainstalovat, a nikdy nenese samotné písmo.
 
 ## 2. Stiskni Přidat písmo
 
+Tlačítko na konci seznamu je <Ui id="fonts.add" />. Ten samý dialog je poslední
+volbou v **každém** výběru písma v aplikaci, takže písmo, po kterém zatoužíš při
+nastavování písničky, jde přidat, aniž bys písničku opustil.
+
+Jeho první řádek je celý tenhle návod v jedné větě: jenom TrueType, jeden soubor
+je jeden řez a řez, který nepřidáš, se půjčí od jiného písma. Pod ním jsou tři
+cesty dovnitř — <Ui id="addFont.search" />, <Ui id="addFont.file" /> a <Ui id="addFont.link" />
+— oddělené čárami místo slovem „nebo“, protože to jsou tři cesty na to samé
+místo, ne tři kroky.
+
+<Image
+  alt="Dialog Přidat písmo: hledání v Google Fonts se dvěma výsledky, výběr souboru a pole na odkaz"
+  src="/img/cs/screenshot-add-font-dialog.png"
+  srcDark="/img/cs/screenshot-add-font-dialog-dark.png"
+  shadow
+/>
+
+Každá z těch tří se odesílá sama za sebe — výsledek je vlastní tlačítko, vybraný
+soubor se přidá ve chvíli, kdy ho vybereš, a u odkazu je vedle <Ui id="addFont.fetch" />.
+Proto je v patičce jenom <Ui id="addFont.close" />: není nic rozdělaného, co by
+mělo tlačítko OK potvrzovat. Zatímco se něco stahuje, nahradí ty tři cesty <Ui id="addFont.fetching" />,
+a písmo, které dorazí, dialog zavře — potvrzením je řádek, který teď sedí v
+seznamu za ním.
+
 ## 3. Vyhledej písmo v Google Fonts podle názvu
+
+Piš do <Ui id="addFont.search" />, kde stojí <Ui id="addFont.searchPlaceholder" />.
+Není tam tlačítko Hledat a nečeká se — aplikace si veze vlastní rejstřík celého
+katalogu Google Fonts, takže se seznam zužuje, jak píšeš. Na název, kterému nic
+neodpovídá, přijde odpověď hned a odpověď na rovinu: <Ui id="addFont.noResults" />
 
 ## 4. Nebo přidej soubor `.ttf`, nebo odkaz
 
+<Ui id="addFont.file" /> vezme soubor z tohohle stroje a je to ta cesta, která
+nepotřebuje síť, katalog ani vysvětlení. Jejím odesláním je samotný výběr
+souboru: písmo se přidá ve chvíli, kdy nějaké vybereš, a není co dalšího mačkat.
+
+Jenom TrueType.
+
+<Ui id="addFont.link" /> bere dva tvary adresy:
+
+- **Vkládací odkaz**, který ti podá Google Fonts, ten určený do `<head>` webové
+  stránky.
+- **Přímou adresu na `.ttf`** na jsDelivr nebo raw.githubusercontent.com.
+
+Zmáčkni <Ui id="addFont.fetch" />. Co se odmítne, řekne to pod tou cestou, která
+si to zasloužila, vedle pole, které bys opravoval.
+
 ## 5. Tučný řez a kurzivu přidej jako vlastní soubory
+
+Písnička si říká o čtyři řezy: obyčejný, tučný, kurzivu a tučnou kurzivu. Soubor
+`.ttf` drží **jeden**. Takže přidání písma ze souboru nebo z přímého odkazu
+přidá jeden řez a tučný je druhý soubor přidaný stejnou cestou — hodit tam
+`Lora-Bold.ttf` po `Lora-Regular.ttf` nevyrobí druhou rodinu, zaplní to druhé
+místo v té, kterou už máš, a počet řezů na řádku povyskočí o jedna.
+
+Hledání je výjimka a je to důvod dávat mu přednost: výsledek přidá jedním
+stiskem každý statický soubor, který rodina veze, což je u většiny rodin všechny
+čtyři.
+
+Řez, který jsi nepřidal, se půjčí od jiného písma a [knihovna
+písem](/settings-account/settings.mdx#knihovna-písem) říká, od kterého.
 
 ## 6. Nastav písmo písničce, nebo celému zpěvníku
 
+Písmo v knihovně ještě není písmo v provozu. Výběry jsou ty samé tři řádky, ať
+je otevřeš v kterémkoli rozsahu:
+
+- **Jedna písnička** — ozubené kolo v editoru, <Ui id="editor.settings" />. To je
+  [Vejdi se s písničkou na jednu stránku](./fit-a-song-on-one-page.mdx).
+- **Celý zpěvník** — <Ui id="songbooks.settings" /> nese písma mezi tou hrstkou
+  nastavení, ze kterých se dělá domácí styl, takže jde zpěvník nastavit jedním
+  stiskem. Viz
+  [Postav zpěvník](./build-a-songbook.mdx#13-přenastav-akordy-pro-celý-zpěvník).
+- **Všechno** — <Ui id="nav.settings" /> ▸ <Ui id="settings.rendering" /> je
+  základ, ze kterého každá písnička vychází.
+
 ## 7. Odeber písmo
+
+Odebrat jdou jenom písma, která jsi přidal — vestavěné čtyři tlačítko na smazání
+nemají. Zmáčkni koš na řádku a Achordeon odpoví <Ui id="fonts.removeTitle" />
+s tou jedinou věcí, o které se opravdu potřebuješ rozhodnout: **kolik tvých
+písniček a zpěvníků je v něm nastavených**.
+
+<Image
+  alt="Dialog odebrání, který říká, kolik písniček a zpěvníků je v tom písmu nastavených"
+  src="/img/cs/screenshot-font-remove.png"
+  srcDark="/img/cs/screenshot-font-remove-dark.png"
+  shadow
+/>
+
+Písmo, kterým si nejsi jistý, je písmo, které můžeš nainstalovat, nastavit v něm
+písničku, kouknout na vykreslení a zase ho vyndat, aniž bys ztratil cokoli kromě
+toho stahování.
