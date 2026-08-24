@@ -14,6 +14,11 @@ const baseURL = process.env['BASE_URL'] || 'http://localhost:4200/app/';
 export default defineConfig({
   testDir: './shots',
   testMatch: '**/*.spec.ts',
+  // Spelled out, because Playwright's default is `test-results` under the
+  // nearest package.json — and this project has none, so the fallback walks up
+  // to the workspace root and litters it. Under `dist` it is ignored already,
+  // beside the e2e suite's own output (`nxE2EPreset` in `playwright.config.ts`).
+  outputDir: '../../dist/.playwright/apps/app-e2e/shots-output',
   // Shots seed a real library and render songs; give each room and do not retry.
   timeout: 120_000,
   retries: 0,
