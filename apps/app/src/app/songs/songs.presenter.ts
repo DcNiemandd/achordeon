@@ -28,6 +28,7 @@ import {
   type SortChange,
 } from '../shared/song-explorer';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   type DownloadChoice,
@@ -594,6 +595,8 @@ export class SongsPresenter {
     await this.busy(async () => {
       if (choice === DATA_FORMAT) {
         await this.exporter.export({ songIds: ids });
+      } else if (choice === CHORDPRO_FORMAT) {
+        await this.exporter.exportChordPro({ songIds: ids });
       } else if (ids.length === 1) {
         await this.downloads.downloadSong(ids[0], choice as SongFormat);
       } else {

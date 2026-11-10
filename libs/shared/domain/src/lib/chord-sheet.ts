@@ -862,6 +862,11 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
     head.push(escapeLyric(playing.join(', ')));
   }
 
+  // A blank line between the title lines and the words, as songs are written —
+  // and as `toChordPro` sets them apart, so a song comes back as it went out.
+  if (head.length > 0 && body.length > 0) {
+    head.push('');
+  }
   const out = [...head, ...body];
   tally.ambiguous = ambiguous.map((index) => index + head.length + 1);
   tally.linesOut = out.length;

@@ -6,6 +6,7 @@ export { ImportInboxPanel } from './import-inbox-panel';
 export { ImportDialog } from './import-dialog';
 export { PrintOptionsStore } from './print-options-store';
 export {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   DEFAULT_DEVICE_PRINT_OPTIONS,
@@ -15,6 +16,7 @@ export {
   toSongbookPrint,
 } from './transfer-model';
 export type {
+  ChordProFormat,
   DataFormat,
   DevicePrintOptions,
   DownloadChoice,

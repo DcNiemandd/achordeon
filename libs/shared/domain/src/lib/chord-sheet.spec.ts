@@ -189,7 +189,7 @@ describe('ChordPro metadata', () => {
       '{artist: Traditional}',
       'Words',
     ]);
-    expect(s.content).toBe('* Wild Mountain Thyme\n** Traditional\nWords\n');
+    expect(s.content).toBe('* Wild Mountain Thyme\n** Traditional\n\nWords\n');
     expect(s.name).toBe('Wild Mountain Thyme – Traditional');
     expect(s.report.directives.converted).toBe(2);
   });
@@ -200,30 +200,36 @@ describe('ChordPro metadata', () => {
 
   it('prints a subtitle over the artist, but still names the song after the artist', () => {
     const s = song(['{t: A}', '{st: B}', '{artist: C}', 'Words']);
-    expect(s.content).toBe('* A\n** B\nWords\n');
+    expect(s.content).toBe('* A\n** B\n\nWords\n');
     expect(s.name).toBe('A – C');
   });
 
   it('puts key and capo on one plain line under the title', () => {
     expect(song(['{t: A}', '{key: G}', '{capo: 2}', 'Words']).content).toBe(
-      '* A\nKey G, Capo 2\nWords\n',
+      '* A\nKey G, Capo 2\n\nWords\n',
     );
   });
 
   it('drops the rest of the metadata and names what it dropped', () => {
     const s = song(['{t: A}', '{album: X}', '{tempo: 90}', '{album: Y}', 'W']);
-    expect(s.content).toBe('* A\nW\n');
+    expect(s.content).toBe('* A\n\nW\n');
     expect(s.report.directives.dropped).toEqual(['album', 'tempo']);
   });
 
   it('takes the title and artist it is given where the sheet has none', () => {
     const s = song(['{key: G}', 'Words'], { title: 'X', artist: 'Y' });
-    expect(s.content).toBe('* X\n** Y\nKey G\nWords\n');
+    expect(s.content).toBe('* X\n** Y\nKey G\n\nWords\n');
     expect(s.name).toBe('X – Y');
   });
 
   it('prefers the sheet’s own title to the one it is given', () => {
     expect(song(['{t: Own}', 'Words'], { title: 'Given' }).name).toBe('Own');
+  });
+
+  it('sets the title lines off from the words with a blank line, as songs are written', () => {
+    expect(song(['{t: A}', '{st: B}', '{key: G}', '', 'Words']).content).toBe(
+      '* A\n** B\nKey G\n\nWords\n',
+    );
   });
 
   it('names nothing when nothing names the song', () => {
@@ -286,13 +292,13 @@ describe('ChordPro sections', () => {
 
   it('escapes what would otherwise read as a label or a title', () => {
     expect(content(['{t: A}', 'Narrator: hello', '*star'])).toBe(
-      '* A\nNarrator\\: hello\n\\*star\n',
+      '* A\n\nNarrator\\: hello\n\\*star\n',
     );
   });
 
   it('still folds chord rows found in a ChordPro file', () => {
     expect(content(['{t: A}', 'Am     F', 'Some words'])).toBe(
-      '* A\n[Am]Some wo[F]rds\n',
+      '* A\n\n[Am]Some wo[F]rds\n',
     );
   });
 });
@@ -321,7 +327,7 @@ describe('the dialect', () => {
   it('applies the guess when no dialect is chosen', () => {
     const sheet = converted('{t: A}\n[Ami]Words\n');
     expect(sheet.dialect).toBe('german');
-    expect(sheet.songs[0].content).toBe('* A\n[Am]Words\n');
+    expect(sheet.songs[0].content).toBe('* A\n\n[Am]Words\n');
   });
 
   it('rewrites German note names into English', () => {
@@ -330,7 +336,7 @@ describe('the dialect', () => {
       { dialect: 'german' },
     );
     expect(sheet.songs[0].content).toBe(
-      '* A\n[Bb]a [B]b [F#]c [C#]d [Eb]e [Ab]f [Bm]g [Em7]h [D/B]i\n',
+      '* A\n\n[Bb]a [B]b [F#]c [C#]d [Eb]e [Ab]f [Bm]g [Em7]h [D/B]i\n',
     );
     expect(sheet.songs[0].report.respelled).toBe(9);
   });
@@ -339,7 +345,7 @@ describe('the dialect', () => {
     expect(
       converted('{t: A}\n[Asus4]a [Cmaj7]b [Amin]c\n', { dialect: 'german' })
         .songs[0].content,
-    ).toBe('* A\n[Asus4]a [Cmaj7]b [Amin]c\n');
+    ).toBe('* A\n\n[Asus4]a [Cmaj7]b [Amin]c\n');
   });
 
   it('rewrites the chords it folds from rows too', () => {
@@ -356,7 +362,7 @@ describe('the dialect', () => {
   it('touches nothing when the person says English', () => {
     expect(
       converted('{t: A}\n[B]a [H]b\n', { dialect: 'english' }).songs[0].content,
-    ).toBe('* A\n[B]a [H]b\n');
+    ).toBe('* A\n\n[B]a [H]b\n');
   });
 });
 
@@ -379,11 +385,13 @@ describe('a sheet holding several songs', () => {
   });
 
   it('keeps each song’s Content to itself', () => {
-    expect(sheet().songs[1].content).toBe('* Two\nOther\n');
+    expect(sheet().songs[1].content).toBe('* Two\n\nOther\n');
   });
 
   it('joins every song into one Content, a blank line apart', () => {
-    expect(sheet().content).toBe('* One\nWords\n\n* Two\nOther\n\n* Three\n');
+    expect(sheet().content).toBe(
+      '* One\n\nWords\n\n* Two\n\nOther\n\n* Three\n',
+    );
   });
 
   it('makes no draft out of an empty section', () => {
@@ -397,7 +405,7 @@ describe('a sheet holding several songs', () => {
     const songs = converted(
       ['{t: One}', 'Words', '{ns}', '{t: Two}', 'F', 'slova'].join('\n'),
     ).songs;
-    expect(songs[1].report.ambiguous).toEqual([2]);
+    expect(songs[1].report.ambiguous).toEqual([3]);
   });
 });
 
@@ -450,6 +458,7 @@ describe('ChordPro out', () => {
     const content = [
       '* A',
       '** B',
+      '',
       '1.: [Am]Some words[F] here',
       'more [C]lines',
       '',
@@ -482,7 +491,7 @@ describe('how a chord-rows sheet numbers and indents its verses', () => {
 
   it('leaves the numbering of a ChordPro sheet as written', () => {
     expect(converted('{t: A}\n1. Words\n').songs[0].content).toBe(
-      '* A\n1. Words\n',
+      '* A\n\n1. Words\n',
     );
   });
 });
@@ -524,7 +533,7 @@ describe('German chords written in English', () => {
 
 describe('Achordeon’s own metadata in ChordPro', () => {
   const song = {
-    content: '* A\nWords\n',
+    content: '* A\n\nWords\n',
     name: 'A – B',
     settings: { columns: 2, chordColor: '#cc0000', aspectRatio: '2' },
   };
@@ -548,7 +557,7 @@ describe('Achordeon’s own metadata in ChordPro', () => {
     const [draft] = converted(toChordPro([song], theory)).songs;
     expect(draft.name).toBe('A – B');
     expect(draft.settings).toEqual(song.settings);
-    expect(draft.content).toBe('* A\nWords\n');
+    expect(draft.content).toBe('* A\n\nWords\n');
     expect(draft.report.directives.dropped).toEqual([]);
   });
 

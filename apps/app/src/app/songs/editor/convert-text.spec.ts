@@ -26,7 +26,7 @@ describe('convertText', () => {
   });
 
   it('still reads ChordPro as ChordPro', () => {
-    expect(convertText('{t: A}\n[Ami]Words', theory)).toBe('* A\n[Am]Words');
+    expect(convertText('{t: A}\n[Ami]Words', theory)).toBe('* A\n\n[Am]Words');
   });
 
   it('ends the way the text ended', () => {

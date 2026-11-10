@@ -36,6 +36,7 @@ import {
   type SortChange,
 } from '../shared/song-explorer';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   PrintOptionsStore,
@@ -904,6 +905,15 @@ export class SongbookDetailPresenter {
       // saving it would open the next download on a dialog with no options.
       await this.busy(() =>
         this.exporter.export({ songbookIds: [this._id()] }),
+      );
+      this._isDownloadOpen.set(false);
+      return;
+    }
+    if (format === CHORDPRO_FORMAT) {
+      // The book's songs, in book order, for another app (plan Q50). Not
+      // remembered either — it is not a statement about paper.
+      await this.busy(() =>
+        this.exporter.exportChordPro({ songbookIds: [this._id()] }),
       );
       this._isDownloadOpen.set(false);
       return;

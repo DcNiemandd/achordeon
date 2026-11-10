@@ -204,8 +204,8 @@ describe('ImportInbox', () => {
         ),
       ]);
       expect(preview(inbox)).toEqual([
-        { name: 'One – A', content: '* One\n** A\n[Am]Words\n' },
-        { name: 'Two', content: '* Two\nMore\n' },
+        { name: 'One – A', content: '* One\n** A\n\n[Am]Words\n' },
+        { name: 'Two', content: '* Two\n\nMore\n' },
       ]);
     });
 

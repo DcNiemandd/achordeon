@@ -106,7 +106,7 @@ describe('ChordPro directives', () => {
       ),
       {},
     );
-    assert.equal(text, '* Wild Mountain Thyme\n** Traditional\nWords\n');
+    assert.equal(text, '* Wild Mountain Thyme\n** Traditional\n\nWords\n');
     assert.equal(report.directives.converted, 2);
   });
 

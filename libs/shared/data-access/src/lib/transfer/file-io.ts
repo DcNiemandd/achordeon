@@ -20,6 +20,9 @@ export const ACHORDEON_MIME = 'application/vnd.achordeon+json';
  * every file already exported is one — but this is what Export writes. */
 export const ACHORDEON_EXTENSION = '.achordeon';
 
+/** A ChordPro file — what other chord apps read (plan Q51). */
+export const CHORDPRO_EXTENSION = '.cho';
+
 /** Guess at the picker's file-type hint from the extension. */
 function mimeFor(filename: string, given: string): string {
   if (given) return given;
@@ -27,6 +30,7 @@ function mimeFor(filename: string, given: string): string {
   return (
     {
       [ACHORDEON_EXTENSION]: ACHORDEON_MIME,
+      [CHORDPRO_EXTENSION]: 'text/plain',
       '.json': 'application/json',
       '.pdf': 'application/pdf',
       '.png': 'image/png',

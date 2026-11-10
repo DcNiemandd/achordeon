@@ -23,6 +23,7 @@ import {
 import type { SongRow } from '../shared/song-explorer';
 import { ListScrollMemory, UiStore } from '../shared/layout';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   PrintOptionsStore,
@@ -728,6 +729,15 @@ export class SongbooksPresenter {
       // Not saved to the print options — see the detail presenter: taking the
       // data file once is not a statement about paper.
       await this.busy(() => this.exporter.export({ songbookIds: [id] }));
+      this._downloadId.set(null);
+      return;
+    }
+    if (format === CHORDPRO_FORMAT) {
+      // The book's songs, in book order, for another app (plan Q50). Not
+      // remembered either — it is not a statement about paper.
+      await this.busy(() =>
+        this.exporter.exportChordPro({ songbookIds: [id] }),
+      );
       this._downloadId.set(null);
       return;
     }
