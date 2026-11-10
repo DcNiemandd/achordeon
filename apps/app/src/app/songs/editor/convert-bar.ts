@@ -82,6 +82,9 @@ import { Button, Icon, Tooltip } from '../../primitives';
     }
     .bar {
       pointer-events: auto;
+      inline-size: fit-content;
+      max-inline-size: 100%;
+      margin-inline: auto;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -96,7 +99,7 @@ import { Button, Icon, Tooltip } from '../../primitives';
       color: var(--text);
     }
     .message {
-      flex: 1 1 12rem;
+      flex: 0 1 auto;
     }
     .actions {
       display: flex;
