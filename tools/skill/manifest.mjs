@@ -22,7 +22,7 @@ export const bundlePath = resolve(repoRoot, 'dist/skill/_domain.mjs');
  * two implementations, so the scripts that ship are the scripts that were tested
  * and there is no packaging rewrite in between to get wrong.
  *
- * `to-achordeon.mjs` and `_domain-core.mjs` are NOT here: they are inside the
+ * `_domain-core.mjs` is NOT here: it is inside the
  * bundle already, and a second copy on disk could be edited into disagreeing
  * with it.
  */

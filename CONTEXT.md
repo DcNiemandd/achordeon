@@ -73,7 +73,19 @@ A global per-Song flag (the same everywhere the Song appears). Sortable in the S
 
 ## Import dialog
 
-Where an Import starts: one row per way in — an Achordeon file, a ChordPro or chord-sheet file, or a songbook website. The last opens its own dialog. A dropped file or an opened Share link skips it and goes straight to the import preview.
+Where an Import starts: one row per way in — an Achordeon file, a Chord sheet file, or a Song site. The last opens its own dialog. A dropped file or an opened Share link skips it and goes straight to the import preview.
+
+## Chord sheet
+
+A song written outside Achordeon that carries chords: the thing a paste, a file or a Song site brings in, and that conversion turns into Content. It comes in two formats: **ChordPro** (`{directives}` and inline `[C]`) and **chord rows** (each row of chords sitting above the words it belongs to). Text with chords in neither shape is not a chord sheet; it comes in as written.
+
+## Song draft
+
+A Song's name and Content before it exists in the library: no id, nothing saved. What a converted Chord sheet yields, and what an Import, the Song preview or a paste carries until something saves it.
+
+## Dialect
+
+The note names a Chord sheet was **written** in: English, or German (`H` for B natural, `B` for B♭, `Fis`, `mi`). A person confirms it when the sheet is converted; Content is always English afterwards, so the dialect is never stored. Not the same thing as _notation_, the render setting that decides how the page **spells** chords.
 
 ## Song site
 
@@ -252,7 +264,7 @@ The third way to take something away, beside Download and Export, and the only o
 
 Bringing Songs/Songbooks back in.
 
-- Accepts **ChordPro and chord-sheet** files (chords in a row above the words). They carry no id, so every Song in one is new; a file holding several songs brings in several.
+- Accepts **Chord sheet** files, in either format. They carry no id, so every Song in one is new; a file holding several songs brings in several.
 - Accepts Exported (JSON) files and, as a nice-to-have, **Downloaded** files that still carry their embedded metadata. Re-import of downloads is a QOL "more backups for the user" feature — counted on but may be dropped if costly. Editing a downloaded file can strip its metadata, breaking re-import.
 - **Song import conflict** — import a Song if missing; on conflict the user chooses to keep the existing one or re-import the incoming one under a different uuid/name (replace / ignore / create-new).
 - **Songbook import** — always creates a new Songbook, even on name collision.
