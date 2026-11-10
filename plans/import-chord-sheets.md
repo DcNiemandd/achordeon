@@ -44,6 +44,7 @@ Recorded in `docs/adr/0019-song-sites-live-behind-the-proxy.md`.
 | Q21 | The song-site row is always shown. Offline it is disabled with a tooltip. Signed-out users can use it (anon key). |
 | Q22 | Files: one *English / German* control at the top of the Import preview for the whole import. It only appears when the import holds converted files, and is pre-set to German if any file looks German. |
 | Q23 | `.txt`/`.crd`/`.cho` decode as UTF-8, falling back to windows-1250. No encoding picker. |
+| Q25 | A pasted multi-song ChordPro is converted into **one** Content, with all songs joined. Splitting into several Songs is what file import is for. |
 | Q24 | ChordPro metadata on import: `{title}`→`*`, `{subtitle}`→`**`. With no subtitle, `{artist}`→`**`. Song Name "Title – Artist". `{key}`/`{capo}` → one plain line at the top. Everything else is dropped. On export: `{title}`/`{subtitle}` only. No new Song fields. |
 
 ## Detection — "looks like a chord sheet"
@@ -88,6 +89,35 @@ with their tests as spec files. Add the following to the same conversion:
 Add the reverse direction as well: Achordeon → ChordPro (Q13). The skill's
 `_domain-core.mjs` then takes the conversion from the domain the way it already
 takes `parse`, and the old `.mjs` scripts go away.
+
+**Interface shape** (chosen 2026-11-10 out of four designs; naming is yours):
+
+- **One convert function, used by every inbound caller**: paste bar, file
+  import, Song site preview and the skill. It takes the foreign text, the
+  injected theory and optional choices: dialect (omitted → use the guess),
+  format (omitted → detect; the Song site passes its own), and a fallback title
+  and artist (used only where the text has none). It returns one of two kinds:
+  - **not a chord sheet**: the type forces every caller to handle this case.
+  - **converted**: carries
+    - the format found
+    - the dialect applied
+    - the guessed dialect (always present, for pre-setting a toggle)
+    - the whole input as **one** Content (for paste and preview, Q25)
+    - the **songs** split on `{new_song}` (for file import), each a **draft**
+      (name + Content, no id, timestamps or cache) with its own report
+- **A toggle flip calls the function again** with the chosen dialect. Nothing is
+  cached and nothing is kept between calls.
+- **The report** has counts, line numbers and directive names only. Its type has
+  no field that can hold lyric text.
+- **Reuse the existing `ChordNotation` type** (`chords.ts`) for the dialect. Do
+  not add a second English/German type.
+- **One export function**: drafts/Contents in, one `.cho` text out. It takes
+  the theory and reads titles, labels and `[[ ]]` through the real `parse`
+  (ADR-0005), never a second hand-written grammar.
+- **Not chosen:** a public intermediate sheet model (it widens the contract and
+  makes lyric text public), a registry of format plug-ins (only one format goes
+  both ways), and a separate examine step (the single call already returns the
+  guess).
 
 *Done when:* the domain specs cover every row of Q8/Q13/Q24 and the detection
 cases, and the `song-from-text` skill still produces the same output on its
