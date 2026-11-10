@@ -1,4 +1,4 @@
-// Import dialog — Epic 7 ▸ subtask 3
+// Import preview (CONTEXT.md §Import preview) — Epic 7 ▸ subtask 3
 // Spec: PRD-INFRASTRUCTURE.md §8 (songs replace / ignore / create-new, + import
 // all as new with a date prefix; songbooks always create new)
 //
@@ -26,13 +26,13 @@ import type {
 const NAMED_CONFLICTS = 5;
 
 @Component({
-  selector: 'app-import-dialog',
+  selector: 'app-import-preview-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, Dialog, Icon],
   template: `
     <app-dialog
       [title]="title"
-      data-testid="import-dialog"
+      data-testid="import-preview-dialog"
       (closed)="closed.emit()"
     >
       <p class="summary" data-testid="import-summary">{{ summary() }}</p>
@@ -208,7 +208,7 @@ const NAMED_CONFLICTS = 5;
     }
   `,
 })
-export class ImportDialog {
+export class ImportPreviewDialog {
   readonly preview = input.required<ImportPreview>();
   /** How many more files are queued behind this one. Several dropped at once are
    * previewed one after another — `planImport` computes conflicts against the

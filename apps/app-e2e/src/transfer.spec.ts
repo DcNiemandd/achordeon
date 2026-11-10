@@ -292,7 +292,7 @@ test.describe('export & import', () => {
     });
 
     await expect(page.getByTestId('import-error-dialog')).toBeVisible();
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await page.getByTestId('import-error-close').click();
     await expect(
       page.getByTestId('song-row').filter({ hasText: 'Alpha' }),

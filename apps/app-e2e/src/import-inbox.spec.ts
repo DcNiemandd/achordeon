@@ -93,7 +93,7 @@ test.describe('a link carrying a song', () => {
     // boot — the PWA already open, or a URL pasted into the address bar. A
     // one-shot read of `location.hash` at startup would catch only the other one.
     await freshLibrary(page);
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
 
     await page.goto(`songs${linkFragment(envelope('Pasted'))}`);
     await expect(page.getByTestId('import-summary')).toBeVisible();
@@ -119,7 +119,7 @@ test.describe('a link carrying a song', () => {
     await expect(row(page, 'Once')).toHaveCount(1);
 
     await page.reload();
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Once')).toHaveCount(1);
   });
 
@@ -128,7 +128,7 @@ test.describe('a link carrying a song', () => {
     await page.goto(`songs${linkFragment(envelope('Declined'))}`);
     await page.getByTestId('import-cancel').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Declined')).toHaveCount(0);
   });
 
@@ -246,7 +246,7 @@ test.describe('a file dropped on the page', () => {
     await page.getByTestId('import-confirm').click();
     // The dialog closes when the write is done — navigating before that would
     // abandon it mid-flight, which is a race in the test rather than in the app.
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
 
     // Always Import, never Restore: a dropped file is someone handing you songs.
     await page.goto('songs');
@@ -266,7 +266,7 @@ test.describe('a file dropped on the page', () => {
     await expect(page.getByTestId('import-summary')).toBeVisible();
     await page.getByTestId('import-confirm').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'First')).toHaveCount(1);
     await expect(row(page, 'Second')).toHaveCount(1);
   });
@@ -302,7 +302,7 @@ test.describe('a file dropped on the page', () => {
     await expect(page.getByTestId('import-cancel-all')).toHaveText(/2/);
     await page.getByTestId('import-cancel-all').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Keep')).toHaveCount(1);
     await expect(row(page, 'Skip')).toHaveCount(0);
     await expect(row(page, 'Never')).toHaveCount(0);
