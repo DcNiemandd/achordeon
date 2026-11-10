@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  signal,
   viewChild,
 } from '@angular/core';
 import { Button, Dialog, Icon, Tooltip } from '../primitives';
@@ -28,7 +29,7 @@ import {
   toExplorerSortDir,
   type ExplorerSort,
 } from '../shared/song-explorer';
-import { DownloadDialog, ImportPanel } from '../shared/transfer';
+import { DownloadDialog, ImportDialog } from '../shared/transfer';
 import { SongsPresenter, type PendingDelete } from './songs.presenter';
 
 /**
@@ -56,7 +57,7 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
     SelectionStatus,
     SongRender,
     DownloadDialog,
-    ImportPanel,
+    ImportDialog,
     Button,
     Dialog,
     Icon,
@@ -142,8 +143,8 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
             </button>
 
             <!-- Import takes no selection, so it is the one transfer control
-                 that is never disabled. It opens the shared import panel's file
-                 picker; the panel owns the file input and the dialogs.
+                 that is never disabled. It opens the Import dialog, whose rows hold
+                 the file pickers; the preview belongs to the shell.
 
                  It wears the **mirror of Download's glyph** — one tray with the
                  arrow up, one with it down — because now that Download covers
@@ -157,7 +158,7 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
               [attr.aria-label]="importLabel"
               [appTooltip]="importLabel"
               data-testid="songs-import"
-              (click)="importPanel.pick()"
+              (click)="isImportOpen.set(true)"
             >
               <app-icon name="import" />
             </button>
@@ -234,14 +235,15 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
       />
     }
 
-    <!-- Just the file input; the Import button above opens its picker. The
-         preview and error dialogs belong to the shell, because a drop or a link
+    <!-- The Import dialog: one row per way in (plan phase 3, Q3). The preview
+         and error dialogs still belong to the shell, because a drop or a link
          can arrive with no page to own them (plan §7). -->
-    <app-import-panel
-      #importPanel
-      inputTestid="songs-import-input"
-      (picked)="presenter.readImport($event)"
-    />
+    @if (isImportOpen()) {
+      <app-import-dialog
+        (picked)="onImportPicked($event)"
+        (closed)="isImportOpen.set(false)"
+      />
+    }
 
     @if (presenter.pendingDelete(); as pending) {
       <app-dialog
@@ -365,6 +367,14 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
   `,
 })
 export class SongsPage {
+  /** The Import dialog, open until a file is chosen or it is closed. */
+  protected readonly isImportOpen = signal(false);
+
+  protected onImportPicked(files: readonly File[]): void {
+    this.isImportOpen.set(false);
+    this.presenter.readImport(files);
+  }
+
   protected readonly ui = inject(UiStore);
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongsPresenter);

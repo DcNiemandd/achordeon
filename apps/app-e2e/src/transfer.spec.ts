@@ -19,6 +19,15 @@ import { createSong } from './create-song';
 
 const ROOMY = { width: 1440, height: 900 };
 
+/**
+ * The Achordeon-file picker, reached the way a person reaches it: the page's
+ * Import button opens the Import dialog, whose first row holds the picker.
+ */
+async function achordeonFileInput(page: Page, from: 'songs' | 'songbooks') {
+  await page.getByTestId(`${from}-import`).click();
+  return page.getByTestId('import-achordeon-input');
+}
+
 /** A word from the starter content — what a rendered song must actually say. */
 const TUTORIAL_WORD = 'brackets';
 
@@ -231,7 +240,9 @@ test.describe('export & import', () => {
     await freshLibrary(page);
     await expect(page.getByTestId('song-row')).toHaveCount(0);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -248,7 +259,9 @@ test.describe('export & import', () => {
     await createSong(page, 'Alpha');
     const file = await exportFromBar(page);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -268,7 +281,9 @@ test.describe('export & import', () => {
     await createSong(page, 'Alpha');
     const file = await exportFromBar(page);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -285,7 +300,9 @@ test.describe('export & import', () => {
     page,
   }) => {
     await createSong(page, 'Alpha');
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'notes.json',
       mimeType: 'application/json',
       buffer: Buffer.from('{"nope":true}'),
@@ -351,7 +368,9 @@ test.describe('import across modules', () => {
     // resolves to the default (replace).
     await page.getByTestId('rail-songs').click();
     await expect(page).toHaveURL(/\/songs(\?|$)/);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'campfire.json',
       mimeType: 'application/json',
       buffer: file,
@@ -373,7 +392,9 @@ test.describe('import across modules', () => {
     await page.goto('songbooks');
     // The Songbooks module has its own Import.
     await expect(page.getByTestId('songbooks-import')).toBeVisible();
-    await page.getByTestId('songbooks-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songbooks')
+    ).setInputFiles({
       name: 'campfire.json',
       mimeType: 'application/json',
       buffer: file,
@@ -475,7 +496,9 @@ test.describe('download a song', () => {
     );
 
     await freshLibrary(page);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'alpha.png',
       mimeType: 'image/png',
       buffer: file,
@@ -702,7 +725,9 @@ test.describe('download a songbook', () => {
     // the song inside it, like every downloaded picture.
     const png = pngFromZip(zip);
     await freshLibrary(page);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: '01-Alpha.png',
       mimeType: 'image/png',
       buffer: png,

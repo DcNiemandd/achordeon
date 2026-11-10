@@ -12,6 +12,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
   viewChild,
 } from '@angular/core';
 import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
@@ -32,7 +33,7 @@ import {
 import { SongbookPreview } from '../shared/songbook-preview';
 import { SongbookPrintFields } from '../shared/songbook-print-fields';
 import { SongOrderFields } from '../shared/song-order-fields';
-import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
+import { ImportDialog, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
@@ -52,7 +53,7 @@ import {
     SongbookPrintFields,
     SongOrderFields,
     SongbookDownloadDialog,
-    ImportPanel,
+    ImportDialog,
     SettingsPanel,
     Button,
     Dialog,
@@ -92,7 +93,7 @@ import {
             [attr.aria-label]="importLabel"
             [appTooltip]="importLabel"
             data-testid="songbooks-import"
-            (click)="importPanel.pick()"
+            (click)="isImportOpen.set(true)"
           >
             <app-icon name="import" />
           </button>
@@ -286,14 +287,15 @@ import {
       </app-dialog>
     }
 
-    <!-- Just the file input; the Import button above opens its picker. The
-         preview and error dialogs belong to the shell, because a drop or a link
+    <!-- The Import dialog: one row per way in (plan phase 3, Q3). The preview
+         and error dialogs still belong to the shell, because a drop or a link
          can arrive with no page to own them (plan §7). -->
-    <app-import-panel
-      #importPanel
-      inputTestid="songbooks-import-input"
-      (picked)="presenter.readImport($event)"
-    />
+    @if (isImportOpen()) {
+      <app-import-dialog
+        (picked)="onImportPicked($event)"
+        (closed)="isImportOpen.set(false)"
+      />
+    }
   `,
   styles: `
     :host {
@@ -390,6 +392,14 @@ import {
   `,
 })
 export class SongbooksPage {
+  /** The Import dialog, open until a file is chosen or it is closed. */
+  protected readonly isImportOpen = signal(false);
+
+  protected onImportPicked(files: readonly File[]): void {
+    this.isImportOpen.set(false);
+    this.presenter.readImport(files);
+  }
+
   protected readonly ui = inject(UiStore);
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbooksPresenter);

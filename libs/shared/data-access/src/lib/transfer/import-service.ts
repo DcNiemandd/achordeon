@@ -12,7 +12,10 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  ChordTheory,
+  SCHEMA_VERSION,
   applyImport,
+  convertChordSheet,
   migrate,
   planImport,
   type ImportChoices,
@@ -26,7 +29,6 @@ import { BODY_FONT, type FontCatalog } from '@achordeon/shared/render-core';
 import { BootGate } from '../persistence/boot-gate';
 import { ParserService } from '../parser/parser-service';
 import { SONGBOOK_REPOSITORY, SONG_REPOSITORY } from '../stores/repositories';
-import { readTextFile } from './file-io';
 import { readEmbeddedSnapshot } from './embedded-metadata';
 import { normalise, type InboundEnvelope } from './normalise';
 
@@ -56,6 +58,7 @@ export class ImportService {
   /** Only ever to re-derive `Song.cache`, which is derived state and never
    * believed off a file (ADR-0014). */
   private readonly parser = inject(ParserService);
+  private readonly theory = inject(ChordTheory);
 
   /**
    * A picked file as a migrated envelope.
@@ -72,9 +75,11 @@ export class ImportService {
    * to update is only fair if the app then offers to (PRD-INFRASTRUCTURE.md §11).
    */
   async read(file: Blob): Promise<ImportSource> {
-    const raw =
-      (await readEmbeddedSnapshot(file)) ?? (await readTextFile(file));
-    const parsed = this.parse(raw);
+    const embedded = await readEmbeddedSnapshot(file);
+    const parsed =
+      embedded !== null
+        ? this.parse(embedded)
+        : this.parseText(file, decodeText(await file.arrayBuffer()));
     const { snapshot, status } = migrate(parsed);
     if (status === 'refuse') {
       this.boot.refuseIngest();
@@ -193,13 +198,56 @@ export class ImportService {
    * which every inbound path still runs (ADR-0007).
    */
   private parse(raw: string): SnapshotEnvelope {
-    let value: unknown;
-    try {
-      value = JSON.parse(raw);
-    } catch {
-      throw new ImportError('unreadable');
-    }
+    const value = parseJson(raw);
     if (!isEnvelope(value)) throw new ImportError('unreadable');
+    return this.normalised(value);
+  }
+
+  /**
+   * A file read as text: an Achordeon file if it is one, otherwise a Chord sheet
+   * file (plan phase 3, Q44) — which becomes the shortest hand-written envelope,
+   * `{ songs: [{ name, content }] }`, and goes through the same gate as any
+   * other (ADR-0014). Every song in it is new: a sheet carries no id.
+   */
+  private parseText(file: Blob, text: string): SnapshotEnvelope {
+    const value = parseJson(text);
+    if (isEnvelope(value)) return this.normalised(value);
+    const songs = this.chordSheetSongs(file, text);
+    if (songs === null) throw new ImportError('unreadable');
+    return this.normalised({
+      schemaVersion: SCHEMA_VERSION,
+      data: { songs, songbooks: [] },
+    } as InboundEnvelope);
+  }
+
+  /**
+   * The songs a Chord sheet file holds, or null when the file is not one.
+   *
+   * Only a file named like one is read this way — a nameless blob (a link's
+   * payload) or a `.jpg` that failed as JSON is still not ours. A `.txt` with no
+   * chords in it is the words it holds, brought in as written.
+   */
+  private chordSheetSongs(
+    file: Blob,
+    text: string,
+  ): { name: string; content: string }[] | null {
+    const fileName = file instanceof File ? file.name : '';
+    const dot = fileName.lastIndexOf('.');
+    const extension = dot === -1 ? '' : fileName.slice(dot).toLowerCase();
+    if (!CHORD_SHEET_EXTENSIONS.has(extension)) return null;
+    const stem = fileName.slice(0, dot).trim() || fileName;
+
+    const sheet = convertChordSheet(text, this.theory);
+    if (sheet.kind !== 'converted') {
+      return [{ name: stem, content: text }];
+    }
+    return sheet.songs.map((song, i) => ({
+      name: song.name ?? (sheet.songs.length > 1 ? `${stem} (${i + 1})` : stem),
+      content: song.content,
+    }));
+  }
+
+  private normalised(value: InboundEnvelope): SnapshotEnvelope {
     return normalise(value, {
       newId: () => crypto.randomUUID(),
       now: Date.now(),
@@ -208,6 +256,36 @@ export class ImportService {
         return { title: ast.title ?? '', subtitle: ast.subtitle ?? '' };
       },
     });
+  }
+}
+
+/** The file types read as a Chord sheet (plan phase 3, Q44). */
+export const CHORD_SHEET_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.cho',
+  '.chordpro',
+  '.crd',
+  '.pro',
+  '.txt',
+]);
+
+/**
+ * A file's bytes as text: UTF-8 when they are UTF-8, else windows-1250 — the
+ * encoding older Czech `.txt` and `.crd` files were saved in (Q23). No picker:
+ * a byte sequence that is not valid UTF-8 is not an English file.
+ */
+function decodeText(bytes: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('windows-1250').decode(bytes);
+  }
+}
+
+function parseJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
   }
 }
 

@@ -187,4 +187,65 @@ describe('ImportInbox', () => {
     await inbox.confirm({ resolution: 'replace' });
     expect(inbox.writes()).toBe(before + 1);
   });
+
+  describe('a Chord sheet file', () => {
+    const named = (name: string, ...parts: BlobPart[]) => new File(parts, name);
+    const preview = (inbox: ImportInbox) =>
+      inbox
+        .item()
+        ?.plan.songs.map((s) => ({ name: s.name, content: s.content }));
+
+    it('brings in every song of a ChordPro file, named after it', async () => {
+      const { inbox } = setup();
+      await inbox.offer([
+        named(
+          'set.cho',
+          '{title: One}\n{artist: A}\n[Am]Words\n{new_song}\n{title: Two}\nMore\n',
+        ),
+      ]);
+      expect(preview(inbox)).toEqual([
+        { name: 'One – A', content: '* One\n** A\n[Am]Words\n' },
+        { name: 'Two', content: '* Two\nMore\n' },
+      ]);
+    });
+
+    it('converts chord rows into English, named after the file', async () => {
+      const { inbox } = setup();
+      await inbox.offer([
+        named(
+          'Kabát - Pohoda.txt',
+          'Ami     H7\nSome words\nC       G\nMore words\n',
+        ),
+      ]);
+      expect(preview(inbox)).toEqual([
+        {
+          name: 'Kabát - Pohoda',
+          content: '[Am]Some wor[B7]ds\n[C]More wor[G]ds\n',
+        },
+      ]);
+    });
+
+    it('brings in a text file with no chords as the words it holds', async () => {
+      const { inbox } = setup();
+      await inbox.offer([named('lyrics.txt', 'Just words\nAnd more\n')]);
+      expect(preview(inbox)).toEqual([
+        { name: 'lyrics', content: 'Just words\nAnd more\n' },
+      ]);
+    });
+
+    it('reads a file saved in the old Czech Windows encoding', async () => {
+      const { inbox } = setup();
+      // "kůň" in windows-1250: not valid UTF-8.
+      await inbox.offer([
+        named('stary.txt', new Uint8Array([0x6b, 0xf9, 0xf2, 0x0a])),
+      ]);
+      expect(preview(inbox)).toEqual([{ name: 'stary', content: 'kůň\n' }]);
+    });
+
+    it('still turns away a file of no kind it knows', async () => {
+      const { inbox } = setup();
+      await inbox.offer([named('photo.jpg', 'nonsense')]);
+      expect(inbox.failure()).toBe('unreadable');
+    });
+  });
 });

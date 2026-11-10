@@ -3,7 +3,7 @@ export { SongbookDownloadDialog } from './songbook-download-dialog';
 export { ImportPreviewDialog } from './import-preview-dialog';
 export { ImportDropOverlay } from './import-drop-overlay';
 export { ImportInboxPanel } from './import-inbox-panel';
-export { ImportPanel } from './import-panel';
+export { ImportDialog } from './import-dialog';
 export { PrintOptionsStore } from './print-options-store';
 export {
   DATA_FORMAT,
