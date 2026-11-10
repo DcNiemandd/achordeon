@@ -1,0 +1,3 @@
+# Recorded upstream responses, kept byte for byte: the RSC parser reads text
+# rows by byte length, so a CRLF checkout would break the tests.
+supabase/functions/song-sites/fixtures/** -text
