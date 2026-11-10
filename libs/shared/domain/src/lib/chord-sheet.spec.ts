@@ -521,3 +521,50 @@ describe('German chords written in English', () => {
     );
   });
 });
+
+describe('Achordeon’s own metadata in ChordPro', () => {
+  const song = {
+    content: '* A\nWords\n',
+    name: 'A – B',
+    settings: { columns: 2, chordColor: '#cc0000', aspectRatio: '2' },
+  };
+
+  it('writes the name and every setting as x_achordeon directives', () => {
+    expect(toChordPro([song], theory)).toBe(
+      [
+        '{title: A}',
+        '{x_achordeon_name: A – B}',
+        '{x_achordeon_columns: 2}',
+        '{x_achordeon_chordColor: #cc0000}',
+        '{x_achordeon_aspectRatio: "2"}',
+        '',
+        'Words',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('reads them back into the draft, not into the Content', () => {
+    const [draft] = converted(toChordPro([song], theory)).songs;
+    expect(draft.name).toBe('A – B');
+    expect(draft.settings).toEqual(song.settings);
+    expect(draft.content).toBe('* A\nWords\n');
+    expect(draft.report.directives.dropped).toEqual([]);
+  });
+
+  it('gives a sheet without them no settings', () => {
+    expect(converted('{t: A}\nWords\n').songs[0].settings).toEqual({});
+  });
+
+  it('keeps a setting it does not know, for the import to judge', () => {
+    expect(
+      converted('{t: A}\n{x_achordeon_madeUp: yes}\nWords\n').songs[0].settings,
+    ).toEqual({ madeUp: 'yes' });
+  });
+
+  it('leaves another app’s own directives out', () => {
+    const [draft] = converted('{t: A}\n{x_other_thing: 1}\nWords\n').songs;
+    expect(draft.settings).toEqual({});
+    expect(draft.report.directives.dropped).toEqual(['x_other_thing']);
+  });
+});

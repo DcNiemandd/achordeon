@@ -230,7 +230,7 @@ export class ImportService {
   private chordSheetSongs(
     file: Blob,
     text: string,
-  ): { name: string; content: string }[] | null {
+  ): { name: string; content: string; settings?: object }[] | null {
     const fileName = file instanceof File ? file.name : '';
     const dot = fileName.lastIndexOf('.');
     const extension = dot === -1 ? '' : fileName.slice(dot).toLowerCase();
@@ -244,6 +244,7 @@ export class ImportService {
     return sheet.songs.map((song, i) => ({
       name: song.name ?? (sheet.songs.length > 1 ? `${stem} (${i + 1})` : stem),
       content: song.content,
+      settings: song.settings,
     }));
   }
 

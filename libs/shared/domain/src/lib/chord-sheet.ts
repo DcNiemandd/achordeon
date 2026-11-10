@@ -4,6 +4,7 @@
 import type { Block, ChordAnchor, Line } from './ast';
 import type { ChordNotation } from './chords';
 import { parse } from './parser';
+import type { SongSettings } from './settings';
 import type { ChordTheory } from './theory';
 
 /** The two shapes a Chord sheet comes in. */
@@ -52,6 +53,8 @@ export interface SongDraft {
   /** "Title – Artist", "Title", or null when the sheet names nothing. */
   readonly name: string | null;
   readonly content: string;
+  /** The song's render settings, where the sheet carried Achordeon's own (`x_achordeon_*`). */
+  readonly settings: SongSettings;
   readonly report: ConversionReport;
 }
 
@@ -238,7 +241,10 @@ function isTabRow(line: string): boolean {
 }
 
 interface Directive {
+  /** Lower-cased, the way ChordPro compares directive names. */
   readonly key: string;
+  /** As written: Achordeon's own setting names are camelCase. */
+  readonly rawKey: string;
   readonly value: string;
 }
 
@@ -256,15 +262,16 @@ function directiveOf(line: string): Directive | null {
   if (i === keyStart) {
     return null;
   }
-  const key = text.slice(keyStart, i).toLowerCase();
+  const rawKey = text.slice(keyStart, i);
+  const key = rawKey.toLowerCase();
   while (i < end && WS.has(text[i])) i++;
   if (i === end) {
-    return { key, value: '' };
+    return { key, rawKey, value: '' };
   }
   if (text[i] !== ':') {
     return null;
   }
-  return { key, value: text.slice(i + 1, end).trim() };
+  return { key, rawKey, value: text.slice(i + 1, end).trim() };
 }
 
 const KNOWN_DIRECTIVES = new Set([
@@ -617,6 +624,47 @@ interface SongMeta {
   artist?: string;
   key?: string;
   capo?: string;
+  /** `x_achordeon_name`: the Song name it had in Achordeon. */
+  name?: string;
+}
+
+// --- Achordeon's own metadata ---------------------------------------------
+// ChordPro leaves directives starting `x_` to the app that wrote them, and every
+// other app ignores them. A ChordPro export carries the Song's name and render
+// settings this way, one directive each, so the file reads and edits by hand and
+// one bad value spoils only itself (plan Q45-Q46).
+
+const ACHORDEON_PREFIX = 'x_achordeon_';
+const ACHORDEON_NAME = 'name';
+
+/**
+ * A setting's value as written: a string as itself, anything else as JSON. A
+ * string that would read back as something else (`"2"`, `"true"`) is quoted.
+ */
+function writeSettingValue(value: unknown): string {
+  if (typeof value !== 'string') {
+    return JSON.stringify(value);
+  }
+  return value.includes('\n') || parsesAsJson(value)
+    ? JSON.stringify(value)
+    : value;
+}
+
+function readSettingValue(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function parsesAsJson(raw: string): boolean {
+  try {
+    JSON.parse(raw);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** `{chorus}`, `{chorus: Label}` or `{chorus: R: text}` as one Achordeon block. */
@@ -657,6 +705,7 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
 
   const { lines, rows } = song;
   const meta: SongMeta = {};
+  const settings: Record<string, unknown> = {};
   const body: string[] = [];
   /** Indexes into `body` of the lines left for a human. */
   const ambiguous: number[] = [];
@@ -716,6 +765,13 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
         meta.key = value;
       } else if (key === 'capo' && value) {
         meta.capo = value;
+      } else if (key.startsWith(ACHORDEON_PREFIX) && value) {
+        const setting = d.rawKey.slice(ACHORDEON_PREFIX.length);
+        if (setting === ACHORDEON_NAME) {
+          meta.name = value;
+        } else {
+          settings[setting] = readSettingValue(value);
+        }
       } else if (SECTION_START.test(key)) {
         breakBlock();
         label = value || null;
@@ -809,8 +865,14 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
   const out = [...head, ...body];
   tally.ambiguous = ambiguous.map((index) => index + head.length + 1);
   tally.linesOut = out.length;
-  const name = title ? (artist ? `${title} – ${artist}` : title) : null;
-  return { name, content: `${out.join('\n')}\n`, report: freeze(tally) };
+  const name =
+    meta.name ?? (title ? (artist ? `${title} – ${artist}` : title) : null);
+  return {
+    name,
+    content: `${out.join('\n')}\n`,
+    settings: settings as SongSettings,
+    report: freeze(tally),
+  };
 }
 
 // --- detection ------------------------------------------------------------
@@ -980,8 +1042,15 @@ function chordProBlock(block: Block): string[] {
   return [`{comment: ${label}}`, ...lines];
 }
 
-function chordProSong(content: string, theory: ChordTheory): string {
-  const ast = parse(content, theory);
+/** What a ChordPro export writes for one Song. Name and settings are optional. */
+export interface ChordProSong {
+  readonly content: string;
+  readonly name?: string;
+  readonly settings?: Readonly<Record<string, unknown>>;
+}
+
+function chordProSong(song: ChordProSong, theory: ChordTheory): string {
+  const ast = parse(song.content, theory);
   const head: string[] = [];
   if (ast.title !== undefined) {
     head.push(`{title: ${ast.title}}`);
@@ -989,16 +1058,22 @@ function chordProSong(content: string, theory: ChordTheory): string {
   if (ast.subtitle !== undefined) {
     head.push(`{subtitle: ${ast.subtitle}}`);
   }
+  if (song.name) {
+    head.push(`{${ACHORDEON_PREFIX}${ACHORDEON_NAME}: ${song.name}}`);
+  }
+  for (const [key, value] of Object.entries(song.settings ?? {})) {
+    if (value !== undefined) {
+      head.push(`{${ACHORDEON_PREFIX}${key}: ${writeSettingValue(value)}}`);
+    }
+  }
   const blocks = ast.blocks.map((b) => chordProBlock(b).join('\n'));
   const parts = head.length > 0 ? [head.join('\n'), ...blocks] : blocks;
   return `${parts.join('\n\n')}\n`;
 }
 
 export function toChordPro(
-  songs: readonly { readonly content: string }[],
+  songs: readonly ChordProSong[],
   theory: ChordTheory,
 ): string {
-  return songs
-    .map((song) => chordProSong(song.content, theory))
-    .join('\n{new_song}\n');
+  return songs.map((song) => chordProSong(song, theory)).join('\n{new_song}\n');
 }

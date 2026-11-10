@@ -237,7 +237,7 @@ Producing a JSON file — a small database of Songs/Songbooks "for computers": m
 An Export is offered as two formats, both in the Download dialog's export section:
 
 - **Achordeon file** — the JSON above. Lossless; the only canonical round-trip.
-- **ChordPro file** — a Song's Content in the ChordPro format other apps read. Lossy: render settings stay behind. For handing songs to another program, never for coming back.
+- **ChordPro file** — a Song's Content, name and render settings in the ChordPro format. Other apps read the Content and ignore the rest; Achordeon reads all three back. Still lossy: no id, favourite or songbook membership, so every Song in one comes back as new.
 
 An Export carries **Songs and Songbooks only**. The account row is never written into one and never read out of one: a file is someone handing you songs, not handing you their account. That is what separates an Export from a Snapshot.
 

@@ -242,6 +242,28 @@ describe('ImportInbox', () => {
       expect(preview(inbox)).toEqual([{ name: 'stary', content: 'kůň\n' }]);
     });
 
+    it('brings back the name and settings Achordeon wrote into it', async () => {
+      const { inbox } = setup();
+      await inbox.offer([
+        named(
+          'a.cho',
+          '{title: A}\n{x_achordeon_name: My A}\n{x_achordeon_columns: 2}\nWords\n',
+        ),
+      ]);
+      const [song] = inbox.item()?.plan.songs ?? [];
+      expect(song.name).toBe('My A');
+      expect(song.settings).toEqual({ columns: 2 });
+      expect(inbox.item()?.hasUnknownSettings).toBe(false);
+    });
+
+    it('warns about a setting it does not know, as for any file', async () => {
+      const { inbox } = setup();
+      await inbox.offer([
+        named('a.cho', '{title: A}\n{x_achordeon_madeUp: yes}\nWords\n'),
+      ]);
+      expect(inbox.item()?.hasUnknownSettings).toBe(true);
+    });
+
     it('still turns away a file of no kind it knows', async () => {
       const { inbox } = setup();
       await inbox.offer([named('photo.jpg', 'nonsense')]);
