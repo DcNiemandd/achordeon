@@ -1,0 +1,32 @@
+{
+  "name": "song-sites",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "supabase/functions/song-sites",
+  "tags": ["type:function"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "_comment": "Deno, not Jest: the function is Deno code (jsr: imports, .ts extensions), tested as it runs (plan Q54). The recorded fixtures keep the network out of it.",
+      "cache": true,
+      "inputs": ["{projectRoot}/**/*"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": [
+          "deno check --node-modules-dir=none index.ts",
+          "deno test --allow-read"
+        ],
+        "parallel": false
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["{projectRoot}/**/*"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "deno lint"
+      }
+    }
+  }
+}

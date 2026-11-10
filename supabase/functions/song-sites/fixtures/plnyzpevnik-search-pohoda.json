@@ -1,0 +1,99 @@
+{
+  "results": [
+    {
+      "id": "cmj3im1c50s03nuac1edvk843",
+      "type": "artist",
+      "name": "Pohoda",
+      "slug": "pohoda",
+      "songCount": 43
+    },
+    {
+      "id": "cmj3igsuh0c3pnuacw9whpcpi",
+      "type": "artist",
+      "name": "Tichá dohoda",
+      "slug": "ticha-dohoda",
+      "songCount": 10
+    },
+    {
+      "id": "cmj3ii3re0fy7nuac7xhctzod",
+      "type": "song",
+      "title": "Pohoda",
+      "artist": "Sám Sebou",
+      "artistSlug": "sam-sebou",
+      "songSlug": "pohoda",
+      "views": 51
+    },
+    {
+      "id": "cmj3jht340efxmja4jug0g7u8",
+      "type": "song",
+      "title": "Pohoda",
+      "artist": "E!E",
+      "artistSlug": "e-e",
+      "songSlug": "pohoda",
+      "views": 12
+    },
+    {
+      "id": "cmj3jy2sc0xsfmja4lnytqvme",
+      "type": "song",
+      "title": "Pohoda Vánoc",
+      "artist": "Petr Spálený",
+      "artistSlug": "petr-spaleny",
+      "songSlug": "pohoda-vanoc",
+      "views": 8
+    },
+    {
+      "id": "cmj3ii3sa0fybnuacv2n29ry2",
+      "type": "song",
+      "title": "Pohoda jazz",
+      "artist": "Naty Hrychová",
+      "artistSlug": "naty-hrychova",
+      "songSlug": "pohoda-jazz",
+      "views": 246
+    },
+    {
+      "id": "cmj3hvvrm01zvnuac5b4cs217",
+      "type": "song",
+      "title": "Pohoda",
+      "artist": "Jaroslav Samson Lenk",
+      "artistSlug": "jaroslav-samson-lenk",
+      "songSlug": "pohoda",
+      "views": 32
+    },
+    {
+      "id": "cmj3nhnjs02klpb9hivxz6o6x",
+      "type": "song",
+      "title": "Petřínská pohoda",
+      "artist": "Kopec Šišek",
+      "artistSlug": "kopec-sisek",
+      "songSlug": "petrinska-pohoda",
+      "views": 9
+    },
+    {
+      "id": "cmj3ksx7a1n25mja4ymf9r7q4",
+      "type": "song",
+      "title": "Nám stačí pohoda",
+      "artist": "Žbirka Miroslav",
+      "artistSlug": "zbirka-miroslav",
+      "songSlug": "nam-staci-pohoda",
+      "views": 7
+    },
+    {
+      "id": "cmj3ks2dl1lmfmja4e3e5os3o",
+      "type": "song",
+      "title": "Pohoda punk",
+      "artist": "Kulturní zřízenost",
+      "artistSlug": "kulturni-zrizenost",
+      "songSlug": "pohoda-punk",
+      "views": 2
+    },
+    {
+      "id": "cmj3iydgu076jmja4tqqjsmqm",
+      "type": "song",
+      "title": "Bože to je pohoda",
+      "artist": "Jiri Bures Music",
+      "artistSlug": "jiri-bures-music",
+      "songSlug": "boze-to-je-pohoda",
+      "views": 7
+    }
+  ]
+}
