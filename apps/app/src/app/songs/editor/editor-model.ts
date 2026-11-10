@@ -153,4 +153,6 @@ export interface CaretContext {
    * (PARSER-GRAMMAR §Phase 2), so this is false on the rest of such a line.
    */
   readonly isInsideChord: boolean;
+  /** Something is selected — what the Convert button acts on instead of the song. */
+  readonly hasSelection: boolean;
 }

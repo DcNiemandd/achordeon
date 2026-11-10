@@ -85,7 +85,7 @@ A Song's name and Content before it exists in the library: no id, nothing saved.
 
 ## Dialect
 
-The note names a Chord sheet was **written** in: English, or German (`H` for B natural, `B` for B♭, `Fis`, `mi`). A person confirms it when the sheet is converted; Content is always English afterwards, so the dialect is never stored. Not the same thing as _notation_, the render setting that decides how the page **spells** chords.
+The note names a Chord sheet was **written** in: English, or German (`H` for B natural, `B` for B♭, `Fis`, `mi`). It is read off the sheet's own spelling when the sheet is converted (an `H` or a `mi` says German), never asked and never taken from a setting. Content is always English afterwards, so the dialect is never stored. Not the same thing as _notation_, the render setting that decides how the page **spells** chords.
 
 ## Song site
 

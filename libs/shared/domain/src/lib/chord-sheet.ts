@@ -448,6 +448,69 @@ function looksGerman(token: string): boolean {
   return GERMAN_EVIDENCE.some((re) => re.test(token));
 }
 
+/** One German chord token in English, where that makes it a chord; else as it was. */
+function germanToken(token: string, theory: ChordTheory): string {
+  const english = englishChord(token);
+  return english !== token && theory.parseChord(english) !== null
+    ? english
+    : token;
+}
+
+/**
+ * Rewrite every token inside the line's unescaped brackets with `respell`.
+ * A `\[` is text, and a `[` with no `]` after it opens nothing.
+ */
+function respellBracketsIn(
+  line: string,
+  respell: (token: string) => string,
+): string {
+  let out = '';
+  let i = 0;
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '\\') {
+      out += line.slice(i, i + 2);
+      i += 2;
+      continue;
+    }
+    if (ch === '[') {
+      const close = line.indexOf(']', i + 1);
+      if (close === -1) {
+        return out + line.slice(i);
+      }
+      const inner = line.slice(i + 1, close).replace(/[^\s,[\]]+/g, respell);
+      out += `[${inner}]`;
+      i = close + 1;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Every chord in `content` read as German and written in English: `H` → `B`,
+ * `B` → `Bb`, `Fis` → `F#`, `Es` → `Eb`, `mi` → `m`. Only inside brackets, and
+ * not on a title line, where a bracket is text. The words are not touched.
+ *
+ * For Content already in Achordeon that was typed or pasted in German — the
+ * caller says it is German; nothing here guesses.
+ */
+export function germanChordsToEnglish(
+  content: string,
+  theory: ChordTheory,
+): string {
+  return content
+    .split('\n')
+    .map((line) =>
+      isTitleMarker(line)
+        ? line
+        : respellBracketsIn(line, (token) => germanToken(token, theory)),
+    )
+    .join('\n');
+}
+
 /** Every chord token written inside brackets on a line. */
 function bracketTokens(line: string): string[] {
   const out: string[] = [];
@@ -617,15 +680,12 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
     if (!respell) {
       return line;
     }
-    return line.replace(/\[([^\]]*)\]/g, (_: string, inner: string) => {
-      const english = inner.replace(/[^\s,[\]]+/g, (token: string) => {
-        const next = respell(token);
-        if (next !== token) {
-          tally.respelled++;
-        }
-        return next;
-      });
-      return `[${english}]`;
+    return respellBracketsIn(line, (token) => {
+      const next = respell(token);
+      if (next !== token) {
+        tally.respelled++;
+      }
+      return next;
     });
   };
   const pushLine = (raw: string) => {
@@ -815,14 +875,7 @@ export function convertChordSheet(
     : 'english';
   const dialect = choices.dialect ?? guessedDialect;
   const respell =
-    dialect === 'german'
-      ? (token: string) => {
-          const english = englishChord(token);
-          return english !== token && theory.parseChord(english) !== null
-            ? english
-            : token;
-        }
-      : null;
+    dialect === 'german' ? (token: string) => germanToken(token, theory) : null;
 
   const ctx: SongContext = {
     layoutProven,

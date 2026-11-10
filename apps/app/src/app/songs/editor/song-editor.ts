@@ -255,6 +255,7 @@ export class SongEditor {
   private readonly _caret = signal<CaretContext>({
     lineKind: 'content',
     isInsideChord: false,
+    hasSelection: false,
   });
   readonly caret = this._caret.asReadonly();
 
@@ -269,6 +270,7 @@ export class SongEditor {
     this._caret.set({
       lineKind,
       isInsideChord: bracketAt(line.text, head - line.from) !== null,
+      hasSelection: !state.selection.main.empty,
     });
   }
 
@@ -689,6 +691,37 @@ export class SongEditor {
       userEvent: 'input.paste.convert',
     });
     this.pasteRange = { from: range.from, to: range.from + text.length };
+  }
+
+  /**
+   * Rewrite the selection — or the whole song when nothing is selected — with
+   * `transform`, as one undo step. The editor does not know what the transform
+   * is for (ADR-0010); the Convert button hands it a chord-sheet conversion.
+   * A transform that changes nothing leaves no step behind.
+   */
+  transformSelection(transform: (text: string) => string): void {
+    const view = this.view;
+    if (!view) {
+      return;
+    }
+    const { from, to, empty } = view.state.selection.main;
+    const start = empty ? 0 : from;
+    const end = empty ? view.state.doc.length : to;
+    const before = view.state.sliceDoc(start, end);
+    const after = transform(before);
+    if (after === before) {
+      return;
+    }
+    view.dispatch({
+      changes: { from: start, to: end, insert: after },
+      selection: empty
+        ? { anchor: Math.min(from, start + after.length) }
+        : { anchor: start, head: start + after.length },
+      annotations: isolateHistory.of('full'),
+      userEvent: 'input.convert',
+      scrollIntoView: true,
+    });
+    view.focus();
   }
 
   /** Session-only undo/redo (PRD-INFRASTRUCTURE.md §11) — the editor's history,

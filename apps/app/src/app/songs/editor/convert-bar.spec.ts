@@ -48,35 +48,24 @@ describe('ConvertBar', () => {
     el?.click();
     fixture.detectChanges();
   };
-  const pressed = (testid: string) =>
-    find(testid)?.getAttribute('aria-pressed');
 
   it('stays out of the way of plain text', () => {
     mount('Some words\nMore words');
     expect(find('convert-bar')).toBeNull();
   });
 
-  it('offers to convert a chord sheet, set to the dialect it guessed', () => {
+  it('offers to convert a chord sheet, asking nothing else', () => {
     mount(GERMAN_SHEET);
     expect(find('convert-bar')).not.toBeNull();
-    expect(pressed('convert-bar-german')).toBe('true');
-    expect(pressed('convert-bar-english')).toBe('false');
+    expect(find('convert-bar-german')).toBeNull();
+    expect(find('convert-bar-english')).toBeNull();
   });
 
-  it('converts, ending as the paste ended, and goes away', () => {
+  it('converts into English chords, ending as the paste ended, and goes away', () => {
     mount(GERMAN_SHEET);
     click('convert-bar-convert');
     expect(replaced).toEqual(['[Am]Some wor[F]ds\n[C]More wor[B7]ds']);
     expect(dismissed).toBe(1);
-  });
-
-  it('converts in the dialect chosen before converting', () => {
-    mount(GERMAN_SHEET);
-    click('convert-bar-english');
-    expect(replaced).toEqual([]);
-    expect(pressed('convert-bar-english')).toBe('true');
-    click('convert-bar-convert');
-    expect(replaced).toEqual(['[Ami]Some wor[F]ds\n[C]More wor[H7]ds']);
   });
 
   it('closes with the cross, leaving the paste untouched', () => {
@@ -84,14 +73,5 @@ describe('ConvertBar', () => {
     click('convert-bar-close');
     expect(replaced).toEqual([]);
     expect(dismissed).toBe(1);
-  });
-
-  it('starts over at the guess for a new paste', () => {
-    mount(GERMAN_SHEET);
-    click('convert-bar-english');
-    pasteText(
-      ['Hmi     F', 'Some words', 'C       G', 'More words'].join('\n'),
-    );
-    expect(pressed('convert-bar-german')).toBe('true');
   });
 });

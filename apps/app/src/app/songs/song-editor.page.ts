@@ -35,7 +35,9 @@ import {
 import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
+import { ChordTheory, germanChordsToEnglish } from '@achordeon/shared/domain';
 import { ConvertBar } from './editor/convert-bar';
+import { convertText } from './editor/convert-text';
 import { SNIPPETS } from './editor/snippets';
 import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
@@ -408,6 +410,7 @@ interface BarAction extends ShortcutAction {
 export class SongEditorPage {
   protected readonly ui = inject(UiStore);
   protected readonly presenter = inject(SongEditorPresenter);
+  private readonly theory = inject(ChordTheory);
   private readonly router = inject(Router);
   private readonly returnUrl = inject(ReturnUrl);
   private readonly layout = inject(KeyboardLayout);
@@ -485,6 +488,10 @@ export class SongEditorPage {
   protected readonly settingsLabel = $localize`:@@editor.settings:Render settings`;
   protected readonly downloadLabel = $localize`:@@editor.download:Download`;
   protected readonly undoLabel = $localize`:@@editor.undo:Undo`;
+  protected readonly toEnglishLabel = $localize`:@@editor.toEnglish:Read chords as German (H, B = B♭) and write them in English`;
+  protected readonly convertGroupLabel = $localize`:@@editor.convertGroup:Convert`;
+  protected readonly convertSelectionLabel = $localize`:@@editor.convertSelection:Convert selection from a chord sheet`;
+  protected readonly convertSongLabel = $localize`:@@editor.convertSong:Convert song from a chord sheet`;
   protected readonly redoLabel = $localize`:@@editor.redo:Redo`;
   protected readonly focusEditorLabel = $localize`:@@editor.focusEditor:Go to the song text`;
   protected readonly closeDialogLabel = $localize`:@@editor.closeDialog:Close`;
@@ -677,6 +684,49 @@ export class SongEditorPage {
   });
 
   /**
+   * Convert — a group of its own (plan phase 2b): it rewrites a chord sheet,
+   * which is neither transposing nor history, and the bar wraps between groups.
+   */
+  private readonly convertActions = computed<readonly BarAction[]>(() => {
+    const { hasSelection } = this.editor().caret();
+    return this.withHints([
+      {
+        // Plan phase 2b (Q35–Q38): chord rows or ChordPro typed or pasted in
+        // earlier, rewritten in place, always in English chords — the song's
+        // notation spells the page and nothing else. Undone in one step like
+        // every other rewrite here.
+        id: 'editor.convert',
+        testid: 'chord-sheet-convert',
+        icon: 'convert',
+        label: hasSelection
+          ? this.convertSelectionLabel
+          : this.convertSongLabel,
+        keys: ['Alt+KeyK'],
+        run: () => this.convertSelection(),
+      },
+      {
+        // The chords alone, nothing else: for a song already in Achordeon
+        // markup that was written with German names. Always enabled — the
+        // click is the person's word that these chords are German, and a bare
+        // `B` read that way becomes `Bb`, which the label says.
+        id: 'editor.toEnglish',
+        testid: 'chords-to-english',
+        icon: 'toEnglish',
+        label: this.toEnglishLabel,
+        keys: ['Alt+KeyG'],
+        run: () =>
+          this.editor().transformSelection((text) =>
+            germanChordsToEnglish(text, this.theory),
+          ),
+      },
+    ]);
+  });
+
+  private convertSelection(): void {
+    this.editor().transformSelection((text) => convertText(text, this.theory));
+  }
+
+  /**
    * Undo and redo — **listed, not bound** (`isUnbound`).
    *
    * The history is CodeMirror's (ADR-0010) and its keymap matches the character
@@ -708,7 +758,7 @@ export class SongEditorPage {
     ]),
   );
 
-  /** The three bordered groups, in the order the bar wraps them. */
+  /** The bordered groups, in the order the bar wraps them. */
   protected readonly commandGroups = computed(() => [
     {
       id: 'insert',
@@ -719,6 +769,11 @@ export class SongEditorPage {
       id: 'transpose',
       label: this.transposeGroupLabel,
       actions: this.transposeActions(),
+    },
+    {
+      id: 'convert',
+      label: this.convertGroupLabel,
+      actions: this.convertActions(),
     },
     {
       id: 'history',

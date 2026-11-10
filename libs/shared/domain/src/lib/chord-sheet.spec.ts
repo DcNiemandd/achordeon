@@ -1,5 +1,6 @@
 import {
   convertChordSheet,
+  germanChordsToEnglish,
   toChordPro,
   type ChordSheetChoices,
   type ConvertedChordSheet,
@@ -490,5 +491,33 @@ describe('the report', () => {
   it('never carries a line of the song', () => {
     const { report } = draft(['C', 'A secret lyric'].join('\n'));
     expect(JSON.stringify(report)).not.toContain('secret');
+  });
+});
+
+describe('German chords written in English', () => {
+  const english = (content: string) => germanChordsToEnglish(content, theory);
+
+  it('respells every German chord in the brackets', () => {
+    expect(
+      english('[B]a [H]b [Fis]c [Es]d [Hmi]e [Emi7]f [D/H]g [[As Cis]]h\n'),
+    ).toBe('[Bb]a [B]b [F#]c [Eb]d [Bm]e [Em7]f [D/B]g [[Ab C#]]h\n');
+  });
+
+  it('leaves sus, maj and min alone', () => {
+    expect(english('[Asus4]a [Cmaj7]b [Amin]c')).toBe(
+      '[Asus4]a [Cmaj7]b [Amin]c',
+    );
+  });
+
+  it('leaves what is not a chord alone', () => {
+    expect(english('[Solo] [x2] [N.C.] words')).toBe(
+      '[Solo] [x2] [N.C.] words',
+    );
+  });
+
+  it('touches nothing outside the brackets, nor an escaped bracket', () => {
+    expect(english('H and B \\[H] stay\n* Title [H]\nR: [H]x')).toBe(
+      'H and B \\[H] stay\n* Title [H]\nR: [B]x',
+    );
   });
 });

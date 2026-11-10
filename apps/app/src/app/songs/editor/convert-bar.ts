@@ -5,6 +5,10 @@
 // to put in its place; the editor does the swapping (`replacePaste`), as one
 // undo step, so Undo always brings back exactly what was pasted.
 //
+// It asks nothing about the chords: Content is always English, so a German
+// sheet is read as German from its own spelling (an `H`, a `mi`) and written in
+// English, and the song's notation setting only spells the page.
+//
 // One question, asked once: Convert answers it and the bar goes; the cross
 // answers "keep it as pasted" and the bar goes. Undo is the way back from a
 // conversion, so the bar has nothing left to offer after one.
@@ -18,13 +22,12 @@ import {
   computed,
   inject,
   input,
-  linkedSignal,
   output,
 } from '@angular/core';
+import { convertText } from './convert-text';
 import {
   ChordTheory,
   convertChordSheet,
-  type ChordNotation,
   type ConvertedChordSheet,
 } from '@achordeon/shared/domain';
 import { Button, Icon, Tooltip } from '../../primitives';
@@ -42,32 +45,6 @@ import { Button, Icon, Tooltip } from '../../primitives';
         data-testid="convert-bar"
       >
         <span class="message">{{ message }}</span>
-
-        <div class="dialect" role="group" [attr.aria-label]="dialectLabel">
-          <span class="dialect-label" aria-hidden="true">{{
-            dialectLabel
-          }}</span>
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            [attr.aria-pressed]="dialect() === 'english'"
-            data-testid="convert-bar-english"
-            (click)="choose('english')"
-          >
-            {{ englishLabel }}
-          </button>
-          <button
-            appButton
-            type="button"
-            variant="ghost"
-            [attr.aria-pressed]="dialect() === 'german'"
-            data-testid="convert-bar-german"
-            (click)="choose('german')"
-          >
-            {{ germanLabel }}
-          </button>
-        </div>
 
         <div class="actions">
           <button
@@ -121,19 +98,10 @@ import { Button, Icon, Tooltip } from '../../primitives';
     .message {
       flex: 1 1 12rem;
     }
-    .dialect,
     .actions {
       display: flex;
       align-items: center;
       gap: var(--space-1);
-    }
-    .dialect-label {
-      color: var(--text-muted);
-      margin-inline-end: var(--space-1);
-    }
-    [aria-pressed='true'] {
-      background: var(--brand-subtle);
-      color: var(--text);
     }
   `,
 })
@@ -158,35 +126,13 @@ export class ConvertBar {
     return result.kind === 'converted' ? result : null;
   });
 
-  /** Starts at the guess for every new paste; the person may flip it. */
-  protected readonly dialect = linkedSignal<ChordNotation>(
-    () => this.sheet()?.guessedDialect ?? 'english',
-  );
-
   protected convert(): void {
-    this.replace.emit(this.converted());
+    this.replace.emit(convertText(this.paste() ?? '', this.theory));
     this.dismissed.emit();
-  }
-
-  protected choose(dialect: ChordNotation): void {
-    this.dialect.set(dialect);
-  }
-
-  /** The paste converted in the chosen dialect, ending the way the paste ended. */
-  private converted(): string {
-    const paste = this.paste() ?? '';
-    const result = convertChordSheet(paste, this.theory, {
-      dialect: this.dialect(),
-    });
-    const content = result.kind === 'converted' ? result.content : paste;
-    return paste.endsWith('\n') ? content : content.replace(/\n$/, '');
   }
 
   protected readonly regionLabel = $localize`:@@convertBar.region:Convert pasted chord sheet`;
   protected readonly message = $localize`:@@convertBar.message:This looks like a chord sheet.`;
-  protected readonly dialectLabel = $localize`:@@convertBar.dialect:Chords written as`;
-  protected readonly englishLabel = $localize`:@@convertBar.english:English`;
-  protected readonly germanLabel = $localize`:@@convertBar.german:German (H, B = B♭)`;
   protected readonly convertLabel = $localize`:@@convertBar.convert:Convert`;
   protected readonly keepLabel = $localize`:@@convertBar.keep:Keep as pasted`;
 }

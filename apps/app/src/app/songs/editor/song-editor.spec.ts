@@ -271,3 +271,63 @@ describe('SongEditor — a paste it can take back', () => {
     expect(withdrawn).toBe(0);
   });
 });
+
+describe('SongEditor — a transform of the selection', () => {
+  let fixture: ComponentFixture<SongEditor>;
+
+  function view(): EditorView {
+    return (fixture.componentInstance as unknown as { view: EditorView }).view;
+  }
+
+  /** `«…»` is the selection; without one, the caret sits at the end. */
+  function open(spec: string): void {
+    const from = spec.indexOf('«');
+    const doc = spec.replace('«', '').replace('»', '');
+    const to = from === -1 ? doc.length : spec.indexOf('»') - 1;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: ChordTheory, useClass: TonalChordTheory }],
+    });
+    fixture = TestBed.createComponent(SongEditor);
+    fixture.componentRef.setInput('content', doc);
+    fixture.detectChanges();
+    view().dispatch({
+      selection: { anchor: from === -1 ? doc.length : from, head: to },
+    });
+  }
+
+  const doc = () => view().state.doc.toString();
+  const shout = (text: string) => text.toUpperCase();
+  const transform = (fn: (text: string) => string) =>
+    fixture.componentInstance.transformSelection(fn);
+
+  it('transforms only what is selected', () => {
+    open('Before\n«Am\nWords»\nAfter');
+    transform(shout);
+    expect(doc()).toBe('Before\nAM\nWORDS\nAfter');
+  });
+
+  it('transforms the whole song when nothing is selected', () => {
+    open('Am\nWords');
+    transform(shout);
+    expect(doc()).toBe('AM\nWORDS');
+  });
+
+  it('is undone in one step', () => {
+    open('Before\n«Am\nWords»\nAfter');
+    transform(shout);
+    fixture.componentInstance.undo();
+    expect(doc()).toBe('Before\nAm\nWords\nAfter');
+  });
+
+  it('leaves no undo step behind when nothing changed', () => {
+    open('Typed');
+    view().dispatch({
+      changes: { from: 5, insert: ' more' },
+      userEvent: 'input.type',
+    });
+    transform((text) => text);
+    fixture.componentInstance.undo();
+    expect(doc()).toBe('Typed');
+  });
+});

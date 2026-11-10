@@ -182,6 +182,13 @@ const ICONS = {
   // tooltip flipping to "Copied" is not feedback on a touch screen, where
   // nothing was hovering to read it.
   check: 'check',
+  // Convert a chord sheet into Achordeon markup (plan phase 2b). Lucide's
+  // replace: one thing swapped for another, in place — not a wand, which would
+  // promise magic where the button does one plain rewrite you can undo.
+  convert: 'replace',
+  // German chord names written in English (plan phase 2b): a change of
+  // language, which is what a note alphabet is.
+  toEnglish: 'languages',
 };
 
 /** Strip the wrapper <svg> and the license comment; keep the drawing only. */
