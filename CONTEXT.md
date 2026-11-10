@@ -73,6 +73,14 @@ A global per-Song flag (the same everywhere the Song appears). Sortable in the S
 
 ## Import dialog
 
+Where an Import starts: one row per way in — an Achordeon file, a ChordPro or chord-sheet file, or a songbook website. The last opens its own dialog. A dropped file or an opened Share link skips it and goes straight to the import preview.
+
+## Song site
+
+An outside website a Song can be brought in from, one Song at a time and only when the user asks for it. The user types a song name, an artist or a link to the site; Achordeon shows the found Song rendered, and saves it only on Import. Each Song site is known to the app by a number, never by name. A site that refuses automated reading is not a Song site; its songs come in by copy and paste.
+
+## Import preview
+
 A table/form for resolving an import (not the Song explorer).
 
 ## Render settings
@@ -214,6 +222,11 @@ Not a render setting: it does not cascade, and it changes nothing about the draw
 
 Producing a JSON file — a small database of Songs/Songbooks "for computers": moving data between machines, human-editable in a text editor. The canonical round-trip format.
 
+An Export is offered as two formats, both in the Download dialog's export section:
+
+- **Achordeon file** — the JSON above. Lossless; the only canonical round-trip.
+- **ChordPro file** — a Song's Content in the ChordPro format other apps read. Lossy: render settings stay behind. For handing songs to another program, never for coming back.
+
 An Export carries **Songs and Songbooks only**. The account row is never written into one and never read out of one: a file is someone handing you songs, not handing you their account. That is what separates an Export from a Snapshot.
 
 ## Snapshot
@@ -239,6 +252,7 @@ The third way to take something away, beside Download and Export, and the only o
 
 Bringing Songs/Songbooks back in.
 
+- Accepts **ChordPro and chord-sheet** files (chords in a row above the words). They carry no id, so every Song in one is new; a file holding several songs brings in several.
 - Accepts Exported (JSON) files and, as a nice-to-have, **Downloaded** files that still carry their embedded metadata. Re-import of downloads is a QOL "more backups for the user" feature — counted on but may be dropped if costly. Editing a downloaded file can strip its metadata, breaking re-import.
 - **Song import conflict** — import a Song if missing; on conflict the user chooses to keep the existing one or re-import the incoming one under a different uuid/name (replace / ignore / create-new).
 - **Songbook import** — always creates a new Songbook, even on name collision.
