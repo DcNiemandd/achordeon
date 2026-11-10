@@ -15,9 +15,11 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  Annotation,
   EditorSelection,
   EditorState,
   type Extension,
+  type Transaction,
 } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, placeholder } from '@codemirror/view';
 import {
@@ -51,6 +53,12 @@ import type {
   EditorMarker,
   InsertRequest,
 } from './editor-model';
+
+/**
+ * Marks the editor's own `replacePaste`, so the update listener can tell it from
+ * an edit the person made — which is what lets a paste go.
+ */
+const replacingPaste = Annotation.define<boolean>();
 
 /** Columns per tab stop. Monospace, so a stop is a column count, not a width. */
 const TAB_WIDTH = 4;
@@ -218,7 +226,22 @@ export class SongEditor {
    * and autosave want different delays from the same keystroke. */
   readonly contentChange = output<string>();
 
+  /**
+   * Text the person just pasted, as pasted. The editor does not judge it — the
+   * caller decides whether it is worth offering to convert (ADR-0010), and calls
+   * `replacePaste` if the person says yes.
+   */
+  readonly pasted = output<string>();
+  /**
+   * The last paste can no longer be replaced: the person edited, undid, or the
+   * content was rewritten from outside. Whatever offer hung on it is over.
+   */
+  readonly pasteWithdrawn = output<void>();
+
   private view: EditorView | null = null;
+
+  /** Where the last paste — or the last replacement of it — sits, while it can still be taken back. */
+  private pasteRange: { from: number; to: number } | null = null;
 
   /**
    * What kind of line the caret is on.
@@ -646,6 +669,28 @@ export class SongEditor {
     return view.state.doc.line(line.number - 1).text.trim() === '';
   }
 
+  /**
+   * Swap the last paste for `text` — the conversion the person asked for.
+   *
+   * Its own undo step, so one Undo brings back exactly what was pasted. Asked
+   * again (the person flipped the dialect), it swaps its own previous
+   * replacement rather than adding to it. Does nothing once the paste was let go.
+   */
+  replacePaste(text: string): void {
+    const view = this.view;
+    const range = this.pasteRange;
+    if (!view || !range) {
+      return;
+    }
+    view.dispatch({
+      changes: { from: range.from, to: range.to, insert: text },
+      selection: { anchor: range.from + text.length },
+      annotations: [replacingPaste.of(true), isolateHistory.of('full')],
+      userEvent: 'input.paste.convert',
+    });
+    this.pasteRange = { from: range.from, to: range.from + text.length };
+  }
+
   /** Session-only undo/redo (PRD-INFRASTRUCTURE.md §11) — the editor's history,
    * not the database's. */
   undo(): void {
@@ -710,6 +755,7 @@ export class SongEditor {
       lintGutter(),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          this.trackPaste(update.transactions);
           this.contentChange.emit(update.state.doc.toString());
         }
         // Moving the caret changes it too, not just editing — clicking into a
@@ -842,6 +888,35 @@ export class SongEditor {
       // the kind. The dotted underline and its tooltip are the whole message.
       '.cm-lint-marker-info': { display: 'none' },
     });
+  }
+
+  /**
+   * Keep `pasteRange` in step with what happened: a paste starts it, our own
+   * replacement moves it (`replacePaste` sets it), and anything else ends it.
+   */
+  private trackPaste(transactions: readonly Transaction[]): void {
+    for (const tr of transactions) {
+      if (!tr.docChanged || tr.annotation(replacingPaste)) {
+        continue;
+      }
+      if (tr.isUserEvent('input.paste')) {
+        let from = -1;
+        let to = -1;
+        tr.changes.iterChanges((_fromA, _toA, fromB, toB) => {
+          from = fromB;
+          to = toB;
+        });
+        this.pasteRange = from === -1 ? null : { from, to };
+        if (from !== -1) {
+          this.pasted.emit(tr.state.doc.sliceString(from, to));
+        }
+        continue;
+      }
+      if (this.pasteRange) {
+        this.pasteRange = null;
+        this.pasteWithdrawn.emit();
+      }
+    }
   }
 
   /**

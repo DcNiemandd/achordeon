@@ -9,6 +9,7 @@ import {
   effect,
   inject,
   input,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
@@ -34,6 +35,7 @@ import {
 import { DownloadDialog } from '../shared/transfer';
 import { SongRender } from '../shared/song-render';
 import { SongEditor } from './editor/song-editor';
+import { ConvertBar } from './editor/convert-bar';
 import { SNIPPETS } from './editor/snippets';
 import type { InsertRequest } from './editor/editor-model';
 import { SongEditorPresenter } from './song-editor.presenter';
@@ -78,6 +80,7 @@ interface BarAction extends ShortcutAction {
     BlankPage,
     SplitPane,
     SongEditor,
+    ConvertBar,
     SongRender,
     SettingsPanel,
     DownloadDialog,
@@ -206,13 +209,25 @@ interface BarAction extends ShortcutAction {
              one pane B prints with: the sharp/flat buttons rewrite the source,
              and the spelling they leave behind should be the one the author
              reads. -->
-        <app-song-editor
-          class="editor"
-          [content]="presenter.content()"
-          [markers]="presenter.markers()"
-          [notation]="presenter.notation()"
-          (contentChange)="presenter.setContent($event)"
-        />
+        <!-- The Convert bar floats over the top of the text (Q34): a paste is
+             offered as a conversion without the text it landed in moving. The
+             editor reports the paste and does the swap; the bar decides. -->
+        <div class="editor-frame">
+          <app-song-editor
+            class="editor"
+            [content]="presenter.content()"
+            [markers]="presenter.markers()"
+            [notation]="presenter.notation()"
+            (contentChange)="presenter.setContent($event)"
+            (pasted)="lastPaste.set($event)"
+            (pasteWithdrawn)="lastPaste.set(null)"
+          />
+          <app-convert-bar
+            [paste]="lastPaste()"
+            (replace)="editor().replacePaste($event)"
+            (dismissed)="lastPaste.set(null)"
+          />
+        </div>
 
         <!-- Centred on pane A with NO backdrop: you tune the render while
              watching it, so pane B stays fully visible and fully alive
@@ -268,6 +283,14 @@ interface BarAction extends ShortcutAction {
       display: flex;
       flex-direction: column;
       block-size: 100%;
+      min-block-size: 0;
+    }
+
+    .editor-frame {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
       min-block-size: 0;
     }
 
@@ -424,6 +447,9 @@ export class SongEditorPage {
   /** The adapter, for the commands that act on a cursor rather than on state:
    * inserting and undoing are things you do *to an editor* (ADR-0010). */
   protected readonly editor = viewChild.required(SongEditor);
+
+  /** The paste the Convert bar is offering to convert, while it can still be. */
+  protected readonly lastPaste = signal<string | null>(null);
 
   /** For the rename shortcut: the name lives in the bar's heading, so renaming
    * from the keyboard is a matter of reaching the field already on screen. */

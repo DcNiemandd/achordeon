@@ -24,28 +24,28 @@ Recorded in `docs/adr/0019-song-sites-live-behind-the-proxy.md`.
 
 ## Decisions
 
-| # | Decision |
-|---|---|
-| Q1 | Proxy allowed under the bounds above. |
-| Q2/Q9 | Song sites v1: **plnyzpevnik** only. Supermusic: paste only. Adapter seam in the function so a site can be added. |
-| Q3 | The Import button opens an **Import dialog** that mirrors Download. Its rows: *Achordeon file* · *ChordPro / chord-sheet file* · *From a song site…*, and the last one opens its own dialog. A dropped file or an opened Share link skips the dialog and goes straight to the **Import preview**. |
-| Q4 | **Export as ChordPro** is a third section of the Download dialog, under a hairline after the Achordeon file / Share link section. Glossary: Export = Achordeon file (lossless, canonical) or ChordPro file (lossy). |
-| Q5 | Paste into the editor → the text lands as pasted → if it looks like a chord sheet, an inline bar offers *Convert / Keep as pasted*. Convert is **one** undo step, so Undo brings back the paste. Any further edit dismisses the bar. Detection runs only on paste. |
-| Q6/Q8 | German is an **input dialect** (NOTATION-PLAN §4). Wherever text is converted, the user confirms *Chords written as: English / German (H, B = B♭)*, pre-set from a guess (an `H` or `mi` among the chords → German). German rewrites `B`→`Bb`, `Fis/Cis/Es/As…`→`F#/C#/Eb/Ab`, `mi`→`m`, and `H`→`B` (WORKER-CORE rule: content is always English, until NOTATION-PLAN §3 is settled). `notation` is **never** set from the source. |
-| Q7 | A ChordPro file with `{new_song}`/`{ns}` becomes one Song per section, shown in the normal Import preview. Every one is new, because there is no id to match on. |
-| Q12 | The Song keeps no source URL in v1. The site is named and linked in the preview only. |
-| Q13 | ChordPro export: several songs go into one `.cho` with `{new_song}` between them. Title/Subtitle → `{title}`/`{subtitle}`. A block labelled like a chorus (`R`, `Ref`, `Chorus`, …) → `{start_of_chorus}…{end_of_chorus}`. Any other label → `{comment: label}`. `[[Am F]]` → `[Am] [F]`. Chords go out as written. |
-| Q14 | Song site names and URLs live **only in the edge function**. The app knows a site by a number and gets its display name and link hint from the function. |
-| Q15 | One input field. If it parses as an `http(s)` URL, the app fetches that song. Anything else runs a search. The function decides whether a URL is supported. An unsupported one shows "can't read that site" plus the hint list. |
-| Q16 | Results are grouped by site, each in the site's own order, with duplicates not merged. A site that fails or times out (~5 s) shows a one-line notice in its group, and the other sites still show. |
-| Q18 | The Song site dialog and the Song preview dialog **replace** each other, never stack. *Back* restores the input, results and scroll, with no new search. The state lives in a presenter owned by the flow. |
-| Q19 | The Song preview shows our real render (unsaved), the English/German toggle (switching re-converts and re-renders on the spot), a version picker when the site has several versions, title · artist, and "from <site>" linking to the original. Nothing is editable there. |
-| Q20 | *Import* creates one new Song (Name "Title – Artist", converted Content, no settings beyond the user's choices), closes both dialogs and opens the editor. No Import preview, no duplicate check. |
-| Q21 | The song-site row is always shown. Offline it is disabled with a tooltip. Signed-out users can use it (anon key). |
-| Q22 | Files: one *English / German* control at the top of the Import preview for the whole import. It only appears when the import holds converted files, and is pre-set to German if any file looks German. |
-| Q23 | `.txt`/`.crd`/`.cho` decode as UTF-8, falling back to windows-1250. No encoding picker. |
-| Q25 | A pasted multi-song ChordPro is converted into **one** Content, with all songs joined. Splitting into several Songs is what file import is for. |
-| Q24 | ChordPro metadata on import: `{title}`→`*`, `{subtitle}`→`**`. With no subtitle, `{artist}`→`**`. Song Name "Title – Artist". `{key}`/`{capo}` → one plain line at the top. Everything else is dropped. On export: `{title}`/`{subtitle}` only. No new Song fields. |
+| #     | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1    | Proxy allowed under the bounds above.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Q2/Q9 | Song sites v1: **plnyzpevnik** only. Supermusic: paste only. Adapter seam in the function so a site can be added.                                                                                                                                                                                                                                                                                                                                  |
+| Q3    | The Import button opens an **Import dialog** that mirrors Download. Its rows: _Achordeon file_ · _ChordPro / chord-sheet file_ · _From a song site…_, and the last one opens its own dialog. A dropped file or an opened Share link skips the dialog and goes straight to the **Import preview**.                                                                                                                                                  |
+| Q4    | **Export as ChordPro** is a third section of the Download dialog, under a hairline after the Achordeon file / Share link section. Glossary: Export = Achordeon file (lossless, canonical) or ChordPro file (lossy).                                                                                                                                                                                                                                |
+| Q5    | Paste into the editor → the text lands as pasted → if it looks like a chord sheet, a bar floating over the top of the text (no content shift) offers _Convert_, the dialect toggle, and a cross that keeps the paste as it is. Convert is **one** undo step, so Undo brings back the paste, and the bar goes away with it. The dialect is chosen before converting, never after. Any further edit dismisses the bar. Detection runs only on paste. |
+| Q6/Q8 | German is an **input dialect** (NOTATION-PLAN §4). Wherever text is converted, the user confirms _Chords written as: English / German (H, B = B♭)_, pre-set from a guess (an `H` or `mi` among the chords → German). German rewrites `B`→`Bb`, `Fis/Cis/Es/As…`→`F#/C#/Eb/Ab`, `mi`→`m`, and `H`→`B` (WORKER-CORE rule: content is always English, until NOTATION-PLAN §3 is settled). `notation` is **never** set from the source.                |
+| Q7    | A ChordPro file with `{new_song}`/`{ns}` becomes one Song per section, shown in the normal Import preview. Every one is new, because there is no id to match on.                                                                                                                                                                                                                                                                                   |
+| Q12   | The Song keeps no source URL in v1. The site is named and linked in the preview only.                                                                                                                                                                                                                                                                                                                                                              |
+| Q13   | ChordPro export: several songs go into one `.cho` with `{new_song}` between them. Title/Subtitle → `{title}`/`{subtitle}`. A block labelled like a chorus (`R`, `Ref`, `Chorus`, …) → `{start_of_chorus}…{end_of_chorus}`. Any other label → `{comment: label}`. `[[Am F]]` → `[Am] [F]`. Chords go out as written.                                                                                                                                |
+| Q14   | Song site names and URLs live **only in the edge function**. The app knows a site by a number and gets its display name and link hint from the function.                                                                                                                                                                                                                                                                                           |
+| Q15   | One input field. If it parses as an `http(s)` URL, the app fetches that song. Anything else runs a search. The function decides whether a URL is supported. An unsupported one shows "can't read that site" plus the hint list.                                                                                                                                                                                                                    |
+| Q16   | Results are grouped by site, each in the site's own order, with duplicates not merged. A site that fails or times out (~5 s) shows a one-line notice in its group, and the other sites still show.                                                                                                                                                                                                                                                 |
+| Q18   | The Song site dialog and the Song preview dialog **replace** each other, never stack. _Back_ restores the input, results and scroll, with no new search. The state lives in a presenter owned by the flow.                                                                                                                                                                                                                                         |
+| Q19   | The Song preview shows our real render (unsaved), the English/German toggle (switching re-converts and re-renders on the spot), a version picker when the site has several versions, title · artist, and "from <site>" linking to the original. Nothing is editable there.                                                                                                                                                                         |
+| Q20   | _Import_ creates one new Song (Name "Title – Artist", converted Content, no settings beyond the user's choices), closes both dialogs and opens the editor. No Import preview, no duplicate check.                                                                                                                                                                                                                                                  |
+| Q21   | The song-site row is always shown. Offline it is disabled with a tooltip. Signed-out users can use it (anon key).                                                                                                                                                                                                                                                                                                                                  |
+| Q22   | Files: one _English / German_ control at the top of the Import preview for the whole import. It only appears when the import holds converted files, and is pre-set to German if any file looks German.                                                                                                                                                                                                                                             |
+| Q23   | `.txt`/`.crd`/`.cho` decode as UTF-8, falling back to windows-1250. No encoding picker.                                                                                                                                                                                                                                                                                                                                                            |
+| Q25   | A pasted multi-song ChordPro is converted into **one** Content, with all songs joined. Splitting into several Songs is what file import is for.                                                                                                                                                                                                                                                                                                    |
+| Q24   | ChordPro metadata on import: `{title}`→`*`, `{subtitle}`→`**`. With no subtitle, `{artist}`→`**`. Song Name "Title – Artist". `{key}`/`{capo}` → one plain line at the top. Everything else is dropped. On export: `{title}`/`{subtitle}` only. No new Song fields.                                                                                                                                                                                |
 
 ## Detection — "looks like a chord sheet"
 
@@ -65,7 +65,7 @@ stores nothing.
 
 - **sites** → `[{ site: number, name, urlHint }]`
 - **search** `q` → `[{ site, groupError?, results: [{ id, title, artist }] }]`, all sites at once
-- **song** `site + id` *or* `url` → `{ site, title, artist, versions?, text, format: chordpro | chord-sheet, url }`
+- **song** `site + id` _or_ `url` → `{ site, title, artist, versions?, text, format: chordpro | chord-sheet, url }`
 
 The function never converts. All conversion happens in the client through the
 domain function, the same one that handles paste and files.
@@ -119,7 +119,7 @@ takes `parse`, and the old `.mjs` scripts go away.
   both ways), and a separate examine step (the single call already returns the
   guess).
 
-*Done when:* the domain specs cover every row of Q8/Q13/Q24 and the detection
+_Done when:_ the domain specs cover every row of Q8/Q13/Q24 and the detection
 cases, and the `song-from-text` skill still produces the same output on its
 fixtures.
 
@@ -128,7 +128,7 @@ fixtures.
 `song-editor.presenter.ts` gets paste handling: detect → bar → convert as one
 transaction (Q5, Q8). Pin the behaviour in `song-editor.spec.ts` (red first).
 
-*Done when:* paste → Convert → Undo restores the exact paste, a non-sheet paste
+_Done when:_ paste → Convert → Undo restores the exact paste, a non-sheet paste
 shows no bar, and the German toggle changes the result.
 
 ### 3. Import dialog + chord-sheet files
@@ -139,7 +139,7 @@ Import preview, with the English/German control (Q22) and multi-song files (Q7).
 The song-site row is present but disabled until phase 6. Drag-drop of these file
 types also works.
 
-*Done when:* a multi-song `.cho` and a windows-1250 `.txt` import correctly from
+_Done when:_ a multi-song `.cho` and a windows-1250 `.txt` import correctly from
 both the songs and the songbooks pages.
 
 ### 4. Export as ChordPro
@@ -147,7 +147,7 @@ both the songs and the songbooks pages.
 A third section in the Download dialog (Q4). It downloads one `.cho` for any
 selection (Q13).
 
-*Done when:* exporting a song and re-importing the `.cho` gives the same
+_Done when:_ exporting a song and re-importing the `.cho` gives the same
 Content, apart from the documented losses.
 
 ### 5. Song sites edge function
@@ -156,7 +156,7 @@ The function with the contract above and the plnyzpevnik adapter, which
 reproduces the POC's RSC parsing. A shape test runs against a recorded
 response, so CI never hits the real site.
 
-*Done when:* `sites`, `search` and `song` work locally under
+_Done when:_ `sites`, `search` and `song` work locally under
 `supabase functions serve`, the rate limit trips, and an unsupported URL returns
 the 4xx.
 
@@ -166,7 +166,7 @@ The single input (Q15), grouped results (Q16), the preview with render, toggle,
 versions and attribution (Q19), Back that keeps state (Q18), and Import → editor
 (Q20). Offline handling (Q21).
 
-*Done when:* a song can go from typing an artist name to editing it in the
+_Done when:_ a song can go from typing an artist name to editing it in the
 editor, and Back keeps the results list.
 
 ### 7. Docs

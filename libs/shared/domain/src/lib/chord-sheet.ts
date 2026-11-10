@@ -516,6 +516,21 @@ function escapeLyric(line: string): string {
   return out;
 }
 
+/** `1. ` opening a line: a chord-rows sheet's verse number. */
+const VERSE_NUMBER = /^(\d+\.) (?=\S)/;
+
+/**
+ * A chord-rows line as Achordeon writes it: its verse number a label, and the
+ * indent that lined the words up under that number gone. The indent is spacing
+ * the page never shows (Phase 1 strips it); it only cluttered the editor. Run
+ * after the chords are spliced, which need the columns the indent kept.
+ */
+function asWritten(line: string): string {
+  let start = 0;
+  while (start < line.length && WS.has(line[start])) start++;
+  return line.slice(start).replace(VERSE_NUMBER, '$1: ');
+}
+
 const TITLE_KEYS = new Set(['title', 't']);
 const SUBTITLE_KEYS = new Set(['subtitle', 'st']);
 const COMMENT_KEYS = new Set([
@@ -615,7 +630,7 @@ function convertSong(song: SongInput, ctx: SongContext): SongDraft {
   };
   const pushLine = (raw: string) => {
     const line = respellBrackets(raw);
-    const words = ctx.isChordPro ? escapeLyric(line) : line;
+    const words = ctx.isChordPro ? escapeLyric(line) : asWritten(line);
     body.push(label !== null && !blockHasLines ? `${label}: ${words}` : words);
     blockHasLines = true;
   };

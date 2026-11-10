@@ -461,6 +461,31 @@ describe('ChordPro out', () => {
   });
 });
 
+describe('how a chord-rows sheet numbers and indents its verses', () => {
+  it('turns a verse number into a label', () => {
+    expect(draft(['   Am', '1. Some words'].join('\n')).content).toBe(
+      '1.: [Am]Some words\n',
+    );
+  });
+
+  it('drops the indent that lines the words up under the number', () => {
+    expect(
+      draft(['   Am', '1. Some words', '        F', '   more words'].join('\n'))
+        .content,
+    ).toBe('1.: [Am]Some words\nmore [F]words\n');
+  });
+
+  it('leaves a number that is part of the words alone', () => {
+    expect(draft('1.5 litru vody\n').content).toBe('1.5 litru vody\n');
+  });
+
+  it('leaves the numbering of a ChordPro sheet as written', () => {
+    expect(converted('{t: A}\n1. Words\n').songs[0].content).toBe(
+      '* A\n1. Words\n',
+    );
+  });
+});
+
 describe('the report', () => {
   it('never carries a line of the song', () => {
     const { report } = draft(['C', 'A secret lyric'].join('\n'));

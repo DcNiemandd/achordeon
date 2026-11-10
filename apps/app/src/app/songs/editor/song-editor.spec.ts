@@ -168,3 +168,106 @@ describe('SongEditor — emphasis buttons', () => {
     });
   });
 });
+
+describe('SongEditor — a paste it can take back', () => {
+  let fixture: ComponentFixture<SongEditor>;
+  let pasted: string[];
+  let withdrawn: number;
+
+  function view(): EditorView {
+    return (fixture.componentInstance as unknown as { view: EditorView }).view;
+  }
+
+  /** Mount on `doc` with the caret at `|`. */
+  function open(spec: string): void {
+    const at = spec.indexOf('|');
+    const doc = spec.replace('|', '');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: ChordTheory, useClass: TonalChordTheory }],
+    });
+    fixture = TestBed.createComponent(SongEditor);
+    fixture.componentRef.setInput('content', doc);
+    fixture.detectChanges();
+    view().dispatch({ selection: { anchor: at } });
+    pasted = [];
+    withdrawn = 0;
+    fixture.componentInstance.pasted.subscribe((text) => pasted.push(text));
+    fixture.componentInstance.pasteWithdrawn.subscribe(() => withdrawn++);
+  }
+
+  /** What CodeMirror's own paste handler dispatches. */
+  function paste(text: string): void {
+    const { from, to } = view().state.selection.main;
+    view().dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
+      userEvent: 'input.paste',
+    });
+  }
+
+  function type(text: string): void {
+    const { head } = view().state.selection.main;
+    view().dispatch({
+      changes: { from: head, insert: text },
+      selection: { anchor: head + text.length },
+      userEvent: 'input.type',
+    });
+  }
+
+  const doc = () => view().state.doc.toString();
+  const replacePaste = (text: string) =>
+    fixture.componentInstance.replacePaste(text);
+  const undo = () => fixture.componentInstance.undo();
+
+  it('says what was pasted', () => {
+    open('Before\n|');
+    paste('Am F\nWords');
+    expect(pasted).toEqual(['Am F\nWords']);
+  });
+
+  it('does not take typing for a paste', () => {
+    open('|');
+    type('Words');
+    expect(pasted).toEqual([]);
+  });
+
+  it('replaces exactly what was pasted', () => {
+    open('Before\n|\nAfter');
+    paste('Am F\nWords');
+    replacePaste('[Am]Wo[F]rds');
+    expect(doc()).toBe('Before\n[Am]Wo[F]rds\nAfter');
+  });
+
+  it('gives the paste back, as pasted, on one undo', () => {
+    open('Before\n|\nAfter');
+    paste('Am F\nWords');
+    replacePaste('[Am]Wo[F]rds');
+    undo();
+    expect(doc()).toBe('Before\nAm F\nWords\nAfter');
+  });
+
+  it('replaces its own replacement when asked again', () => {
+    open('Before\n|\nAfter');
+    paste('Hmi\nWords');
+    replacePaste('[Bm]Words');
+    replacePaste('[Hmi]Words');
+    expect(doc()).toBe('Before\n[Hmi]Words\nAfter');
+  });
+
+  it('lets the paste go once the person edits, and replaces nothing after', () => {
+    open('|');
+    paste('Am F\nWords');
+    type('!');
+    expect(withdrawn).toBe(1);
+    replacePaste('[Am]Words');
+    expect(doc()).toBe('Am F\nWords!');
+  });
+
+  it('does not count its own replacement as an edit', () => {
+    open('|');
+    paste('Am F\nWords');
+    replacePaste('[Am]Words');
+    expect(withdrawn).toBe(0);
+  });
+});
