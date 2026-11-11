@@ -19,7 +19,10 @@ what the site's own search returns, an identifiable User-Agent, and the site
 named and linked in the preview. A site that refuses automated reading is **not**
 a Song site — supermusic is one (robots.txt blocks search; song pages sit behind a
 proof-of-work JS challenge, `/js/smc.js`). Its songs come in by copy and paste
-through the Convert bar, never through the proxy. Ultimate Guitar: never.
+through the Convert bar, never through the proxy. So does pisnicky-akordy.cz
+(checked 2026-11-11: robots.txt allows all, but every page answers the
+Achordeon User-Agent with a Cloudflare challenge, 403 `Cf-Mitigated: challenge`).
+Ultimate Guitar: never.
 Recorded in `docs/adr/0019-song-sites-live-behind-the-proxy.md`.
 
 ## Decisions
