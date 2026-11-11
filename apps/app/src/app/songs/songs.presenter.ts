@@ -18,6 +18,7 @@ import {
   type SongFormat,
   SongSiteFlow,
   SongStore,
+  LibraryTakeover,
 } from '@achordeon/shared/data-access';
 import { resolveSettings, type Song } from '@achordeon/shared/domain';
 import {
@@ -68,6 +69,9 @@ export interface PendingDelete {
  */
 @Injectable()
 export class SongsPresenter {
+  /** The foreign-library notice's state and its takeover (ADR-0004/0009): the
+   * notice above this page's content draws it. */
+  readonly takeover = inject(LibraryTakeover);
   private readonly store = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly session = inject(SessionStore);

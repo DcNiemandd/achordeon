@@ -16,6 +16,7 @@ import {
   type FeedbackReport,
   type RestoreMode,
   type ThemeChoice,
+  LibraryTakeover,
 } from '@achordeon/shared/data-access';
 import {
   Localization,
@@ -83,6 +84,9 @@ const PENDING_DRIVE_KEY = 'achordeon:pendingDrive';
  */
 @Injectable()
 export class SettingsPresenter {
+  /** The foreign-library notice's state and its takeover (ADR-0004/0009): the
+   * notice above this page's content draws it. */
+  readonly takeover = inject(LibraryTakeover);
   private readonly store = inject(SettingsStore);
   /**
    * The shell's own preferences (PRD-UI-SHELL.md §7) — device-local and never

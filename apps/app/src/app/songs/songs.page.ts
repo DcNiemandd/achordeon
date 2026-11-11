@@ -200,7 +200,15 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
           </div>
         </app-action-bar>
 
-        <app-foreign-library-notice />
+        <app-foreign-library-notice
+          [isForeign]="presenter.takeover.isForeign()"
+          [isConfirming]="presenter.takeover.isConfirming()"
+          [isUnsynced]="presenter.takeover.isUnsynced()"
+          [isBusy]="presenter.takeover.isBusy()"
+          (opened)="presenter.takeover.open()"
+          (cancelled)="presenter.takeover.cancel()"
+          (confirmed)="presenter.takeover.replace()"
+        />
 
         <app-song-explorer
           class="explorer"

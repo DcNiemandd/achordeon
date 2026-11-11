@@ -36,6 +36,7 @@ export * from './lib/sync/supabase-mapping';
 export * from './lib/sync/supabase-backend';
 export * from './lib/sync/drive-backend';
 export * from './lib/sync/sync-service';
+export * from './lib/sync/library-takeover';
 export * from './lib/feedback/feedback-service';
 export * from './lib/song-site/song-site-service';
 export * from './lib/song-site/song-site-flow';

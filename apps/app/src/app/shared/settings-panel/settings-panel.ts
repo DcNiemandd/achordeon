@@ -13,7 +13,6 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { SETTINGS } from '@achordeon/shared/domain';
-import { FontLoader } from '@achordeon/shared/data-access';
 import {
   BODY_FACES,
   BODY_FONT,
@@ -27,7 +26,7 @@ import {
   type FontId,
 } from '@achordeon/shared/render-core';
 import { Button, Icon, Tooltip } from '../../primitives';
-import { AddFontDialog } from '../fonts';
+import { AddFontDialog, FontShelf } from '../fonts';
 import { ScreenShape, Stats, type AspectRatioSource } from '../layout';
 import {
   MATCH_SCREEN,
@@ -754,7 +753,7 @@ export class SettingsPanel {
    * The second thing that is not state: the font bytes a sample needs.
    *
    * Same argument as `ScreenShape`. A face is fetched on first *render* use
-   * (`FontLoader`), and a form is not a render — so on the Settings page, with no
+   * (`FontShelf`, the font loader as `app/shared` sees it), and a form is not a render — so on the Settings page, with no
    * song on screen, `Caveat` has never been fetched and a sample asking for it
    * would silently draw in `cursive`. Bubbling this out would have all three
    * hosts preloading the same thing before mounting the same component.
@@ -766,7 +765,7 @@ export class SettingsPanel {
    * duplicate bytes the service worker does not precache, fetched from a URL the
    * renderer never uses.
    */
-  private readonly fonts = inject(FontLoader);
+  private readonly fonts = inject(FontShelf);
 
   /**
    * The third, and the only one that is written to rather than read from: the

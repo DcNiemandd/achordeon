@@ -16,6 +16,8 @@ import {
 import { appRoutes } from './app.routes';
 import { GUIDE_SONG_CONTENT } from './songs/guide-song-content';
 import { SUPABASE } from './supabase.config';
+import { FontShelf } from './shared/fonts';
+import { FontShelfAdapter } from './font-shelf-adapter';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -26,6 +28,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes, withComponentInputBinding()),
     // Binds the domain's ports to their adapters (ADR-0008).
     provideAchordeonData(),
+    // The font UI in app/shared asks for a FontShelf, never for a data-access
+    // service (the import ladder): this is where the two meet.
+    { provide: FontShelf, useClass: FontShelfAdapter },
     // The ADR-0007 ingest gateway over the local database, before any store reads
     // a row. Must come before the seeder and sync for the same reason.
     provideAchordeonBoot(),

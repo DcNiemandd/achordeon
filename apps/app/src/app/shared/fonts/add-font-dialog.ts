@@ -39,13 +39,9 @@ import {
   signal,
 } from '@angular/core';
 import type { FontFamily } from '@achordeon/shared/render-core';
-import {
-  FontFetcher,
-  FontLibrary,
-  type FontCandidate,
-} from '@achordeon/shared/data-access';
 import { Button, Dialog, Field } from '../../primitives';
 import { faceSummary } from './face-summary';
+import { FontShelf, type FontSearchResult } from './font-shelf';
 
 /** Which of the three ways in a message belongs under. */
 type Way = 'search' | 'file' | 'link';
@@ -334,8 +330,7 @@ export class AddFontDialog {
   /** The families that arrived, so a picker can select one straight away. */
   readonly added = output<FontFamily[]>();
 
-  private readonly library = inject(FontLibrary);
-  private readonly fetcher = inject(FontFetcher);
+  private readonly fonts = inject(FontShelf);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly url = signal('');
@@ -352,7 +347,7 @@ export class AddFontDialog {
   /** Short of this, a query matches most of the catalogue and means nothing. */
   protected readonly MIN_QUERY = 2;
   protected readonly query = signal('');
-  protected readonly results = signal<readonly FontCandidate[]>([]);
+  protected readonly results = signal<readonly FontSearchResult[]>([]);
   protected readonly indexError = signal<string | null>(null);
 
   /**
@@ -372,7 +367,7 @@ export class AddFontDialog {
   constructor() {
     // Warmed on open rather than on the first keystroke: it is one fetch either
     // way, and doing it here means the first thing typed is answered at once.
-    void this.fetcher.open().catch((error: unknown) => {
+    void this.fonts.openIndex().catch((error: unknown) => {
       this.indexError.set(
         error instanceof Error && error.message
           ? error.message
@@ -421,12 +416,12 @@ export class AddFontDialog {
       this.results.set([]);
       return;
     }
-    const found = await this.fetcher.search(raw).catch(() => []);
+    const found = await this.fonts.search(raw).catch(() => []);
     if (this.query() === raw) this.results.set(found);
   }
 
   /** What installing this will produce — the library list's own sentence. */
-  protected facesFor(family: FontCandidate): string {
+  protected facesFor(family: FontSearchResult): string {
     return faceSummary(family.faces, family.isVariable);
   }
 
@@ -436,9 +431,9 @@ export class AddFontDialog {
     return failure?.way === way ? failure.message : null;
   }
 
-  protected async fromIndex(family: FontCandidate): Promise<void> {
+  protected async fromIndex(family: FontSearchResult): Promise<void> {
     await this.run('search', () =>
-      this.fetcher.addFamily(family.key, family.label),
+      this.fonts.addFromIndex(family.key, family.label),
     );
   }
 
@@ -446,12 +441,12 @@ export class AddFontDialog {
     const file = files?.[0];
     if (!file) return;
     await this.run('file', async () => [
-      await this.library.add(await file.arrayBuffer()),
+      await this.fonts.addFile(await file.arrayBuffer()),
     ]);
   }
 
   protected async fromUrl(): Promise<void> {
-    await this.run('link', () => this.fetcher.add(this.url()));
+    await this.run('link', () => this.fonts.addFromLink(this.url()));
   }
 
   /**

@@ -112,7 +112,15 @@ import {
           </button>
         </app-action-bar>
 
-        <app-foreign-library-notice />
+        <app-foreign-library-notice
+          [isForeign]="presenter.takeover.isForeign()"
+          [isConfirming]="presenter.takeover.isConfirming()"
+          [isUnsynced]="presenter.takeover.isUnsynced()"
+          [isBusy]="presenter.takeover.isBusy()"
+          (opened)="presenter.takeover.open()"
+          (cancelled)="presenter.takeover.cancel()"
+          (confirmed)="presenter.takeover.replace()"
+        />
 
         <!-- The same list component again, a fourth capability set: no
              checkboxes (nothing acts on several songbooks at once yet), no

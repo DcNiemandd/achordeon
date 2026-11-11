@@ -77,7 +77,15 @@ const MIN_PASSWORD = 8;
         <!-- The one data state that must not be skimmed past: a hidden foreign
              library, with the same loud banner and takeover the songs pages show.
              Draws nothing in every other state. -->
-        <app-foreign-library-notice />
+        <app-foreign-library-notice
+          [isForeign]="presenter.takeover.isForeign()"
+          [isConfirming]="presenter.takeover.isConfirming()"
+          [isUnsynced]="presenter.takeover.isUnsynced()"
+          [isBusy]="presenter.takeover.isBusy()"
+          (opened)="presenter.takeover.open()"
+          (cancelled)="presenter.takeover.cancel()"
+          (confirmed)="presenter.takeover.replace()"
+        />
 
         <!-- Account (Epic 10). Login gates cloud sync ONLY — the library works
              signed out (apps/docs/docs/settings.mdx §Profile). -->

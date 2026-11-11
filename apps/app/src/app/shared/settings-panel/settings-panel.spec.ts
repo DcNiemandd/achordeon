@@ -2,7 +2,7 @@
 // Spec: docs/superpowers/specs/2026-07-27-aspect-ratio-devices-design.md
 
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { FontLoader } from '@achordeon/shared/data-access';
+import { FontShelf } from '../fonts';
 import {
   BODY_FONT,
   BUNDLED_CATALOG,
@@ -44,7 +44,7 @@ describe('SettingsPanel', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ScreenShape, useClass: FakeScreen },
-        { provide: FontLoader, useClass: FakeFonts },
+        { provide: FontShelf, useClass: FakeFonts },
       ],
     });
     fixture = TestBed.createComponent(SettingsPanel);
@@ -226,7 +226,7 @@ describe('SettingsPanel', () => {
       const script = BUNDLED_FONTS.find((one) => one.category === 'script');
       chosen(script?.id ?? '');
 
-      const fonts = TestBed.inject(FontLoader) as unknown as FakeFonts;
+      const fonts = TestBed.inject(FontShelf) as unknown as FakeFonts;
       const last = fonts.asked[fonts.asked.length - 1];
       expect(last.families).toContain(script?.id);
       // One line at one weight — not a quarter-megabyte of bold nobody sees.

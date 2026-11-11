@@ -11,14 +11,17 @@
 // The takeover DELETES this device's copy of the other account's library, so it
 // is behind a confirm — and the confirm escalates when that copy holds unsynced
 // work, because the clear-and-pull cannot get it back (it lived only here).
+//
+// Controlled: the state and the takeover itself are `LibraryTakeover`'s, in
+// data-access, which this folder may not touch (PRD-UI-SHELL.md §3). Each page
+// binds it through its presenter.
 
 import {
   ChangeDetectionStrategy,
   Component,
-  inject,
-  signal,
+  input,
+  output,
 } from '@angular/core';
-import { LibraryOwnership, SyncService } from '@achordeon/shared/data-access';
 import { Button, Dialog, Icon } from '../../primitives';
 
 @Component({
@@ -26,7 +29,7 @@ import { Button, Dialog, Icon } from '../../primitives';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, Dialog, Icon],
   template: `
-    @if (ownership.isForeign()) {
+    @if (isForeign()) {
       <div class="notice" role="alert" data-testid="foreign-library">
         <app-icon class="siren" name="warning" />
         <div class="text">
@@ -38,21 +41,21 @@ import { Button, Dialog, Icon } from '../../primitives';
           variant="primary"
           type="button"
           data-testid="foreign-library-replace"
-          (click)="openConfirm()"
+          (click)="opened.emit()"
         >
           {{ replaceLabel }}
         </button>
       </div>
     }
 
-    @if (confirming()) {
+    @if (isConfirming()) {
       <app-dialog
         [title]="confirmTitle"
         data-testid="foreign-library-dialog"
-        (closed)="cancel()"
+        (closed)="cancelled.emit()"
       >
         <p class="warn">{{ confirmBody }}</p>
-        @if (foreignUnsynced()) {
+        @if (isUnsynced()) {
           <p class="danger" data-testid="foreign-library-unsynced">
             {{ unsyncedWarn }}
           </p>
@@ -63,7 +66,7 @@ import { Button, Dialog, Icon } from '../../primitives';
           type="button"
           variant="ghost"
           data-testid="foreign-library-cancel"
-          (click)="cancel()"
+          (click)="cancelled.emit()"
         >
           {{ cancelLabel }}
         </button>
@@ -72,11 +75,11 @@ import { Button, Dialog, Icon } from '../../primitives';
           appButton
           type="button"
           variant="danger"
-          [disabled]="busy()"
+          [disabled]="isBusy()"
           data-testid="foreign-library-confirm"
-          (click)="replace()"
+          (click)="confirmed.emit()"
         >
-          {{ busy() ? working : confirmButton }}
+          {{ isBusy() ? working : confirmButton }}
         </button>
       </app-dialog>
     }
@@ -130,17 +133,20 @@ import { Button, Dialog, Icon } from '../../primitives';
   `,
 })
 export class ForeignLibraryNotice {
-  protected readonly ownership = inject(LibraryOwnership);
-  private readonly sync = inject(SyncService);
-
+  /** This device's library belongs to another account. Nothing draws otherwise. */
+  readonly isForeign = input(false);
   /** The confirm is open. */
-  protected readonly confirming = signal(false);
-  /** The library being replaced has changes that never reached the cloud — the
-   * escalated warning, checked when the confirm opens. */
-  protected readonly foreignUnsynced = signal(false);
-  /** The takeover is a clear-and-pull; the button stands down while it runs so a
-   * second press cannot start a second one over the first. */
-  protected readonly busy = signal(false);
+  readonly isConfirming = input(false);
+  /** The library being replaced holds work that never reached the cloud. */
+  readonly isUnsynced = input(false);
+  /** The takeover is running. */
+  readonly isBusy = input(false);
+
+  /** The person asked to replace the library: open the confirm. */
+  readonly opened = output<void>();
+  readonly cancelled = output<void>();
+  /** The person confirmed the replacement. */
+  readonly confirmed = output<void>();
 
   protected readonly heading = $localize`:@@library.foreign.heading:These songs belong to another account.`;
   protected readonly explain = $localize`:@@library.foreign.explain:This device is signed in to a different account than the one that owns this library. Sign in as that account to see it again — or replace it with your own account's library.`;
@@ -151,32 +157,4 @@ export class ForeignLibraryNotice {
   protected readonly unsyncedWarn = $localize`:@@library.foreign.unsyncedWarn:Some of the other account's changes on this device have never been synced. Replacing loses them for good — they are not in the cloud.`;
   protected readonly confirmButton = $localize`:@@library.foreign.confirmButton:Replace the library`;
   protected readonly cancelLabel = $localize`:@@library.foreign.cancel:Cancel`;
-
-  protected openConfirm(): void {
-    this.foreignUnsynced.set(false);
-    this.confirming.set(true);
-    // Ask the database whether the copy about to be cleared holds unsynced work,
-    // and escalate the copy if so. Best-effort: an unreadable answer leaves the
-    // plain warning rather than a false all-clear.
-    void this.sync
-      .hasUnsyncedRows()
-      .then((unsynced) => this.foreignUnsynced.set(unsynced))
-      .catch(() => this.foreignUnsynced.set(false));
-  }
-
-  protected cancel(): void {
-    if (this.busy()) return;
-    this.confirming.set(false);
-  }
-
-  protected async replace(): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    try {
-      await this.sync.adoptDevice();
-      this.confirming.set(false);
-    } finally {
-      this.busy.set(false);
-    }
-  }
 }

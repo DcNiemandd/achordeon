@@ -14,6 +14,7 @@ import {
   SongbookStore,
   SongSiteFlow,
   SongStore,
+  LibraryTakeover,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
@@ -64,6 +65,9 @@ export interface PendingSongbookDelete {
  */
 @Injectable()
 export class SongbooksPresenter {
+  /** The foreign-library notice's state and its takeover (ADR-0004/0009): the
+   * notice above this page's content draws it. */
+  readonly takeover = inject(LibraryTakeover);
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly downloads = inject(DownloadService);
