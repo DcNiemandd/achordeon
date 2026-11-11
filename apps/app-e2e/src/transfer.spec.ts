@@ -124,20 +124,37 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
 }
 
 /**
- * Open a songbook row's ⋯ menu — where perform, download and delete live (edit,
- * rename and duplicate stay direct on the row).
+ * Reach a songbook row's secondary actions: perform, download, settings, delete
+ * (edit, rename and duplicate stay direct on the row).
  *
- * Every item closes the menu when chosen, so a test that reaches for a second
- * one has to open it again.
+ * In the ⋯ menu every item closes it when chosen, so a test that reaches for a
+ * second one calls this again.
  */
 async function openBookMenu(page: Page, id: string | null): Promise<void> {
-  await page
-    .getByTestId('songbook-row')
-    .filter({ has: page.getByTestId(`more-${id}`) })
-    .first()
-    .hover();
-  await page.getByTestId(`more-${id}`).click();
-  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  const row = page.locator(
+    `[data-testid="songbook-row"][data-song-id="${id}"]`,
+  );
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
+}
+
+/** The same for a song row. */
+async function openRowActions(page: Page, id: string | null): Promise<void> {
+  const row = page.locator(`[data-testid="song-row"][data-song-id="${id}"]`);
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
 }
 
 /**
@@ -420,8 +437,7 @@ test.describe('a row acts on itself', () => {
 
     const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
-    await page.getByTestId(`more-${id}`).click();
+    await openRowActions(page, id);
     // One Download item now, and the Achordeon file is inside its dialog.
     await page.getByTestId(`download-${id}`).click();
 
@@ -439,9 +455,8 @@ test.describe('a row acts on itself', () => {
     await createSong(page, 'Alpha');
     const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
-    await page.getByTestId(`more-${id}`).click();
-    // The row's menu no longer carries a second file item beside this one.
+    await openRowActions(page, id);
+    // The row no longer carries a second file item beside this one.
     await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
     await page.getByTestId(`download-${id}`).click();
 

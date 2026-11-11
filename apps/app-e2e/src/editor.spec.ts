@@ -474,10 +474,10 @@ test.describe('song editor', () => {
     await expect(editor).not.toContainText('*');
   });
 
-  test('the chord button brackets the word at the caret', async ({ page }) => {
-    // The chord names on a chord row are usually typed out first, so with no
-    // selection the button takes the word the caret is on.
+  test('the chord button brackets the selection', async ({ page }) => {
+    // Bracketing a word already typed is what a selection is for (snippets.ts).
     await type(page, 'Am');
+    await page.keyboard.press('Shift+Home'); // select "Am"
     await page.getByTestId('insert-chord').click();
 
     await expect(page.getByTestId('editor')).toContainText('[Am]');
@@ -486,7 +486,8 @@ test.describe('song editor', () => {
   test('the chord button leaves the caret inside an empty bracket', async ({
     page,
   }) => {
-    // No word under the caret (a space), so it opens an empty pair instead.
+    // With nothing selected it opens an empty pair, never swallowing the word
+    // the caret sits in: a chord goes above a lyric, not around it.
     await type(page, 'sing ');
     await page.getByTestId('insert-chord').click();
     // The caret must be BETWEEN the brackets — that is where the chord goes.

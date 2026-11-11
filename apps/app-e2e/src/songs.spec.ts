@@ -43,17 +43,19 @@ async function firstRun(page: Page): Promise<void> {
 }
 
 /**
- * Open a row's ⋯ menu — download and delete moved behind it (Epic 7).
- * Edit, rename and duplicate stay direct on the row.
+ * Reach a row's secondary actions: download and delete (Epic 7). Edit, rename
+ * and duplicate stay direct on the row.
  */
 async function openRowMenu(page: Page, id: string | null): Promise<void> {
-  await page
-    .getByTestId('song-row')
-    .filter({ has: page.getByTestId(`more-${id}`) })
-    .first()
-    .hover();
-  await page.getByTestId(`more-${id}`).click();
-  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  const row = page.locator(`[data-testid="song-row"][data-song-id="${id}"]`);
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
 }
 
 /**
@@ -282,12 +284,9 @@ test.describe('song explorer', () => {
     await expect(page.getByTestId('song-row')).toHaveCount(2);
     await expect(page.getByTestId('song-row').nth(1)).toContainText('(copy)');
 
-    // …and it did not also stay behind the ⋯, which would offer the same act
-    // twice on one row.
+    // …and it is offered once on the row, not again behind the ⋯ as well.
     await openRowMenu(page, id);
-    await expect(
-      page.getByTestId(`more-${id}-panel`).getByTestId(`duplicate-${id}`),
-    ).toHaveCount(0);
+    await expect(page.getByTestId(`duplicate-${id}`)).toHaveCount(1);
   });
 
   test('favorites a song, and the flag survives a reload', async ({ page }) => {

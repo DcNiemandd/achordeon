@@ -67,17 +67,21 @@ async function createSongbook(page: Page, name: string): Promise<void> {
 }
 
 /**
- * Open a songbook row's ⋯ menu — perform, download and delete live behind it.
+ * Reach a songbook row's secondary actions: perform, download, settings, delete.
  * Edit, rename and duplicate stay direct on the row.
  */
 async function openBookMenu(page: Page, id: string | null): Promise<void> {
-  await page
-    .getByTestId('songbook-row')
-    .filter({ has: page.getByTestId(`more-${id}`) })
-    .first()
-    .hover();
-  await page.getByTestId(`more-${id}`).click();
-  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  const row = page.locator(
+    `[data-testid="songbook-row"][data-song-id="${id}"]`,
+  );
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
 }
 
 /**
@@ -103,8 +107,11 @@ async function addSongs(page: Page, names: string[]): Promise<void> {
   // Adding clears the library selection, so the next add starts clean.
   await expect(add).toBeDisabled();
   // ...and it leaves the newly-added slots ticked; drop that so downstream
-  // adds and moves start from a clean slot selection.
+  // adds and moves start from a clean slot selection. Waited for: the clear
+  // lands a beat after the click, and a `check()` that runs first finds the
+  // slot still ticked, does nothing, and is then undone by the clear.
   await page.getByTestId('selection-clear').click();
+  await expect(page.getByTestId('selection-clear')).toHaveCount(0);
 }
 
 test.describe('songbooks', () => {

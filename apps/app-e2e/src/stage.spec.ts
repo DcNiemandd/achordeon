@@ -371,3 +371,35 @@ test.describe('stage — the All songs order', () => {
     await expect(page.getByTestId('all-songs-order-axis')).toHaveValue('name');
   });
 });
+
+test.describe('fullscreen mode', () => {
+  const ROOMY = { width: 1440, height: 900 };
+
+  test('performing keeps the normal frame until asked: chrome is a mode, not a route', async ({
+    page,
+  }) => {
+    await page.setViewportSize(ROOMY);
+    const id = await seedBook(page);
+    await page.goto(`stage/${id}`);
+
+    await expect(page.getByTestId('rail')).toBeVisible();
+    await expect(page.getByTestId('stage-fullscreen')).toBeVisible();
+  });
+
+  test('entering hides the chrome; moving the pointer brings it back', async ({
+    page,
+  }) => {
+    await page.setViewportSize(ROOMY);
+    const id = await seedBook(page);
+    await page.goto(`stage/${id}`);
+
+    await page.getByTestId('stage-fullscreen').click();
+
+    // The bars fade after the idle delay, which is the whole point of the mode.
+    await expect(page.getByTestId('rail')).toHaveCount(0, { timeout: 6000 });
+
+    // ...and any movement brings them straight back, wherever you are.
+    await page.mouse.move(700, 400);
+    await expect(page.getByTestId('rail')).toBeVisible();
+  });
+});
