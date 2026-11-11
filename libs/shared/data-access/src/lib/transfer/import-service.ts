@@ -12,6 +12,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import {
+  CHORD_SHEET_EXTENSIONS,
   ChordTheory,
   SCHEMA_VERSION,
   applyImport,
@@ -259,15 +260,6 @@ export class ImportService {
     });
   }
 }
-
-/** The file types read as a Chord sheet (plan phase 3, Q44). */
-export const CHORD_SHEET_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.cho',
-  '.chordpro',
-  '.crd',
-  '.pro',
-  '.txt',
-]);
 
 /**
  * A file's bytes as text: UTF-8 when they are UTF-8, else windows-1250 — the

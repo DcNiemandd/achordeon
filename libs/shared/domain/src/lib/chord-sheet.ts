@@ -1082,3 +1082,13 @@ export function toChordPro(
 ): string {
   return songs.map((song) => chordProSong(song, theory)).join('\n{new_song}\n');
 }
+
+/** The file types read as a Chord sheet (plan phase 3, Q44).
+ * Here rather than beside the import, so the file picker can name them too. */
+export const CHORD_SHEET_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.cho',
+  '.chordpro',
+  '.crd',
+  '.pro',
+  '.txt',
+]);

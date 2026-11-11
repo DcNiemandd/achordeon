@@ -53,18 +53,20 @@ const ICONS = {
   // smaller ones — the magnifier is what makes that read as scale, not paging.
   zoomIn: 'zoom-in',
   zoomOut: 'zoom-out',
-  // The two directions a file travels (Epic 7). One tray with the arrow going
-  // down, one with it going up — the same glyph mirrored, because they are the
-  // same act mirrored: something leaves the library, something arrives.
+  // The two directions a file travels (Epic 7).
   //
   // `download` covers BOTH kinds of leaving now: the picture for a player and
   // the Achordeon file for another machine are one button and one dialog, so
-  // there is no second act left for an `export` mark to name. The file glyphs
-  // (`file-output`/`file-input`) said "a page moves", which was a distinction
-  // without a button once the two merged — and a page with an arrow reads as
-  // "print" at 18px anyway.
+  // there is no second act left for an `export` mark to name.
+  //
+  // Import is a file coming in, so it is a file with the arrow up. The tray
+  // with the arrow up (the mirror of Download) stood beside Download in the
+  // toolbar as the same picture twice, told apart only by the arrow.
   download: 'download',
-  import: 'upload',
+  import: 'file-up',
+  // Find a song on a Song site (plans/import-chord-sheets.md phase 6): a
+  // search through a songbook, its own toolbar button beside Import.
+  songSite: 'book-search',
   // The full circular arrow, which is what an undo arrow is in most people's
   // heads. It used to be `undo-2`/`redo-2` — an arrow that runs left and loops
   // back — which reads as "go left" before it reads as "go back".

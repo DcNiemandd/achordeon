@@ -10,18 +10,12 @@ import { ImportDialog } from './import-dialog';
 describe('ImportDialog', () => {
   let fixture: ComponentFixture<ImportDialog>;
   let picked: (readonly File[])[];
-  let songSite: number;
 
-  function mount(isSongSiteAvailable?: boolean): void {
+  function mount(): void {
     TestBed.resetTestingModule();
     fixture = TestBed.createComponent(ImportDialog);
-    if (isSongSiteAvailable !== undefined) {
-      fixture.componentRef.setInput('isSongSiteAvailable', isSongSiteAvailable);
-    }
     picked = [];
-    songSite = 0;
     fixture.componentInstance.picked.subscribe((files) => picked.push(files));
-    fixture.componentInstance.songSite.subscribe(() => songSite++);
     fixture.detectChanges();
   }
 
@@ -76,13 +70,5 @@ describe('ImportDialog', () => {
     mount();
     choose('import-chord-sheet-input', []);
     expect(picked).toEqual([]);
-  });
-
-  it('offers a song site only once one can be reached', () => {
-    mount();
-    expect(find<HTMLButtonElement>('import-song-site').disabled).toBe(true);
-    mount(true);
-    find('import-song-site').click();
-    expect(songSite).toBe(1);
   });
 });

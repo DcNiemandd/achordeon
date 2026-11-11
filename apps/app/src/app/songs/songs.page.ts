@@ -163,6 +163,23 @@ import { SongsPresenter, type PendingDelete } from './songs.presenter';
               <app-icon name="import" />
             </button>
 
+            <!-- Beside Import, because it is a way in too: one song off a
+                 Song site. Its own button rather than a row in the Import
+                 dialog, since it opens a search, not a file picker. Off
+                 without the internet, and the tooltip says so. -->
+            <button
+              appButton
+              type="button"
+              [isIconOnly]="true"
+              [disabled]="!presenter.isSongSiteAvailable()"
+              [attr.aria-label]="songSiteLabel()"
+              [appTooltip]="songSiteLabel()"
+              data-testid="songs-song-site"
+              (click)="presenter.openSongSite()"
+            >
+              <app-icon name="songSite" />
+            </button>
+
             <!-- Red, like the same act in the row's ⋯ menu. A destructive
                  button that wears the neutral ghost tint in one place and the
                  danger tone in another is asking to be pressed by mistake in
@@ -426,6 +443,13 @@ export class SongsPage {
   );
 
   protected readonly importLabel = $localize`:@@songs.import:Import songs from a file`;
+
+  /** Says why when it is off: there is nothing to search without the internet. */
+  protected readonly songSiteLabel = computed(() =>
+    this.presenter.isSongSiteAvailable()
+      ? $localize`:@@songSite.open:Find a song on a song site`
+      : $localize`:@@songSite.openOffline:Find a song on a song site. Needs an internet connection.`,
+  );
 
   protected readonly title = $localize`:@@songs.title:Songs`;
   protected readonly addLabel = $localize`:@@songs.add:New song`;

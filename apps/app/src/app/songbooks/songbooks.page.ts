@@ -97,6 +97,19 @@ import {
           >
             <app-icon name="import" />
           </button>
+          <!-- One song off a Song site, beside Import as the other way in. -->
+          <button
+            appButton
+            type="button"
+            [isIconOnly]="true"
+            [disabled]="!presenter.isSongSiteAvailable()"
+            [attr.aria-label]="songSiteLabel()"
+            [appTooltip]="songSiteLabel()"
+            data-testid="songbooks-song-site"
+            (click)="presenter.openSongSite()"
+          >
+            <app-icon name="songSite" />
+          </button>
         </app-action-bar>
 
         <app-foreign-library-notice />
@@ -411,6 +424,13 @@ export class SongbooksPage {
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
   protected readonly addLabel = $localize`:@@songbooks.add:New songbook`;
   protected readonly importLabel = $localize`:@@songbooks.import:Import from a file`;
+
+  /** Says why when it is off: there is nothing to search without the internet. */
+  protected readonly songSiteLabel = computed(() =>
+    this.presenter.isSongSiteAvailable()
+      ? $localize`:@@songSite.open:Find a song on a song site`
+      : $localize`:@@songSite.openOffline:Find a song on a song site. Needs an internet connection.`,
+  );
   protected readonly emptyText = $localize`:@@songbooks.empty:No songbooks yet. Create one to group songs for a set.`;
   protected readonly deleteTitle = $localize`:@@songbooks.delete.title:Delete this songbook?`;
   protected readonly keepsSongsText = $localize`:@@songbooks.delete.keeps:The songs themselves stay in your library.`;

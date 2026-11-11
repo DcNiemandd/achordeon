@@ -73,7 +73,7 @@ A global per-Song flag (the same everywhere the Song appears). Sortable in the S
 
 ## Import dialog
 
-Where an Import starts: one row per way in — an Achordeon file, a Chord sheet file, or a Song site. The last opens its own dialog. A dropped file or an opened Share link skips it and goes straight to the import preview.
+Where an Import from a file starts: one row per kind of file — an Achordeon file or a Chord sheet file. A dropped file or an opened Share link skips it and goes straight to the import preview. A Song site is not a row here: it has its own button beside Import.
 
 ## Chord sheet
 

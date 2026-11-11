@@ -37,6 +37,8 @@ export * from './lib/sync/supabase-backend';
 export * from './lib/sync/drive-backend';
 export * from './lib/sync/sync-service';
 export * from './lib/feedback/feedback-service';
+export * from './lib/song-site/song-site-service';
+export * from './lib/song-site/song-site-flow';
 export * from './lib/lobby/lobby-analytics';
 export * from './lib/lobby/lobby-host';
 export * from './lib/lobby/lobby-viewer';

@@ -8,15 +8,16 @@ import {
   DownloadService,
   ExportService,
   ImportInbox,
-  ShareLinkService,
+  type MultiFormat,
   ParserService,
   RenderService,
   SessionStore,
   SettingsStore,
-  SongStore,
+  ShareLinkService,
   SongbookStore,
-  type MultiFormat,
   type SongFormat,
+  SongSiteFlow,
+  SongStore,
 } from '@achordeon/shared/data-access';
 import { resolveSettings, type Song } from '@achordeon/shared/domain';
 import {
@@ -79,6 +80,7 @@ export class SongsPresenter {
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
+  private readonly songSites = inject(SongSiteFlow);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnUrl = inject(ReturnUrl);
@@ -620,6 +622,14 @@ export class SongsPresenter {
    * others being a drop and a link, neither of which belongs to a page — so the
    * flow cannot live here without existing twice.
    */
+  /** Whether the toolbar's Song site button is on: online, with a backend (Q61). */
+  readonly isSongSiteAvailable = computed(() => this.songSites.isAvailable());
+
+  /** The Song site flow, which the shell's host shows from here on (Q60). */
+  openSongSite(): void {
+    void this.songSites.open();
+  }
+
   readImport(files: readonly File[]): void {
     void this.inbox.offer(files);
   }

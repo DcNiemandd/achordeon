@@ -6,13 +6,14 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
-  ShareLinkService,
   ImportInbox,
   SettingsStore,
-  SongStore,
-  SongbookStore,
+  ShareLinkService,
   type SongbookPreview,
   type SongbookPreviewSource,
+  SongbookStore,
+  SongSiteFlow,
+  SongStore,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
@@ -102,6 +103,7 @@ export class SongbooksPresenter {
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
+  private readonly songSites = inject(SongSiteFlow);
   private readonly router = inject(Router);
   private readonly listScroll = inject(ListScrollMemory);
 
@@ -767,6 +769,14 @@ export class SongbooksPresenter {
   // dialogs are mounted once at the shell (plan §7).
 
   /** Hand the picked files over and let go of them. */
+  /** Whether the toolbar's Song site button is on: online, with a backend (Q61). */
+  readonly isSongSiteAvailable = computed(() => this.songSites.isAvailable());
+
+  /** The Song site flow, which the shell's host shows from here on (Q60). */
+  openSongSite(): void {
+    void this.songSites.open();
+  }
+
   readImport(files: readonly File[]): void {
     void this.inbox.offer(files);
   }

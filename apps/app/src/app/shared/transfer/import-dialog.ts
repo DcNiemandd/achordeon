@@ -8,13 +8,8 @@
 //
 // Controlled: it holds no state, injects nothing, and knows no store.
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  input,
-  output,
-} from '@angular/core';
-import { CHORD_SHEET_EXTENSIONS } from '@achordeon/shared/data-access';
+import { ChangeDetectionStrategy, Component, output } from '@angular/core';
+import { CHORD_SHEET_EXTENSIONS } from '@achordeon/shared/domain';
 import { Button, Dialog, Icon } from '../../primitives';
 
 @Component({
@@ -85,27 +80,6 @@ import { Button, Dialog, Icon } from '../../primitives';
             (change)="onPicked($event)"
           />
         </div>
-
-        <!-- Behind a hairline, like the Download dialog's data rows: this one
-             does not end in a file on this device, it goes out to find one. -->
-        <div class="option is-site">
-          <div class="text">
-            <span class="name">{{ songSiteLabel }}</span>
-            <span class="hint">{{ songSiteHint }}</span>
-          </div>
-          <button
-            appButton
-            type="button"
-            variant="primary"
-            class="go"
-            [disabled]="!isSongSiteAvailable()"
-            data-testid="import-song-site"
-            (click)="songSite.emit()"
-          >
-            <app-icon name="search" />
-            {{ searchLabel }}
-          </button>
-        </div>
       </div>
     </app-dialog>
   `,
@@ -121,12 +95,6 @@ import { Button, Dialog, Icon } from '../../primitives';
       grid-column: 1 / -1;
       grid-template-columns: subgrid;
       align-items: start;
-    }
-
-    .option.is-site {
-      margin-block-start: var(--space-1);
-      padding-block-start: var(--space-3);
-      border-block-start: 1px solid var(--border);
     }
 
     .text {
@@ -162,13 +130,8 @@ import { Button, Dialog, Icon } from '../../primitives';
   `,
 })
 export class ImportDialog {
-  /** False until the song-site search exists and the device is online. */
-  readonly isSongSiteAvailable = input(false);
-
   /** Files the person chose in one of the pickers. */
   readonly picked = output<readonly File[]>();
-  /** The person wants to search a song site. */
-  readonly songSite = output<void>();
   readonly closed = output<void>();
 
   /**
@@ -195,11 +158,8 @@ export class ImportDialog {
 
   protected readonly title = $localize`:@@importDialog.title:Import`;
   protected readonly chooseLabel = $localize`:@@importDialog.choose:Choose file`;
-  protected readonly searchLabel = $localize`:@@importDialog.search:Search`;
   protected readonly achordeonLabel = $localize`:@@importDialog.achordeon:Achordeon file`;
   protected readonly achordeonHint = $localize`:@@importDialog.achordeon.hint:Songs and songbooks exported from Achordeon, or a downloaded song picture.`;
   protected readonly chordSheetLabel = $localize`:@@importDialog.chordSheet:Chord sheet`;
   protected readonly chordSheetHint = $localize`:@@importDialog.chordSheet.hint:ChordPro, or text with chords above the words (.cho, .chordpro, .crd, .pro, .txt).`;
-  protected readonly songSiteLabel = $localize`:@@importDialog.songSite:From a song site`;
-  protected readonly songSiteHint = $localize`:@@importDialog.songSite.hint:Find a song by its name, its artist or a link.`;
 }
