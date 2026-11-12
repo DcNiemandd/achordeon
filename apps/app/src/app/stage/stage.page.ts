@@ -166,7 +166,7 @@ export class StagePage {
   protected readonly title = $localize`:@@stage.title:Stage`;
   protected readonly emptyText = $localize`:@@stage.empty:No songs yet. Add songs to start performing.`;
   protected readonly performShort = $localize`:@@stage.perform:Perform`;
-  protected readonly orderLabel = $localize`:@@stage.allSongsOrder:All songs sorting`;
+  protected readonly orderLabel = $localize`:@@stage.allSongsOrder:Performance order`;
 
   protected performLabel(name: string): string {
     return $localize`:@@stage.performLabel:Perform "${name}:name:"`;

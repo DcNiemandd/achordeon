@@ -414,7 +414,7 @@ export class SongbooksPage {
   protected readonly titlePageHeading = $localize`:@@songbooks.titlePage:Title page`;
   protected readonly titlePageHelp = $localize`:@@songbooks.titlePage.help:Printed on the songbook's title page. Separate from any song's own title.`;
   protected readonly printHeading = $localize`:@@songbooks.print:Print`;
-  protected readonly orderHeading = $localize`:@@songbookDownload.order:Song order`;
+  protected readonly orderHeading = $localize`:@@songbookDownload.order:Print order`;
 
   /** The book's own metadata — authored here, never parsed (ADR-0001). */
   protected readonly titleFieldDefs = [

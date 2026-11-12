@@ -1,4 +1,4 @@
-// All songs sorting dialog — the order it goes to the stage in
+// Performance order dialog — the order All songs goes to the stage in
 // Spec: CONTEXT.md §Songbook (All songs — a read-only *order*), §Stage, §Account;
 // PRD-UI-SHELL.md §3 (controlled component), ADR-0004 (the account row syncs).
 
@@ -190,7 +190,7 @@ export class AllSongsOrderDialog {
     return (event.target as HTMLInputElement).checked;
   }
 
-  protected readonly title = $localize`:@@allSongsOrder.title:All songs sorting`;
+  protected readonly title = $localize`:@@allSongsOrder.title:Performance order`;
   protected readonly lead = $localize`:@@allSongsOrder.lead:All songs has no order of its own, so choose the order it is performed in.`;
   protected readonly note = $localize`:@@allSongsOrder.note:Saved to your account, so it applies on every device you sign in on.`;
   protected readonly orderLabel = $localize`:@@allSongsOrder.order:Order by`;
