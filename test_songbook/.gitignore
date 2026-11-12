@@ -67,3 +67,4 @@
 # file beside them.
 _drafts/
 .achordeon-work/
+*.txt
