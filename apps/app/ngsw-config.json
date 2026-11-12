@@ -25,7 +25,7 @@
       "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
-        "files": ["/fonts/RobotoMono-*.ttf", "/fonts/*.txt"]
+        "files": ["/fonts/RobotoMono-*.ttf", "/fonts/*.txt", "/fonts/*.json"]
       }
     },
     {
