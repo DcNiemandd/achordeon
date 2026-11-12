@@ -239,7 +239,7 @@
   "import.cancelAll": "Cancel all {$count}",
   "import.confirm": "Import",
   "import.conflicts": "{$count} of them are already in your library:",
-  "import.dropHint": "Achordeon files, or a song image downloaded from Achordeon.",
+  "import.dropHint": "Achordeon files, a song image downloaded from Achordeon, or a chord sheet (ChordPro or text with chords).",
   "import.dropTitle": "Drop to import",
   "import.errorCancelAll": "Cancel the rest",
   "import.failedTitle": "That file could not be imported",

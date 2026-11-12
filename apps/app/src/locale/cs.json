@@ -241,7 +241,7 @@
     "import.cancelAll": "Zrušit vše ({$count})",
     "import.confirm": "Importovat",
     "import.conflicts": "Tyto už ve své knihovně máte ({$count}):",
-    "import.dropHint": "Soubory Achordeonu nebo obrázek písně stažený z Achordeonu.",
+    "import.dropHint": "Soubory Achordeonu, obrázek písně stažený z Achordeonu, nebo text s akordy (ChordPro nebo akordy nad slovy).",
     "import.dropTitle": "Přetažením importujete",
     "import.errorCancelAll": "Zrušit zbytek",
     "import.failedTitle": "Tento soubor se nepodařilo importovat",
