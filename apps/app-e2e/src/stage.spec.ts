@@ -215,11 +215,13 @@ test.describe('stage — swiping turns the page', () => {
 test.describe('stage — turning the page', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: COMPACT });
 
-  /** The same book, with every song written to fill a screen held sideways. */
-  async function seedLandscapeBook(page: Page): Promise<string> {
-    const id = await seedBook(page);
+  /** Write one aspect ratio onto every song in the library. */
+  async function setEveryAspect(
+    page: Page,
+    aspectRatio: string,
+  ): Promise<void> {
     await page.evaluate(
-      () =>
+      (aspectRatio) =>
         new Promise<void>((resolve, reject) => {
           const open = indexedDB.open('achordeon');
           open.onsuccess = () => {
@@ -231,7 +233,7 @@ test.describe('stage — turning the page', () => {
               for (const song of all.result) {
                 store.put({
                   ...song,
-                  settings: { ...song.settings, aspectRatio: '284:131' },
+                  settings: { ...song.settings, aspectRatio },
                 });
               }
             };
@@ -240,7 +242,14 @@ test.describe('stage — turning the page', () => {
           };
           open.onerror = () => reject(open.error);
         }),
+      aspectRatio,
     );
+  }
+
+  /** The same book, with every song written to fill a screen held sideways. */
+  async function seedLandscapeBook(page: Page): Promise<string> {
+    const id = await seedBook(page);
+    await setEveryAspect(page, '284:131');
     return id;
   }
 
@@ -264,7 +273,10 @@ test.describe('stage — turning the page', () => {
 
     // The control is hidden where it cannot act, rather than shown and inert —
     // which is also what makes it appearing the discovery.
+    // The same library, put back upright. `seedBook` alone would not do it: the
+    // starter set is seeded once, so its songs are still the landscape ones.
     const portrait = await seedBook(page);
+    await setEveryAspect(page, 'A4');
     await page.goto(`stage/${portrait}`);
     await expect(page.getByTestId('stage-render')).toBeVisible();
     await page.getByTestId('stage-menu').click();
