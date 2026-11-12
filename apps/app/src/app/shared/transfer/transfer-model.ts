@@ -59,8 +59,22 @@ export type DataFormat = typeof DATA_FORMAT;
 export const SHARE_LINK_FORMAT = 'share-link';
 export type ShareLinkFormat = typeof SHARE_LINK_FORMAT;
 
-/** What the download dialog can hand back: a render, the data file, or a link. */
-export type DownloadChoice = DownloadFormat | DataFormat | ShareLinkFormat;
+/**
+ * The same songs as a **ChordPro file**, for other chord apps (CONTEXT.md
+ * §Export, plan Q4). Lossy where the Achordeon file is not — no id, favourite or
+ * songbook — so it is its own choice and its own service call, never a member of
+ * `DownloadFormat`.
+ */
+export const CHORDPRO_FORMAT = 'chordpro';
+export type ChordProFormat = typeof CHORDPRO_FORMAT;
+
+/** What the download dialog can hand back: a render, the data file, a link, or
+ * a ChordPro file. */
+export type DownloadChoice =
+  | DownloadFormat
+  | DataFormat
+  | ShareLinkFormat
+  | ChordProFormat;
 
 export type PageSizeChoice = 'A4' | 'Letter' | 'A5';
 
@@ -80,7 +94,8 @@ export type SongbookFormat = 'pdf' | 'zip-png';
 export type SongbookChoiceFormat =
   | SongbookFormat
   | DataFormat
-  | ShareLinkFormat;
+  | ShareLinkFormat
+  | ChordProFormat;
 
 /**
  * The axis the **All songs** book is ordered by when it prints.

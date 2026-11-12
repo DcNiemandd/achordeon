@@ -68,6 +68,17 @@ Přepínač se pamatuje v tomto zařízení a pokrývá aplikaci i tuto dokument
 zpět má okamžitý účinek. Tentýž přepínač je v [Nastavení](/settings-account/settings.mdx#aplikace)
 aplikace a je to týž přepínač, nastavte jej na kterémkoli místě.
 
+## Zpěvníkové weby
+
+Hledání na [zpěvníkovém webu](/export-import/index.mdx#zpěvníkové-weby) je jediné
+místo, kde aplikace posílá ven něco, co jste napsali. Hledání jde na server
+Achordeonu a server se zeptá webu:
+
+- **Web uvidí** slova, která jste hledali, nebo odkaz, který jste vložili. Požadavek přichází ze serveru Achordeonu, ne z vašeho zařízení, takže web vaši IP adresu nikdy neuvidí
+- **Achordeon si na deset minut ponechá** osolený hash vaší IP adresy a čas hledání. Tak server brání tomu, aby jeden volající zahltil web hledáním. Nikdy ne adresu samotnou a nikdy ne to, co jste hledali. Řádek smaže první hledání po uplynutí jeho deseti minut
+
+Tento hash není součástí počítání výše a nikdy se do něj nepřidává.
+
 ## Jak dlouho se to uchovává
 
 Surové počty 90 dní, poté jen denní součty. Nic se nikdy nečte zpátky, když aplikace

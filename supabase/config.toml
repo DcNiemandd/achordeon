@@ -79,3 +79,9 @@ secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
 # keeps the least interesting traffic from reaching them.
 [functions.feedback]
 verify_jwt = true
+
+# The Song sites proxy (supabase/functions/song-sites, ADR-0019). JWT on for
+# the same reason as feedback: the anon key must be present and signed. The
+# per-IP rate limit and the timeouts live inside the function.
+[functions.song-sites]
+verify_jwt = true

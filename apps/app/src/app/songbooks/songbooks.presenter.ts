@@ -6,13 +6,15 @@ import { Router } from '@angular/router';
 import {
   DownloadService,
   ExportService,
-  ShareLinkService,
   ImportInbox,
   SettingsStore,
-  SongStore,
-  SongbookStore,
+  ShareLinkService,
   type SongbookPreview,
   type SongbookPreviewSource,
+  SongbookStore,
+  SongSiteFlow,
+  SongStore,
+  LibraryTakeover,
 } from '@achordeon/shared/data-access';
 import {
   ALL_SONGS_ID,
@@ -23,6 +25,7 @@ import {
 import type { SongRow } from '../shared/song-explorer';
 import { ListScrollMemory, UiStore } from '../shared/layout';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   PrintOptionsStore,
@@ -62,6 +65,9 @@ export interface PendingSongbookDelete {
  */
 @Injectable()
 export class SongbooksPresenter {
+  /** The foreign-library notice's state and its takeover (ADR-0004/0009): the
+   * notice above this page's content draws it. */
+  readonly takeover = inject(LibraryTakeover);
   private readonly store = inject(SongbookStore);
   private readonly songs = inject(SongStore);
   private readonly downloads = inject(DownloadService);
@@ -101,6 +107,7 @@ export class SongbooksPresenter {
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
+  private readonly songSites = inject(SongSiteFlow);
   private readonly router = inject(Router);
   private readonly listScroll = inject(ListScrollMemory);
 
@@ -731,6 +738,15 @@ export class SongbooksPresenter {
       this._downloadId.set(null);
       return;
     }
+    if (format === CHORDPRO_FORMAT) {
+      // The book's songs, in book order, for another app (plan Q50). Not
+      // remembered either — it is not a statement about paper.
+      await this.busy(() =>
+        this.exporter.exportChordPro({ songbookIds: [id] }),
+      );
+      this._downloadId.set(null);
+      return;
+    }
     // Only the paper is remembered here (#3). The book's structure is not the
     // download dialog's to set any more — it belongs to the book, set in its
     // settings — so a download writes nothing to the record.
@@ -757,6 +773,14 @@ export class SongbooksPresenter {
   // dialogs are mounted once at the shell (plan §7).
 
   /** Hand the picked files over and let go of them. */
+  /** Whether the toolbar's Song site button is on: online, with a backend (Q61). */
+  readonly isSongSiteAvailable = computed(() => this.songSites.isAvailable());
+
+  /** The Song site flow, which the shell's host shows from here on (Q60). */
+  openSongSite(): void {
+    void this.songSites.open();
+  }
+
   readImport(files: readonly File[]): void {
     void this.inbox.offer(files);
   }

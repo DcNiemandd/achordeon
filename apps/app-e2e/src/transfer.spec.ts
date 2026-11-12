@@ -19,6 +19,15 @@ import { createSong } from './create-song';
 
 const ROOMY = { width: 1440, height: 900 };
 
+/**
+ * The Achordeon-file picker, reached the way a person reaches it: the page's
+ * Import button opens the Import dialog, whose first row holds the picker.
+ */
+async function achordeonFileInput(page: Page, from: 'songs' | 'songbooks') {
+  await page.getByTestId(`${from}-import`).click();
+  return page.getByTestId('import-achordeon-input');
+}
+
 /** A word from the starter content — what a rendered song must actually say. */
 const TUTORIAL_WORD = 'brackets';
 
@@ -115,20 +124,37 @@ async function download(page: Page, act: () => Promise<void>): Promise<Buffer> {
 }
 
 /**
- * Open a songbook row's ⋯ menu — where perform, download and delete live (edit,
- * rename and duplicate stay direct on the row).
+ * Reach a songbook row's secondary actions: perform, download, settings, delete
+ * (edit, rename and duplicate stay direct on the row).
  *
- * Every item closes the menu when chosen, so a test that reaches for a second
- * one has to open it again.
+ * In the ⋯ menu every item closes it when chosen, so a test that reaches for a
+ * second one calls this again.
  */
 async function openBookMenu(page: Page, id: string | null): Promise<void> {
-  await page
-    .getByTestId('songbook-row')
-    .filter({ has: page.getByTestId(`more-${id}`) })
-    .first()
-    .hover();
-  await page.getByTestId(`more-${id}`).click();
-  await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  const row = page.locator(
+    `[data-testid="songbook-row"][data-song-id="${id}"]`,
+  );
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
+}
+
+/** The same for a song row. */
+async function openRowActions(page: Page, id: string | null): Promise<void> {
+  const row = page.locator(`[data-testid="song-row"][data-song-id="${id}"]`);
+  await row.hover();
+  // Folded behind ⋯ only while the list is narrower than 480px; laid out on
+  // the row otherwise, under the same test ids. Open the menu only if it is there.
+  const more = page.getByTestId(`more-${id}`);
+  if ((await more.count()) > 0) {
+    await more.click();
+    await expect(page.getByTestId(`more-${id}-panel`)).toBeVisible();
+  }
 }
 
 /**
@@ -231,7 +257,9 @@ test.describe('export & import', () => {
     await freshLibrary(page);
     await expect(page.getByTestId('song-row')).toHaveCount(0);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -248,7 +276,9 @@ test.describe('export & import', () => {
     await createSong(page, 'Alpha');
     const file = await exportFromBar(page);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -268,7 +298,9 @@ test.describe('export & import', () => {
     await createSong(page, 'Alpha');
     const file = await exportFromBar(page);
 
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'library.json',
       mimeType: 'application/json',
       buffer: file,
@@ -285,14 +317,16 @@ test.describe('export & import', () => {
     page,
   }) => {
     await createSong(page, 'Alpha');
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'notes.json',
       mimeType: 'application/json',
       buffer: Buffer.from('{"nope":true}'),
     });
 
     await expect(page.getByTestId('import-error-dialog')).toBeVisible();
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await page.getByTestId('import-error-close').click();
     await expect(
       page.getByTestId('song-row').filter({ hasText: 'Alpha' }),
@@ -351,7 +385,9 @@ test.describe('import across modules', () => {
     // resolves to the default (replace).
     await page.getByTestId('rail-songs').click();
     await expect(page).toHaveURL(/\/songs(\?|$)/);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'campfire.json',
       mimeType: 'application/json',
       buffer: file,
@@ -373,7 +409,9 @@ test.describe('import across modules', () => {
     await page.goto('songbooks');
     // The Songbooks module has its own Import.
     await expect(page.getByTestId('songbooks-import')).toBeVisible();
-    await page.getByTestId('songbooks-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songbooks')
+    ).setInputFiles({
       name: 'campfire.json',
       mimeType: 'application/json',
       buffer: file,
@@ -399,8 +437,7 @@ test.describe('a row acts on itself', () => {
 
     const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
-    await page.getByTestId(`more-${id}`).click();
+    await openRowActions(page, id);
     // One Download item now, and the Achordeon file is inside its dialog.
     await page.getByTestId(`download-${id}`).click();
 
@@ -418,9 +455,8 @@ test.describe('a row acts on itself', () => {
     await createSong(page, 'Alpha');
     const row = page.getByTestId('song-row').filter({ hasText: 'Alpha' });
     const id = await row.getAttribute('data-song-id');
-    await row.hover();
-    await page.getByTestId(`more-${id}`).click();
-    // The row's menu no longer carries a second file item beside this one.
+    await openRowActions(page, id);
+    // The row no longer carries a second file item beside this one.
     await expect(page.getByTestId(`export-${id}`)).toHaveCount(0);
     await page.getByTestId(`download-${id}`).click();
 
@@ -475,7 +511,9 @@ test.describe('download a song', () => {
     );
 
     await freshLibrary(page);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: 'alpha.png',
       mimeType: 'image/png',
       buffer: file,
@@ -702,7 +740,9 @@ test.describe('download a songbook', () => {
     // the song inside it, like every downloaded picture.
     const png = pngFromZip(zip);
     await freshLibrary(page);
-    await page.getByTestId('songs-import-input').setInputFiles({
+    await (
+      await achordeonFileInput(page, 'songs')
+    ).setInputFiles({
       name: '01-Alpha.png',
       mimeType: 'image/png',
       buffer: png,

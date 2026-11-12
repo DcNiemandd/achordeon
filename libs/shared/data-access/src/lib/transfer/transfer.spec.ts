@@ -128,6 +128,56 @@ describe('ExportService', () => {
   });
 });
 
+describe('a ChordPro export', () => {
+  /** What an import of the file hands back, as the fields a ChordPro file keeps. */
+  async function reimport(
+    importer: ImportService,
+    file: { text: string; filename: string },
+  ) {
+    const { snapshot } = await importer.read(
+      new File([file.text], file.filename),
+    );
+    return snapshot.data.songs.map((s) => ({
+      name: s.name,
+      content: s.content,
+      settings: s.settings,
+    }));
+  }
+
+  it('comes back as the same songs: content, name and settings', async () => {
+    const { exporter, importer } = setup([
+      song('a', {
+        name: 'My A',
+        content: '* Song A\n** Someone\n\nSome [Am]words\nMore [C]words\n',
+        settings: { columns: 2 },
+      }),
+      song('b', { name: 'B', content: '* B\n\nJust words\n' }),
+    ]);
+    const file = await exporter.chordPro({ songIds: ['a', 'b'] });
+    expect(await reimport(importer, file)).toEqual([
+      {
+        name: 'My A',
+        content: '* Song A\n** Someone\n\nSome [Am]words\nMore [C]words\n',
+        settings: { columns: 2 },
+      },
+      { name: 'B', content: '* B\n\nJust words\n', settings: {} },
+    ]);
+  });
+
+  it('takes a songbook’s songs in book order, each once, named after the book', async () => {
+    const { exporter, importer } = setup(
+      [song('a'), song('b'), song('c')],
+      [book('Set list', { entries: ['c', 'a', 'c'] })],
+    );
+    const file = await exporter.chordPro({ songbookIds: ['Set list'] });
+    expect(file.filename).toBe(`achordeon-Set-list-${fileDate()}.cho`);
+    expect((await reimport(importer, file)).map((s) => s.name)).toEqual([
+      'c',
+      'a',
+    ]);
+  });
+});
+
 describe('toFileSlug', () => {
   it('falls back rather than producing a file called ".json"', () => {
     expect(toFileSlug('///', 'export')).toBe('export');

@@ -12,7 +12,6 @@
       "inputs": [
         "{workspaceRoot}/tools/gen-skill-bundle.mjs",
         "{projectRoot}/bundle-entry.mjs",
-        "{workspaceRoot}/.claude/skills/song-core/scripts/to-achordeon.mjs",
         "{workspaceRoot}/.claude/skills/song-core/scripts/_domain-core.mjs",
         "{workspaceRoot}/libs/shared/domain/src/**/*.ts",
         "{workspaceRoot}/libs/shared/chord-theory/src/**/*.ts"

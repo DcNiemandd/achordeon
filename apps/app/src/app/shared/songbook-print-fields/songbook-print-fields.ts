@@ -20,6 +20,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   input,
+  linkedSignal,
   output,
 } from '@angular/core';
 import type {
@@ -52,14 +53,14 @@ interface VariantOption {
       <label class="row is-toggle">
         <input
           type="checkbox"
-          [checked]="print().hasTitlePage"
+          [checked]="current().hasTitlePage"
           data-testid="pdf-title-page"
           (change)="patch({ hasTitlePage: checked($event) })"
         />
         <span class="name">{{ titlePageLabel }}</span>
       </label>
 
-      @if (print().hasTitlePage) {
+      @if (current().hasTitlePage) {
         <label class="row">
           <span class="name">{{ variantLabel }}</span>
           <!-- The selection is on the OPTIONS, not on the select, and that is
@@ -78,7 +79,7 @@ interface VariantOption {
             @for (option of variants; track option.value) {
               <option
                 [value]="option.value"
-                [selected]="option.value === print().titlePageVariant"
+                [selected]="option.value === current().titlePageVariant"
               >
                 {{ option.label }}
               </option>
@@ -92,19 +93,19 @@ interface VariantOption {
       <label class="row is-toggle">
         <input
           type="checkbox"
-          [checked]="print().hasPageNumbers"
+          [checked]="current().hasPageNumbers"
           data-testid="pdf-page-numbers"
           (change)="patch({ hasPageNumbers: checked($event) })"
         />
         <span class="name">{{ pageNumbersLabel }}</span>
       </label>
 
-      @if (print().hasPageNumbers) {
+      @if (current().hasPageNumbers) {
         <label class="row">
           <span class="name">{{ positionLabel }}</span>
           <select
             class="control"
-            [value]="print().pageNumberPosition"
+            [value]="current().pageNumberPosition"
             data-testid="pdf-number-position"
             (change)="patch({ pageNumberPosition: place($event) })"
           >
@@ -124,19 +125,19 @@ interface VariantOption {
       <label class="row is-toggle">
         <input
           type="checkbox"
-          [checked]="print().hasSummary"
+          [checked]="current().hasSummary"
           data-testid="pdf-summary"
           (change)="patch({ hasSummary: checked($event) })"
         />
         <span class="name">{{ summaryLabel }}</span>
       </label>
 
-      @if (print().hasSummary && showSummaryNumber()) {
+      @if (current().hasSummary && showSummaryNumber()) {
         <label class="row">
           <span class="name">{{ summaryNumberLabel }}</span>
           <select
             class="control"
-            [value]="print().summaryNumberPlace"
+            [value]="current().summaryNumberPlace"
             data-testid="pdf-summary-number"
             (change)="patch({ summaryNumberPlace: summaryPlace($event) })"
           >
@@ -192,8 +193,23 @@ export class SongbookPrintFields {
 
   readonly changed = output<SongbookPrint>();
 
+  /**
+   * The print as this form last saw it: the host's, until a change is made here,
+   * then that change at once.
+   *
+   * The host saves a change to the database and hands the print back, and the
+   * next change can come first. Built on the `print` input alone, it carried the
+   * old value of everything the last change had not reached yet: tick Summary,
+   * then pick a number position before the write came back, and the second change
+   * put Summary back off. Built on this, each change keeps the ones before it, and
+   * whatever the host hands back still wins.
+   */
+  protected readonly current = linkedSignal(() => this.print());
+
   protected patch(change: Partial<SongbookPrint>): void {
-    this.changed.emit({ ...this.print(), ...change });
+    const next = { ...this.current(), ...change };
+    this.current.set(next);
+    this.changed.emit(next);
   }
 
   protected checked(event: Event): boolean {

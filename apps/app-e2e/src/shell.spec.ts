@@ -138,7 +138,10 @@ test.describe('document title', () => {
   });
 });
 
-test.describe('fullscreen mode', () => {
+// Fullscreen mode is in stage.spec.ts: the one place it is offered without a
+// lobby to join (the audience shows its button only once joined).
+
+test.describe('audience PIN prompt', () => {
   test('the audience PIN prompt keeps the normal frame and offers no controls', async ({
     page,
   }) => {
@@ -151,26 +154,6 @@ test.describe('fullscreen mode', () => {
     await expect(page.getByTestId('rail')).toBeVisible();
     await expect(page.getByTestId('audience-page-bar')).toHaveCount(0);
     await expect(page.getByTestId('audience-fullscreen')).toHaveCount(0);
-  });
-
-  test('entering hides the chrome; moving the pointer brings it back', async ({
-    page,
-  }) => {
-    await page.setViewportSize(ROOMY);
-    // Performing, because the mode needs a screen that offers it and this suite
-    // has no lobby to join. The Fullscreen service is the shell's own, so which
-    // of the two screens presses the button is not what is under test.
-    await withStarterLibrary(page, 'stage');
-    await page.getByTestId('stage-perform-all-songs').click();
-
-    await page.getByTestId('stage-fullscreen').click();
-
-    // The bars fade after the idle delay — that is the whole point of the mode.
-    await expect(page.getByTestId('rail')).toHaveCount(0, { timeout: 6000 });
-
-    // ...and any movement brings them straight back, wherever you are.
-    await page.mouse.move(700, 400);
-    await expect(page.getByTestId('rail')).toBeVisible();
   });
 });
 

@@ -8,22 +8,26 @@
 // once, here, and each `_domain.mjs` is only the part that differs: getting hold
 // of the domain in the first place.
 
-import { toAchordeon as convert } from './to-achordeon.mjs';
-
 /**
  * Bind a loaded domain into the exports the skill's scripts expect.
  *
- * @param {{ parse: Function, toEnglishNotation: Function, SETTINGS: object,
- *          SCHEMA_VERSION: number, theory: object }} loaded
+ * @param {{ parse: Function, toEnglishNotation: Function, convertChordSheet: Function,
+ *          SETTINGS: object, SCHEMA_VERSION: number, theory: object }} loaded
  */
 export function makeDomain(loaded) {
-  const { parse, SETTINGS, theory } = loaded;
+  const { parse, convertChordSheet, SETTINGS, theory } = loaded;
 
   return {
     ...loaded,
 
-    /** Somebody else's chord sheet → Achordeon markup, with the theory bound. */
-    toAchordeon: (text, options = {}) => convert(text, { theory, ...options }),
+    /**
+     * Somebody else's chord sheet → Achordeon markup, with the theory bound.
+     * The app's own conversion (`convertChordSheet`), so the skill and the app
+     * cannot drift apart. A file the domain would not call a chord sheet is still
+     * run through as chord rows: here a person already chose to convert it.
+     */
+    toAchordeon: (text, options = {}) =>
+      toAchordeon(convertChordSheet, theory, text, options),
 
     /** Setting keys the registry allows at each scope (point 5 guardrail). */
     SONG_SETTING_KEYS: keysForScope(SETTINGS, 'song'),
@@ -31,6 +35,63 @@ export function makeDomain(loaded) {
 
     inspect: (content) => inspect(content, parse, theory),
   };
+}
+
+function toAchordeon(convertChordSheet, theory, text, options) {
+  let sheet = convertChordSheet(text, theory, options);
+  if (sheet.kind !== 'converted') {
+    sheet = convertChordSheet(text, theory, {
+      ...options,
+      format: 'chord-rows',
+    });
+  }
+  return {
+    text: sheet.content,
+    report: sumReports(sheet.songs),
+    format: sheet.format,
+    dialect: sheet.dialect,
+    guessedDialect: sheet.guessedDialect,
+    songCount: sheet.songs.length,
+  };
+}
+
+/**
+ * One report for the whole joined Content: counts summed, and each song's line
+ * numbers moved down by the songs above it (one blank line between songs).
+ */
+function sumReports(songs) {
+  const total = {
+    linesIn: 0,
+    linesOut: 0,
+    merged: 0,
+    bareRows: 0,
+    chordsPlaced: 0,
+    alreadyInline: 0,
+    inlineTargets: 0,
+    clamped: 0,
+    promoted: 0,
+    confirmed: 0,
+    respelled: 0,
+    tabbedLines: 0,
+    wasCrlf: false,
+    ambiguous: [],
+    directives: { converted: 0, dropped: [] },
+  };
+  let offset = 0;
+  for (const { content, report } of songs) {
+    for (const key of Object.keys(total)) {
+      if (typeof total[key] === 'number') total[key] += report[key];
+    }
+    total.wasCrlf ||= report.wasCrlf;
+    total.ambiguous.push(...report.ambiguous.map((n) => n + offset));
+    total.directives.converted += report.directives.converted;
+    for (const name of report.directives.dropped) {
+      if (!total.directives.dropped.includes(name))
+        total.directives.dropped.push(name);
+    }
+    offset += content.split('\n').length;
+  }
+  return total;
 }
 
 function keysForScope(settings, scope) {

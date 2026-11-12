@@ -20,6 +20,12 @@ You can find it in `Songs` and `Songbooks` wherever there is a Download button, 
 
 The first line of the file says where the app that wrote it lives: `"app": "https://achordeon.eu/app/"`. The app itself never reads that line - it is there for whoever finds the file a year later and wonders what opens it.
 
+### ChordPro file
+
+The same dialog also offers a **ChordPro file** (`.cho`). ChordPro is the plain text format most other chord apps read, so this is the way to take your songs to one of them. It holds the words and chords of every selected song, one after another. From a songbook's Download dialog it holds the songbook's songs, in the songbook's order.
+
+It is not a full copy. Songbooks and favourites stay behind. The song's name and its settings are written as `{x_achordeon_...}` lines, which other apps skip and Achordeon reads back, so a ChordPro file imported here keeps them.
+
 ## Download
 
 Downloading is little bit more complicated. The basics are:
@@ -73,7 +79,7 @@ Songbooks are matched by identity too, never by name. A book you have not seen b
 
 There are three ways in, and all three end at the same preview:
 
-- the **Import** button in Songs or Songbooks, which opens the file picker
+- the **Import** button in Songs or Songbooks, which opens the Import dialog with a row for each kind of file: an **Achordeon file**, or a **Chord sheet**
 - a file **dropped anywhere on the page**, several at once being offered one after another
 - a **link**, which opens the preview already filled in
 
@@ -82,6 +88,37 @@ Several files at once are previewed one after another, not merged: each file's a
 The Achordeon file is written as `.achordeon` now. Files already exported as `.json` still import, and the picker accepts both.
 
 On a Chromium desktop with Achordeon installed there is a fourth way in, and it is not something you switch on: double-click an `.achordeon` file and the operating system opens it in the app.
+
+## Chord sheets
+
+A chord sheet is a song written outside Achordeon. Achordeon reads two kinds:
+
+- **ChordPro**: `{title: ...}` lines and the chords inline, `[C]`, the format most chord apps write
+- **chord rows**: each row of chords sitting above the words it belongs to, the way most chord websites and text files show a song
+
+Either kind is turned into Achordeon [markup](/songs/syntax.mdx) as it comes in. Text with chords in neither shape is not a chord sheet, and comes in as written.
+
+The chords always end up with English names. A sheet written with German names is recognised by an `H` or a `mi` among its chords, and rewritten: `H` becomes `B`, `B` becomes `Bb`, `Fis` becomes `F#`, `Ami` becomes `Am`. If you want the page to print German names, set the chord notation in [Rendering](/settings-account/settings.mdx#rendering).
+
+A chord sheet comes in three ways:
+
+- **a file**: in the Import dialog choose **Chord sheet** and pick `.cho`, `.chordpro`, `.crd`, `.pro` or `.txt` files. They go through the same import preview as an Achordeon file
+- **a paste**: paste the sheet into the editor. If it looks like a chord sheet, a bar over the text offers **Convert**. Convert is one undo step, so Undo brings the paste back. **Keep as pasted** leaves it alone, and so does carrying on typing
+- **the editor's Convert buttons**: for a sheet that is already in the editor. Convert the selection or the whole song, or only read its chords as German and write them in English
+
+## Song sites
+
+Some websites full of songs can be searched from the app. The button beside **Import** in Songs or Songbooks, a book with a magnifying glass, opens the search. Type the song's name or the artist and press Enter, or paste a link to a song on one of the sites. The results come grouped by site.
+
+Picking a result shows the song as Achordeon will print it, before anything is saved. When the site has more than one version of the song, you can switch between them. **Import** saves it as a new song and opens it in the editor. **Back to search** brings back the same results.
+
+For now the one Song site is [plnyzpevnik.cz](https://plnyzpevnik.cz).
+
+A song is fetched only when you ask for it, one at a time, and nothing is kept on the way. The search needs an internet connection, so offline the button is off. What the site sees of your search is in [Privacy](/privacy.mdx#song-sites).
+
+### Sites that cannot be searched
+
+Some sites refuse to be read by a machine, and Achordeon respects that. Their songs still come in by copy and paste: open the song on the site, select its text, copy it, paste it into a new song in the editor, and press **Convert**. That is the way for supermusic and for [pisnicky-akordy.cz](https://pisnicky-akordy.cz).
 
 ## Sharing a song as a link
 

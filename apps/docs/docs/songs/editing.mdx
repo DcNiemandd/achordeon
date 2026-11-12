@@ -29,6 +29,7 @@ There are action buttons to help you with editing:
 - transpose up / down - transpose all valid chords in the song
 - sharp / flat - raise or lower just the one chord under the cursor
 - undo / redo - history only from current session
+- convert - turns a [chord sheet](/export-import/index.mdx#chord-sheets) into Achordeon markup: the selection, or the whole song. A third button only reads the chords as German (`H`, `B` for B♭) and writes them in English
 
 The transpose and sharp/flat buttons are two different reaches: transpose moves every
 chord in the song at once, while sharp/flat nudge only the chord the cursor is sitting in,
@@ -65,6 +66,14 @@ Press `?` - or `g` then `h`, which is the same key on every layout - for the lis
 shortcut the screen you are on has. That list is the one to trust, so this page does not
 repeat it. Every button names its own key at the end of its tooltip, and Settings > About
 opens the same list.
+:::
+
+:::note[Pasting a chord sheet]
+
+Paste a song copied from a website or a file, and if it looks like a chord sheet, a bar
+over the text offers **Convert**. It is one undo step, so undo brings the paste back.
+**Keep as pasted** leaves it alone, and so does carrying on typing.
+
 :::
 
 :::note[Planned]

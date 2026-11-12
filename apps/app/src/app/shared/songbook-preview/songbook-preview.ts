@@ -22,7 +22,6 @@
 // preview through `DownloadService.openSongbookPreview`, the WYSIWYG twin of the
 // PDF, and answers `neared` by drawing.
 
-import type { SongbookPreview as SongbookPreviewModel } from '@achordeon/shared/data-access';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -42,6 +41,7 @@ import {
 } from '@angular/core';
 import { Button, Icon, Tooltip } from '../../primitives';
 import { SongRender } from '../song-render';
+import type { SongbookPreviewModel } from './songbook-preview-model';
 
 /**
  * How close to the viewport a sheet has to come before it is drawn, and how far

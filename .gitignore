@@ -86,3 +86,5 @@ testem.log
 # test_songbook/*
 # !test_songbook/**/*.json
 # !test_songbook/**/*.achordeon
+# Written by local deno runs; the edge functions pin their imports by version.
+deno.lock

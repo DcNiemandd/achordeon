@@ -25,6 +25,7 @@ import {
   WarnUnsynced,
 } from './shared/layout';
 import { ImportHost } from './import-host';
+import { SongSiteHost } from './song-site-host';
 
 /**
  * The root: mount the shell and connect the cross-cutting services to the stores.
@@ -36,11 +37,13 @@ import { ImportHost } from './import-host';
  */
 @Component({
   selector: 'app-root',
-  imports: [Shell, UpdateNotice, ImportHost],
+  imports: [Shell, UpdateNotice, ImportHost, SongSiteHost],
   // The import host is mounted here rather than inside the shell because what it
   // catches — a dropped file, a tapped link — belongs to the window, not to
   // whichever page is on screen (plan §4/§7).
-  template: `<app-shell /> <app-update-notice /> <app-import-host />`,
+  // The Song site flow likewise: it starts from more than one page (plan Q60).
+  template: `<app-shell /> <app-update-notice /> <app-import-host />
+    <app-song-site-host />`,
   styles: `
     :host {
       display: block;

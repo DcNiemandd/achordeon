@@ -25,6 +25,18 @@ První řádek souboru říká, kde bydlí aplikace, která ho napsala:
 `"app": "https://achordeon.eu/app/"`. Sama aplikace ten řádek nikdy nečte - je tam
 pro toho, kdo soubor za rok najde a bude přemýšlet, čím se otvírá.
 
+### Soubor ChordPro
+
+Tentýž dialog nabízí i **Soubor ChordPro** (`.cho`). ChordPro je prostý textový
+formát, který čte většina jiných aplikací s akordy, takže tudy své písně
+přenesete do některé z nich. Obsahuje slova a akordy všech vybraných písní, jednu
+za druhou. Z dialogu Stáhnout u zpěvníku obsahuje písně zpěvníku v jeho pořadí.
+
+Není to úplná kopie. Zpěvníky a oblíbené se nepřenesou. Jméno písně a její
+nastavení se zapíšou jako řádky `{x_achordeon_...}`, které jiné aplikace
+přeskočí a Achordeon je načte zpět, takže soubor ChordPro naimportovaný sem si
+je ponechá.
+
 ## Stažení
 
 Stahování je o něco složitější. Základ je:
@@ -93,7 +105,7 @@ rozumný průměr.
 
 Cesty dovnitř jsou tři a všechny tři končí u téhož náhledu:
 
-- tlačítko **Importovat** v Písních nebo Zpěvnících, které otevře výběr souboru
+- tlačítko **Importovat** v Písních nebo Zpěvnících, které otevře dialog Import s řádkem pro každý druh souboru: **Soubor Achordeonu**, nebo **Text s akordy**
 - soubor **puštěný kamkoli na stránku**, několik naráz se nabídne jeden po druhém
 - **odkaz**, který otevře náhled už vyplněný
 
@@ -109,6 +121,53 @@ se pořád importují a výběr souboru bere obojí.
 Na desktopu s Chromiem a nainstalovaným Achordeonem je ještě čtvrtá cesta dovnitř
 a není to nic, co byste zapínali: na soubor `.achordeon` poklepete a operační systém
 ho otevře v aplikaci.
+
+## Texty s akordy
+
+Text s akordy je píseň napsaná mimo Achordeon. Achordeon čte dva druhy:
+
+- **ChordPro**: řádky `{title: ...}` a akordy přímo v textu, `[C]`, formát, který píše většina aplikací s akordy
+- **řádky akordů**: každý řádek akordů leží nad slovy, ke kterým patří, tak jak píseň ukazuje většina webů s akordy i textových souborů
+
+Oba druhy se při příchodu převedou na [značkování](/songs/syntax.mdx) Achordeonu.
+Text, jehož akordy nemají ani jeden z těch tvarů, není text s akordy a přijde tak,
+jak je napsaný.
+
+Akordy vždy skončí s anglickými názvy. Text psaný německými názvy se pozná podle
+`H` nebo `mi` mezi akordy a přepíše se: z `H` je `B`, z `B` je `Bb`, z `Fis` je
+`F#`, z `Ami` je `Am`. Pokud chcete, aby stránka tiskla německé názvy, nastavte
+notaci akordů ve [Vykreslování](/settings-account/settings.mdx#vykreslování).
+
+Text s akordy přijde třemi cestami:
+
+- **soubor**: v dialogu Import zvolte **Text s akordy** a vyberte soubory `.cho`, `.chordpro`, `.crd`, `.pro` nebo `.txt`. Projdou stejným náhledem importu jako soubor Achordeonu
+- **vložení**: vložte text do editoru. Pokud vypadá jako text s akordy, lišta nad textem nabídne **Převést**. Převod je jeden krok zpět, takže Zpět vrátí vložený text. **Nechat, jak je** ho nechá být, stejně jako když prostě píšete dál
+- **tlačítka Převod v editoru**: pro text, který už v editoru je. Převeďte výběr nebo celou píseň, nebo jen přečtěte akordy jako německé a zapište je anglicky
+
+## Zpěvníkové weby
+
+Některé weby plné písní se dají prohledat přímo z aplikace. Tlačítko vedle
+**Importovat** v Písních nebo Zpěvnících, kniha s lupou, otevře hledání.
+Napište název písně nebo interpreta a stiskněte Enter, nebo vložte odkaz na píseň
+na některém z webů. Výsledky přijdou seskupené podle webu.
+
+Když vyberete výsledek, uvidíte píseň tak, jak ji Achordeon vytiskne, ještě než
+se cokoli uloží. Když má web víc verzí písně, můžete mezi nimi přepínat.
+**Importovat** ji uloží jako novou píseň a otevře ji v editoru. **Zpět na
+hledání** vrátí tytéž výsledky.
+
+Zatím je zpěvníkovým webem jediný, [plnyzpevnik.cz](https://plnyzpevnik.cz).
+
+Píseň se stáhne jen tehdy, když si o ni řeknete, jedna po druhé, a po cestě se
+nic neukládá. Hledání potřebuje připojení k internetu, takže bez něj je tlačítko
+vypnuté. Co web z vašeho hledání uvidí, je v [Soukromí](/privacy.mdx#zpěvníkové-weby).
+
+### Weby, které prohledat nejde
+
+Některé weby nechtějí, aby je četl stroj, a Achordeon to respektuje. Jejich písně
+přesto přijdou přes kopírování a vložení: otevřete píseň na webu, označte její
+text, zkopírujte ho, vložte ho do nové písně v editoru a stiskněte **Převést**.
+Tudy vede cesta pro supermusic a pro [pisnicky-akordy.cz](https://pisnicky-akordy.cz).
 
 ## Sdílení písničky odkazem
 

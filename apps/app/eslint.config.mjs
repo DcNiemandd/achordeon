@@ -2,6 +2,18 @@ import nx from '@nx/eslint-plugin';
 import boundaries from 'eslint-plugin-boundaries';
 import baseConfig from '../../eslint.config.mjs';
 
+// `no-restricted-imports` is ONE rule: when two config blocks both set it for a
+// file, the later block's options REPLACE the earlier one's, they do not add up.
+// So every block below that sets it for a narrower folder carries this pattern
+// too, or that folder would lose the CodeMirror fence. It did, for a while: the
+// CodeMirror block sat last and silently wiped out the primitives and app/shared
+// rungs of the import ladder.
+const CODEMIRROR_FENCE = {
+  group: ['@codemirror/*', '@lezer/*'],
+  message:
+    'CodeMirror stays behind the editor adapter (songs/editor/, ADR-0010). No CodeMirror type may cross that boundary — pass a string, an EditorMarker or an InsertRequest instead. This rule is what keeps the editor a replaceable detail.',
+};
+
 export default [
   ...nx.configs['flat/angular'],
   ...nx.configs['flat/angular-template'],
@@ -71,6 +83,20 @@ export default [
       ],
     },
   },
+  // --- ADR-0010, mechanized: CodeMirror lives behind the editor adapter.
+  // "Treat a CodeMirror import outside the editor adapter as a defect" is the
+  // ADR's words; this is that sentence as a rule. The seam is what keeps the
+  // editor swappable, and a seam nothing checks is a seam that leaks.
+  //
+  // First of the `no-restricted-imports` blocks: the narrower ones after it
+  // replace its options for their files, and carry CODEMIRROR_FENCE to keep it. ---
+  {
+    files: ['apps/app/src/app/**/*.ts'],
+    ignores: ['apps/app/src/app/songs/editor/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [CODEMIRROR_FENCE] }],
+    },
+  },
   // --- The rest of the import ladder (PRD-UI-SHELL.md §3).
   // `boundaries` only sees in-app edges; the Nx project rule only sees
   // app<->lib edges. Neither can express "this FOLDER may not import that
@@ -87,6 +113,7 @@ export default [
               message:
                 'primitives/ is the floor of the import ladder: node_modules only, nothing in-repo — not even domain types. A primitive must be liftable into an unrelated app unchanged.',
             },
+            CODEMIRROR_FENCE,
           ],
         },
       ],
@@ -104,28 +131,7 @@ export default [
               message:
                 'app/shared may import @achordeon/shared/domain (pure types, no state) but never data-access. Components never inject a store — that is the presenter rule (PRD-UI-SHELL.md §3).',
             },
-          ],
-        },
-      ],
-    },
-  },
-  // --- ADR-0010, mechanized: CodeMirror lives behind the editor adapter.
-  // "Treat a CodeMirror import outside the editor adapter as a defect" is the
-  // ADR's words; this is that sentence as a rule. The seam is what keeps the
-  // editor swappable, and a seam nothing checks is a seam that leaks. ---
-  {
-    files: ['apps/app/src/app/**/*.ts'],
-    ignores: ['apps/app/src/app/songs/editor/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@codemirror/*', '@lezer/*'],
-              message:
-                'CodeMirror stays behind the editor adapter (songs/editor/, ADR-0010). No CodeMirror type may cross that boundary — pass a string, an EditorMarker or an InsertRequest instead. This rule is what keeps the editor a replaceable detail.',
-            },
+            CODEMIRROR_FENCE,
           ],
         },
       ],
@@ -148,6 +154,7 @@ export default [
               message:
                 'Components never inject a store or a service — bind to the feature presenter instead (PRD-UI-SHELL.md §3). This is what lets the UI be deleted without touching the business layer.',
             },
+            CODEMIRROR_FENCE,
           ],
         },
       ],

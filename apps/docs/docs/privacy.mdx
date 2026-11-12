@@ -73,6 +73,15 @@ docs. Turning it back off takes effect immediately. The same switch is in the
 app's [Settings](/settings-account/settings.mdx#application), and it is the same switch, so set it
 in either place.
 
+## Song sites
+
+Searching a [Song site](/export-import/index.mdx#song-sites) is the one place the app sends out something you typed. The search goes to Achordeon's server, and the server asks the site:
+
+- **The site sees** the words you searched for, or the link you pasted. The request comes from Achordeon's server, not from your device, so the site never sees your IP address
+- **Achordeon keeps**, for ten minutes, a salted hash of your IP address and the time of the search. That is how the server stops one caller from flooding a site with searches. Never the address itself, and never what you searched for. A row is deleted by the first search after its ten minutes are up
+
+This hash is not part of the counting above, and is never added to it.
+
 ## How long it is kept
 
 The raw counts for 90 days, then the daily totals only. Nothing is ever read

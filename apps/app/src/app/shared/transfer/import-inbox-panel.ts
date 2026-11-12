@@ -16,7 +16,7 @@ import {
   output,
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
-import { ImportDialog } from './import-dialog';
+import { ImportPreviewDialog } from './import-preview-dialog';
 import type {
   ImportChoice,
   ImportFailure,
@@ -26,10 +26,10 @@ import type {
 @Component({
   selector: 'app-import-inbox-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ImportDialog, Dialog, Button],
+  imports: [ImportPreviewDialog, Dialog, Button],
   template: `
     @if (preview(); as preview) {
-      <app-import-dialog
+      <app-import-preview-dialog
         [preview]="preview"
         [remaining]="remaining()"
         (confirmed)="confirmed.emit($event)"
