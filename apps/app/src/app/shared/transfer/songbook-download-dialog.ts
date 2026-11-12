@@ -23,6 +23,7 @@ import {
 } from '@angular/core';
 import { Button, Dialog } from '../../primitives';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   DEFAULT_SONGBOOK_CHOICE,
@@ -59,6 +60,7 @@ import {
             <option value="pdf">{{ pdfLabel }}</option>
             <option value="zip-png">{{ zipPngLabel }}</option>
             <option value="json">{{ dataLabel }}</option>
+            <option value="chordpro">{{ chordProLabel }}</option>
             <!-- Disabled, never removed, when the book will not fit: a greyed
                  option that explains itself teaches the limit, where one that
                  vanishes reads as a missing feature. -->
@@ -268,6 +270,7 @@ export class SongbookDownloadDialog {
   protected readonly isData = computed(
     () =>
       this.choice().format === DATA_FORMAT ||
+      this.choice().format === CHORDPRO_FORMAT ||
       this.choice().format === SHARE_LINK_FORMAT,
   );
 
@@ -318,6 +321,9 @@ export class SongbookDownloadDialog {
   /** The book **and its songs** — `ExportService` adds them, because a book of
    * references imports as a book of nothing on a machine that lacks them. */
   protected readonly dataNote = $localize`:@@songbookDownload.dataNote:The songbook and its songs as data, to import here or on another device.`;
+  protected readonly chordProLabel = $localize`:@@songbookDownload.format.chordPro:ChordPro file`;
+  /** The songs only, for another app — the book itself does not travel. */
+  protected readonly chordProNote = $localize`:@@songbookDownload.chordProNote:The songbook's songs in order, with words and chords, for other chord apps. Achordeon also reads back the settings. The songbook itself stays behind.`;
   protected readonly shareLinkLabel = $localize`:@@songbookDownload.format.link:Link`;
   protected readonly linkNote = $localize`:@@songbookDownload.linkNote:A link that opens this songbook in Achordeon, copied ready to paste. The songs travel inside the link — nothing is uploaded.`;
   /** Names the *selection*, so nobody reads it as a permanent restriction, and
@@ -327,11 +333,13 @@ export class SongbookDownloadDialog {
   protected readonly note = computed(() =>
     this.choice().format === SHARE_LINK_FORMAT
       ? this.linkNote
-      : this.isData()
-        ? this.dataNote
-        : this.choice().format === 'pdf'
-          ? this.fitNote
-          : this.zipNote,
+      : this.choice().format === CHORDPRO_FORMAT
+        ? this.chordProNote
+        : this.isData()
+          ? this.dataNote
+          : this.choice().format === 'pdf'
+            ? this.fitNote
+            : this.zipNote,
   );
   protected readonly cancelLabel = $localize`:@@songbookDownload.cancel:Cancel`;
   protected readonly downloadLabel = computed(() =>

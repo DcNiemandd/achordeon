@@ -103,7 +103,18 @@ report. It is also the only place the report can be _checked_: the size caps, th
 honeypot and the per-IP rate limit are all inside it, which is the whole reason
 the browser does not insert into the table directly. Both its tables are RLS-on
 with **no policies at all**, so the public anon key cannot reach them; only the
-function's service_role can.
+function's service_role can, through the grants in `20261111010000_feedback_grants.sql`
+(RLS and grants are separate: bypassing one is not the other).
+
+`song-sites` is the proxy behind the app's **Find a song on a song site** button
+(ADR-0019). It searches the Song sites and fetches one song per request, keeping
+nothing but the rate limiter's ledger, `song_sites_throttle`: a salted IP hash
+and a time, swept after ten minutes, 60 calls per window. Its one secret,
+`SONG_SITES_IP_SALT`, is optional and falls back to `FEEDBACK_IP_SALT`. It is
+Deno code with its own Nx project, so `pnpm nx test song-sites` runs its tests
+against recorded fixtures, with no network. Serving it locally needs CLI 2
+(`npx -y supabase@2 functions serve song-sites`): CLI 3 rejects this
+`config.toml`.
 
 To generate the file by hand (e.g. to point local dev at a hosted project):
 

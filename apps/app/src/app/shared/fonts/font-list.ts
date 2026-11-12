@@ -28,10 +28,10 @@ import {
   signal,
 } from '@angular/core';
 import type { FontFamily } from '@achordeon/shared/render-core';
-import { FontLibrary, FontLoader } from '@achordeon/shared/data-access';
 import { Button, Dialog, Icon } from '../../primitives';
 import { AddFontDialog } from './add-font-dialog';
 import { familyFaceSummary } from './face-summary';
+import { FontShelf } from './font-shelf';
 
 /** A family awaiting the answer to "and what does deleting it cost?". */
 interface PendingRemoval {
@@ -216,8 +216,7 @@ interface PendingRemoval {
   `,
 })
 export class FontList {
-  private readonly library = inject(FontLibrary);
-  private readonly fonts = inject(FontLoader);
+  private readonly fonts = inject(FontShelf);
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly families = computed(() => this.fonts.catalog.list());
@@ -303,13 +302,13 @@ export class FontList {
   protected async ask(family: FontFamily): Promise<void> {
     this.pending.set({
       family,
-      users: await this.library.countUsers(family.id),
+      users: await this.fonts.countUsers(family.id),
     });
   }
 
   protected async remove(family: FontFamily): Promise<void> {
     this.pending.set(null);
-    await this.library.remove(family.id);
+    await this.fonts.remove(family.id);
   }
 }
 

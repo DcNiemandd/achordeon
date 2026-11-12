@@ -12,6 +12,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
   viewChild,
 } from '@angular/core';
 import { Button, Dialog, Field, Icon, Tooltip } from '../primitives';
@@ -32,7 +33,7 @@ import {
 import { SongbookPreview } from '../shared/songbook-preview';
 import { SongbookPrintFields } from '../shared/songbook-print-fields';
 import { SongOrderFields } from '../shared/song-order-fields';
-import { ImportPanel, SongbookDownloadDialog } from '../shared/transfer';
+import { ImportDialog, SongbookDownloadDialog } from '../shared/transfer';
 import {
   SongbooksPresenter,
   type PendingSongbookDelete,
@@ -52,7 +53,7 @@ import {
     SongbookPrintFields,
     SongOrderFields,
     SongbookDownloadDialog,
-    ImportPanel,
+    ImportDialog,
     SettingsPanel,
     Button,
     Dialog,
@@ -92,13 +93,34 @@ import {
             [attr.aria-label]="importLabel"
             [appTooltip]="importLabel"
             data-testid="songbooks-import"
-            (click)="importPanel.pick()"
+            (click)="isImportOpen.set(true)"
           >
             <app-icon name="import" />
           </button>
+          <!-- One song off a Song site, beside Import as the other way in. -->
+          <button
+            appButton
+            type="button"
+            [isIconOnly]="true"
+            [disabled]="!presenter.isSongSiteAvailable()"
+            [attr.aria-label]="songSiteLabel()"
+            [appTooltip]="songSiteLabel()"
+            data-testid="songbooks-song-site"
+            (click)="presenter.openSongSite()"
+          >
+            <app-icon name="songSite" />
+          </button>
         </app-action-bar>
 
-        <app-foreign-library-notice />
+        <app-foreign-library-notice
+          [isForeign]="presenter.takeover.isForeign()"
+          [isConfirming]="presenter.takeover.isConfirming()"
+          [isUnsynced]="presenter.takeover.isUnsynced()"
+          [isBusy]="presenter.takeover.isBusy()"
+          (opened)="presenter.takeover.open()"
+          (cancelled)="presenter.takeover.cancel()"
+          (confirmed)="presenter.takeover.replace()"
+        />
 
         <!-- The same list component again, a fourth capability set: no
              checkboxes (nothing acts on several songbooks at once yet), no
@@ -286,14 +308,15 @@ import {
       </app-dialog>
     }
 
-    <!-- Just the file input; the Import button above opens its picker. The
-         preview and error dialogs belong to the shell, because a drop or a link
+    <!-- The Import dialog: one row per way in (plan phase 3, Q3). The preview
+         and error dialogs still belong to the shell, because a drop or a link
          can arrive with no page to own them (plan §7). -->
-    <app-import-panel
-      #importPanel
-      inputTestid="songbooks-import-input"
-      (picked)="presenter.readImport($event)"
-    />
+    @if (isImportOpen()) {
+      <app-import-dialog
+        (picked)="onImportPicked($event)"
+        (closed)="isImportOpen.set(false)"
+      />
+    }
   `,
   styles: `
     :host {
@@ -390,6 +413,14 @@ import {
   `,
 })
 export class SongbooksPage {
+  /** The Import dialog, open until a file is chosen or it is closed. */
+  protected readonly isImportOpen = signal(false);
+
+  protected onImportPicked(files: readonly File[]): void {
+    this.isImportOpen.set(false);
+    this.presenter.readImport(files);
+  }
+
   protected readonly ui = inject(UiStore);
   protected readonly viewport = inject(Viewport);
   protected readonly presenter = inject(SongbooksPresenter);
@@ -401,6 +432,13 @@ export class SongbooksPage {
   protected readonly title = $localize`:@@songbooks.title:Songbooks`;
   protected readonly addLabel = $localize`:@@songbooks.add:New songbook`;
   protected readonly importLabel = $localize`:@@songbooks.import:Import from a file`;
+
+  /** Says why when it is off: there is nothing to search without the internet. */
+  protected readonly songSiteLabel = computed(() =>
+    this.presenter.isSongSiteAvailable()
+      ? $localize`:@@songSite.open:Find a song on a song site`
+      : $localize`:@@songSite.openOffline:Find a song on a song site. Needs an internet connection.`,
+  );
   protected readonly emptyText = $localize`:@@songbooks.empty:No songbooks yet. Create one to group songs for a set.`;
   protected readonly deleteTitle = $localize`:@@songbooks.delete.title:Delete this songbook?`;
   protected readonly keepsSongsText = $localize`:@@songbooks.delete.keeps:The songs themselves stay in your library.`;

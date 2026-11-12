@@ -93,7 +93,7 @@ test.describe('a link carrying a song', () => {
     // boot — the PWA already open, or a URL pasted into the address bar. A
     // one-shot read of `location.hash` at startup would catch only the other one.
     await freshLibrary(page);
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
 
     await page.goto(`songs${linkFragment(envelope('Pasted'))}`);
     await expect(page.getByTestId('import-summary')).toBeVisible();
@@ -119,7 +119,7 @@ test.describe('a link carrying a song', () => {
     await expect(row(page, 'Once')).toHaveCount(1);
 
     await page.reload();
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Once')).toHaveCount(1);
   });
 
@@ -128,7 +128,7 @@ test.describe('a link carrying a song', () => {
     await page.goto(`songs${linkFragment(envelope('Declined'))}`);
     await page.getByTestId('import-cancel').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Declined')).toHaveCount(0);
   });
 
@@ -185,12 +185,28 @@ test.describe('sharing a song as a link', () => {
   test('the link the app writes is the link the app reads', async ({
     page,
     context,
+    browserName,
   }) => {
     // The round trip worth having above all the others: build a link with §5,
     // open it with §4, and assert the song that lands is the song that left. It
     // exercises the encoder, the reader, `normalise`, `migrate` and `planImport`
     // in one test.
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // Only Chromium lets a test read the clipboard back: WebKit rejects the
+    // clipboard-write permission as unknown, and refuses readText outside a
+    // user gesture. Elsewhere the test records what the app wrote instead.
+    const isRealClipboard = browserName === 'chromium';
+    if (isRealClipboard) {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    } else {
+      await page.addInitScript(() => {
+        const clipboard = navigator.clipboard;
+        const write = clipboard.writeText.bind(clipboard);
+        clipboard.writeText = (text: string) => {
+          (window as unknown as { copied: string }).copied = text;
+          return write(text).catch(() => undefined);
+        };
+      });
+    }
     await freshLibrary(page);
     await createSong(page, 'Shared');
 
@@ -199,7 +215,11 @@ test.describe('sharing a song as a link', () => {
     await expect(copy).toBeEnabled();
     await copy.click();
 
-    const url = await page.evaluate(() => navigator.clipboard.readText());
+    const url = isRealClipboard
+      ? await page.evaluate(() => navigator.clipboard.readText())
+      : await page.evaluate(
+          () => (window as unknown as { copied: string }).copied,
+        );
     expect(url).toContain('#z1=');
     // The app doing the sharing, not the published address: a link copied here
     // has to open HERE. Pointing it at production would send the reader to a
@@ -246,7 +266,7 @@ test.describe('a file dropped on the page', () => {
     await page.getByTestId('import-confirm').click();
     // The dialog closes when the write is done — navigating before that would
     // abandon it mid-flight, which is a race in the test rather than in the app.
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
 
     // Always Import, never Restore: a dropped file is someone handing you songs.
     await page.goto('songs');
@@ -266,7 +286,7 @@ test.describe('a file dropped on the page', () => {
     await expect(page.getByTestId('import-summary')).toBeVisible();
     await page.getByTestId('import-confirm').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'First')).toHaveCount(1);
     await expect(row(page, 'Second')).toHaveCount(1);
   });
@@ -302,7 +322,7 @@ test.describe('a file dropped on the page', () => {
     await expect(page.getByTestId('import-cancel-all')).toHaveText(/2/);
     await page.getByTestId('import-cancel-all').click();
 
-    await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('import-preview-dialog')).toHaveCount(0);
     await expect(row(page, 'Keep')).toHaveCount(1);
     await expect(row(page, 'Skip')).toHaveCount(0);
     await expect(row(page, 'Never')).toHaveCount(0);

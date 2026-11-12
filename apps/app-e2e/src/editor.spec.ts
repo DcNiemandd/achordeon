@@ -46,10 +46,21 @@ async function clearEditor(page: Page): Promise<void> {
   await expect(page.getByTestId('editor').locator('.cm-line')).toHaveCount(1);
 }
 
-/** Type into the editor's content area. */
+/**
+ * Type into the editor's content area.
+ *
+ * A newline is an Enter press, the way a person makes one. WebKit drops what
+ * follows a leading `\n` handed to `insertText` at the end of a line, so a
+ * title typed on a new line never arrived there.
+ */
 async function type(page: Page, text: string): Promise<void> {
   await page.getByTestId('editor').locator('.cm-content').click();
-  await page.keyboard.insertText(text);
+  const [first, ...rest] = text.split('\n');
+  if (first) await page.keyboard.insertText(first);
+  for (const line of rest) {
+    await page.keyboard.press('Enter');
+    if (line) await page.keyboard.insertText(line);
+  }
 }
 
 test.describe('song editor', () => {
@@ -111,12 +122,21 @@ test.describe('song editor', () => {
       .getByTestId('editor')
       .locator('.cm-line')
       .first()
-      .evaluate((line) =>
-        [...line.childNodes].map((node) => ({
+      .evaluate((line) => {
+        // The linter's underline lands on a debounce, so it may or may not wrap
+        // a token by the time this reads. It is not highlighting: look through it.
+        const flat = (nodes: NodeListOf<ChildNode>): ChildNode[] =>
+          [...nodes].flatMap((node) =>
+            node instanceof HTMLElement &&
+            node.classList.contains('cm-lintRange')
+              ? flat(node.childNodes)
+              : [node],
+          );
+        return flat(line.childNodes).map((node) => ({
           text: node.textContent,
           cls: node instanceof HTMLElement ? node.className : null,
-        })),
-      );
+        }));
+      });
     const at = (text: string) => styled.find((s) => s.text === text);
     const chordClass = at('[C]')?.cls;
 
@@ -271,6 +291,15 @@ test.describe('song editor', () => {
   test('tab pads to the next stop at the cursor', async ({ page }) => {
     await type(page, 'ab');
     await page.keyboard.press('Tab');
+    // WebKit has not caught up with the caret CodeMirror just moved until a
+    // frame has passed, and text inserted in the same frame lands where the
+    // caret was. No person types that fast, so wait the frame out.
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
     await page.keyboard.insertText('|');
 
     const line = () =>
@@ -474,10 +503,10 @@ test.describe('song editor', () => {
     await expect(editor).not.toContainText('*');
   });
 
-  test('the chord button brackets the word at the caret', async ({ page }) => {
-    // The chord names on a chord row are usually typed out first, so with no
-    // selection the button takes the word the caret is on.
+  test('the chord button brackets the selection', async ({ page }) => {
+    // Bracketing a word already typed is what a selection is for (snippets.ts).
     await type(page, 'Am');
+    await page.keyboard.press('Shift+Home'); // select "Am"
     await page.getByTestId('insert-chord').click();
 
     await expect(page.getByTestId('editor')).toContainText('[Am]');
@@ -486,7 +515,8 @@ test.describe('song editor', () => {
   test('the chord button leaves the caret inside an empty bracket', async ({
     page,
   }) => {
-    // No word under the caret (a space), so it opens an empty pair instead.
+    // With nothing selected it opens an empty pair, never swallowing the word
+    // the caret sits in: a chord goes above a lyric, not around it.
     await type(page, 'sing ');
     await page.getByTestId('insert-chord').click();
     // The caret must be BETWEEN the brackets — that is where the chord goes.

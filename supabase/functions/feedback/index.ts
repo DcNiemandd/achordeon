@@ -15,7 +15,7 @@
 // Deployed from `main` by the Supabase GitHub integration along with the
 // migrations. Secrets are NOT deployed with it — see supabase/functions/.env.example.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
 /** What the dialog can file. Anything else is a 400. */
 const KINDS = ['bug', 'idea', 'other'] as const;
@@ -177,8 +177,13 @@ async function isRateLimited(admin: any, hash: string): Promise<boolean> {
     .eq('ip_hash', hash)
     .gte('created_at', since);
   // A limiter that cannot read its own ledger lets the report through. Losing a
-  // real bug report is the worse of the two failures.
-  if (error) return false;
+  // real bug report is the worse of the two failures. Said out loud: failing
+  // open is a choice, failing open unnoticed is a bug (it went unseen while the
+  // table had no grant, 20261111010000_feedback_grants.sql).
+  if (error) {
+    console.error('feedback: rate limit unreadable', error.code, error.message);
+    return false;
+  }
   return (count ?? 0) >= RATE_LIMIT;
 }
 

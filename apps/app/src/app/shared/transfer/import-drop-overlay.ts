@@ -135,7 +135,7 @@ export class ImportDropOverlay {
   }
 
   protected readonly title = $localize`:@@import.dropTitle:Drop to import`;
-  protected readonly hint = $localize`:@@import.dropHint:Achordeon files, or a song image downloaded from Achordeon.`;
+  protected readonly hint = $localize`:@@import.dropHint:Achordeon files, a song image downloaded from Achordeon, or a chord sheet (ChordPro or text with chords).`;
 }
 
 /**

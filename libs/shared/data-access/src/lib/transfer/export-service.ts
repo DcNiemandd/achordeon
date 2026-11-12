@@ -12,7 +12,9 @@ import { Injectable, inject } from '@angular/core';
 import {
   ACHORDEON_URL,
   ALL_SONGS_ID,
+  ChordTheory,
   SCHEMA_VERSION,
+  toChordPro,
   type Song,
   type Songbook,
   type SnapshotEnvelope,
@@ -24,10 +26,17 @@ import { readDeviceId } from '../persistence/gateway';
 import {
   ACHORDEON_EXTENSION,
   ACHORDEON_MIME,
+  CHORDPRO_EXTENSION,
   fileDate,
   saveFile,
   toFileSlug,
 } from './file-io';
+
+/** A file ready to save: its text and the name it goes under. */
+export interface TextFile {
+  readonly text: string;
+  readonly filename: string;
+}
 
 /** What to put in the file. Empty means empty — this never means "everything". */
 export interface ExportSelection {
@@ -40,6 +49,7 @@ export class ExportService {
   private readonly songs = inject(SONG_REPOSITORY);
   private readonly songbooks = inject(SONGBOOK_REPOSITORY);
   private readonly db = inject(ACHORDEON_DB);
+  private readonly theory = inject(ChordTheory);
 
   /**
    * The selection as an envelope.
@@ -115,14 +125,60 @@ export class ExportService {
    * (`file_handlers` in the manifest) and a name that says what the file is. Every
    * `.json` already written still imports: the picker accepts both.
    */
-  filename(snapshot: SnapshotEnvelope, name?: string): string {
+  filename(
+    snapshot: SnapshotEnvelope,
+    name?: string,
+    extension = ACHORDEON_EXTENSION,
+  ): string {
     const { songs, songbooks } = snapshot.data;
     const only =
       name ??
       (songs.length + songbooks.length === 1
         ? (songbooks[0]?.name ?? songs[0]?.name)
         : undefined);
-    return `achordeon-${toFileSlug(only ?? 'export', 'export')}-${fileDate()}${ACHORDEON_EXTENSION}`;
+    return `achordeon-${toFileSlug(only ?? 'export', 'export')}-${fileDate()}${extension}`;
+  }
+
+  /**
+   * The selection as one ChordPro file (plan phase 4, Q13, Q45–Q46).
+   *
+   * The same songs `snapshot` resolves — a songbook's in book order, each once;
+   * All songs the whole library — each with its name and its own settings riding
+   * along as `x_achordeon_*` directives. Lossy by design: no id, favourite or
+   * songbook, so the Achordeon file stays the one canonical round trip.
+   */
+  async chordPro(selection: ExportSelection, name?: string): Promise<TextFile> {
+    const snapshot = await this.snapshot(selection);
+    const text = toChordPro(
+      snapshot.data.songs.map((song) => ({
+        content: song.content,
+        name: song.name,
+        settings: song.settings,
+      })),
+      this.theory,
+    );
+    // The book is not in a ChordPro file, only its songs — so a book alone names
+    // the file, rather than being counted alongside them as "an export".
+    const { songbooks } = snapshot.data;
+    const only = songbooks.length === 1 && !selection.songIds?.length;
+    return {
+      text,
+      filename: this.filename(
+        snapshot,
+        name ?? (only ? songbooks[0].name : undefined),
+        CHORDPRO_EXTENSION,
+      ),
+    };
+  }
+
+  /** Build the ChordPro file and hand it to the browser. */
+  async exportChordPro(
+    selection: ExportSelection,
+    name?: string,
+  ): Promise<TextFile> {
+    const file = await this.chordPro(selection, name);
+    await saveFile(file.text, file.filename);
+    return file;
   }
 
   /** Rows by id, tombstones dropped, in the order asked for. */

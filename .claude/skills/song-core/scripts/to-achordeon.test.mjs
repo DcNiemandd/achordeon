@@ -1,4 +1,6 @@
-// `toAchordeon` is pure text-to-text, so this is the whole of its testability.
+// `toAchordeon` is the domain's `convertChordSheet` with the real theory bound.
+// The full behaviour is pinned in libs/shared/domain (chord-sheet.spec.ts,
+// against the fake); these run fixtures through the SHIPPED recogniser.
 //
 // Run by `nx test skill` (see tools/skill/project.json). It loads the theory
 // through `_domain.mjs`, which means these fixtures are checked against the
@@ -104,7 +106,7 @@ describe('ChordPro directives', () => {
       ),
       {},
     );
-    assert.equal(text, '* Wild Mountain Thyme\n** Traditional\nWords\n');
+    assert.equal(text, '* Wild Mountain Thyme\n** Traditional\n\nWords\n');
     assert.equal(report.directives.converted, 2);
   });
 
@@ -112,19 +114,23 @@ describe('ChordPro directives', () => {
     assert.equal(convert('{t:A}\n{st:B}\n'), '* A\n** B\n');
   });
 
-  test('block markers are dropped — blocks are blank-line separated', () => {
+  test('a section becomes a block, labelled when the section is', () => {
     const { text, report } = toAchordeon(
-      ['{start_of_chorus}', 'Words', '{end_of_chorus}'].join('\n'),
+      ['{start_of_chorus: R}', 'Words', '{end_of_chorus}'].join('\n'),
       {},
     );
-    assert.equal(text, 'Words\n');
-    assert.equal(report.directives.dropped, 2);
+    assert.equal(text, 'R: Words\n');
+    assert.equal(report.directives.converted, 2);
   });
 
-  test('anything else is left as text and reported BY NAME', () => {
-    const { text, report } = toAchordeon('{capo: 3}\n', {});
-    assert.equal(text, '{capo: 3}\n');
-    assert.deepEqual(report.directives.kept, ['capo']);
+  test('key and capo become one plain line', () => {
+    assert.equal(convert('{capo: 3}\n'), 'Capo 3\n');
+  });
+
+  test('anything else is dropped and reported BY NAME', () => {
+    const { text, report } = toAchordeon('{album: X}\nWords\n', {});
+    assert.equal(text, 'Words\n');
+    assert.deepEqual(report.directives.dropped, ['album']);
   });
 
   test('a title marker is never read as a chord row', () => {
@@ -180,6 +186,30 @@ describe('whitespace and encoding', () => {
 
   test('always ends the file with a newline', () => {
     assert.equal(convert('Words'), 'Words\n');
+  });
+});
+
+describe('a German sheet', () => {
+  test('is guessed from an H and rewritten into English', () => {
+    const result = toAchordeon(
+      [
+        'Ami       H7',
+        'Some words of a song',
+        'C         G',
+        'More words',
+      ].join('\n'),
+      {},
+    );
+    assert.equal(result.guessedDialect, 'german');
+    assert.equal(
+      result.text,
+      '[Am]Some words[B7] of a song\n[C]More words[G]\n',
+    );
+  });
+
+  test('is left as written when told the source is English', () => {
+    const { text } = toAchordeon('[Ami]Words\n', { dialect: 'english' });
+    assert.equal(text, '[Ami]Words\n');
   });
 });
 

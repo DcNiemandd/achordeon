@@ -1,23 +1,27 @@
 #!/usr/bin/env node
-// Chord-line merger, FILE TO FILE — the CLI shell around `toAchordeon`.
+// Chord-line merger, FILE TO FILE — the CLI shell around `toAchordeon`, which is
+// the app's own `convertChordSheet` (libs/shared/domain) with the theory bound.
 //
 //   Am        F         C
 //   Some words of a song
 //     ->  [Am]Some words[F] of a song[C]
 //
 // This exists so the conversion never passes through a model. Column arithmetic is
-// done exactly by `to-achordeon.mjs`, and no lyric is ever read out, retyped, or
+// done exactly by the domain's conversion, and no lyric is ever read out, retyped, or
 // printed: the input is a file, the output is a file, and everything on stdout is
 // a COUNT, a LINE NUMBER or a CHORD SYMBOL — never a line of the song.
 //
 // It also handles the ChordPro-ish variants of the same input: files that already
 // carry inline brackets pass through untouched, and `{title:}` / `{artist:}`
-// directives become `*` / `**` markers.
+// directives become `*` / `**` markers. A German sheet (`H`, `B` for B♭, `Fis`,
+// `mi`) is rewritten into English chord names — guessed, or `--dialect german`.
 //
 // Usage:
-//   node merge-chordlines.mjs <in.txt> -o <out.txt> [--tab N]
+//   node merge-chordlines.mjs <in.txt> -o <out.txt> [--tab N] [--dialect D]
 //
-//   --tab N   tab stop width used to expand tabs before aligning (default 8)
+//   --tab N       tab stop width used to expand tabs before aligning (default 8)
+//   --dialect D   english | german — the note names the SOURCE is written in.
+//                 Omitted: guessed (an H or a mi among the chords → german).
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { toAchordeon } from './_domain.mjs';
@@ -28,16 +32,18 @@ const outIdx = args.indexOf('-o');
 const outFile = outIdx !== -1 ? args[outIdx + 1] : null;
 const tabIdx = args.indexOf('--tab');
 const tabWidth = tabIdx !== -1 ? Number(args[tabIdx + 1]) : 8;
+const dialectIdx = args.indexOf('--dialect');
+const dialect = dialectIdx !== -1 ? args[dialectIdx + 1] : undefined;
 // Positional = anything that is neither a flag nor a flag's value. Guard the
 // `idx + 1` arithmetic: a missing flag has index -1, whose "value slot" is 0 — the
 // input file's own position.
 const taken = new Set(
-  [outIdx, tabIdx].filter((i) => i !== -1).map((i) => i + 1),
+  [outIdx, tabIdx, dialectIdx].filter((i) => i !== -1).map((i) => i + 1),
 );
 const inFile = args.find((a, i) => !a.startsWith('-') && !taken.has(i));
 if (!inFile || !outFile) {
   console.error(
-    'usage: node merge-chordlines.mjs <in.txt> -o <out.txt> [--tab N]',
+    'usage: node merge-chordlines.mjs <in.txt> -o <out.txt> [--tab N] [--dialect english|german]',
   );
   process.exit(2);
 }
@@ -45,10 +51,16 @@ if (!Number.isInteger(tabWidth) || tabWidth < 1) {
   console.error('--tab must be a positive integer');
   process.exit(2);
 }
+if (dialect !== undefined && dialect !== 'english' && dialect !== 'german') {
+  console.error('--dialect must be english or german');
+  process.exit(2);
+}
 
-const { text, report } = toAchordeon(readFileSync(inFile, 'utf8'), {
+const result = toAchordeon(readFileSync(inFile, 'utf8'), {
   tabWidth,
+  ...(dialect ? { dialect } : {}),
 });
+const { text, report } = result;
 writeFileSync(outFile, text, 'utf8');
 
 // --- summary (counts, line numbers and chord symbols only) ----------------
@@ -59,6 +71,12 @@ console.log(bar);
 console.log(`In       : ${inFile}`);
 console.log(`Out      : ${outFile}`);
 console.log(`Lines    : ${report.linesIn} in → ${report.linesOut} out`);
+console.log(
+  `Format   : ${result.format}${result.songCount > 1 ? `, ${result.songCount} songs` : ''}`,
+);
+console.log(
+  `Dialect  : ${result.dialect}${dialect ? ' (as told)' : ` (guessed ${result.guessedDialect})`}${report.respelled ? `, ${report.respelled} chord(s) respelled into English` : ''}`,
+);
 console.log(
   `Merged   : ${report.merged} chord row(s) folded into the words below`,
 );
@@ -83,15 +101,11 @@ if (report.inlineTargets)
   );
 if (report.directives.converted)
   console.log(
-    `Directives: ${report.directives.converted} converted to * / ** markers`,
+    `Directives: ${report.directives.converted} converted (titles, key/capo, sections, comments)`,
   );
-if (report.directives.dropped)
+if (report.directives.dropped.length)
   console.log(
-    `Directives: ${report.directives.dropped} block marker(s) dropped (blocks are blank-line separated)`,
-  );
-if (report.directives.kept.length)
-  console.log(
-    `Directives: left as text → ${report.directives.kept.map((k) => `{${k}}`).join(' ')}`,
+    `Directives: dropped, nothing to become → ${report.directives.dropped.map((k) => `{${k}}`).join(' ')}`,
   );
 
 if (report.promoted)

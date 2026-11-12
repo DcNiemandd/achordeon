@@ -18,6 +18,7 @@
 import {
   parse,
   toEnglishNotation,
+  convertChordSheet,
   SETTINGS,
   SCHEMA_VERSION,
   ACHORDEON_URL,
@@ -34,6 +35,7 @@ export const {
 } = makeDomain({
   parse,
   toEnglishNotation,
+  convertChordSheet,
   SETTINGS,
   SCHEMA_VERSION,
   ACHORDEON_URL,

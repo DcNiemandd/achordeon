@@ -18,3 +18,4 @@ export * from './lib/notation';
 export * from './lib/parser';
 export * from './lib/transpose';
 export * from './lib/reparse';
+export * from './lib/chord-sheet';

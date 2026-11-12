@@ -8,15 +8,17 @@ import {
   DownloadService,
   ExportService,
   ImportInbox,
-  ShareLinkService,
+  type MultiFormat,
   ParserService,
   RenderService,
   SessionStore,
   SettingsStore,
-  SongStore,
+  ShareLinkService,
   SongbookStore,
-  type MultiFormat,
   type SongFormat,
+  SongSiteFlow,
+  SongStore,
+  LibraryTakeover,
 } from '@achordeon/shared/data-access';
 import { resolveSettings, type Song } from '@achordeon/shared/domain';
 import {
@@ -28,6 +30,7 @@ import {
   type SortChange,
 } from '../shared/song-explorer';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   type DownloadChoice,
@@ -66,6 +69,9 @@ export interface PendingDelete {
  */
 @Injectable()
 export class SongsPresenter {
+  /** The foreign-library notice's state and its takeover (ADR-0004/0009): the
+   * notice above this page's content draws it. */
+  readonly takeover = inject(LibraryTakeover);
   private readonly store = inject(SongStore);
   private readonly songbooks = inject(SongbookStore);
   private readonly session = inject(SessionStore);
@@ -78,6 +84,7 @@ export class SongsPresenter {
   /** Import is the app-level owner's, not this screen's — a drop or a link
    * reaches it too, and two owners would mean two dialogs (plan §7). */
   private readonly inbox = inject(ImportInbox);
+  private readonly songSites = inject(SongSiteFlow);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnUrl = inject(ReturnUrl);
@@ -594,6 +601,8 @@ export class SongsPresenter {
     await this.busy(async () => {
       if (choice === DATA_FORMAT) {
         await this.exporter.export({ songIds: ids });
+      } else if (choice === CHORDPRO_FORMAT) {
+        await this.exporter.exportChordPro({ songIds: ids });
       } else if (ids.length === 1) {
         await this.downloads.downloadSong(ids[0], choice as SongFormat);
       } else {
@@ -617,6 +626,14 @@ export class SongsPresenter {
    * others being a drop and a link, neither of which belongs to a page — so the
    * flow cannot live here without existing twice.
    */
+  /** Whether the toolbar's Song site button is on: online, with a backend (Q61). */
+  readonly isSongSiteAvailable = computed(() => this.songSites.isAvailable());
+
+  /** The Song site flow, which the shell's host shows from here on (Q60). */
+  openSongSite(): void {
+    void this.songSites.open();
+  }
+
   readImport(files: readonly File[]): void {
     void this.inbox.offer(files);
   }

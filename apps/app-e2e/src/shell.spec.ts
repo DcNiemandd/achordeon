@@ -137,33 +137,8 @@ test.describe('document title', () => {
   });
 });
 
-test.describe('fullscreen mode', () => {
-  test('audience keeps the normal frame — chrome is a mode, not a route', async ({
-    page,
-  }) => {
-    await page.setViewportSize(ROOMY);
-    await page.goto('audience');
-
-    await expect(page.getByTestId('rail')).toBeVisible();
-    await expect(page.getByTestId('audience-fullscreen')).toBeVisible();
-  });
-
-  test('entering hides the chrome; moving the pointer brings it back', async ({
-    page,
-  }) => {
-    await page.setViewportSize(ROOMY);
-    await page.goto('audience');
-
-    await page.getByTestId('audience-fullscreen').click();
-
-    // The bars fade after the idle delay — that is the whole point of the mode.
-    await expect(page.getByTestId('rail')).toHaveCount(0, { timeout: 6000 });
-
-    // ...and any movement brings them straight back, wherever you are.
-    await page.mouse.move(700, 400);
-    await expect(page.getByTestId('rail')).toBeVisible();
-  });
-});
+// Fullscreen mode is in stage.spec.ts: the one place it is offered without a
+// lobby to join (the audience shows its button only once joined).
 
 test.describe('split pane', () => {
   test('a dragged ratio survives a reload', async ({ page }) => {

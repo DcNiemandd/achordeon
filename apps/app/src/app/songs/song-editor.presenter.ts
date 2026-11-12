@@ -22,6 +22,7 @@ import {
   type SongFormat,
 } from '@achordeon/shared/data-access';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   type DownloadChoice,
@@ -501,6 +502,8 @@ export class SongEditorPresenter {
     try {
       if (choice === DATA_FORMAT) {
         await this.exporter.export({ songIds: [song.id] });
+      } else if (choice === CHORDPRO_FORMAT) {
+        await this.exporter.exportChordPro({ songIds: [song.id] });
       } else {
         // The dialog only offers png/pdf for one song (its count is 1), so the
         // multi-song members of DownloadFormat never arrive here.

@@ -47,6 +47,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The Song sites edge function is Deno code, tested and linted by Deno.
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Set Nx affected base
         if: github.event_name == 'pull_request'
         run: echo "NX_BASE=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV

@@ -66,6 +66,7 @@ export const {
 } = makeDomain({
   parse: domain.parse,
   toEnglishNotation: domain.toEnglishNotation,
+  convertChordSheet: domain.convertChordSheet,
   SETTINGS: domain.SETTINGS,
   SCHEMA_VERSION: domain.SCHEMA_VERSION,
   ACHORDEON_URL: domain.ACHORDEON_URL,

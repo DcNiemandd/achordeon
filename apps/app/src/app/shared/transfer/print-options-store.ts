@@ -80,7 +80,19 @@ export class PrintOptionsStore {
     }
   }
 
+  /**
+   * Read both back, each on its own. The paper is only written when a download
+   * is confirmed, so "none saved yet" is the normal state of a new device; that
+   * used to `return` out of the whole method, and the All songs print structure
+   * below was never read, so its settings came back at the defaults on every
+   * reload until the first download.
+   */
   private hydrate(): void {
+    this.hydrateOptions();
+    this.hydrateAllSongsPrint();
+  }
+
+  private hydrateOptions(): void {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return;
@@ -102,7 +114,9 @@ export class PrintOptionsStore {
     } catch {
       // Fall back to defaults — see save().
     }
+  }
 
+  private hydrateAllSongsPrint(): void {
     try {
       const raw = localStorage.getItem(ALL_SONGS_PRINT_KEY);
       if (raw) {

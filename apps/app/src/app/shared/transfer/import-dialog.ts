@@ -1,29 +1,16 @@
-// Import dialog — Epic 7 ▸ subtask 3
-// Spec: PRD-INFRASTRUCTURE.md §8 (songs replace / ignore / create-new, + import
-// all as new with a date prefix; songbooks always create new)
+// Import dialog (CONTEXT.md §Import dialog) — plans/import-chord-sheets.md, phase 3 (Q3)
 //
-// The step between reading a file and writing it. It exists because "what would
-// this file do to my library" has to be answerable *before* anything is written
-// — a file that silently overwrote nineteen songs because the twentieth matched
-// would be indefensible.
+// Where an Import starts: one row per way in, laid out like the Download dialog
+// it mirrors — what the row is for on the left, the button that does it on the
+// right. A file row ends in the file picker for its own kind of file and hands
+// the chosen files over; reading, previewing and writing them is the Import
+// preview's job (`ImportInbox`), the same as for a drop or a link.
+//
+// Controlled: it holds no state, injects nothing, and knows no store.
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, output } from '@angular/core';
+import { CHORD_SHEET_EXTENSIONS } from '@achordeon/shared/domain';
 import { Button, Dialog, Icon } from '../../primitives';
-import type {
-  ImportChoice,
-  ImportPreview,
-  ImportResolutionChoice,
-} from './transfer-model';
-
-/** How many collisions to spell out before the list becomes a wall of names. */
-const NAMED_CONFLICTS = 5;
 
 @Component({
   selector: 'app-import-dialog',
@@ -35,295 +22,144 @@ const NAMED_CONFLICTS = 5;
       data-testid="import-dialog"
       (closed)="closed.emit()"
     >
-      <p class="summary" data-testid="import-summary">{{ summary() }}</p>
+      <div class="options">
+        <div class="option">
+          <div class="text">
+            <span class="name">{{ achordeonLabel }}</span>
+            <span class="hint">{{ achordeonHint }}</span>
+          </div>
+          <button
+            appButton
+            type="button"
+            variant="primary"
+            class="go"
+            data-testid="import-achordeon"
+            (click)="achordeonInput.click()"
+          >
+            <app-icon name="import" />
+            {{ chooseLabel }}
+          </button>
+          <input
+            #achordeonInput
+            class="file"
+            type="file"
+            multiple
+            tabindex="-1"
+            aria-hidden="true"
+            [accept]="achordeonAccept"
+            data-testid="import-achordeon-input"
+            (change)="onPicked($event)"
+          />
+        </div>
 
-      @if (preview().hasUnknownSettings) {
-        <p class="note" data-testid="import-unknown">
-          <app-icon name="warning" class="note-icon" />
-          {{ unknownText }}
-        </p>
-      }
-
-      <!-- Said before anything is written. Import compares ids and never looks
-           at the content, so without this a song whose markup is wrong lands
-           silently and is discovered on the page. -->
-      @if (preview().flaggedSongs.length > 0) {
-        <p class="note" data-testid="import-flagged">
-          <app-icon name="warning" class="note-icon" />
-          {{ flaggedText() }}
-        </p>
-      }
-
-      <!-- An export names its fonts and never carries them (§8), so this is the
-           only place the reader learns what to go and install. The ids are kept
-           exactly as written: installing the font later is what brings the
-           sender's page back (ADR-0017). -->
-      @if (preview().missingFonts.length > 0) {
-        <p class="note" data-testid="import-fonts">
-          <app-icon name="warning" class="note-icon" />
-          {{ missingFontsText() }}
-        </p>
-      }
-
-      @if (preview().conflicts.length > 0) {
-        <p class="summary" data-testid="import-conflicts">
-          {{ conflictText() }}
-        </p>
-        <!-- Named, not counted: "3 songs already exist" is a number, and the
-             answer depends on WHICH three. -->
-        <ul class="names">
-          @for (row of named(); track row.id) {
-            <li>{{ nameOf(row.incomingName, row.existingName) }}</li>
-          }
-          @if (moreCount() > 0) {
-            <li class="more">{{ moreText() }}</li>
-          }
-        </ul>
-
-        <fieldset class="options">
-          <legend class="legend">{{ resolutionLegend }}</legend>
-          @for (option of resolutions; track option.value) {
-            <label class="option">
-              <input
-                type="radio"
-                name="import-resolution"
-                [value]="option.value"
-                [checked]="resolution() === option.value"
-                [disabled]="isAllNew()"
-                [attr.data-testid]="'import-' + option.value"
-                (change)="resolution.set(option.value)"
-              />
-              <span>{{ option.label }}</span>
-            </label>
-          }
-        </fieldset>
-      }
-
-      <!-- Outside the conflict block: importing everything as a copy is a
-           decision about the whole file, and it is answerable even when nothing
-           collides at all. -->
-      <label class="option all-new">
-        <input
-          type="checkbox"
-          [checked]="isAllNew()"
-          data-testid="import-all-new"
-          (change)="isAllNew.set(checked($event))"
-        />
-        <span>{{ allNewLabel }}</span>
-      </label>
-
-      <p class="note">{{ songbookNote }}</p>
-
-      <!-- Several files at once are previewed one after another, so Cancel here
-           means "not this one" and the queue moves on. That needs a way out, or
-           leaving a five-file drop costs five clicks — hence the second button,
-           which appears only when there is actually something behind this. -->
-      @if (remaining() > 0) {
-        <button
-          dialog-actions
-          appButton
-          type="button"
-          variant="secondary"
-          data-testid="import-cancel-all"
-          (click)="cancelledAll.emit()"
-        >
-          {{ cancelAllLabel() }}
-        </button>
-      }
-      <button
-        dialog-actions
-        appButton
-        type="button"
-        variant="secondary"
-        data-testid="import-cancel"
-        (click)="closed.emit()"
-      >
-        {{ cancelLabel() }}
-      </button>
-      <button
-        dialog-actions
-        appButton
-        type="button"
-        variant="primary"
-        data-testid="import-confirm"
-        (click)="
-          confirmed.emit({ resolution: resolution(), isAllNew: isAllNew() })
-        "
-      >
-        {{ importLabel }}
-      </button>
+        <div class="option">
+          <div class="text">
+            <span class="name">{{ chordSheetLabel }}</span>
+            <span class="hint">{{ chordSheetHint }}</span>
+          </div>
+          <button
+            appButton
+            type="button"
+            variant="primary"
+            class="go"
+            data-testid="import-chord-sheet"
+            (click)="chordSheetInput.click()"
+          >
+            <app-icon name="import" />
+            {{ chooseLabel }}
+          </button>
+          <input
+            #chordSheetInput
+            class="file"
+            type="file"
+            multiple
+            tabindex="-1"
+            aria-hidden="true"
+            [accept]="chordSheetAccept"
+            data-testid="import-chord-sheet-input"
+            (change)="onPicked($event)"
+          />
+        </div>
+      </div>
     </app-dialog>
   `,
   styles: `
-    .summary {
-      margin: 0 0 var(--space-2);
-    }
-
-    .names {
-      margin: 0 0 var(--space-3);
-      padding-inline-start: var(--space-4);
-      color: var(--text-muted);
-      font-size: var(--text-xs);
-    }
-
-    .more {
-      list-style: none;
-    }
-
     .options {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      margin: 0 0 var(--space-3);
-      padding: 0;
-      border: 0;
-    }
-
-    .legend {
-      padding: 0 0 var(--space-1);
-      color: var(--text-muted);
-      font-size: var(--text-xs);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--space-3);
     }
 
     .option {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      cursor: pointer;
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+      align-items: start;
     }
 
-    .note {
+    .text {
+      min-inline-size: 0;
       display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      margin: var(--space-2) 0 0;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .name {
+      font-weight: 500;
+    }
+
+    .hint {
       color: var(--text-muted);
       font-size: var(--text-xs);
+      white-space: normal;
     }
 
-    .note-icon {
-      --icon-size: 16px;
-      flex: none;
-      color: var(--brand);
+    .go {
+      inline-size: 100%;
+    }
+
+    /* The real control, opened by the row's button. Not display:none, which
+       makes it unfocusable and, in some engines, unclickable from script. */
+    .file {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      opacity: 0;
+      pointer-events: none;
     }
   `,
 })
 export class ImportDialog {
-  readonly preview = input.required<ImportPreview>();
-  /** How many more files are queued behind this one. Several dropped at once are
-   * previewed one after another — `planImport` computes conflicts against the
-   * library as it stands, so the second cannot be planned until the first is
-   * applied. Zero for a picked file or a link, which is the usual case. */
-  readonly remaining = input(0);
-
-  readonly confirmed = output<ImportChoice>();
-  /** This one is not wanted — the queue moves on. */
+  /** Files the person chose in one of the pickers. */
+  readonly picked = output<readonly File[]>();
   readonly closed = output<void>();
-  /** This one and everything still waiting. */
-  readonly cancelledAll = output<void>();
-
-  /** Replace is the default: the file is usually the newer copy — it is the one
-   * you just brought over — and ignoring by default makes an import that looks
-   * like it did nothing. */
-  protected readonly resolution = signal<ImportResolutionChoice>('replace');
-  protected readonly isAllNew = signal(false);
-
-  protected readonly named = computed(() =>
-    this.preview().conflicts.slice(0, NAMED_CONFLICTS),
-  );
-  protected readonly moreCount = computed(() =>
-    Math.max(this.preview().conflicts.length - NAMED_CONFLICTS, 0),
-  );
-
-  protected readonly summary = computed(() => {
-    const { songCount, songbookCount } = this.preview();
-    const held = $localize`:@@import.summary:This file holds ${songCount}:songs: songs and ${songbookCount}:books: songbooks.`;
-    const rest = this.remaining();
-    if (rest === 0) return held;
-    // A dropped queue has to say so, or the second dialog reads as the first one
-    // failing to close.
-    return `${held} ${$localize`:@@import.queued:${rest}:count: more files after this one.`}`;
-  });
-
-  /** "Cancel" while a queue is running would read as "stop", which is not what it
-   * does — so it says what it does, and the way out gets its own button. */
-  protected readonly cancelLabel = computed(() =>
-    this.remaining() === 0
-      ? $localize`:@@import.cancel:Cancel`
-      : $localize`:@@import.skipOne:Skip this one`,
-  );
-
-  protected readonly cancelAllLabel = computed(
-    () =>
-      $localize`:@@import.cancelAll:Cancel all ${this.remaining() + 1}:count:`,
-  );
-
-  protected readonly conflictText = computed(
-    () =>
-      $localize`:@@import.conflicts:${this.preview().conflicts.length}:count: of them are already in your library:`,
-  );
 
   /**
-   * Not "your tooling is old" but "these songs have problems", which is what the
-   * person actually wants to know before accepting them. It says the import still
-   * happens, because it does — the point is to look afterwards, not to stop.
-   *
-   * Named, like the conflicts above: a count says how bad it is, a name says
-   * where to go.
+   * `.achordeon` is the registered extension; `.json` stays because every file
+   * already exported is one. The PNG is the download that carries its own
+   * metadata — "a picture of my song" and "my song" in one file.
    */
-  protected readonly flaggedText = computed(
-    () =>
-      $localize`:@@import.flagged:Achordeon couldn't understand these songs: ${this.preview().flaggedSongs.join(', ')}:songs:. They will still import but you should check them afterwards.`,
-  );
+  protected readonly achordeonAccept =
+    'application/vnd.achordeon+json,.achordeon,application/json,.json,image/png,.png';
+  protected readonly chordSheetAccept = [
+    'text/plain',
+    ...CHORD_SHEET_EXTENSIONS,
+  ].join(',');
 
-  /**
-   * Which font, by name, because that is what can be acted on.
-   *
-   * The ids are shown as written rather than prettied up: an id is what the
-   * Fonts settings will call the family once it is installed, so it is also the
-   * thing to go looking for.
-   */
-  protected readonly missingFontsText = computed(
-    () =>
-      $localize`:@@import.fonts:These songs use fonts this device does not have: ${this.preview().missingFonts.join(', ')}:fonts:. They will import and be shown in the default font until you add them in Settings.`,
-  );
-
-  protected readonly moreText = computed(
-    () => $localize`:@@import.more:…and ${this.moreCount()}:count: more.`,
-  );
-
-  protected nameOf(incoming: string, existing: string): string {
-    return incoming === existing
-      ? incoming
-      : $localize`:@@import.renamed:${incoming}:incoming: (yours: ${existing}:existing:)`;
+  protected onPicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    // Cleared, so choosing the same file again still fires `change`.
+    input.value = '';
+    if (files.length > 0) {
+      this.picked.emit(files);
+    }
   }
 
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
-  }
-
-  protected readonly resolutions: {
-    value: ImportResolutionChoice;
-    label: string;
-  }[] = [
-    {
-      value: 'replace',
-      label: $localize`:@@import.replace:Replace mine with the imported version`,
-    },
-    {
-      value: 'ignore',
-      label: $localize`:@@import.ignore:Keep mine and skip them`,
-    },
-    {
-      value: 'new',
-      label: $localize`:@@import.new:Keep both — import them as new songs`,
-    },
-  ];
-
-  protected readonly title = $localize`:@@import.title:Import`;
-  protected readonly resolutionLegend = $localize`:@@import.legend:What should happen to those?`;
-  protected readonly allNewLabel = $localize`:@@import.allNew:Import everything as new, with today's date in the name`;
-  protected readonly songbookNote = $localize`:@@import.songbookNote:Songbooks are always added as new — an existing one is never overwritten.`;
-  protected readonly unknownText = $localize`:@@import.unknown:This file was made by a newer version. Settings this one does not know are kept, but not shown.`;
-  protected readonly importLabel = $localize`:@@import.confirm:Import`;
+  protected readonly title = $localize`:@@importDialog.title:Import`;
+  protected readonly chooseLabel = $localize`:@@importDialog.choose:Choose file`;
+  protected readonly achordeonLabel = $localize`:@@importDialog.achordeon:Achordeon file`;
+  protected readonly achordeonHint = $localize`:@@importDialog.achordeon.hint:Songs and songbooks exported from Achordeon, or a downloaded song picture.`;
+  protected readonly chordSheetLabel = $localize`:@@importDialog.chordSheet:Chord sheet`;
+  protected readonly chordSheetHint = $localize`:@@importDialog.chordSheet.hint:ChordPro, or text with chords above the words (.cho, .chordpro, .crd, .pro, .txt).`;
 }

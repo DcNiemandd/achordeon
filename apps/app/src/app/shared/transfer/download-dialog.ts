@@ -24,6 +24,7 @@ import {
 } from '@angular/core';
 import { Button, Dialog, Icon } from '../../primitives';
 import {
+  CHORDPRO_FORMAT,
   DATA_FORMAT,
   SHARE_LINK_FORMAT,
   type DownloadChoice,
@@ -138,6 +139,29 @@ interface FormatOption extends Option {
                 <span class="ghost" aria-hidden="true">{{ copyLabel }}</span>
                 <span>{{ isCopied() ? copiedLabel : copyLabel }}</span>
               </span>
+            </button>
+          </div>
+
+          <!-- A third section (plan Q4): the songs for **another** app. Behind
+               its own hairline, because it answers a third question — not "a
+               page or a picture", not "the song itself", but "for something
+               that is not Achordeon". -->
+          <div class="option is-data">
+            <div class="text">
+              <span class="name">{{ chordProOption.label }}</span>
+              <span class="hint">{{ chordProOption.hint }}</span>
+            </div>
+            <button
+              appButton
+              type="button"
+              variant="primary"
+              class="go"
+              [attr.aria-label]="downloadOptionLabel(chordProOption)"
+              data-testid="download-chordpro"
+              (click)="chosen.emit(CHORDPRO_FORMAT)"
+            >
+              <app-icon name="download" />
+              {{ downloadLabel }}
             </button>
           </div>
         </div>
@@ -284,6 +308,7 @@ export class DownloadDialog {
 
   /** Exposed for the template's one non-`@for` row. */
   protected readonly DATA_FORMAT = DATA_FORMAT;
+  protected readonly CHORDPRO_FORMAT = CHORDPRO_FORMAT;
 
   /** Enabled once the link is built and short enough to survive being pasted. */
   protected readonly isShareable = computed(
@@ -393,6 +418,12 @@ export class DownloadDialog {
         ? $localize`:@@download.data.hint:The song itself — words, chords and settings. Import it here or on another device to get the song back, not a picture of it.`
         : $localize`:@@download.data.hintMany:The songs themselves — words, chords and settings, in one file. Import it here or on another device to get them all back.`,
   }));
+
+  /** The ChordPro file (plan Q4, Q52): the songs for another app. */
+  protected readonly chordProOption: Option = {
+    label: $localize`:@@download.chordPro:ChordPro file`,
+    hint: $localize`:@@download.chordPro.hint:Words and chords for other chord apps. Achordeon also reads back the settings. Songbooks and favourites stay behind.`,
+  };
 
   protected readonly cancelLabel = $localize`:@@download.cancel:Cancel`;
   protected readonly downloadLabel = $localize`:@@download.go:Download`;

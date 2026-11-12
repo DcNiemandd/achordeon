@@ -463,7 +463,9 @@ test.describe('settings — stubs and backup (Epic 7 follow-up)', () => {
       mimeType: 'application/json',
       buffer: Buffer.from('not a database'),
     });
-    await page.getByTestId('restore-confirm').click();
+    // The choice is now Add or Replace; Replace is the irreversible one, and
+    // even it must leave the library alone when the file is not a backup.
+    await page.getByTestId('restore-replace').click();
     await expect(page.getByTestId('restore-error-dialog')).toBeVisible();
   });
 });
@@ -581,7 +583,8 @@ test.describe('about', () => {
     page,
   }) => {
     const docs = page.getByTestId('about-docs');
-    await expect(docs).toHaveAttribute('href', /\/docs\/intro$/);
+    // The intro is the docs' root page (`slug: /` in intro.mdx).
+    await expect(docs).toHaveAttribute('href', /\/docs$/);
     // A new tab, so a half-written song is not navigated away from.
     await expect(docs).toHaveAttribute('target', '_blank');
 
@@ -681,7 +684,7 @@ test.describe('about', () => {
   test('the docs link follows the UI language', async ({ page }) => {
     await expect(page.getByTestId('about-docs')).toHaveAttribute(
       'href',
-      /\/docs\/intro$/,
+      /\/docs$/,
     );
 
     // Switching reloads the app; the link comes back pointing at the Czech docs,
@@ -690,7 +693,7 @@ test.describe('about', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'cs');
     await expect(page.getByTestId('about-docs')).toHaveAttribute(
       'href',
-      /\/cs\/docs\/intro$/,
+      /\/cs\/docs$/,
     );
   });
 });

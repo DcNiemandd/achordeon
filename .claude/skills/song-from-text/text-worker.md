@@ -51,6 +51,13 @@ Run the merger on the copy:
 node .claude/skills/song-core/scripts/merge-chordlines.mjs "$WORK" -o "$WORK"
 ```
 
+German chord names in the source (`H`, `B` for B♭, `Fis`, `Ami`) are rewritten into
+English by the same run. The script guesses the source's dialect from the chords: an
+`H` or a `mi` among them means German. Pass `--dialect german` (or `english`) only
+when the guess would be wrong, such as a German sheet whose chords never include an
+`H` or a minor written `mi`. That is the source's spelling, never the `notation`
+setting.
+
 It rewrites the file in place-ish (reads, then writes the same path) and prints a
 summary that contains counts, line numbers and chord symbols — never a lyric. Read it:
 
