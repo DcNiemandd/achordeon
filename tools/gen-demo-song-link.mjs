@@ -30,8 +30,9 @@ const PAGES = {
   cs: 'apps/docs/i18n/cs/docusaurus-plugin-content-docs/current/tutorials/fit-a-song-on-one-page.mdx',
 };
 
-/** The link, as the page writes it: the app's address and a `z1` fragment. */
-const LINK = /https:\/\/achordeon\.eu\/app\/#z1=[A-Za-z0-9_-]+/;
+/** The link, as the page writes it: the app's address and a `z1` fragment.
+ * Any address, because the recipe takes it from `BASE_URL` when that is set. */
+const LINK = /https?:\/\/[^\s)"'<>]+#z1=[A-Za-z0-9_-]+/;
 
 /**
  * The recipe, as a module this script can call.

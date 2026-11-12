@@ -20,8 +20,14 @@ import { gzipSync } from 'node:zlib';
 // and a value import would drag the whole harness (and Playwright) in with it.
 import type { Locale } from './harness';
 
-/** Where the app that reads the link lives — the envelope names its origin. */
-const APP_URL = 'https://achordeon.eu/app/';
+/**
+ * Where the app that reads the link lives — the envelope names its origin.
+ *
+ * `BASE_URL`, the address the e2e configs point the browser at, when it is set,
+ * so a run against another deployment hands out a link to that deployment.
+ * The published app otherwise.
+ */
+const APP_URL = process.env['BASE_URL'] || 'https://achordeon.eu/app/';
 
 /**
  * The instant the envelope claims to have been written.
