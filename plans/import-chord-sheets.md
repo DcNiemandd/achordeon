@@ -1,6 +1,8 @@
 # Plan — Chord sheets in and out
 
-**Status: planned, not started.** Grilled 2026-11-10 against the code and the
+**Status: shipped.** Every phase is in on `feat/import-chord-sheets`
+(2026-11-10 → 2026-11-12), each with its `_Shipped:_` line below. Synced with
+the code on 2026-11-12. Grilled 2026-11-10 against the code and the
 first assignment (2026-10-17, main checkout `plans/import-chord-sheets.md`).
 Identifiers below are descriptions, not names; naming is yours. Terms follow
 `CONTEXT.md`: **Import dialog**, **Import preview**, **Song site**, **Export**
@@ -126,12 +128,14 @@ takes `parse`, and the old `.mjs` scripts go away.
   - **converted**: carries
     - the format found
     - the dialect applied
-    - the guessed dialect (always present, for pre-setting a toggle)
+    - the guessed dialect (always present, for pre-setting a toggle; no app
+      surface shows one since Q8 dropped the toggle, the skill's `--dialect`
+      is the only caller that passes a dialect)
     - the whole input as **one** Content (for paste and preview, Q25)
     - the **songs** split on `{new_song}` (for file import), each a **draft**
       (name + Content, no id, timestamps or cache) with its own report
 - **A toggle flip calls the function again** with the chosen dialect. Nothing is
-  cached and nothing is kept between calls.
+  cached and nothing is kept between calls. (No toggle shipped, see Q8.)
 - **The report** has counts, line numbers and directive names only. Its type has
   no field that can hold lyric text.
 - **Reuse the existing `ChordNotation` type** (`chords.ts`) for the dialect. Do
@@ -148,13 +152,25 @@ _Done when:_ the domain specs cover every row of Q8/Q13/Q24 and the detection
 cases, and the `song-from-text` skill still produces the same output on its
 fixtures.
 
+_Shipped:_ `35e5706`. `convertChordSheet`, `germanChordsToEnglish` and
+`toChordPro` in `libs/shared/domain/src/lib/chord-sheet.ts`, pinned by
+`chord-sheet.spec.ts`. `to-achordeon.mjs` is gone. `merge-chordlines.mjs`
+stayed, as the skill's file-to-file CLI around the domain's
+`convertChordSheet` (through `_domain-core.mjs`), and
+`to-achordeon.test.mjs` runs the skill's fixtures through the shipped
+conversion.
+
 ### 2. Convert bar on paste
 
 `song-editor.presenter.ts` gets paste handling: detect → bar → convert as one
 transaction (Q5, Q8). Pin the behaviour in `song-editor.spec.ts` (red first).
 
-_Done when:_ paste → Convert → Undo restores the exact paste, a non-sheet paste
-shows no bar, and the German toggle changes the result.
+_Done when:_ paste → Convert → Undo restores the exact paste, and a non-sheet paste
+shows no bar. (The German toggle was dropped with Q8: the dialect is read off
+the sheet's spelling.)
+
+_Shipped:_ `0527d5a`, `d4b9c63`. E2E: `apps/app-e2e/src/chord-sheets.spec.ts`
+(pasting a chord sheet).
 
 ### 2b. Convert button (selection or song)
 
@@ -171,6 +187,10 @@ it respells only the chords in the selection or song (`H`→`B`, `B`→`Bb`,
 `Fis`→`F#`, `mi`→`m`), with the converter's own German table, one undo step,
 always enabled. Lucide's `languages` icon, `Alt+G`.
 
+_Shipped:_ `4df9ac9`. The buttons are `editor.convert` (`Alt+K`) and
+`editor.toEnglish` (`Alt+G`) in `song-editor.page.ts`. E2E:
+`chord-sheets.spec.ts` (the editor converts on a click).
+
 ### 3. Import dialog + chord-sheet files
 
 The Import button opens the Import dialog (Q3). The ChordPro row accepts
@@ -179,8 +199,18 @@ Import preview, with the English/German control (Q22) and multi-song files (Q7).
 The song-site row is present but disabled until phase 6. Drag-drop of these file
 types also works.
 
+As built: `.pro` is accepted too (`CHORD_SHEET_EXTENSIONS`). There is no
+English/German control (Q8, Q22): each file is read in the dialect its spelling
+shows. There is no song-site row: Song sites got their own toolbar button (Q3,
+amended 2026-11-11). The drop overlay's hint names chord sheets too.
+
 _Done when:_ a multi-song `.cho` and a windows-1250 `.txt` import correctly from
 both the songs and the songbooks pages.
+
+_Shipped:_ `2cef39a`, `4e6019a`, `c1f2b73` (drop hint). Unit:
+`import-inbox.spec.ts` (a Chord sheet file). E2E: `chord-sheets.spec.ts` (a
+chord sheet file: multi-song `.cho` from Songs, windows-1250 `.txt` from
+Songbooks, a dropped `.cho`).
 
 ### 4. Export as ChordPro
 
@@ -189,6 +219,12 @@ selection (Q13).
 
 _Done when:_ exporting a song and re-importing the `.cho` gives the same
 Content, apart from the documented losses.
+
+_Shipped:_ `4e6019a`, `90e2fa2`. Both download dialogs, Songs and Songbooks
+(Q50). E2E: `chord-sheets.spec.ts` (download as ChordPro: a song round trip,
+a songbook in book order). Not yet documented: a Content that does not end in
+a newline comes back with one, because the conversion always ends its output
+with one.
 
 ### 5. Song sites edge function
 
@@ -200,14 +236,30 @@ _Done when:_ `sites`, `search` and `song` work locally under
 `supabase functions serve`, the rate limit trips, and an unsupported URL returns
 the 4xx.
 
+_Shipped:_ `1cdff15`, `618e19a`. `supabase/functions/song-sites`,
+Nx project `song-sites` (Q54). `handler.test.ts` covers the rate limit (429)
+and the unsupported URL, `plnyzpevnik.test.ts` the adapter against recorded
+fixtures. The run under `supabase functions serve` is a manual check, not
+recorded anywhere.
+
 ### 6. Song site dialog + Song preview dialog
 
 The single input (Q15), grouped results (Q16), the preview with render, toggle,
 versions and attribution (Q19), Back that keeps state (Q18), and Import → editor
 (Q20). Offline handling (Q21).
 
+As built: no toggle in the preview (Q8, Q19). The flow is `SongSiteFlow` in
+`libs/shared/data-access/src/lib/song-site`, mounted by `song-site-host.ts`
+(Q60), opened from the Songs and Songbooks toolbars.
+
 _Done when:_ a song can go from typing an artist name to editing it in the
 editor, and Back keeps the results list.
+
+_Shipped:_ `f747191`. Unit: `song-site-flow.spec.ts`,
+`song-site-service.spec.ts`. E2E: `chord-sheets.spec.ts` (a song from a song
+site: search, preview, Back without a new search, a second version imported
+into the editor, the rate-limit message, the button off while offline). The
+function is answered by `page.route` there, never the real site.
 
 ### 7. Docs
 
@@ -215,6 +267,10 @@ Update `apps/docs/docs/export-import.mdx` (Import dialog, ChordPro files,
 ChordPro export, Song sites, pasting from supermusic) and `guides/ai-import.mdx`
 where the skill's role changes, in both `en` and `cs`. Check with
 `pnpm nx build docs`.
+
+_Shipped:_ `dfb3851`, `3418b8c`, `67c8941` (patch notes).
+`export-import.mdx` covers it in both languages. `guides/ai-import.mdx` is
+unchanged: it is about the image skill, whose role did not change.
 
 ## Out of scope
 
