@@ -61,8 +61,51 @@ async function seedBook(page: Page): Promise<string> {
   );
 }
 
-/** A real finger crossing the render area, in ten steps so the browser's
- * gesture recogniser sees a drag rather than a teleport. */
+/** One finger from `from` to `to`, in ten steps so the browser's gesture
+ * recogniser sees a drag rather than a teleport. Chromium gets a real touch
+ * through CDP, which is the only way to exercise touch-action and the
+ * pointercancel it can cause. CDP is Chromium-only, so the other engines get a
+ * mouse drag: the swipe reads pointer events and does not care which kind. */
+async function drag(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): Promise<void> {
+  const at = (step: number) => ({
+    x: Math.round(from.x + ((to.x - from.x) * step) / 10),
+    y: Math.round(from.y + ((to.y - from.y) * step) / 10),
+  });
+
+  if (page.context().browser()?.browserType().name() !== 'chromium') {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    for (let step = 1; step <= 10; step++) {
+      const { x, y } = at(step);
+      await page.mouse.move(x, y);
+    }
+    await page.mouse.up();
+    return;
+  }
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [from],
+  });
+  for (let step = 1; step <= 10; step++) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [at(step)],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+  await cdp.detach();
+}
+
+/** A finger crossing the render area, sideways. */
 async function swipe(page: Page, direction: 'left' | 'right'): Promise<void> {
   const box = await page.getByTestId('stage-render').boundingBox();
   if (box === null) throw new Error('the render area is not on screen');
@@ -72,22 +115,7 @@ async function swipe(page: Page, direction: 'left' | 'right'): Promise<void> {
   const far = Math.round(box.x + box.width - 40);
   const [from, to] = direction === 'left' ? [far, near] : [near, far];
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ x: from, y }],
-  });
-  for (let step = 1; step <= 10; step++) {
-    await cdp.send('Input.dispatchTouchEvent', {
-      type: 'touchMove',
-      touchPoints: [{ x: Math.round(from + ((to - from) * step) / 10), y }],
-    });
-  }
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchEnd',
-    touchPoints: [],
-  });
-  await cdp.detach();
+  await drag(page, { x: from, y }, { x: to, y });
 }
 
 /** The same finger, running up or down the glass — what a sideways swipe looks
@@ -104,22 +132,7 @@ async function swipeVertically(
   const far = Math.round(box.y + box.height - 40);
   const [from, to] = direction === 'up' ? [far, near] : [near, far];
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ x, y: from }],
-  });
-  for (let step = 1; step <= 10; step++) {
-    await cdp.send('Input.dispatchTouchEvent', {
-      type: 'touchMove',
-      touchPoints: [{ x, y: Math.round(from + ((to - from) * step) / 10) }],
-    });
-  }
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchEnd',
-    touchPoints: [],
-  });
-  await cdp.detach();
+  await drag(page, { x, y: from }, { x, y: to });
 }
 
 test.describe('stage — the performance survives the page', () => {

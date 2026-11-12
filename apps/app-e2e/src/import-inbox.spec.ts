@@ -185,12 +185,28 @@ test.describe('sharing a song as a link', () => {
   test('the link the app writes is the link the app reads', async ({
     page,
     context,
+    browserName,
   }) => {
     // The round trip worth having above all the others: build a link with §5,
     // open it with §4, and assert the song that lands is the song that left. It
     // exercises the encoder, the reader, `normalise`, `migrate` and `planImport`
     // in one test.
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // Only Chromium lets a test read the clipboard back: WebKit rejects the
+    // clipboard-write permission as unknown, and refuses readText outside a
+    // user gesture. Elsewhere the test records what the app wrote instead.
+    const isRealClipboard = browserName === 'chromium';
+    if (isRealClipboard) {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    } else {
+      await page.addInitScript(() => {
+        const clipboard = navigator.clipboard;
+        const write = clipboard.writeText.bind(clipboard);
+        clipboard.writeText = (text: string) => {
+          (window as unknown as { copied: string }).copied = text;
+          return write(text).catch(() => undefined);
+        };
+      });
+    }
     await freshLibrary(page);
     await createSong(page, 'Shared');
 
@@ -199,7 +215,11 @@ test.describe('sharing a song as a link', () => {
     await expect(copy).toBeEnabled();
     await copy.click();
 
-    const url = await page.evaluate(() => navigator.clipboard.readText());
+    const url = isRealClipboard
+      ? await page.evaluate(() => navigator.clipboard.readText())
+      : await page.evaluate(
+          () => (window as unknown as { copied: string }).copied,
+        );
     expect(url).toContain('#z1=');
     // The app doing the sharing, not the published address: a link copied here
     // has to open HERE. Pointing it at production would send the reader to a
