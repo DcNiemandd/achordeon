@@ -1,0 +1,7 @@
+{
+  "name": "song-sites",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.8"
+  }
+}

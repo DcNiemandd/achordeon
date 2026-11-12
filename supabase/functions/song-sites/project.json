@@ -14,7 +14,7 @@
         "cwd": "{projectRoot}",
         "commands": [
           "deno check --node-modules-dir=none index.ts",
-          "deno test --allow-read"
+          "deno test --node-modules-dir=none --allow-read"
         ],
         "parallel": false
       }

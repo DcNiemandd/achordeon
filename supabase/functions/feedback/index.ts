@@ -15,7 +15,7 @@
 // Deployed from `main` by the Supabase GitHub integration along with the
 // migrations. Secrets are NOT deployed with it — see supabase/functions/.env.example.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
 /** What the dialog can file. Anything else is a 400. */
 const KINDS = ['bug', 'idea', 'other'] as const;

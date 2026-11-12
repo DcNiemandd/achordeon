@@ -2,7 +2,7 @@
 // Q55–Q57). The handler is driven with a fake upstream that serves the recorded
 // fixtures, and a fake limiter, so nothing here reaches the network or the db.
 
-import { assertEquals } from 'jsr:@std/assert@1';
+import { deepStrictEqual } from 'node:assert';
 import { handle, type Deps } from './handler.ts';
 
 const fixture = (name: string) =>
@@ -44,7 +44,7 @@ async function post(
 }
 
 Deno.test('sites: a number, a name and a link hint for each site', async () => {
-  assertEquals(await post({ action: 'sites' }), {
+  deepStrictEqual(await post({ action: 'sites' }), {
     status: 200,
     json: [{ site: 1, name: 'Plný zpěvník', urlHint: 'plnyzpevnik.cz' }],
   });
@@ -52,13 +52,13 @@ Deno.test('sites: a number, a name and a link hint for each site', async () => {
 
 Deno.test('search: every site answers in a group of its own', async () => {
   const { status, json } = await post({ action: 'search', q: 'pohoda' });
-  assertEquals(status, 200);
+  deepStrictEqual(status, 200);
   const [group] = json as {
     site: number;
     results: { id: string; title: string; artist: string }[];
   }[];
-  assertEquals(group.site, 1);
-  assertEquals(group.results[0], {
+  deepStrictEqual(group.site, 1);
+  deepStrictEqual(group.results[0], {
     id: 'sam-sebou/pohoda',
     title: 'Pohoda',
     artist: 'Sám Sebou',
@@ -68,7 +68,7 @@ Deno.test('search: every site answers in a group of its own', async () => {
 Deno.test('search: a site that fails says so in its own group', async () => {
   const broken: typeof fetch = () =>
     Promise.resolve(new Response('down', { status: 503 }));
-  assertEquals(
+  deepStrictEqual(
     await post({ action: 'search', q: 'pohoda' }, { fetch: broken }),
     {
       status: 200,
@@ -85,7 +85,7 @@ Deno.test('search: a site that takes too long is given up on', async () => {
         reject(new DOMException('aborted', 'AbortError')),
       ),
     );
-  assertEquals(
+  deepStrictEqual(
     await post(
       { action: 'search', q: 'pohoda' },
       { fetch: stuck, timeoutMs: 10 },
@@ -115,9 +115,9 @@ Deno.test(
       site: 1,
       id: 'sam-sebou/pohoda',
     });
-    assertEquals(status, 200);
+    deepStrictEqual(status, 200);
     const song = json as SongResponse;
-    assertEquals(
+    deepStrictEqual(
       { ...song, text: song.text.split('\n')[0], versions: undefined },
       {
         site: 1,
@@ -129,11 +129,11 @@ Deno.test(
         url: 'https://plnyzpevnik.cz/zpevnik/sam-sebou/pohoda',
       },
     );
-    assertEquals(
+    deepStrictEqual(
       song.versions?.map((v) => v.label),
       ['Version 1', 'Version 2'],
     );
-    assertEquals(song.versions?.[0].text, song.text);
+    deepStrictEqual(song.versions?.[0].text, song.text);
   },
 );
 
@@ -142,9 +142,9 @@ Deno.test('song: by a link someone pasted, whichever site it is', async () => {
     action: 'song',
     url: 'https://www.plnyzpevnik.cz/zpevnik/sam-sebou/pohoda?ref=x#top',
   });
-  assertEquals(status, 200);
+  deepStrictEqual(status, 200);
   const song = json as SongResponse;
-  assertEquals(
+  deepStrictEqual(
     [song.site, song.title, song.url],
     [1, 'Pohoda', 'https://plnyzpevnik.cz/zpevnik/sam-sebou/pohoda'],
   );
@@ -156,7 +156,7 @@ Deno.test('song: a link no site can read is turned away', async () => {
     'https://plnyzpevnik.cz/interpreti/sam-sebou',
     'not a link',
   ]) {
-    assertEquals(await post({ action: 'song', url }), {
+    deepStrictEqual(await post({ action: 'song', url }), {
       status: 422,
       json: { reason: 'unsupported-url' },
     });
@@ -177,12 +177,12 @@ Deno.test('a caller over the limit reaches no site', async () => {
     { action: 'search', q: 'pohoda' },
     { action: 'song', site: 1, id: 'sam-sebou/pohoda' },
   ]) {
-    assertEquals(await post(body, over), {
+    deepStrictEqual(await post(body, over), {
       status: 429,
       json: { reason: 'rate-limited' },
     });
   }
-  assertEquals(reached, 0);
+  deepStrictEqual(reached, 0);
   // Asking which sites there are costs no site anything.
-  assertEquals((await post({ action: 'sites' }, over)).status, 200);
+  deepStrictEqual((await post({ action: 'sites' }, over)).status, 200);
 });

@@ -9,7 +9,7 @@
 //
 // Deployed from `main` by the Supabase GitHub integration, with the migrations.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 import { CORS, handle } from './handler.ts';
 
 /** Calls that reach a site, per IP hash per window (plan Q55). Plenty for a

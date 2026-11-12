@@ -1,0 +1,28 @@
+{
+  "name": "feedback",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "supabase/functions/feedback",
+  "tags": ["type:function"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "_comment": "Deno, not Jest: the function is Deno code. It has no tests yet, so this only typechecks it.",
+      "cache": true,
+      "inputs": ["{projectRoot}/**/*"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "deno check --node-modules-dir=none index.ts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["{projectRoot}/**/*"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "deno lint"
+      }
+    }
+  }
+}
